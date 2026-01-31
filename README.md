@@ -12,7 +12,7 @@ Get started with downloads, installation guides, and documentation for all Carma
 
 ## Projects
 
-### 🦉 OwlCloud
+### OwlCloud
 **Browser extension + Owlbear Rodeo integration**
 
 View and manage your DiceCloud characters directly in Owlbear Rodeo. Real-time HP tracking, dice rolling, and character sheet integration.
@@ -20,7 +20,7 @@ View and manage your DiceCloud characters directly in Owlbear Rodeo. Real-time H
 - [Chrome Extension](#) | [Firefox Add-on](#)
 - [Documentation](./packages/owlcloud/README.md)
 
-### 🎲 RollCloud
+### RollCloud
 **Browser extension for character sheet management**
 
 Manage your DiceCloud characters with enhanced features and Discord integration. Track HP, roll dice, and manage resources across platforms.
@@ -28,14 +28,14 @@ Manage your DiceCloud characters with enhanced features and Discord integration.
 - [Chrome Extension](#) | [Firefox Add-on](#)
 - [Documentation](./packages/rollcloud/README.md)
 
-### 🎭 FoundCloud
+### FoundCloud
 **Foundry VTT module** *(Coming Soon)*
 
 Import and sync DiceCloud characters into Foundry VTT with automated updates.
 
 - [Documentation](./packages/foundcloud/README.md)
 
-### 🤖 Pip2
+### Pip2
 **Discord integration bot for CarmaClouds**
 
 Brings all CarmaClouds features to Discord. Roll dice, manage characters, track initiative, and more with simple slash commands.
