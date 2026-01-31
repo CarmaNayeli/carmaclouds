@@ -38,7 +38,7 @@ Import and sync DiceCloud characters into Foundry VTT with automated updates.
 ### 🤖 Pip2
 **Discord integration bot for CarmaClouds**
 
-Fast, feature-rich Discord bot providing slash commands and dice rolling for all CarmaClouds projects. Roll standard dice notation, track initiative, and more.
+Brings all CarmaClouds features to Discord. Roll dice, manage characters, track initiative, and more with simple slash commands.
 
 - [Add to Discord](https://discord.com/oauth2/authorize?client_id=1144752568716591286)
 - [Documentation](./packages/pip/README.md)
