@@ -13,7 +13,11 @@
  * - Communication via window.postMessage for cross-context messaging
  */
 
-/* global browserAPI, debug */
+// Import all browser extension modules from @carmaclouds/core
+import '../../../core/src/browser.js';
+
+// Detect browser API
+const browserAPI = (typeof browser !== 'undefined' && browser.runtime) ? browser : chrome;
 
 // ============== Initialization ==============
 

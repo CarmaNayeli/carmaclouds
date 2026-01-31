@@ -3,6 +3,9 @@
  * Extracts character data from Dice Cloud using the REST API
  */
 
+// Import all browser extension modules from @carmaclouds/core
+import '../../../core/src/browser.js';
+
 (function() {
   'use strict';
 
