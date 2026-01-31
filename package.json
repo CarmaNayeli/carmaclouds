@@ -4,7 +4,8 @@
   "private": true,
   "description": "CarmaClouds - Unified cloud services for tabletop gaming platforms",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "build-tools"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",

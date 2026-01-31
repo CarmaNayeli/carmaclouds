@@ -1,0 +1,10 @@
+{
+  "name": "@carmaclouds/build-tools",
+  "version": "1.0.0",
+  "description": "Shared build tools for CarmaClouds packages",
+  "type": "module",
+  "main": "esbuild-extension.js",
+  "dependencies": {
+    "esbuild": "^0.19.0"
+  }
+}

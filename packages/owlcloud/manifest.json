@@ -24,8 +24,6 @@
         "https://*.dicecloud.com/*"
       ],
       "js": [
-        "src/common/browser-polyfill.js",
-        "src/common/debug.js",
         "src/content/dicecloud.js"
       ],
       "run_at": "document_idle"
@@ -35,8 +33,6 @@
         "https://www.owlbear.rodeo/*"
       ],
       "js": [
-        "src/common/browser-polyfill.js",
-        "src/common/debug.js",
         "src/content/owlbear.js"
       ],
       "run_at": "document_idle"
@@ -57,54 +53,6 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "src/common/debug.js",
-        "src/common/browser-polyfill.js",
-        "src/common/theme-manager.js",
-        "src/common/html-utils.js",
-        "src/modules/color-utils.js",
-        "src/modules/card-creator.js",
-        "src/modules/action-executor.js",
-        "src/modules/spell-edge-cases.js",
-        "src/modules/class-feature-edge-cases.js",
-        "src/modules/racial-feature-edge-cases.js",
-        "src/modules/combat-maneuver-edge-cases.js",
-        "src/modules/action-announcements.js",
-        "src/modules/action-display.js",
-        "src/modules/action-filters.js",
-        "src/modules/action-options.js",
-        "src/modules/character-trait-popups.js",
-        "src/modules/character-traits.js",
-        "src/modules/companions-manager.js",
-        "src/modules/concentration-tracker.js",
-        "src/modules/data-manager.js",
-        "src/modules/dice-roller.js",
-        "src/modules/effects-manager.js",
-        "src/modules/feature-modals.js",
-        "src/modules/formula-resolver.js",
-        "src/modules/gm-mode.js",
-        "src/modules/health-modals.js",
-        "src/modules/hp-management.js",
-        "src/modules/inventory-manager.js",
-        "src/modules/macro-system.js",
-        "src/modules/resource-manager.js",
-        "src/modules/sheet-builder.js",
-        "src/modules/spell-cards.js",
-        "src/modules/spell-casting.js",
-        "src/modules/spell-display.js",
-        "src/modules/spell-macros.js",
-        "src/modules/spell-modals.js",
-        "src/modules/spell-slots.js",
-        "src/modules/ui-utilities.js",
-        "src/modules/warlock-invocations.js",
-        "src/modules/window-management.js"
-      ],
-      "matches": [
-        "https://www.owlbear.rodeo/*"
-      ]
-    }
-  ],
+  "web_accessible_resources": [],
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4dJJMVAbjk++4+wehvNwoDPYvAcEgWNCRr1B4w6CcCCjFuI/A4cnF4ZOspNDkfRWkgEURG8yVXm0/WXlWllXDU7xuVFojSapFsa58cF7uChzfxvQ/4hU398uxsyjqMkYHFcytozP+2sta7Q0LqgW31r2h9coM1ZqlLUfv8szTzp39SLbYrMOczm1nWCNcEMIUavzEmO+s3rsT+aHYAOMDKrpxMNk+IVBnC07cTGjdbmf8Y27CGdAHxlukBPkfToD2Gt8vekebgUb679TrhDjO6qedsH3OZCES6sAa4OYpJC3aj+vigBOJmsbv+RBzRX4PKo3j+ZLZB8bflCD+BEx/wIDAQAB"
 }
