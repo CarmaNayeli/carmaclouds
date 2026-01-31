@@ -1,14 +1,17 @@
 export default function OwlCloudTab() {
   return (
     <div className="space-y-8">
-      <section>
-        <h2 className="text-3xl font-bold mb-4 text-white">
-          OwlCloud
-        </h2>
-        <p className="text-gray-400 text-lg leading-relaxed">
-          Browser extension that integrates DiceCloud character sheets with Owlbear Rodeo,
-          bringing your D&D characters to life in your favorite virtual tabletop.
-        </p>
+      <section className="flex items-center gap-4">
+        <div className="text-6xl filter" style={{ filter: 'hue-rotate(270deg) saturate(1.5)' }}>🎲</div>
+        <div>
+          <h2 className="text-3xl font-bold mb-2 text-white">
+            OwlCloud
+          </h2>
+          <p className="text-gray-400 text-lg leading-relaxed">
+            Browser extension that integrates DiceCloud character sheets with Owlbear Rodeo,
+            bringing your D&D characters to life in your favorite virtual tabletop.
+          </p>
+        </div>
       </section>
 
       <section className="bg-black border border-[#a855f7] rounded-lg p-6">

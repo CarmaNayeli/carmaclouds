@@ -8,7 +8,7 @@ import RollCloudTab from '@/components/RollCloudTab'
 import OwlCloudTab from '@/components/OwlCloudTab'
 import FoundCloudTab from '@/components/FoundCloudTab'
 
-type Tab = 'home' | 'pip' | 'rollcloud' | 'owlcloud' | 'foundcloud'
+type Tab = 'home' | 'rollcloud' | 'owlcloud' | 'foundcloud' | 'pip'
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>('home')
@@ -48,16 +48,6 @@ export default function Home() {
             Home
           </button>
           <button
-            onClick={() => setActiveTab('pip')}
-            className={`px-6 py-3 font-medium transition-colors ${
-              activeTab === 'pip'
-                ? 'border-b-2 border-[#2dd97c] text-[#2dd97c]'
-                : 'text-gray-500 hover:text-gray-300'
-            }`}
-          >
-            Pip2
-          </button>
-          <button
             onClick={() => setActiveTab('rollcloud')}
             className={`px-6 py-3 font-medium transition-colors ${
               activeTab === 'rollcloud'
@@ -65,7 +55,7 @@ export default function Home() {
                 : 'text-gray-500 hover:text-gray-300'
             }`}
           >
-            RollCloud
+            🎲 RollCloud
           </button>
           <button
             onClick={() => setActiveTab('owlcloud')}
@@ -75,7 +65,7 @@ export default function Home() {
                 : 'text-gray-500 hover:text-gray-300'
             }`}
           >
-            OwlCloud
+            🎲 OwlCloud
           </button>
           <button
             onClick={() => setActiveTab('foundcloud')}
@@ -85,10 +75,20 @@ export default function Home() {
                 : 'text-gray-500 hover:text-gray-300'
             }`}
           >
-            FoundCloud
+            🎲 FoundCloud
             <span className="ml-2 text-xs bg-orange-500/20 text-orange-400 px-2 py-1 rounded">
               Coming Soon
             </span>
+          </button>
+          <button
+            onClick={() => setActiveTab('pip')}
+            className={`ml-auto px-6 py-3 font-medium transition-colors ${
+              activeTab === 'pip'
+                ? 'border-b-2 border-[#2dd97c] text-[#2dd97c]'
+                : 'text-gray-500 hover:text-gray-300'
+            }`}
+          >
+            🤖 Pip2
           </button>
         </nav>
 

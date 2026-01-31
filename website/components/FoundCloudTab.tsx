@@ -1,11 +1,23 @@
 export default function FoundCloudTab() {
   return (
     <div className="space-y-6">
+      <section className="flex items-center gap-4 mb-8">
+        <div className="text-6xl filter" style={{ filter: 'hue-rotate(20deg) saturate(1.5)' }}>🎲</div>
+        <div>
+          <h2 className="text-3xl font-bold mb-2 text-white">
+            FoundCloud
+          </h2>
+          <p className="text-gray-400 text-lg leading-relaxed">
+            Coming soon! DiceCloud integration for Foundry VTT.
+          </p>
+        </div>
+      </section>
+
       <section className="text-center py-12">
         <div className="inline-block bg-black border-2 border-orange-400 rounded-lg p-8 mb-6">
-          <h2 className="text-4xl font-bold mb-4 text-orange-400">
+          <h3 className="text-4xl font-bold mb-4 text-orange-400">
             Coming Soon
-          </h2>
+          </h3>
           <p className="text-gray-400 text-lg">
             FoundCloud is currently in development
           </p>

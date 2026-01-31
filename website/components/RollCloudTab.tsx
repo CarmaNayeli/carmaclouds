@@ -1,14 +1,17 @@
 export default function RollCloudTab() {
   return (
     <div className="space-y-8">
-      <section>
-        <h2 className="text-3xl font-bold mb-4 text-white">
-          RollCloud
-        </h2>
-        <p className="text-gray-400 text-lg leading-relaxed">
-          Browser extension that connects your DiceCloud character sheets to Roll20 and Pip2,
-          enabling seamless character management and dice rolling across platforms.
-        </p>
+      <section className="flex items-center gap-4">
+        <div className="text-6xl filter" style={{ filter: 'hue-rotate(320deg) saturate(2)' }}>🎲</div>
+        <div>
+          <h2 className="text-3xl font-bold mb-2 text-white">
+            RollCloud
+          </h2>
+          <p className="text-gray-400 text-lg leading-relaxed">
+            Browser extension that connects your DiceCloud character sheets to Roll20 and Pip2,
+            enabling seamless character management and dice rolling across platforms.
+          </p>
+        </div>
       </section>
 
       <section className="bg-black border border-[#e91e8c] rounded-lg p-6">
