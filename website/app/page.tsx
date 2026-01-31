@@ -76,9 +76,6 @@ export default function Home() {
             }`}
           >
             FoundCloud
-            <span className="ml-2 text-xs bg-orange-500/20 text-orange-400 px-2 py-1 rounded">
-              Coming Soon
-            </span>
           </button>
           <button
             onClick={() => setActiveTab('pip')}
