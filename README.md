@@ -1,4 +1,4 @@
-# CarmaClouds 🎲☁️
+# CarmaClouds ☁️
 
 **Unified cloud services for tabletop gaming platforms**
 
