@@ -1,4 +1,8 @@
-export default function HomeTab() {
+type HomeTabProps = {
+  setActiveTab: (tab: 'home' | 'pip' | 'rollcloud' | 'owlcloud' | 'foundcloud') => void
+}
+
+export default function HomeTab({ setActiveTab }: HomeTabProps) {
   return (
     <div className="space-y-8">
       <section>
@@ -11,30 +15,46 @@ export default function HomeTab() {
         </p>
       </section>
 
-      <section className="grid md:grid-cols-3 gap-6 mt-8">
-        <div className="bg-black border border-gray-800 rounded-lg p-6 hover:border-[#16a75a] transition-colors">
-          <h3 className="text-xl font-semibold text-[#16a75a] mb-3">RollCloud</h3>
+      <section className="grid md:grid-cols-4 gap-6 mt-8">
+        <button
+          onClick={() => setActiveTab('pip')}
+          className="bg-black border border-gray-800 rounded-lg p-6 hover:border-[#2dd97c] transition-colors text-left cursor-pointer"
+        >
+          <h3 className="text-xl font-semibold text-[#2dd97c] mb-3">Pip2</h3>
+          <p className="text-gray-400">
+            Discord bot powering RollCloud, OwlCloud, and FoundCloud integrations.
+          </p>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('rollcloud')}
+          className="bg-black border border-gray-800 rounded-lg p-6 hover:border-[#e91e8c] transition-colors text-left cursor-pointer"
+        >
+          <h3 className="text-xl font-semibold text-[#e91e8c] mb-3">RollCloud</h3>
           <p className="text-gray-400">
             Browser extension connecting DiceCloud character sheets to Roll20 and Pip2.
-            Stream your rolls and character data seamlessly.
           </p>
-        </div>
+        </button>
 
-        <div className="bg-black border border-gray-800 rounded-lg p-6 hover:border-[#16a75a] transition-colors">
-          <h3 className="text-xl font-semibold text-[#16a75a] mb-3">OwlCloud</h3>
+        <button
+          onClick={() => setActiveTab('owlcloud')}
+          className="bg-black border border-gray-800 rounded-lg p-6 hover:border-[#a855f7] transition-colors text-left cursor-pointer"
+        >
+          <h3 className="text-xl font-semibold text-[#a855f7] mb-3">OwlCloud</h3>
           <p className="text-gray-400">
             Browser extension integrating DiceCloud with Owlbear Rodeo.
-            Manage characters and roll dice directly in your VTT.
           </p>
-        </div>
+        </button>
 
-        <div className="bg-black border border-gray-800 rounded-lg p-6 hover:border-orange-400 transition-colors">
+        <button
+          onClick={() => setActiveTab('foundcloud')}
+          className="bg-black border border-gray-800 rounded-lg p-6 hover:border-orange-400 transition-colors text-left cursor-pointer"
+        >
           <h3 className="text-xl font-semibold text-orange-400 mb-3">FoundCloud</h3>
           <p className="text-gray-400">
             Coming soon! DiceCloud integration for Foundry VTT.
-            Stay tuned for updates.
           </p>
-        </div>
+        </button>
       </section>
 
       <section className="mt-8 bg-black border border-gray-800 rounded-lg p-6">

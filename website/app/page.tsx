@@ -3,11 +3,12 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import HomeTab from '@/components/HomeTab'
+import PipTab from '@/components/PipTab'
 import RollCloudTab from '@/components/RollCloudTab'
 import OwlCloudTab from '@/components/OwlCloudTab'
 import FoundCloudTab from '@/components/FoundCloudTab'
 
-type Tab = 'home' | 'rollcloud' | 'owlcloud' | 'foundcloud'
+type Tab = 'home' | 'pip' | 'rollcloud' | 'owlcloud' | 'foundcloud'
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>('home')
@@ -47,10 +48,20 @@ export default function Home() {
             Home
           </button>
           <button
+            onClick={() => setActiveTab('pip')}
+            className={`px-6 py-3 font-medium transition-colors ${
+              activeTab === 'pip'
+                ? 'border-b-2 border-[#2dd97c] text-[#2dd97c]'
+                : 'text-gray-500 hover:text-gray-300'
+            }`}
+          >
+            Pip2
+          </button>
+          <button
             onClick={() => setActiveTab('rollcloud')}
             className={`px-6 py-3 font-medium transition-colors ${
               activeTab === 'rollcloud'
-                ? 'border-b-2 border-[#16a75a] text-[#16a75a]'
+                ? 'border-b-2 border-[#e91e8c] text-[#e91e8c]'
                 : 'text-gray-500 hover:text-gray-300'
             }`}
           >
@@ -60,7 +71,7 @@ export default function Home() {
             onClick={() => setActiveTab('owlcloud')}
             className={`px-6 py-3 font-medium transition-colors ${
               activeTab === 'owlcloud'
-                ? 'border-b-2 border-[#16a75a] text-[#16a75a]'
+                ? 'border-b-2 border-[#a855f7] text-[#a855f7]'
                 : 'text-gray-500 hover:text-gray-300'
             }`}
           >
@@ -83,7 +94,8 @@ export default function Home() {
 
         {/* Tab Content */}
         <div className="bg-gray-900/50 rounded-lg p-8 border border-gray-800">
-          {activeTab === 'home' && <HomeTab />}
+          {activeTab === 'home' && <HomeTab setActiveTab={setActiveTab} />}
+          {activeTab === 'pip' && <PipTab />}
           {activeTab === 'rollcloud' && <RollCloudTab />}
           {activeTab === 'owlcloud' && <OwlCloudTab />}
           {activeTab === 'foundcloud' && <FoundCloudTab />}
