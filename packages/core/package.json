@@ -1,0 +1,44 @@
+{
+  "name": "@carmaclouds/core",
+  "version": "1.0.0",
+  "description": "Core utilities and types shared across CarmaClouds packages",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./cache": {
+      "import": "./dist/cache/index.js",
+      "types": "./dist/cache/index.d.ts"
+    },
+    "./supabase": {
+      "import": "./dist/supabase/index.js",
+      "types": "./dist/supabase/index.d.ts"
+    },
+    "./types": {
+      "import": "./dist/types/index.js",
+      "types": "./dist/types/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "test": "echo \"No tests yet\"",
+    "lint": "eslint src --ext .ts"
+  },
+  "keywords": [
+    "carmaclouds",
+    "shared",
+    "utilities"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.0.0"
+  }
+}

@@ -1,0 +1,110 @@
+﻿{
+  "name": "owlcloud-setup",
+  "version": "1.2.7",
+  "description": "OwlCloud Extension Installation Wizard",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "node build-safe.js",
+    "build:win": "node build-safe.js --win",
+    "build:mac": "node build-safe.js --mac",
+    "build:linux": "node build-safe.js --linux",
+    "build:all": "node build-safe.js --win --mac --linux",
+    "pack": "node build-safe.js --dir",
+    "build:updater": "node build-updater.js"
+  },
+  "build": {
+    "appId": "com.dicecat.owlcloud.setup",
+    "productName": "OwlCloud Wizard",
+    "copyright": "Copyright © 2025 Carmabella",
+    "artifactName": "OwlCloudWizard.${ext}",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../dist/owlcloud-chrome-signed.crx",
+        "to": "extension/owlcloud-chrome.crx"
+      },
+      {
+        "from": "../dist/owlcloud-firefox-signed.xpi",
+        "to": "extension/owlcloud-firefox.xpi"
+      },
+      {
+        "from": "assets/FirefoxDeveloperEdition.exe",
+        "to": "installers/FirefoxDeveloperEdition.exe"
+      },
+      {
+        "from": "resources/OwlCloud-Updater.exe",
+        "to": "OwlCloud-Updater.exe"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico",
+      "requestedExecutionLevel": "requireAdministrator"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "assets/icon.icns",
+      "category": "public.app-category.utilities"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "assets/icon.png",
+      "category": "Utility"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": false,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "installerHeaderIcon": "assets/icon.ico",
+      "createDesktopShortcut": false,
+      "createStartMenuShortcut": false,
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "perMachine": true,
+      "include": "nsis/installer.nsh"
+    }
+  },
+  "keywords": [
+    "owlcloud",
+    "dicecloud",
+    "roll20",
+    "discord",
+    "dnd",
+    "ttrpg"
+  ],
+  "author": "Carmabella <https://carmabella.carrd.co>",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^25.9.8",
+    "electron-builder": "^26.5.0",
+    "png-to-ico": "^3.0.1",
+    "sharp": "^0.34.5"
+  },
+  "dependencies": {
+    "sudo-prompt": "^9.2.1"
+  },
+  "productName": "OwlCloud Wizard"
+}

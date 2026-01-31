@@ -1,0 +1,28 @@
+{
+  "name": "@carmaclouds/owlcloud",
+  "version": "1.0.0",
+  "description": "OwlCloud - Browser extension for DiceCloud with Owlbear Rodeo integration",
+  "scripts": {
+    "build": "web-ext build --source-dir=. --artifacts-dir=./web-ext-artifacts",
+    "dev": "web-ext run --source-dir=. --verbose",
+    "dev:firefox": "web-ext run --source-dir=. --firefox=firefox --verbose",
+    "dev:firefox-dev": "web-ext run --source-dir=. --firefox=firefoxdeveloperedition --verbose",
+    "lint": "web-ext lint --source-dir=.",
+    "sign": "web-ext sign --source-dir=. --api-key=$AMO_JWT_ISSUER --api-secret=$AMO_JWT_SECRET",
+    "clean": "rm -rf web-ext-artifacts"
+  },
+  "keywords": [
+    "dicecloud",
+    "owlbear",
+    "browser-extension",
+    "dnd",
+    "webextension"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@carmaclouds/core": "^1.0.0"
+  },
+  "devDependencies": {
+    "web-ext": "^7.0.0"
+  }
+}

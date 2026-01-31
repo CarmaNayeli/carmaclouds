@@ -1,0 +1,14 @@
+# WebExtension build artifacts
+web-ext-artifacts/
+*.xpi
+*.zip
+
+# Development
+node_modules/
+
+# Logs
+*.log
+
+# Temporary
+*.tmp
+.web-ext-sign/

@@ -1,0 +1,25 @@
+{
+  "name": "@carmaclouds/foundcloud",
+  "version": "1.0.0",
+  "description": "FoundCloud - Foundry VTT module for DiceCloud integration",
+  "main": "src/index.js",
+  "scripts": {
+    "build": "echo 'Build script to be added'",
+    "dev": "echo 'Dev script to be added'",
+    "clean": "rm -rf dist",
+    "test": "echo \"No tests yet\""
+  },
+  "keywords": [
+    "foundry",
+    "vtt",
+    "dicecloud",
+    "dnd"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@carmaclouds/core": "^1.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

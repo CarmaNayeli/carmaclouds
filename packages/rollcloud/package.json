@@ -1,0 +1,24 @@
+{
+  "name": "@carmaclouds/rollcloud",
+  "version": "1.0.0",
+  "description": "RollCloud - Discord/platform integrations and features for dice rolling",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "echo 'Build script to be added'",
+    "dev": "echo 'Dev script to be added'",
+    "clean": "rm -rf dist node_modules",
+    "test": "echo \"No tests yet\""
+  },
+  "keywords": [
+    "rollcloud",
+    "dicecloud",
+    "discord",
+    "dice-rolling"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@carmaclouds/core": "^1.0.0",
+    "@carmaclouds/pip": "^2.0.0"
+  }
+}

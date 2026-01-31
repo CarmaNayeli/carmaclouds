@@ -1,0 +1,236 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self';">
+  <title>OwlCloud Installation Wizard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>OwlCloud Installation Wizard</h1>
+      <p class="subtitle">Dice Cloud + Roll20 + Discord</p>
+    </header>
+
+    <!-- Step 1: Choose Browser -->
+    <section id="step1" class="step active">
+      <div class="step-header">
+        <span class="step-number">1</span>
+        <h2>Install or Update</h2>
+      </div>
+      <div class="step-content">
+        <p>Select the browser you use for Roll20:</p>
+        <div class="browser-grid">
+          <button class="browser-btn" data-browser="chrome">
+            <span class="browser-icon">C</span>
+            <span class="browser-name">Chrome</span>
+          </button>
+          <button class="browser-btn" data-browser="firefox">
+            <span class="browser-icon">F</span>
+            <span class="browser-name">Firefox Developer</span>
+          </button>
+        </div>
+        <p id="browserStatus" class="status-text"></p>
+      </div>
+    </section>
+
+    <!-- Step 1.5: Updater Configuration (shown only if updater was installed by NSIS) -->
+    <section id="stepUpdaterConfig" class="step">
+      <div class="step-header">
+        <span class="step-number">⚙</span>
+        <h2>Configure OwlCloud Updater</h2>
+      </div>
+      <div class="step-content">
+        <p style="margin-bottom: 20px;">The OwlCloud Updater was installed. Configure how it should run:</p>
+
+        <div style="margin: 20px 0;">
+          <label style="display: flex; align-items: center; cursor: pointer; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 10px;">
+            <input type="checkbox" id="minimizeToTrayConfig" checked style="width: 18px; height: 18px; margin-right: 12px;">
+            <div>
+              <strong>Start minimized in system tray</strong>
+              <div style="font-size: 0.9em; opacity: 0.8; margin-top: 4px;">Runs quietly in background to check for updates</div>
+            </div>
+          </label>
+
+          <label style="display: flex; align-items: center; cursor: pointer; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 10px;">
+            <input type="checkbox" id="startWithWindowsConfig" checked style="width: 18px; height: 18px; margin-right: 12px;">
+            <div>
+              <strong>Start with Windows</strong>
+              <div style="font-size: 0.9em; opacity: 0.8; margin-top: 4px;">Automatically launch when you log in</div>
+            </div>
+          </label>
+
+          <label style="display: flex; align-items: center; cursor: pointer; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+            <input type="checkbox" id="enableNotificationsConfig" checked style="width: 18px; height: 18px; margin-right: 12px;">
+            <div>
+              <strong>Enable update notifications</strong>
+              <div style="font-size: 0.9em; opacity: 0.8; margin-top: 4px;">Get notified when new versions are available</div>
+            </div>
+          </label>
+        </div>
+
+        <p style="font-size: 0.85em; opacity: 0.7; margin-top: 20px;">You can change these settings anytime from the updater.</p>
+
+        <div class="button-row" style="margin-top: 20px;">
+          <button id="continueFromUpdaterConfig" class="btn btn-primary">Continue</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Step 2: Install Extension -->
+    <section id="step2" class="step">
+      <div class="step-header">
+        <span class="step-number">2</span>
+        <h2>Install Extension</h2>
+      </div>
+      <div class="step-content">
+        <p>Installing OwlCloud extension for <strong id="selectedBrowserName">Browser</strong>...</p>
+        <div id="installProgress" class="progress-container">
+          <div class="spinner"></div>
+          <p id="installStatus">Preparing installation...</p>
+        </div>
+        <div id="installComplete" class="hidden">
+          <p class="success-text">Extension policy installed successfully!</p>
+          <p class="note">You must restart your browser for the extension to be installed.</p>
+
+          <!-- Updater installation status (shown if user selected updater) -->
+          <div id="updaterInstallStatus" class="hidden" style="margin: 20px 0; padding: 15px; background: rgba(96, 165, 250, 0.1); border: 1px solid rgba(96, 165, 250, 0.3); border-radius: 8px;">
+            <div id="updaterInstallProgress" style="display: flex; align-items: center; gap: 10px;">
+              <div class="spinner" style="width: 20px; height: 20px; border-width: 2px;"></div>
+              <span>Installing OwlCloud Updater...</span>
+            </div>
+            <div id="updaterInstallSuccess" class="hidden" style="color: #4ade80;">
+              ✅ OwlCloud Updater installed successfully!
+            </div>
+            <div id="updaterInstallError" class="hidden" style="color: #f87171;">
+              ❌ Failed to install updater: <span id="updaterErrorText"></span>
+            </div>
+          </div>
+
+          <div class="button-row">
+            <button id="restartBrowser" class="btn btn-primary">Restart Browser</button>
+            <button id="continueToStep3" class="btn btn-secondary">Continue Later</button>
+          </div>
+        </div>
+        <div id="installError" class="hidden">
+          <p class="error-text" id="installErrorText">Installation failed</p>
+          <div class="button-row">
+            <button id="backToStep1FromError" class="btn btn-secondary">Back</button>
+            <button id="retryInstall" class="btn btn-primary">Retry</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Step 3: Add Pip 2 -->
+    <section id="step3" class="step">
+      <div class="step-header">
+        <span class="step-number">3</span>
+        <h2>Add Pip 2 to Discord</h2>
+      </div>
+      <div class="step-content">
+        <p>Pip 2 is a Discord bot that handles turn notifications.</p>
+        <button id="addPipBot" class="btn btn-primary btn-large">
+          Add Pip 2 to Your Server
+        </button>
+        <button id="skipPipBot" class="btn btn-secondary">
+          Bot Already Installed - Skip This Step
+        </button>
+        <p class="note">A browser window will open. Select your Discord server and authorize the bot.</p>
+        <div id="botAdded" class="hidden">
+          <p class="success-text">Great! Click continue when you've added the bot.</p>
+          <div class="button-row">
+            <button id="backToStep2" class="btn btn-secondary">Back</button>
+            <button id="continueToStep4" class="btn btn-primary">Continue</button>
+          </div>
+        </div>
+        <div class="step-nav">
+          <button id="backToStep2Nav" class="btn btn-text">Back to Extension Install</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Step 4: Done -->
+    <section id="step4" class="step">
+      <div class="step-header">
+        <span class="step-number">+</span>
+        <h2>Installation Complete!</h2>
+      </div>
+      <div class="step-content">
+        <div class="success-box">
+          <p class="big-check">[OK]</p>
+          <p>OwlCloud is ready to use!</p>
+        </div>
+        <div class="next-steps">
+          <h3>What's Next?</h3>
+          <ol>
+            <li>Open <strong>Roll20</strong> in your browser</li>
+            <li>Click the OwlCloud extension icon</li>
+            <li>Sync your character from Dice Cloud</li>
+            <li>Combat turns will appear in Discord!</li>
+          </ol>
+        </div>
+        <div style="margin: 12px 0; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+          <label style="display:flex; align-items:center; gap:12px; cursor:pointer;">
+            <input type="checkbox" id="installUpdaterCheckbox" style="width:18px; height:18px;">
+            <div>
+              <strong>Install and run OwlCloud Updater</strong>
+              <div style="font-size:0.9em; opacity:0.8;">Installs the updater utility and optionally launches it</div>
+            </div>
+          </label>
+        </div>
+        <button id="finishSetup" class="btn btn-primary btn-large">✅ Finish Installation</button>
+        <p class="note">Keep this installer handy for future updates.</p>
+      </div>
+    </section>
+
+    <!-- Step 5: Updater Setup (conditional) -->
+    <section id="step5" class="step hidden">
+      <div class="step-header">
+        <span class="step-number">5</span>
+        <h2>OwlCloud Updater Installed</h2>
+      </div>
+      <div class="step-content">
+        <div class="success-box">
+          <p class="big-check">🔔</p>
+          <p>The OwlCloud Updater has been installed!</p>
+        </div>
+        <div class="info-box">
+          <p>The updater runs in your system tray and notifies you when new versions are available.</p>
+          <p style="margin-top: 10px;">Installation location: <span id="updaterPath" style="font-family: monospace; color: #4a9eff;"></span></p>
+        </div>
+        <div style="margin: 12px 0; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+          <label style="display:flex; align-items:center; gap:12px; cursor:pointer;">
+            <input type="checkbox" id="runUpdaterCheckbox" style="width:18px; height:18px;" checked>
+            <div>
+              <strong>Launch OwlCloud Updater now</strong>
+              <div style="font-size:0.9em; opacity:0.8;">The updater will run in your system tray</div>
+            </div>
+          </label>
+        </div>
+        <button id="finishUpdaterSetup" class="btn btn-primary btn-large">✅ Finish Setup</button>
+      </div>
+    </section>
+
+    <!-- Error State -->
+    <section id="errorState" class="step hidden">
+      <div class="step-header">
+        <span class="step-number">!</span>
+        <h2>Something Went Wrong</h2>
+      </div>
+      <div class="step-content">
+        <p class="error-text" id="globalErrorText">An error occurred during installation.</p>
+        <button id="restartSetup" class="btn btn-secondary">Start Over</button>
+      </div>
+    </section>
+
+    <footer>
+      <p>OwlCloud v1.2.7 | <a href="#" id="helpLink">Need help?</a></p>
+    </footer>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

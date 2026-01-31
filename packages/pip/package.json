@@ -1,0 +1,35 @@
+{
+  "name": "@carmaclouds/pip",
+  "version": "2.0.0",
+  "description": "Pip2 - Discord bot for CarmaClouds (handles RollCloud, OwlCloud, FoundCloud)",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "deploy-commands": "node src/deploy-commands.js",
+    "clean": "rm -rf node_modules",
+    "test": "echo \"No tests yet\""
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "dicecloud",
+    "dnd",
+    "pip2",
+    "rollcloud",
+    "owlcloud",
+    "foundcloud"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@carmaclouds/core": "^1.0.0",
+    "@supabase/supabase-js": "^2.0.0",
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  }
+}
