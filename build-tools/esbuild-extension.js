@@ -79,6 +79,9 @@ export async function buildExtension(config) {
     logLevel: 'info',
     define: {
       'process.env.NODE_ENV': JSON.stringify(minify ? 'production' : 'development')
+    },
+    banner: {
+      js: '// Initialize debug globally\nif (typeof window !== "undefined" && !window.debug) { window.debug = { log: console.log, warn: console.warn, error: console.error, info: console.info, group: console.group, groupEnd: console.groupEnd, table: console.table, time: console.time, timeEnd: console.timeEnd, isEnabled: () => true }; }\nconst debug = window.debug;'
     }
   };
 
