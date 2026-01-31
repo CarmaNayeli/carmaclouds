@@ -9,9 +9,18 @@ import './common/browser-polyfill.js';
 import './common/html-utils.js';
 import './common/theme-manager.js';
 
-// Supabase client
+// Supabase client and config (make config globally available)
+import { SUPABASE_URL, SUPABASE_ANON_KEY, TABLES, PROJECT_CONFIGS, getProjectConfig } from './supabase/config.js';
 import './supabase/client.js';
-import './supabase/config.js';
+
+// Export Supabase config globally for legacy code
+if (typeof window !== 'undefined') {
+  window.SUPABASE_URL = SUPABASE_URL;
+  window.SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
+  window.SUPABASE_TABLES = TABLES;
+  window.SUPABASE_PROJECT_CONFIGS = PROJECT_CONFIGS;
+  window.getProjectConfig = getProjectConfig;
+}
 
 // Libraries
 import './lib/indexeddb-cache.js';

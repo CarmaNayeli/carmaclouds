@@ -81,7 +81,7 @@ export async function buildExtension(config) {
       'process.env.NODE_ENV': JSON.stringify(minify ? 'production' : 'development')
     },
     banner: {
-      js: '// Initialize debug globally\nif (typeof window !== "undefined" && !window.debug) { window.debug = { log: console.log, warn: console.warn, error: console.error, info: console.info, group: console.group, groupEnd: console.groupEnd, table: console.table, time: console.time, timeEnd: console.timeEnd, isEnabled: () => true }; }\nconst debug = window.debug;'
+      js: '// Initialize debug globally\nif (typeof window !== "undefined" && !window.debug) { window.debug = { log: console.log, warn: console.warn, error: console.error, info: console.info, group: console.group, groupEnd: console.groupEnd, table: console.table, time: console.time, timeEnd: console.timeEnd, isEnabled: () => true }; }\nconst debug = window.debug;\n// Supabase config will be set by browser.js\nconst SUPABASE_URL = typeof window !== "undefined" ? window.SUPABASE_URL : undefined;\nconst SUPABASE_ANON_KEY = typeof window !== "undefined" ? window.SUPABASE_ANON_KEY : undefined;'
     }
   };
 
