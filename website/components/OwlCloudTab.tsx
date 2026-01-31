@@ -1,6 +1,21 @@
+'use client'
+
 import Image from 'next/image'
+import { useState } from 'react'
 
 export default function OwlCloudTab() {
+  const [copied, setCopied] = useState(false)
+
+  const copyManifestUrl = async () => {
+    const url = 'https://carmaclouds.vercel.app/owlcloud/extension/manifest.json'
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy:', err)
+    }
+  }
   return (
     <div className="space-y-8">
       <section className="flex items-center gap-4">
@@ -96,14 +111,45 @@ export default function OwlCloudTab() {
       </section>
 
       <section className="bg-black border border-gray-800 rounded-lg p-6">
-        <h3 className="text-xl font-semibold mb-3 text-[#a855f7]">Owlbear Rodeo Extension</h3>
-        <p className="text-gray-400 mb-4">
-          OwlCloud also includes a native Owlbear Rodeo extension that can be installed directly
-          in your Owlbear room for enhanced functionality.
-        </p>
-        <p className="text-gray-500 text-sm">
-          Look for the extension installation instructions in the GitHub repository.
-        </p>
+        <h3 className="text-xl font-semibold mb-4 text-[#a855f7]">Step 2: Owlbear Extension</h3>
+        <ol className="space-y-3 text-gray-400 mb-6">
+          <li className="flex items-start">
+            <span className="text-[#a855f7] font-semibold mr-3">1.</span>
+            <span>Open your Owlbear Rodeo room</span>
+          </li>
+          <li className="flex items-start">
+            <span className="text-[#a855f7] font-semibold mr-3">2.</span>
+            <span>Navigate to Extensions in the room settings</span>
+          </li>
+          <li className="flex items-start">
+            <span className="text-[#a855f7] font-semibold mr-3">3.</span>
+            <span>Click "Add Extension" and paste the manifest URL below</span>
+          </li>
+          <li className="flex items-start">
+            <span className="text-[#a855f7] font-semibold mr-3">4.</span>
+            <span>Enable the extension and reload your room</span>
+          </li>
+        </ol>
+        
+        <div className="bg-gray-900 border border-gray-700 rounded-lg p-4">
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Extension Manifest URL
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value="https://carmaclouds.vercel.app/owlcloud/extension/manifest.json"
+              readOnly
+              className="flex-1 bg-black border border-gray-600 rounded px-3 py-2 text-gray-300 font-mono text-sm"
+            />
+            <button
+              onClick={copyManifestUrl}
+              className="bg-[#a855f7] hover:bg-[#c084fc] text-white font-medium px-4 py-2 rounded transition-colors"
+            >
+              {copied ? 'Copied!' : 'Copy'}
+            </button>
+          </div>
+        </div>
       </section>
     </div>
   )
