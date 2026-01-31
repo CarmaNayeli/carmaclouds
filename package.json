@@ -9,9 +9,12 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
+    "build:copy": "node scripts/build-and-copy.js",
+    "package": "node scripts/package-releases.js",
+    "release": "npm run build:copy && npm run package",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "clean": "npm run clean --workspaces --if-present && rm -rf node_modules",
+    "clean": "npm run clean --workspaces --if-present && rm -rf node_modules dist releases",
     "dev": "npm run dev --workspaces --if-present",
     "owlcloud:dev": "npm run dev -w @carmaclouds/owlcloud",
     "rollcloud:dev": "npm run dev -w @carmaclouds/rollcloud",
