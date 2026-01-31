@@ -8,10 +8,9 @@
     "build-tools"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
-    "build:copy": "node scripts/build-and-copy.js",
+    "build": "node scripts/build-and-copy.js",
     "package": "node scripts/package-releases.js",
-    "release": "npm run build:copy && npm run package",
+    "release": "npm run build && npm run package",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "clean": "npm run clean --workspaces --if-present && rm -rf node_modules dist releases",
