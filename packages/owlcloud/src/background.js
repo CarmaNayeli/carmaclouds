@@ -3,14 +3,8 @@
  * Handles data storage, API authentication, and communication between Dice Cloud and Discord
  */
 
-// Import modules from @carmaclouds/core
-import '../../core/src/common/debug.js';
-import '../../core/src/supabase/client.js';
-import '../../core/src/modules/spell-edge-cases.js';
-import '../../core/src/modules/class-feature-edge-cases.js';
-import '../../core/src/modules/racial-feature-edge-cases.js';
-import '../../core/src/modules/combat-maneuver-edge-cases.js';
-import '../../core/src/modules/action-executor.js';
+// Import all browser extension modules from @carmaclouds/core
+import '../../core/src/browser.js';
 
 debug.log('OwlCloud: Background script starting...');
 

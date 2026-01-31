@@ -3,8 +3,8 @@
  * Handles user interactions in the extension popup
  */
 
-// Import dependencies from @carmaclouds/core
-import '../../../core/src/common/debug.js';
+// Import all browser extension modules from @carmaclouds/core
+import '../../../core/src/browser.js';
 
 // Detect browser API
 const browserAPI = (typeof browser !== 'undefined' && browser.runtime) ? browser : chrome;
