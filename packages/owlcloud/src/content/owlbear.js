@@ -874,7 +874,7 @@ window.addEventListener('message', async (event) => {
   console.log('🔍 OwlCloud received message:', { origin: event.origin, data: event.data });
 
   // Only accept messages from Owlbear Rodeo domain or OwlCloud popover
-  const allowedOrigins = ['https://www.owlbear.rodeo', 'https://owlcloud.vercel.app'];
+  const allowedOrigins = ['https://www.owlbear.rodeo', 'https://owlcloud.vercel.app', 'https://carmaclouds.vercel.app'];
   if (!allowedOrigins.includes(event.origin)) {
     console.log('❌ OwlCloud rejected: wrong origin', event.origin);
     return;
