@@ -3,9 +3,15 @@
  * Handles user interactions in the extension popup
  */
 
+// Import dependencies from @carmaclouds/core
+import '../../../core/src/common/debug.js';
+
+// Detect browser API
+const browserAPI = (typeof browser !== 'undefined' && browser.runtime) ? browser : chrome;
+
 document.addEventListener('DOMContentLoaded', () => {
   console.log('🚀 Popup DOMContentLoaded fired');
-  
+
   // Check if browserAPI is available
   if (typeof browserAPI === 'undefined' && typeof window.browserAPI === 'undefined') {
     console.error('❌ FATAL: browserAPI is not defined!');
