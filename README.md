@@ -4,6 +4,10 @@
 
 Bring your DiceCloud characters to Discord, Owlbear Rodeo, and Foundry VTT with seamless integrations.
 
+## 🌐 [Visit the Dashboard →](https://carmaclouds.vercel.app)
+
+Get started with downloads, installation guides, and documentation for all CarmaClouds projects.
+
 ---
 
 ## Projects
