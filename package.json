@@ -1,6 +1,6 @@
 {
   "name": "carmaclouds",
-  "version": "1.0.0",
+  "version": "2.1.0",
   "private": true,
   "description": "CarmaClouds - Unified cloud services for tabletop gaming platforms",
   "workspaces": [
