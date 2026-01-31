@@ -1,6 +1,6 @@
 ﻿{
   "name": "owlcloud-updater",
-  "version": "1.0.0",
+  "version": "2.1.0",
   "description": "OwlCloud Extension Updater - Manage and update OwlCloud browser extensions",
   "main": "src/main.js",
   "scripts": {

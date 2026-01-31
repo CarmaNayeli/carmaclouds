@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
   "name": "OwlCloud - DiceCloud Integration",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Seamlessly integrate your DiceCloud V2 characters into Owlbear Rodeo",
   "author": "Carmabella",
   "icon": "/extension/icon.svg",
