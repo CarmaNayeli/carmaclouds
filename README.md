@@ -21,11 +21,11 @@ View and manage your DiceCloud characters directly in Owlbear Rodeo. Real-time H
 - [Documentation](./packages/owlcloud/README.md)
 
 ### 🎲 RollCloud
-**Discord bot for DiceCloud**
+**Browser extension for character sheet management**
 
-Roll dice, track HP, and manage your characters without leaving Discord. Slash commands for quick character access.
+Manage your DiceCloud characters with enhanced features and Discord integration. Track HP, roll dice, and manage resources across platforms.
 
-- [Add to Discord](#)
+- [Chrome Extension](#) | [Firefox Add-on](#)
 - [Documentation](./packages/rollcloud/README.md)
 
 ### 🎭 FoundCloud
@@ -36,12 +36,12 @@ Import and sync DiceCloud characters into Foundry VTT with automated updates.
 - [Documentation](./packages/foundcloud/README.md)
 
 ### 🤖 Pip2
-**Discord dice bot**
+**Discord integration bot for CarmaClouds**
 
-Fast, feature-rich dice rolling bot for Discord. Roll standard dice notation, track initiative, and more.
+Fast, feature-rich Discord bot providing slash commands and dice rolling for all CarmaClouds projects. Roll standard dice notation, track initiative, and more.
 
-- [Add to Discord](#)
-- [Invite Link](https://discord.com/oauth2/authorize?client_id=1144752568716591286)
+- [Add to Discord](https://discord.com/oauth2/authorize?client_id=1144752568716591286)
+- [Documentation](./packages/pip/README.md)
 
 ---
 

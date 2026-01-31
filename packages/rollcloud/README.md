@@ -1,29 +1,35 @@
 # RollCloud
 
-**Discord bot for DiceCloud character management**
+**Browser extension for DiceCloud character sheet management**
 
-Access your DiceCloud characters, roll dice, and track HP directly from Discord with slash commands.
+Enhance your DiceCloud experience with advanced character management features and Discord integration via Pip2.
 
 ---
 
 ## Features
 
-- Roll dice from your DiceCloud character sheets
+- Browser extension for DiceCloud character management
+- Enhanced character sheet interface
+- Roll dice from your character sheets
 - Track HP, spell slots, and resources
 - Make skill checks and saving throws
 - Attack rolls with automatic modifiers
 - Character switching and management
-- Discord server integration
+- Discord integration via Pip2 bot
 
 ---
 
 ## Installation
 
-### Add to Discord
+### Browser Extension
 
-[Invite RollCloud to your server](#) or visit [carmaclouds.vercel.app](https://carmaclouds.vercel.app)
+Install from [Chrome Web Store](#) or [Firefox Add-ons](#), or visit [carmaclouds.vercel.app](https://carmaclouds.vercel.app)
 
-### Self-Host
+### Discord Integration
+
+RollCloud works with [Pip2](../pip/README.md), the Discord bot for CarmaClouds. [Invite Pip2 to your server](https://discord.com/oauth2/authorize?client_id=1144752568716591286) for Discord slash commands.
+
+### Build from Source
 
 ```bash
 # Clone the repository
@@ -46,7 +52,9 @@ npm start
 
 ---
 
-## Commands
+## Discord Commands (via Pip2)
+
+RollCloud integrates with Discord through the Pip2 bot. Here are the available commands:
 
 ### Character Management
 
@@ -93,18 +101,20 @@ SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your_anon_key
 ```
 
-### Deployment
+### Load Extension in Browser
 
-RollCloud can be deployed to any Node.js hosting platform:
+After building, load the extension:
 
-- **Render:** Set working directory to `carmaclouds/packages/rollcloud`
-- **Railway:** Use `npm start` as the start command
-- **Heroku:** Add Procfile with `worker: npm start`
+**Chrome:**
+1. Go to `chrome://extensions`
+2. Enable "Developer mode"
+3. Click "Load unpacked"
+4. Select the `dist/` directory
 
-Make sure to deploy slash commands before starting:
-```bash
-npm run deploy-commands
-```
+**Firefox:**
+1. Go to `about:debugging#/runtime/this-firefox`
+2. Click "Load Temporary Add-on"
+3. Select the `manifest.json` file in the `dist/` directory
 
 ---
 
