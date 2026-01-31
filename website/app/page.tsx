@@ -55,7 +55,7 @@ export default function Home() {
                 : 'text-gray-500 hover:text-gray-300'
             }`}
           >
-            🎲 RollCloud
+            RollCloud
           </button>
           <button
             onClick={() => setActiveTab('owlcloud')}
@@ -65,7 +65,7 @@ export default function Home() {
                 : 'text-gray-500 hover:text-gray-300'
             }`}
           >
-            🎲 OwlCloud
+            OwlCloud
           </button>
           <button
             onClick={() => setActiveTab('foundcloud')}
@@ -75,7 +75,7 @@ export default function Home() {
                 : 'text-gray-500 hover:text-gray-300'
             }`}
           >
-            🎲 FoundCloud
+            FoundCloud
             <span className="ml-2 text-xs bg-orange-500/20 text-orange-400 px-2 py-1 rounded">
               Coming Soon
             </span>
@@ -88,7 +88,7 @@ export default function Home() {
                 : 'text-gray-500 hover:text-gray-300'
             }`}
           >
-            🤖 Pip2
+            Pip2
           </button>
         </nav>
 

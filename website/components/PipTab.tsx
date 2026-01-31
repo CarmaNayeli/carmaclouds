@@ -1,12 +1,11 @@
 export default function PipTab() {
   return (
     <div className="space-y-8">
-      <section className="flex items-center gap-4">
-        <div className="text-6xl">🤖</div>
+      <section>
+        <h2 className="text-3xl font-bold mb-4 text-white">
+          Pip2
+        </h2>
         <div>
-          <h2 className="text-3xl font-bold mb-2 text-white">
-            Pip2
-          </h2>
           <p className="text-gray-400 text-lg leading-relaxed">
             Discord bot that powers the CarmaClouds ecosystem, handling RollCloud, OwlCloud,
             and FoundCloud integrations for your tabletop gaming sessions.
