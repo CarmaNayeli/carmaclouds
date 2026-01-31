@@ -1,8 +1,16 @@
+import Image from 'next/image'
+
 export default function RollCloudTab() {
   return (
     <div className="space-y-8">
       <section className="flex items-center gap-4">
-        <div className="text-6xl filter" style={{ filter: 'hue-rotate(320deg) saturate(2)' }}>🎲</div>
+        <Image
+          src="/rollcloud-die.png"
+          alt="RollCloud Die"
+          width={80}
+          height={80}
+          className="rounded-lg"
+        />
         <div>
           <h2 className="text-3xl font-bold mb-2 text-white">
             RollCloud

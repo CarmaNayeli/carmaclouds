@@ -1,8 +1,16 @@
+import Image from 'next/image'
+
 export default function FoundCloudTab() {
   return (
     <div className="space-y-6">
       <section className="flex items-center gap-4 mb-8">
-        <div className="text-6xl filter" style={{ filter: 'hue-rotate(20deg) saturate(1.5)' }}>🎲</div>
+        <Image
+          src="/foundcloud-die.png"
+          alt="FoundCloud Die"
+          width={80}
+          height={80}
+          className="rounded-lg"
+        />
         <div>
           <h2 className="text-3xl font-bold mb-2 text-white">
             FoundCloud

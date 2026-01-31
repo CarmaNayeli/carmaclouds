@@ -1,8 +1,16 @@
+import Image from 'next/image'
+
 export default function OwlCloudTab() {
   return (
     <div className="space-y-8">
       <section className="flex items-center gap-4">
-        <div className="text-6xl filter" style={{ filter: 'hue-rotate(270deg) saturate(1.5)' }}>🎲</div>
+        <Image
+          src="/owlcloud-die.png"
+          alt="OwlCloud Die"
+          width={80}
+          height={80}
+          className="rounded-lg"
+        />
         <div>
           <h2 className="text-3xl font-bold mb-2 text-white">
             OwlCloud
