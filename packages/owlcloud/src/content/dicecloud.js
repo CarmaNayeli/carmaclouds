@@ -9,6 +9,9 @@ import '../../../core/src/browser.js';
 (function() {
   'use strict';
 
+  // Access debug from window (set by browser.js)
+  const debug = window.debug;
+
   debug.log('🎲 OwlCloud: DiceCloud content script loaded');
   debug.log('📍 Current URL:', window.location.href);
 
