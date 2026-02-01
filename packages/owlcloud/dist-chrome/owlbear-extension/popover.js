@@ -348,11 +348,20 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
           }
         );
         if (linkResponse.ok) {
-          console.log("\u2705 Character successfully linked to account!");
+          const linkData = await linkResponse.json();
+          console.log("\u2705 Character successfully linked to account!", linkData);
           if (isOwlbearReady) {
             OBR.notification.show("Character linked to your account!", "SUCCESS");
           }
-          await checkForActiveCharacter();
+          if (linkData.success && linkData.character) {
+            const characterData = linkData.character.raw_dicecloud_data || linkData.character;
+            const cacheKey = `owlcloud_char_${currentUser.id}`;
+            localStorage.setItem(cacheKey, JSON.stringify(characterData));
+            displayCharacter(characterData);
+            await fetchAllCharacters();
+          } else {
+            await checkForActiveCharacter();
+          }
           updateAuthUI();
         } else {
           const errorText = await linkResponse.text();
@@ -628,6 +637,7 @@ This will disconnect the character from this room. You can sync a different char
       }
       const data = await response.json();
       const etag = response.headers.get("etag");
+      console.log("\u{1F4E6} Response data:", data);
       if (data.success && data.character) {
         console.log("\u{1F4E6} Character data received:", data.character);
         console.log("  - Has raw_dicecloud_data:", !!data.character.raw_dicecloud_data);

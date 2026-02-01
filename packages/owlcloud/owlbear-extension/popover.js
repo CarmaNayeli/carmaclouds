@@ -521,13 +521,30 @@ async function linkExistingCharacterToUser() {
       );
 
       if (linkResponse.ok) {
-        console.log('✅ Character successfully linked to account!');
+        const linkData = await linkResponse.json();
+        console.log('✅ Character successfully linked to account!', linkData);
+
         if (isOwlbearReady) {
           OBR.notification.show('Character linked to your account!', 'SUCCESS');
         }
 
-        // Refresh character data to display the newly linked character
-        await checkForActiveCharacter();
+        // Use the character data from the link response instead of fetching again
+        if (linkData.success && linkData.character) {
+          const characterData = linkData.character.raw_dicecloud_data || linkData.character;
+
+          // Cache under the new Supabase user ID key
+          const cacheKey = `owlcloud_char_${currentUser.id}`;
+          localStorage.setItem(cacheKey, JSON.stringify(characterData));
+
+          // Display the character immediately
+          displayCharacter(characterData);
+
+          // Fetch all characters to update the list
+          await fetchAllCharacters();
+        } else {
+          // Fallback: fetch character if link response doesn't include it
+          await checkForActiveCharacter();
+        }
 
         // Update auth UI to show unsync button
         updateAuthUI();
@@ -897,6 +914,8 @@ async function checkForActiveCharacter() {
 
     const data = await response.json();
     const etag = response.headers.get('etag');
+
+    console.log('📦 Response data:', data);
 
     if (data.success && data.character) {
       console.log('📦 Character data received:', data.character);
