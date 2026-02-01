@@ -3938,9 +3938,19 @@ window.toggleFeatureCard = function(cardId) {
 console.log('🎲 OwlCloud Owlbear extension popover loaded');
 statusText.textContent = 'Initializing...';
 
-// Initialize theme manager
-ThemeManager.init();
-initializeThemeSelector();
+// Wait for DOM to be ready before initializing themes
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    // Initialize theme manager
+    ThemeManager.init();
+    initializeThemeSelector();
+  });
+} else {
+  // DOM is already ready
+  // Initialize theme manager
+  ThemeManager.init();
+  initializeThemeSelector();
+}
 
 // Initial check for character (will happen after OBR.onReady)
 setTimeout(() => {

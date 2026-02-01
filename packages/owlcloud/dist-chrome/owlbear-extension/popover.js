@@ -42,7 +42,19 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
         gradient: "linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%)",
         background: "rgba(139, 92, 246, 0.1)",
         border: "rgba(139, 92, 246, 0.3)",
-        shadow: "rgba(139, 92, 246, 0.4)"
+        shadow: "rgba(139, 92, 246, 0.4)",
+        // Complementary background colors
+        bgPrimary: "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
+        bgSecondary: "rgba(26, 26, 46, 0.8)",
+        bgAccent: "rgba(139, 92, 246, 0.15)",
+        bgCard: "rgba(139, 92, 246, 0.1)",
+        bgHover: "rgba(139, 92, 246, 0.2)",
+        // Text colors with proper contrast
+        textPrimary: "#e0e0e0",
+        textSecondary: "#c0c0c0",
+        textMuted: "#9ca3af",
+        textOnPrimary: "#ffffff",
+        textOnLight: "#1f2937"
       },
       blue: {
         name: "Blue",
@@ -52,7 +64,19 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
         gradient: "linear-gradient(135deg, #3B82F6 0%, #60A5FA 100%)",
         background: "rgba(59, 130, 246, 0.1)",
         border: "rgba(59, 130, 246, 0.3)",
-        shadow: "rgba(59, 130, 246, 0.4)"
+        shadow: "rgba(59, 130, 246, 0.4)",
+        // Complementary background colors
+        bgPrimary: "linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)",
+        bgSecondary: "rgba(15, 23, 42, 0.8)",
+        bgAccent: "rgba(59, 130, 246, 0.15)",
+        bgCard: "rgba(59, 130, 246, 0.1)",
+        bgHover: "rgba(59, 130, 246, 0.2)",
+        // Text colors with proper contrast
+        textPrimary: "#e0e0e0",
+        textSecondary: "#c0c0c0",
+        textMuted: "#9ca3af",
+        textOnPrimary: "#ffffff",
+        textOnLight: "#1f2937"
       },
       green: {
         name: "Green",
@@ -62,7 +86,19 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
         gradient: "linear-gradient(135deg, #10B981 0%, #34D399 100%)",
         background: "rgba(16, 185, 129, 0.1)",
         border: "rgba(16, 185, 129, 0.3)",
-        shadow: "rgba(16, 185, 129, 0.4)"
+        shadow: "rgba(16, 185, 129, 0.4)",
+        // Complementary background colors
+        bgPrimary: "linear-gradient(135deg, #052e16 0%, #0a4d2a 50%, #0f6b3e 100%)",
+        bgSecondary: "rgba(5, 46, 22, 0.8)",
+        bgAccent: "rgba(16, 185, 129, 0.15)",
+        bgCard: "rgba(16, 185, 129, 0.1)",
+        bgHover: "rgba(16, 185, 129, 0.2)",
+        // Text colors with proper contrast
+        textPrimary: "#e0e0e0",
+        textSecondary: "#c0c0c0",
+        textMuted: "#9ca3af",
+        textOnPrimary: "#ffffff",
+        textOnLight: "#1f2937"
       },
       red: {
         name: "Red",
@@ -72,7 +108,19 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
         gradient: "linear-gradient(135deg, #EF4444 0%, #F87171 100%)",
         background: "rgba(239, 68, 68, 0.1)",
         border: "rgba(239, 68, 68, 0.3)",
-        shadow: "rgba(239, 68, 68, 0.4)"
+        shadow: "rgba(239, 68, 68, 0.4)",
+        // Complementary background colors
+        bgPrimary: "linear-gradient(135deg, #450a0a 0%, #7f1d1d 50%, #991b1b 100%)",
+        bgSecondary: "rgba(69, 10, 10, 0.8)",
+        bgAccent: "rgba(239, 68, 68, 0.15)",
+        bgCard: "rgba(239, 68, 68, 0.1)",
+        bgHover: "rgba(239, 68, 68, 0.2)",
+        // Text colors with proper contrast
+        textPrimary: "#e0e0e0",
+        textSecondary: "#c0c0c0",
+        textMuted: "#9ca3af",
+        textOnPrimary: "#ffffff",
+        textOnLight: "#1f2937"
       },
       orange: {
         name: "Orange",
@@ -82,7 +130,19 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
         gradient: "linear-gradient(135deg, #F97316 0%, #FB923C 100%)",
         background: "rgba(249, 115, 22, 0.1)",
         border: "rgba(249, 115, 22, 0.3)",
-        shadow: "rgba(249, 115, 22, 0.4)"
+        shadow: "rgba(249, 115, 22, 0.4)",
+        // Complementary background colors
+        bgPrimary: "linear-gradient(135deg, #431407 0%, #7c2d12 50%, #9a3412 100%)",
+        bgSecondary: "rgba(67, 20, 7, 0.8)",
+        bgAccent: "rgba(249, 115, 22, 0.15)",
+        bgCard: "rgba(249, 115, 22, 0.1)",
+        bgHover: "rgba(249, 115, 22, 0.2)",
+        // Text colors with proper contrast
+        textPrimary: "#e0e0e0",
+        textSecondary: "#c0c0c0",
+        textMuted: "#9ca3af",
+        textOnPrimary: "#ffffff",
+        textOnLight: "#1f2937"
       },
       yellow: {
         name: "Gold",
@@ -92,7 +152,19 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
         gradient: "linear-gradient(135deg, #EAB308 0%, #FACC15 100%)",
         background: "rgba(234, 179, 8, 0.1)",
         border: "rgba(234, 179, 8, 0.3)",
-        shadow: "rgba(234, 179, 8, 0.4)"
+        shadow: "rgba(234, 179, 8, 0.4)",
+        // Complementary background colors
+        bgPrimary: "linear-gradient(135deg, #422006 0%, #713f12 50%, #854d0e 100%)",
+        bgSecondary: "rgba(66, 34, 6, 0.8)",
+        bgAccent: "rgba(234, 179, 8, 0.15)",
+        bgCard: "rgba(234, 179, 8, 0.1)",
+        bgHover: "rgba(234, 179, 8, 0.2)",
+        // Text colors with proper contrast
+        textPrimary: "#e0e0e0",
+        textSecondary: "#c0c0c0",
+        textMuted: "#9ca3af",
+        textOnPrimary: "#ffffff",
+        textOnLight: "#1f2937"
       },
       pink: {
         name: "Pink",
@@ -102,7 +174,19 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
         gradient: "linear-gradient(135deg, #EC4899 0%, #F472B6 100%)",
         background: "rgba(236, 72, 153, 0.1)",
         border: "rgba(236, 72, 153, 0.3)",
-        shadow: "rgba(236, 72, 153, 0.4)"
+        shadow: "rgba(236, 72, 153, 0.4)",
+        // Complementary background colors
+        bgPrimary: "linear-gradient(135deg, #500724 0%, #831843 50%, #9f1239 100%)",
+        bgSecondary: "rgba(80, 7, 36, 0.8)",
+        bgAccent: "rgba(236, 72, 153, 0.15)",
+        bgCard: "rgba(236, 72, 153, 0.1)",
+        bgHover: "rgba(236, 72, 153, 0.2)",
+        // Text colors with proper contrast
+        textPrimary: "#e0e0e0",
+        textSecondary: "#c0c0c0",
+        textMuted: "#9ca3af",
+        textOnPrimary: "#ffffff",
+        textOnLight: "#1f2937"
       },
       brown: {
         name: "Brown",
@@ -112,7 +196,19 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
         gradient: "linear-gradient(135deg, #92400E 0%, #B45309 100%)",
         background: "rgba(146, 64, 14, 0.1)",
         border: "rgba(146, 64, 14, 0.3)",
-        shadow: "rgba(146, 64, 14, 0.4)"
+        shadow: "rgba(146, 64, 14, 0.4)",
+        // Complementary background colors
+        bgPrimary: "linear-gradient(135deg, #1c0f0a 0%, #442c1e 50%, #5c341e 100%)",
+        bgSecondary: "rgba(28, 15, 10, 0.8)",
+        bgAccent: "rgba(146, 64, 14, 0.15)",
+        bgCard: "rgba(146, 64, 14, 0.1)",
+        bgHover: "rgba(146, 64, 14, 0.2)",
+        // Text colors with proper contrast
+        textPrimary: "#e0e0e0",
+        textSecondary: "#c0c0c0",
+        textMuted: "#9ca3af",
+        textOnPrimary: "#ffffff",
+        textOnLight: "#1f2937"
       },
       grey: {
         name: "Grey",
@@ -122,7 +218,19 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
         gradient: "linear-gradient(135deg, #6B7280 0%, #9CA3AF 100%)",
         background: "rgba(107, 114, 128, 0.1)",
         border: "rgba(107, 114, 128, 0.3)",
-        shadow: "rgba(107, 114, 128, 0.4)"
+        shadow: "rgba(107, 114, 128, 0.4)",
+        // Complementary background colors
+        bgPrimary: "linear-gradient(135deg, #1f2937 0%, #374151 50%, #4b5563 100%)",
+        bgSecondary: "rgba(31, 41, 55, 0.8)",
+        bgAccent: "rgba(107, 114, 128, 0.15)",
+        bgCard: "rgba(107, 114, 128, 0.1)",
+        bgHover: "rgba(107, 114, 128, 0.2)",
+        // Text colors with proper contrast
+        textPrimary: "#e0e0e0",
+        textSecondary: "#c0c0c0",
+        textMuted: "#9ca3af",
+        textOnPrimary: "#ffffff",
+        textOnLight: "#1f2937"
       },
       black: {
         name: "Black",
@@ -132,7 +240,19 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
         gradient: "linear-gradient(135deg, #1F2937 0%, #374151 100%)",
         background: "rgba(31, 41, 55, 0.1)",
         border: "rgba(31, 41, 55, 0.3)",
-        shadow: "rgba(31, 41, 55, 0.4)"
+        shadow: "rgba(31, 41, 55, 0.4)",
+        // Complementary background colors
+        bgPrimary: "linear-gradient(135deg, #000000 0%, #111827 50%, #1f2937 100%)",
+        bgSecondary: "rgba(0, 0, 0, 0.8)",
+        bgAccent: "rgba(31, 41, 55, 0.15)",
+        bgCard: "rgba(31, 41, 55, 0.1)",
+        bgHover: "rgba(31, 41, 55, 0.2)",
+        // Text colors with proper contrast
+        textPrimary: "#e0e0e0",
+        textSecondary: "#c0c0c0",
+        textMuted: "#9ca3af",
+        textOnPrimary: "#ffffff",
+        textOnLight: "#1f2937"
       },
       white: {
         name: "White",
@@ -142,7 +262,19 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
         gradient: "linear-gradient(135deg, #F9FAFB 0%, #F3F4F6 100%)",
         background: "rgba(249, 250, 251, 0.1)",
         border: "rgba(249, 250, 251, 0.3)",
-        shadow: "rgba(249, 250, 251, 0.4)"
+        shadow: "rgba(249, 250, 251, 0.4)",
+        // Complementary background colors (light theme)
+        bgPrimary: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%)",
+        bgSecondary: "rgba(248, 250, 252, 0.9)",
+        bgAccent: "rgba(249, 250, 251, 0.5)",
+        bgCard: "rgba(249, 250, 251, 0.8)",
+        bgHover: "rgba(241, 245, 249, 0.9)",
+        // Text colors with proper contrast (light theme)
+        textPrimary: "#1f2937",
+        textSecondary: "#374151",
+        textMuted: "#6b7280",
+        textOnPrimary: "#ffffff",
+        textOnLight: "#1f2937"
       }
     },
     // Current active theme
@@ -193,6 +325,42 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
       root.style.setProperty("--theme-background", theme.background);
       root.style.setProperty("--theme-border", theme.border);
       root.style.setProperty("--theme-shadow", theme.shadow);
+      if (theme.bgPrimary) {
+        root.style.setProperty("--theme-bg-primary", theme.bgPrimary);
+        document.body.style.background = theme.bgPrimary;
+      }
+      if (theme.bgSecondary) {
+        root.style.setProperty("--theme-bg-secondary", theme.bgSecondary);
+        const container = document.querySelector(".container");
+        if (container) {
+          container.style.background = theme.bgSecondary;
+        }
+      }
+      if (theme.bgAccent) {
+        root.style.setProperty("--theme-bg-accent", theme.bgAccent);
+      }
+      if (theme.bgCard) {
+        root.style.setProperty("--theme-bg-card", theme.bgCard);
+      }
+      if (theme.bgHover) {
+        root.style.setProperty("--theme-bg-hover", theme.bgHover);
+      }
+      if (theme.textPrimary) {
+        root.style.setProperty("--theme-text-primary", theme.textPrimary);
+        document.body.style.color = theme.textPrimary;
+      }
+      if (theme.textSecondary) {
+        root.style.setProperty("--theme-text-secondary", theme.textSecondary);
+      }
+      if (theme.textMuted) {
+        root.style.setProperty("--theme-text-muted", theme.textMuted);
+      }
+      if (theme.textOnPrimary) {
+        root.style.setProperty("--theme-text-on-primary", theme.textOnPrimary);
+      }
+      if (theme.textOnLight) {
+        root.style.setProperty("--theme-text-on-light", theme.textOnLight);
+      }
     },
     /**
      * Update inline styles that use hardcoded colors
@@ -265,6 +433,28 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
         ThemeManager.switchTheme(theme.key);
       });
       themeSelector.appendChild(themeOption);
+    });
+    initializeCollapsibleThemeSection();
+  }
+  function initializeCollapsibleThemeSection() {
+    const themeHeader = document.getElementById("theme-section-header");
+    const themeContent = document.getElementById("theme-section-content");
+    if (!themeHeader || !themeContent)
+      return;
+    let isExpanded = true;
+    themeHeader.addEventListener("click", () => {
+      isExpanded = !isExpanded;
+      if (isExpanded) {
+        themeContent.style.maxHeight = "1000px";
+        themeContent.style.marginTop = "12px";
+        themeHeader.querySelector("span").style.transform = "rotate(0deg)";
+        themeHeader.classList.remove("collapsed");
+      } else {
+        themeContent.style.maxHeight = "0";
+        themeContent.style.marginTop = "0";
+        themeHeader.querySelector("span").style.transform = "rotate(-90deg)";
+        themeHeader.classList.add("collapsed");
+      }
     });
   }
   function initializeTabs() {
@@ -2640,8 +2830,15 @@ How many do you want to spend?`);
   };
   console.log("\u{1F3B2} OwlCloud Owlbear extension popover loaded");
   statusText.textContent = "Initializing...";
-  ThemeManager.init();
-  initializeThemeSelector();
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => {
+      ThemeManager.init();
+      initializeThemeSelector();
+    });
+  } else {
+    ThemeManager.init();
+    initializeThemeSelector();
+  }
   setTimeout(() => {
     if (!isOwlbearReady) {
       statusText.textContent = "Waiting for Owlbear SDK...";
