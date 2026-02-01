@@ -392,21 +392,39 @@ async function handleDicePlusResult(rollContext, totalValue, rollSummary, groups
   }
 
   // Create result object similar to local rolls
-  // Note: totalValue from Dice+ is the raw roll, pass it as-is and let display logic add modifier
+  // Parse the rollSummary to extract the raw roll and use totalValue as final result
+  let rawRoll = numericTotal; // fallback
+  let finalTotal = numericTotal;
+  
+  if (rollSummary) {
+    // Extract raw roll from rollSummary format "[7] 7 + 8 = 15"
+    const rollMatch = rollSummary.match(/^\[(\d+)\]/);
+    if (rollMatch) {
+      rawRoll = parseInt(rollMatch[1]);
+    }
+  }
+  
+  // Use totalValue as the final result since Dice+ already calculated it
+  finalTotal = numericTotal;
+  
   console.log('🔍 Dice+ calculation debug:', {
     numericTotal,
     modifier,
     rollContext,
     rollSummary,
-    willCalculateFinal: numericTotal + (modifier || 0)
+    parsedRawRoll: rawRoll,
+    finalTotal,
+    willCalculateFinal: finalTotal
   });
   
   const result = {
-    total: numericTotal,
-    rolls: groups && groups[0] ? groups[0].dice.filter(d => d.kept).map(d => d.value) : [numericTotal],
+    total: rawRoll,
+    rolls: groups && groups[0] ? groups[0].dice.filter(d => d.kept).map(d => d.value) : [rawRoll],
     modifier: modifier || 0,
     formula: rollSummary,
-    mode: rollContext.mode || 'normal'
+    mode: rollContext.mode || 'normal',
+    // Override the final calculation in showRollResult
+    _overrideFinal: finalTotal
   };
 
   // Show the result using existing UI
@@ -2649,12 +2667,14 @@ function rollDiceLocal(formula) {
  */
 async function showRollResult(name, result) {
   let detailsHtml = '';
-  const finalTotal = result.modifier !== undefined ? result.total + result.modifier : result.total;
+  // Use override value from Dice+ if available, otherwise calculate normally
+  const finalTotal = result._overrideFinal !== undefined ? result._overrideFinal : (result.modifier !== undefined ? result.total + result.modifier : result.total);
   
   console.log('🔍 showRollResult debug:', {
     name,
     resultTotal: result.total,
     resultModifier: result.modifier,
+    overrideFinal: result._overrideFinal,
     calculatedFinalTotal: finalTotal
   });
 

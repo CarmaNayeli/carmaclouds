@@ -252,19 +252,32 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
       await addChatMessage(message, "combat", currentCharacter?.name, detailsHtml);
       return;
     }
+    let rawRoll = numericTotal;
+    let finalTotal = numericTotal;
+    if (rollSummary) {
+      const rollMatch = rollSummary.match(/^\[(\d+)\]/);
+      if (rollMatch) {
+        rawRoll = parseInt(rollMatch[1]);
+      }
+    }
+    finalTotal = numericTotal;
     console.log("\u{1F50D} Dice+ calculation debug:", {
       numericTotal,
       modifier,
       rollContext,
       rollSummary,
-      willCalculateFinal: numericTotal + (modifier || 0)
+      parsedRawRoll: rawRoll,
+      finalTotal,
+      willCalculateFinal: finalTotal
     });
     const result = {
-      total: numericTotal,
-      rolls: groups && groups[0] ? groups[0].dice.filter((d) => d.kept).map((d) => d.value) : [numericTotal],
+      total: rawRoll,
+      rolls: groups && groups[0] ? groups[0].dice.filter((d) => d.kept).map((d) => d.value) : [rawRoll],
       modifier: modifier || 0,
       formula: rollSummary,
-      mode: rollContext.mode || "normal"
+      mode: rollContext.mode || "normal",
+      // Override the final calculation in showRollResult
+      _overrideFinal: finalTotal
     };
     await showRollResult(name, result);
   }
@@ -1885,11 +1898,12 @@ This will disconnect the character from this room. You can sync a different char
   }
   async function showRollResult(name, result) {
     let detailsHtml = "";
-    const finalTotal = result.modifier !== void 0 ? result.total + result.modifier : result.total;
+    const finalTotal = result._overrideFinal !== void 0 ? result._overrideFinal : result.modifier !== void 0 ? result.total + result.modifier : result.total;
     console.log("\u{1F50D} showRollResult debug:", {
       name,
       resultTotal: result.total,
       resultModifier: result.modifier,
+      overrideFinal: result._overrideFinal,
       calculatedFinalTotal: finalTotal
     });
     if (result.mode === "advantage" && result.rolls.length === 2) {
