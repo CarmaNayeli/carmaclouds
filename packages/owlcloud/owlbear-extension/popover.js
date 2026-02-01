@@ -730,15 +730,22 @@ window.switchToCharacter = async function(characterId) {
 
     // Update active character using unified characters edge function
     const playerId = await OBR.player.getId();
+    const requestBody = {
+      owlbearPlayerId: playerId,
+      character: character
+    };
+
+    // Include supabase_user_id if authenticated for cross-device sync
+    if (currentUser) {
+      requestBody.supabaseUserId = currentUser.id;
+    }
+
     const response = await fetch(
       `${SUPABASE_URL}/functions/v1/characters`,
       {
         method: 'POST',
         headers: SUPABASE_HEADERS,
-        body: JSON.stringify({
-          owlbearPlayerId: playerId,
-          character: character
-        })
+        body: JSON.stringify(requestBody)
       }
     );
 
