@@ -1,0 +1,322 @@
+/**
+ * FoundCloud Module Styles
+ * Custom styling for FoundCloud UI components
+ */
+
+/* ==================== Import Button ==================== */
+.foundcloud-import-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 8px 16px;
+  margin-top: 8px;
+  width: 100%;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.foundcloud-import-btn:hover {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
+}
+
+.foundcloud-import-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.foundcloud-import-btn i {
+  font-size: 14px;
+}
+
+/* ==================== Connection Status ==================== */
+.foundcloud-status {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  background: #1a1a1a;
+  color: white;
+  padding: 10px 16px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: bold;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 1000;
+}
+
+.foundcloud-status:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+}
+
+.foundcloud-status.connected {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+.foundcloud-status.disconnected {
+  background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+}
+
+.foundcloud-status i {
+  font-size: 14px;
+}
+
+/* ==================== Dialog Customization ==================== */
+.dialog.foundcloud-dialog .dialog-content {
+  padding: 20px;
+}
+
+.dialog.foundcloud-dialog h2 {
+  margin-top: 0;
+  color: #667eea;
+  text-align: center;
+}
+
+.dialog.foundcloud-dialog h3 {
+  margin-top: 16px;
+  margin-bottom: 8px;
+  color: #764ba2;
+}
+
+.dialog.foundcloud-dialog .form-group {
+  margin-bottom: 16px;
+}
+
+.dialog.foundcloud-dialog label {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: bold;
+  color: #ddd;
+}
+
+.dialog.foundcloud-dialog select,
+.dialog.foundcloud-dialog input[type="text"],
+.dialog.foundcloud-dialog input[type="number"] {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #2a2a2a;
+  color: white;
+  font-size: 14px;
+}
+
+.dialog.foundcloud-dialog select:focus,
+.dialog.foundcloud-dialog input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.dialog.foundcloud-dialog input[type="checkbox"] {
+  margin-right: 8px;
+  cursor: pointer;
+}
+
+.dialog.foundcloud-dialog .notes {
+  font-size: 11px;
+  color: #999;
+  margin-top: 4px;
+  font-style: italic;
+}
+
+.dialog.foundcloud-dialog ol {
+  padding-left: 20px;
+}
+
+.dialog.foundcloud-dialog ol li {
+  margin-bottom: 8px;
+}
+
+/* ==================== Sync Button on Character Sheet ==================== */
+.sheet-header button.foundcloud-sync {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sheet-header button.foundcloud-sync:hover {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+  transform: scale(1.05);
+}
+
+.sheet-header button.foundcloud-sync i {
+  margin-right: 4px;
+}
+
+/* ==================== Import Progress ==================== */
+.foundcloud-import-progress {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(26, 26, 26, 0.95);
+  padding: 30px 40px;
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  z-index: 10000;
+  text-align: center;
+}
+
+.foundcloud-import-progress h3 {
+  margin: 0 0 16px 0;
+  color: #667eea;
+}
+
+.foundcloud-import-progress .spinner {
+  width: 40px;
+  height: 40px;
+  margin: 0 auto;
+  border: 4px solid #333;
+  border-top: 4px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ==================== Character List ==================== */
+.foundcloud-character-list {
+  max-height: 400px;
+  overflow-y: auto;
+  margin-top: 16px;
+}
+
+.foundcloud-character-item {
+  padding: 12px;
+  margin-bottom: 8px;
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.foundcloud-character-item:hover {
+  background: #333;
+  border-color: #667eea;
+  transform: translateX(4px);
+}
+
+.foundcloud-character-item.selected {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: #667eea;
+}
+
+.foundcloud-character-info {
+  flex-grow: 1;
+}
+
+.foundcloud-character-name {
+  font-weight: bold;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.foundcloud-character-details {
+  font-size: 12px;
+  color: #aaa;
+}
+
+.foundcloud-character-level {
+  background: #667eea;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+/* ==================== Notifications ==================== */
+.notification.foundcloud-notification {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-left: 4px solid #fff;
+}
+
+.notification.foundcloud-notification.error {
+  background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+}
+
+.notification.foundcloud-notification.success {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+/* ==================== Settings Menu ==================== */
+.foundcloud-settings-section {
+  border-top: 2px solid #667eea;
+  padding-top: 10px;
+  margin-top: 10px;
+}
+
+.foundcloud-settings-section h3 {
+  color: #667eea;
+  margin-bottom: 10px;
+}
+
+/* ==================== Actor Flag Indicators ==================== */
+.actor-name .foundcloud-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  margin-left: 6px;
+  vertical-align: middle;
+  font-weight: bold;
+}
+
+.actor-name .foundcloud-badge i {
+  margin-right: 2px;
+}
+
+/* ==================== Responsive Design ==================== */
+@media (max-width: 768px) {
+  .foundcloud-status {
+    bottom: 10px;
+    left: 10px;
+    padding: 8px 12px;
+    font-size: 11px;
+  }
+
+  .foundcloud-import-btn {
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+}
+
+/* ==================== Dark Mode Support ==================== */
+body.dark-mode .foundcloud-import-btn {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+body.dark-mode .dialog.foundcloud-dialog select,
+body.dark-mode .dialog.foundcloud-dialog input {
+  background: #1a1a1a;
+  border-color: #444;
+}

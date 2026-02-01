@@ -1,25 +1,20 @@
 {
   "name": "@carmaclouds/foundcloud",
-  "version": "2.2.0",
-  "description": "FoundCloud - Foundry VTT module for DiceCloud integration",
-  "main": "src/index.js",
+  "version": "2.2.1",
+  "description": "FoundCloud: Foundry VTT + DiceCloud + Discord Integration",
+  "type": "module",
   "scripts": {
-    "build": "echo 'Build script to be added'",
-    "dev": "echo 'Dev script to be added'",
-    "clean": "rm -rf dist",
-    "test": "echo \"No tests yet\""
+    "build": "node build.js"
   },
   "keywords": [
-    "foundry",
-    "vtt",
+    "foundcloud",
     "dicecloud",
-    "dnd"
+    "foundryvtt",
+    "discord",
+    "browser-extension",
+    "chrome-extension",
+    "firefox-addon"
   ],
-  "license": "MIT",
-  "dependencies": {
-    "@carmaclouds/core": "^2.2.0"
-  },
-  "devDependencies": {
-    "typescript": "^5.0.0"
-  }
+  "author": "Dice Cat",
+  "license": "MIT"
 }

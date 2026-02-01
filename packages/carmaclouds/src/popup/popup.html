@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CarmaClouds</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-content">
+        <img src="../images/carmaclouds-logo.png" alt="CarmaClouds" class="logo">
+        <h1 class="title">CarmaClouds</h1>
+      </div>
+      <div class="header-actions">
+        <button class="header-button" id="dicecloud-auth-button" title="DiceCloud Authentication">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+          <span id="auth-status-text">Login</span>
+        </button>
+        <button class="header-button" id="settings-button" title="Settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="12" cy="5" r="2"></circle>
+            <circle cx="12" cy="12" r="2"></circle>
+            <circle cx="12" cy="19" r="2"></circle>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Tab Bar -->
+    <div class="tabs">
+      <button class="tab-button active" data-tab="rollcloud">
+        <img src="../images/rollcloud-die.png" alt="RollCloud" class="tab-icon-img">
+        RollCloud
+      </button>
+      <button class="tab-button" data-tab="owlcloud">
+        <img src="../images/owlcloud-die.png" alt="OwlCloud" class="tab-icon-img">
+        OwlCloud
+      </button>
+      <button class="tab-button" data-tab="foundcloud">
+        <img src="../images/foundcloud-die.png" alt="FoundCloud" class="tab-icon-img">
+        FoundCloud
+      </button>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
+      <!-- RollCloud Tab -->
+      <div id="rollcloud-content" class="tab-pane active">
+        <div class="loading">Loading RollCloud...</div>
+      </div>
+
+      <!-- OwlCloud Tab -->
+      <div id="owlcloud-content" class="tab-pane">
+        <div class="loading">Loading OwlCloud...</div>
+      </div>
+
+      <!-- FoundCloud Tab -->
+      <div id="foundcloud-content" class="tab-pane">
+        <div class="loading">Loading FoundCloud...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Settings</h2>
+        <button class="modal-close" id="close-settings">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="settings-section">
+          <h3>About CarmaClouds</h3>
+          <p class="settings-description">
+            Unified DiceCloud integration for Roll20, Owlbear Rodeo, and Foundry VTT
+          </p>
+          <div class="settings-info">
+            <div class="info-row">
+              <span class="info-label">Version:</span>
+              <span class="info-value">2.2.1</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Author:</span>
+              <span class="info-value">CarmaNayeli</span>
+            </div>
+          </div>
+        </div>
+        <div class="settings-section">
+          <h3>Links</h3>
+          <div class="settings-links">
+            <a href="#" class="settings-link" id="open-website">Website</a>
+            <a href="#" class="settings-link" id="open-github">GitHub</a>
+            <a href="#" class="settings-link" id="open-issues">Report Issue</a>
+            <a href="#" class="settings-link" id="open-sponsor">Sponsor</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DiceCloud Authentication Modal -->
+  <div id="dicecloud-auth-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>DiceCloud Authentication</h2>
+        <button class="modal-close" id="close-dicecloud-auth">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- Not Authenticated State -->
+        <div id="auth-login-view">
+          <p class="auth-description">
+            Connect to DiceCloud to sync your characters across Roll20, Owlbear Rodeo, and Foundry VTT.
+          </p>
+
+          <!-- Auto-Connect Button (Recommended) -->
+          <div style="margin-bottom: 20px;">
+            <button type="button" class="btn btn-primary" id="autoConnectBtn" style="width: 100%; padding: 15px; font-size: 1.1em;">
+              🔐 Connect with DiceCloud
+            </button>
+            <p class="help-text" style="margin-top: 8px; text-align: center;">
+              Works with <strong>Google Sign-In</strong>, username/password, or any login method<br>
+              <small style="color: #b0b0b0;">Click button → Log in to DiceCloud → Click button again</small>
+            </p>
+          </div>
+
+          <div style="text-align: center; margin: 15px 0; color: #b0b0b0;">
+            <span style="display: inline-block; padding: 0 10px; background: #1a1a1a; position: relative; z-index: 1;">or</span>
+            <hr style="margin-top: -12px; border: none; border-top: 1px solid #16a75a;">
+          </div>
+
+          <!-- Manual Login Form -->
+          <details style="margin-top: 15px;">
+            <summary style="cursor: pointer; padding: 10px; background: #0d4a30; border: 1px solid #16a75a; border-radius: 5px; font-weight: bold; color: #16a75a;">
+              🔑 Manual Login (if auto-connect doesn't work)
+            </summary>
+            <form id="usernameLoginForm" style="margin-top: 15px;">
+              <div class="form-group">
+                <label for="username">Username or Email</label>
+                <input type="text" id="username" name="username" required autocomplete="username" placeholder="Your DiceCloud username or email">
+              </div>
+              <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required autocomplete="current-password" placeholder="Your DiceCloud password">
+              </div>
+              <button type="submit" class="btn btn-primary" id="usernameLoginBtn">
+                🔐 Login to DiceCloud
+              </button>
+            </form>
+          </details>
+
+          <div id="loginError" class="error-message hidden"></div>
+        </div>
+
+        <!-- Authenticated State -->
+        <div id="auth-logged-in-view" class="hidden">
+          <div class="auth-success">
+            <div style="text-align: center; margin-bottom: 15px;">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#16a75a" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+            </div>
+            <h3 style="text-align: center; color: #16a75a; margin-bottom: 10px;">Connected to DiceCloud</h3>
+            <p style="text-align: center; color: #b0b0b0; margin-bottom: 20px;">
+              Your authentication is active across all tabs
+            </p>
+            <button type="button" class="btn btn-danger" id="logoutBtn" style="width: 100%;">
+              🚪 Logout from DiceCloud
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>

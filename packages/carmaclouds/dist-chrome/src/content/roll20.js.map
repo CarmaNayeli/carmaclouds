@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/content/roll20.js"],
+  "sourcesContent": ["/**\r\n * Roll20 Content Script\r\n * RollCloud functionality in unified extension\r\n */\r\n\r\nconsole.log('CarmaClouds: Roll20 content script loaded');\r\n\r\n// TODO: Import Roll20 integration from rollcloud\r\n// TODO: Character sheet overlay\r\n// TODO: Turn notifications\r\n"],
+  "mappings": ";;;;;;;;;;AAKA,UAAQ,IAAI,2CAA2C;",
+  "names": []
+}

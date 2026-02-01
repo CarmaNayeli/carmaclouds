@@ -1,0 +1,21 @@
+{
+  "name": "@carmaclouds/carmaclouds",
+  "version": "2.2.1",
+  "description": "CarmaClouds: Unified DiceCloud integration for Roll20, Owlbear Rodeo, and Foundry VTT",
+  "type": "module",
+  "scripts": {
+    "build": "node build.js",
+    "dev": "node build.js --watch"
+  },
+  "keywords": [
+    "carmaclouds",
+    "dicecloud",
+    "roll20",
+    "owlbear",
+    "foundry",
+    "vtt",
+    "browser-extension"
+  ],
+  "author": "Dice Cat",
+  "license": "MIT"
+}

@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "OwlCloud: DiceCloud + Owlbear Rodeo Integration",
-  "version": "2.1.0",
+  "version": "2.2.1",
   "description": "Seamlessly integrate your DiceCloud V2 characters into Owlbear Rodeo",
   "permissions": [
     "storage",
@@ -13,7 +13,9 @@
     "https://luiesmfjdcmpywavvfqm.supabase.co/*"
   ],
   "background": {
-    "scripts": ["src/background.js"]
+    "scripts": [
+      "src/background.js"
+    ]
   },
   "content_scripts": [
     {

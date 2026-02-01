@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>FoundCloud</title>
+</head>
+<body>
+  <div class="foundcloud-container">
+    <!-- Header -->
+    <div class="header">
+      <h2><img src="../../images/foundcloud-logo.png" alt="FoundCloud" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 8px;">FoundCloud</h2>
+      <p class="subtitle">DiceCloud → Foundry VTT via Cloud Sync</p>
+    </div>
+
+    <!-- Character List Section -->
+    <div class="section">
+      <div class="section-header">
+        <h3>DiceCloud Characters</h3>
+        <button id="syncAllBtn" class="btn btn-small">Sync All</button>
+      </div>
+
+      <div id="characterList" class="character-list">
+        <div class="loading">
+          <p>Loading characters...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Foundry Module Setup Section -->
+    <div class="section module-setup">
+      <h3>Foundry VTT Module</h3>
+      <div class="setup-steps">
+        <div class="step">
+          <span class="step-number">1</span>
+          <span class="step-text">Install the FoundCloud module in Foundry VTT</span>
+        </div>
+        <div class="step">
+          <span class="step-number">2</span>
+          <span class="step-text">Sync your characters using the button above</span>
+        </div>
+        <div class="step">
+          <span class="step-number">3</span>
+          <span class="step-text">Import characters in Foundry using the FoundCloud button</span>
+        </div>
+      </div>
+
+      <div class="module-url-box">
+        <label>Module Manifest URL:</label>
+        <div class="url-input-group">
+          <input
+            type="text"
+            id="moduleUrl"
+            value="https://carmaclouds.vercel.app/foundry-module/module.json"
+            readonly
+          >
+          <button id="copyUrlBtn" class="btn btn-primary">Copy</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status Messages -->
+    <div id="statusMessage" class="status-message hidden"></div>
+  </div>
+</body>
+</html>

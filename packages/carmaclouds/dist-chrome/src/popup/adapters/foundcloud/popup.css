@@ -1,0 +1,277 @@
+/* FoundCloud Popup Styles */
+
+.foundcloud-container {
+  padding: 0;
+  color: #e0e0e0;
+}
+
+.header {
+  padding: 16px;
+  background: linear-gradient(135deg, #16a75a 0%, #1bc76b 100%);
+  color: white;
+}
+
+.header h2 {
+  margin: 0 0 4px 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.section {
+  padding: 16px;
+  border-bottom: 1px solid #333;
+}
+
+.section:last-child {
+  border-bottom: none;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.section h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #fff;
+}
+
+/* Character List */
+.character-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.character-item {
+  background: #2a2a2a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 12px;
+  transition: all 0.2s ease;
+}
+
+.character-item:hover {
+  background: #333;
+  border-color: #16a75a;
+}
+
+.character-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  margin-bottom: 8px;
+}
+
+.character-info {
+  flex: 1;
+}
+
+.character-name {
+  font-weight: 600;
+  color: #fff;
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+
+.character-details {
+  font-size: 12px;
+  color: #888;
+}
+
+.sync-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.sync-status.synced {
+  background: #1a3a1a;
+  color: #4ade80;
+}
+
+.sync-status.not-synced {
+  background: #3a2a1a;
+  color: #fbbf24;
+}
+
+.sync-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.character-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* Module Setup */
+.module-setup {
+  background: #252525;
+}
+
+.setup-steps {
+  margin-bottom: 16px;
+}
+
+.step {
+  display: flex;
+  align-items: start;
+  gap: 12px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #aaa;
+}
+
+.step-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: #16a75a;
+  color: white;
+  border-radius: 50%;
+  font-weight: 600;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.step-text {
+  padding-top: 2px;
+}
+
+.module-url-box {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.module-url-box label {
+  display: block;
+  font-size: 12px;
+  color: #aaa;
+  margin-bottom: 8px;
+}
+
+.url-input-group {
+  display: flex;
+  gap: 8px;
+}
+
+.url-input-group input {
+  flex: 1;
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: #fff;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+}
+
+/* Buttons */
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background: #16a75a;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #1bc76b;
+}
+
+.btn-secondary {
+  background: #444;
+  color: #fff;
+}
+
+.btn-secondary:hover {
+  background: #555;
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Status Message */
+.status-message {
+  padding: 12px 16px;
+  margin: 0 16px 16px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  animation: slideIn 0.3s ease;
+}
+
+.status-message.hidden {
+  display: none;
+}
+
+.status-message.success {
+  background: #1a3a1a;
+  color: #4ade80;
+  border: 1px solid #2a5a2a;
+}
+
+.status-message.error {
+  background: #3a1a1a;
+  color: #ef4444;
+  border: 1px solid #5a2a2a;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Loading */
+.loading {
+  text-align: center;
+  padding: 40px 20px;
+  color: #666;
+}
+
+.loading p {
+  margin: 0;
+  font-style: italic;
+}

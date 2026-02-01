@@ -1,6 +1,6 @@
 {
   "name": "@carmaclouds/website",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "CarmaClouds unified landing page and downloads",
   "private": true,
   "scripts": {

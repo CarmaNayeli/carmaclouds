@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/content/dicecloud.js"],
+  "sourcesContent": ["/**\r\n * DiceCloud Content Script\r\n * Shared across all VTT integrations\r\n * Syncs character data from DiceCloud to Supabase\r\n */\r\n\r\nconsole.log('CarmaClouds: DiceCloud content script loaded');\r\n\r\n// TODO: Import DiceCloud sync logic from existing extensions\r\n// TODO: Detect character changes and upload to Supabase\r\n// TODO: Use platform array in character data\r\n"],
+  "mappings": ";;;;;;;;;;AAMA,UAAQ,IAAI,8CAA8C;",
+  "names": []
+}

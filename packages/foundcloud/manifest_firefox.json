@@ -1,0 +1,64 @@
+{
+  "manifest_version": 2,
+  "name": "FoundCloud: DiceCloud + Foundry VTT + Discord Integration",
+  "version": "1.2.3",
+  "description": "Sync DiceCloud V2 characters to Foundry VTT with Discord turn notifications via Pip 2",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "tabs",
+    "nativeMessaging",
+    "https://dicecloud.com/*",
+    "https://*.dicecloud.com/*",
+    "https://app.roll20.net/*",
+    "https://roll20.net/*"
+  ],
+  "background": {
+    "scripts": [
+      "src/background.js"
+    ],
+    "persistent": false
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://dicecloud.com/*",
+        "https://*.dicecloud.com/*"
+      ],
+      "js": [
+        "src/content/dicecloud.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://app.roll20.net/*"
+      ],
+      "js": [
+        "src/content/roll20.js",
+        "src/content/character-sheet-overlay.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "browser_action": {
+    "default_popup": "src/popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "options_page": "src/options/welcome.html",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "web_accessible_resources": [
+    "src/popup-sheet.html",
+    "src/popup-sheet.js"
+  ]
+}

@@ -6,9 +6,9 @@ console.log('🔨 Building all packages...\n');
 execSync('npm run build --workspaces --if-present', { stdio: 'inherit' });
 
 console.log('\n✅ Build complete!');
-console.log('\nPackage builds are located in:');
-console.log('  - packages/owlcloud/dist/ (Firefox)');
-console.log('  - packages/owlcloud/dist-chrome/ (Chrome)');
-console.log('  - packages/rollcloud/dist/ (Firefox)');
-console.log('  - packages/rollcloud/dist-chrome/ (Chrome)');
+console.log('\nCarmaClouds Unified Extension:');
+console.log('  - packages/carmaclouds/dist/ (Firefox)');
+console.log('  - packages/carmaclouds/dist-chrome/ (Chrome)');
+console.log('\nFoundry VTT Module:');
+console.log('  - packages/foundcloud/foundry-module/ → website/public/foundry-module/');
 console.log('\nTo create release packages, run: npm run package');

@@ -1,0 +1,111 @@
+{
+  "FOUNDCLOUD": {
+    "ModuleName": "FoundCloud",
+    "ModuleDescription": "Sync DiceCloud V2 characters to Foundry VTT",
+
+    "Settings": {
+      "AutoSyncOnTurn": {
+        "Name": "Auto-sync on Combat Turn",
+        "Hint": "Automatically sync character data when their turn starts in combat"
+      },
+      "DiscordEnabled": {
+        "Name": "Discord Integration",
+        "Hint": "Enable Discord turn notifications and roll announcements"
+      },
+      "ShowImportNotifications": {
+        "Name": "Show Import Notifications",
+        "Hint": "Show notifications when characters are imported or synced"
+      },
+      "AutoDetectExtension": {
+        "Name": "Auto-detect Extension",
+        "Hint": "Automatically detect and connect to the FoundCloud browser extension"
+      },
+      "ImportSpells": {
+        "Name": "Import Spells",
+        "Hint": "Automatically import spells when syncing characters"
+      },
+      "ImportItems": {
+        "Name": "Import Equipment",
+        "Hint": "Automatically import equipment and items when syncing characters"
+      },
+      "ImportFeatures": {
+        "Name": "Import Class Features",
+        "Hint": "Automatically import class features when syncing characters"
+      },
+      "OverrideExisting": {
+        "Name": "Override Existing Data",
+        "Hint": "When syncing, override existing character data in Foundry"
+      },
+      "DebugMode": {
+        "Name": "Debug Mode",
+        "Hint": "Enable detailed console logging for troubleshooting"
+      }
+    },
+
+    "Dialogs": {
+      "Welcome": {
+        "Title": "Welcome to FoundCloud",
+        "Content": "FoundCloud syncs your DiceCloud V2 characters to Foundry VTT."
+      },
+      "Import": {
+        "Title": "Import Character from DiceCloud",
+        "SelectCharacter": "Select Character:",
+        "ImportSpells": "Import Spells",
+        "ImportItems": "Import Equipment",
+        "ImportFeatures": "Import Class Features",
+        "ButtonImport": "Import",
+        "ButtonCancel": "Cancel"
+      },
+      "Sync": {
+        "Title": "Sync Character",
+        "Question": "Sync {name} with DiceCloud?",
+        "LastSync": "Last synced: {date}",
+        "OverrideExisting": "Override existing data",
+        "OverrideNote": "If checked, all character data will be overwritten",
+        "ButtonSync": "Sync Now",
+        "ButtonCancel": "Cancel"
+      },
+      "ExtensionNotConnected": {
+        "Title": "Extension Not Connected",
+        "Message": "The FoundCloud browser extension is not detected or not connected",
+        "ButtonRetry": "Retry Detection",
+        "ButtonClose": "Close"
+      }
+    },
+
+    "Notifications": {
+      "Importing": "Importing {name}...",
+      "Imported": "Successfully imported {name}",
+      "Syncing": "Syncing {name}...",
+      "Synced": "Character synced with DiceCloud",
+      "ExtensionNotDetected": "Browser extension not detected",
+      "ExtensionConnected": "Extension connected!",
+      "NoCharactersFound": "No characters found in DiceCloud",
+      "ImportFailed": "Failed to import character: {error}",
+      "SyncFailed": "Failed to sync character: {error}",
+      "CheckingConnection": "Checking extension connection...",
+      "ModuleInitialized": "Module initialized successfully",
+      "ModuleInitFailed": "Failed to initialize module"
+    },
+
+    "Buttons": {
+      "ImportFromDiceCloud": "Import from DiceCloud",
+      "SyncWithDiceCloud": "Sync with DiceCloud"
+    },
+
+    "Status": {
+      "Connected": "Connected",
+      "Disconnected": "Disconnected"
+    },
+
+    "Errors": {
+      "ModuleNotInitialized": "Module not initialized",
+      "ExtensionNotConnected": "Browser extension not connected",
+      "CharacterNotFound": "Character not found",
+      "ImportFailed": "Failed to import character",
+      "SyncFailed": "Failed to sync character",
+      "NetworkError": "Network error occurred",
+      "InvalidData": "Invalid character data received"
+    }
+  }
+}

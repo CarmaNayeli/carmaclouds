@@ -16,50 +16,55 @@ const version = packageJson.version;
 
 console.log(`Creating release packages v${version}...\n`);
 
-// Package OwlCloud for Chrome (from dist-chrome)
-const owlcloudChromeDist = path.join(__dirname, '../packages/owlcloud/dist-chrome');
-if (fs.existsSync(owlcloudChromeDist)) {
-  console.log('Packaging OwlCloud for Chrome...');
-  const owlcloudChromeZip = path.join(releasesDir, `owlcloud-chrome.zip`);
-  execSync(`powershell Compress-Archive -Path "${owlcloudChromeDist}\\*" -DestinationPath "${owlcloudChromeZip}" -Force`, { stdio: 'inherit' });
-  console.log(`✓ Created ${owlcloudChromeZip}`);
+// Package CarmaClouds Unified for Chrome (from dist-chrome)
+const carmacloudsChromeDist = path.join(__dirname, '../packages/carmaclouds/dist-chrome');
+if (fs.existsSync(carmacloudsChromeDist)) {
+  console.log('📦 Packaging CarmaClouds for Chrome...');
+  const carmacloudsChrome = path.join(releasesDir, 'carmaclouds-chrome.zip');
+  execSync(`powershell Compress-Archive -Path "${carmacloudsChromeDist}\\*" -DestinationPath "${carmacloudsChrome}" -Force`, { stdio: 'inherit' });
+  console.log(`✓ Created ${carmacloudsChrome}`);
 }
 
-// Package OwlCloud for Firefox (from dist)
-const owlcloudFirefoxDist = path.join(__dirname, '../packages/owlcloud/dist');
-if (fs.existsSync(owlcloudFirefoxDist)) {
-  console.log('Packaging OwlCloud for Firefox...');
-  const owlcloudFirefoxZip = path.join(releasesDir, `owlcloud-firefox.zip`);
-  execSync(`powershell Compress-Archive -Path "${owlcloudFirefoxDist}\\*" -DestinationPath "${owlcloudFirefoxZip}" -Force`, { stdio: 'inherit' });
-  console.log(`✓ Created ${owlcloudFirefoxZip}`);
+// Package CarmaClouds Unified for Firefox (from dist)
+const carmacloudsFirefoxDist = path.join(__dirname, '../packages/carmaclouds/dist');
+if (fs.existsSync(carmacloudsFirefoxDist)) {
+  console.log('📦 Packaging CarmaClouds for Firefox...');
+  const carmacloudsFirefox = path.join(releasesDir, 'carmaclouds-firefox.zip');
+  execSync(`powershell Compress-Archive -Path "${carmacloudsFirefoxDist}\\*" -DestinationPath "${carmacloudsFirefox}" -Force`, { stdio: 'inherit' });
+  console.log(`✓ Created ${carmacloudsFirefox}`);
 }
 
-// Package RollCloud for Chrome (from dist-chrome)
-const rollcloudChromeDist = path.join(__dirname, '../packages/rollcloud/dist-chrome');
-if (fs.existsSync(rollcloudChromeDist)) {
-  console.log('Packaging RollCloud for Chrome...');
-  const rollcloudChromeZip = path.join(releasesDir, `rollcloud-chrome.zip`);
-  execSync(`powershell Compress-Archive -Path "${rollcloudChromeDist}\\*" -DestinationPath "${rollcloudChromeZip}" -Force`, { stdio: 'inherit' });
-  console.log(`✓ Created ${rollcloudChromeZip}`);
-}
+// Package FoundCloud Foundry Module (from website/public/foundry-module)
+const foundryModuleDir = path.join(__dirname, '../website/public/foundry-module');
+if (fs.existsSync(foundryModuleDir)) {
+  console.log('📦 Packaging FoundCloud Foundry Module...');
+  const foundryModuleZipRelease = path.join(releasesDir, 'foundcloud-foundry.zip');
+  const foundryModuleZipPublic = path.join(__dirname, '../website/public/foundry-module.zip');
 
-// Package RollCloud for Firefox (from dist)
-const rollcloudFirefoxDist = path.join(__dirname, '../packages/rollcloud/dist');
-if (fs.existsSync(rollcloudFirefoxDist)) {
-  console.log('Packaging RollCloud for Firefox...');
-  const rollcloudFirefoxZip = path.join(releasesDir, `rollcloud-firefox.zip`);
-  execSync(`powershell Compress-Archive -Path "${rollcloudFirefoxDist}\\*" -DestinationPath "${rollcloudFirefoxZip}" -Force`, { stdio: 'inherit' });
-  console.log(`✓ Created ${rollcloudFirefoxZip}`);
+  // Create zip in releases/ directory
+  execSync(`powershell Compress-Archive -Path "${foundryModuleDir}\\*" -DestinationPath "${foundryModuleZipRelease}" -Force`, { stdio: 'inherit' });
+  console.log(`✓ Created ${foundryModuleZipRelease}`);
+
+  // Copy to website/public/ for Vercel deployment (keep as foundry-module.zip for stable URL)
+  if (fs.existsSync(foundryModuleZipRelease)) {
+    fs.copyFileSync(foundryModuleZipRelease, foundryModuleZipPublic);
+    console.log(`✓ Copied to ${foundryModuleZipPublic}`);
+  }
 }
 
 // Package Website (from website/out)
 const websiteDist = path.join(__dirname, '../website/out');
 if (fs.existsSync(websiteDist)) {
-  console.log('Packaging Website...');
-  const websiteZip = path.join(releasesDir, `carmaclouds-website.zip`);
+  console.log('📦 Packaging Website...');
+  const websiteZip = path.join(releasesDir, 'carmaclouds-website.zip');
   execSync(`powershell Compress-Archive -Path "${websiteDist}\\*" -DestinationPath "${websiteZip}" -Force`, { stdio: 'inherit' });
   console.log(`✓ Created ${websiteZip}`);
 }
 
-console.log(`\n✓ Release packages created in releases/`);
-console.log(`\nReady for GitHub release v${version}!`);
+console.log(`\n✅ Release packages created in releases/`);
+console.log(`\n📋 Release contents (v${version}):`);
+console.log(`  - carmaclouds-chrome.zip (Unified Browser Extension)`);
+console.log(`  - carmaclouds-firefox.zip (Unified Browser Extension)`);
+console.log(`  - foundcloud-foundry.zip (Foundry VTT Module)`);
+console.log(`  - carmaclouds-website.zip (Website Build)`);
+console.log(`\n🚀 Ready for GitHub release v${version}!`);
