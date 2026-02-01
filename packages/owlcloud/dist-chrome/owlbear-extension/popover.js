@@ -667,6 +667,7 @@ This will disconnect the character from this room. You can sync a different char
         }
         displayCharacter(characterData);
         await fetchAllCharacters();
+        updateAuthUI();
       } else {
         localStorage.removeItem(cacheKey);
         localStorage.removeItem(versionKey);
@@ -752,6 +753,7 @@ This will disconnect the character from this room. You can sync a different char
       if (response.ok && result.success) {
         displayCharacter(character);
         displayCharacterList();
+        updateAuthUI();
         if (isOwlbearReady) {
           OBR.notification.show(`Switched to ${character.name}`, "SUCCESS");
         }
@@ -1652,6 +1654,7 @@ This will disconnect the character from this room. You can sync a different char
       case "OWLCLOUD_ACTIVE_CHARACTER_RESPONSE":
         if (data && data.character) {
           displayCharacter(data.character);
+          updateAuthUI();
         } else {
           showNoCharacter();
         }
@@ -1659,6 +1662,7 @@ This will disconnect the character from this room. You can sync a different char
       case "OWLCLOUD_CHARACTER_UPDATED":
         if (data && data.character) {
           displayCharacter(data.character);
+          updateAuthUI();
           if (isOwlbearReady) {
             OBR.notification.show(`Character updated: ${data.character.name}`, "SUCCESS");
           }

@@ -954,6 +954,9 @@ async function checkForActiveCharacter() {
 
       displayCharacter(characterData);
       await fetchAllCharacters();
+
+      // Update auth UI to show unsync button if user is signed in
+      updateAuthUI();
     } else {
       // Clear cache if no character found
       localStorage.removeItem(cacheKey);
@@ -1073,6 +1076,7 @@ window.switchToCharacter = async function(characterId) {
       // Display the new character
       displayCharacter(character);
       displayCharacterList(); // Refresh the list to update active state
+      updateAuthUI(); // Update auth UI to show unsync button
 
       if (isOwlbearReady) {
         OBR.notification.show(`Switched to ${character.name}`, 'SUCCESS');
@@ -2269,6 +2273,7 @@ window.addEventListener('message', (event) => {
     case 'OWLCLOUD_ACTIVE_CHARACTER_RESPONSE':
       if (data && data.character) {
         displayCharacter(data.character);
+        updateAuthUI(); // Update auth UI to show unsync button
       } else {
         showNoCharacter();
       }
@@ -2277,6 +2282,7 @@ window.addEventListener('message', (event) => {
     case 'OWLCLOUD_CHARACTER_UPDATED':
       if (data && data.character) {
         displayCharacter(data.character);
+        updateAuthUI(); // Update auth UI to show unsync button
         if (isOwlbearReady) {
           OBR.notification.show(`Character updated: ${data.character.name}`, 'SUCCESS');
         }
