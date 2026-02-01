@@ -493,15 +493,19 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
         return;
       }
       const playerId = await OBR.player.getId();
+      const requestBody = {
+        owlbearPlayerId: playerId,
+        character
+      };
+      if (currentUser) {
+        requestBody.supabaseUserId = currentUser.id;
+      }
       const response = await fetch(
         `${SUPABASE_URL}/functions/v1/characters`,
         {
           method: "POST",
           headers: SUPABASE_HEADERS,
-          body: JSON.stringify({
-            owlbearPlayerId: playerId,
-            character
-          })
+          body: JSON.stringify(requestBody)
         }
       );
       const result = await response.json();
