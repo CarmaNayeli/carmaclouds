@@ -894,10 +894,7 @@ window.addEventListener('message', async (event) => {
     return;
   }
 
-  // Log only messages we actually process
-  console.log('🔍 OwlCloud received message:', { type, source });
-
-  console.log('📨 OwlCloud message from Owlbear extension:', type);
+  // Messages are processed silently to avoid console spam
   debug.log('📨 Message from Owlbear extension:', type);
 
   switch (type) {

@@ -196,7 +196,7 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
         playerId: currentPlayerId,
         timestamp: Date.now()
       };
-      const updatedMessages = [...messages, newMessage].slice(-100);
+      const updatedMessages = [...messages, newMessage].slice(-20);
       await OBR.room.setMetadata({
         "com.owlcloud.chat/messages": updatedMessages
       });

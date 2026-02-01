@@ -9785,8 +9785,6 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
     if (source !== "owlbear-extension") {
       return;
     }
-    console.log("\u{1F50D} OwlCloud received message:", { type, source });
-    console.log("\u{1F4E8} OwlCloud message from Owlbear extension:", type);
     debug.log("\u{1F4E8} Message from Owlbear extension:", type);
     switch (type) {
       case "OWLCLOUD_GET_ACTIVE_CHARACTER": {
