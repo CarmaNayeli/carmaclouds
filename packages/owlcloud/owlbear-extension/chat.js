@@ -286,8 +286,8 @@ async function addChatMessageToMetadata(text, type = 'system', author = null) {
       timestamp: Date.now()
     };
 
-    // Add to metadata (limit to last 100 messages)
-    const updatedMessages = [...messages, newMessage].slice(-100);
+    // Add to metadata (limit to last 20 messages to avoid OBR's 16KB limit)
+    const updatedMessages = [...messages, newMessage].slice(-20);
 
     await OBR.room.setMetadata({
       'com.owlcloud.chat/messages': updatedMessages

@@ -1710,7 +1710,7 @@ This will disconnect the character from this room. You can sync a different char
         details
         // Optional expandable details
       };
-      const updatedMessages = [...messages, newMessage].slice(-100);
+      const updatedMessages = [...messages, newMessage].slice(-20);
       await OBR.room.setMetadata({
         "com.owlcloud.chat/messages": updatedMessages
       });

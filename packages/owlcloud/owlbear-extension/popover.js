@@ -2341,10 +2341,8 @@ async function sendToChatWindow(type, data) {
       timestamp: Date.now()
     };
 
-    // Store in room metadata for chat window to pick up
-    await OBR.room.setMetadata({
-      'com.owlcloud.chat/latest-message': message
-    });
+    // Note: Removed latest-message metadata to save space (16KB limit)
+    // The chat window reads from the messages array instead
   } catch (error) {
     console.error('Error sending to chat:', error);
   }
@@ -2375,8 +2373,8 @@ async function addChatMessage(text, type = 'system', author = null, details = nu
       details: details // Optional expandable details
     };
 
-    // Keep last 100 messages
-    const updatedMessages = [...messages, newMessage].slice(-100);
+    // Keep last 20 messages to avoid exceeding OBR's 16KB metadata limit
+    const updatedMessages = [...messages, newMessage].slice(-20);
 
     await OBR.room.setMetadata({
       'com.owlcloud.chat/messages': updatedMessages
