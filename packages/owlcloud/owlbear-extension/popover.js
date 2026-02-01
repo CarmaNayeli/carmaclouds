@@ -242,7 +242,14 @@ function setupDicePlusListeners() {
   OBR.broadcast.onMessage('dice-plus/roll-result', (event) => {
     console.log('📨 Dice+ roll-result received:', event.data);
     const { result } = event.data;
-    const { rollId, totalValue, rollSummary, groups } = result || {};
+    
+    // Validate result structure before processing
+    if (!result || !result.rollId || result.totalValue === undefined) {
+      console.warn('🚫 Invalid Dice+ result structure, ignoring:', result);
+      return;
+    }
+    
+    const { rollId, totalValue, rollSummary, groups } = result;
 
     // Find the pending roll
     const pendingRoll = pendingRolls.get(rollId);
