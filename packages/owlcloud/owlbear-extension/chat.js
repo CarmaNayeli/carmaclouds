@@ -21,6 +21,245 @@ const SUPABASE_HEADERS = {
   'Content-Type': 'application/json'
 };
 
+// ============== Theme Synchronization ==============
+
+/**
+ * Apply theme from sheet popover to chat window
+ */
+function applyThemeFromSheet() {
+  try {
+    // Get current theme from localStorage (set by sheet popover)
+    const currentTheme = localStorage.getItem('owlcloud-theme');
+    if (!currentTheme) return;
+
+    // Define theme colors (same as sheet popover)
+    const themes = {
+      purple: {
+        primary: '#8B5CF6',
+        primaryLight: '#A78BFA',
+        primaryLighter: '#C4B5FD',
+        gradient: 'linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%)',
+        bgPrimary: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+        bgSecondary: 'rgba(26, 26, 46, 0.8)',
+        bgAccent: 'rgba(139, 92, 246, 0.15)',
+        bgCard: 'rgba(139, 92, 246, 0.1)',
+        bgHover: 'rgba(139, 92, 246, 0.2)',
+        textPrimary: '#e0e0e0',
+        textSecondary: '#c0c0c0',
+        textMuted: '#9ca3af',
+        textOnPrimary: '#ffffff',
+        textOnLight: '#1f2937'
+      },
+      blue: {
+        primary: '#3B82F6',
+        primaryLight: '#60A5FA',
+        primaryLighter: '#93C5FD',
+        gradient: 'linear-gradient(135deg, #3B82F6 0%, #60A5FA 100%)',
+        bgPrimary: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)',
+        bgSecondary: 'rgba(15, 23, 42, 0.8)',
+        bgAccent: 'rgba(59, 130, 246, 0.15)',
+        bgCard: 'rgba(59, 130, 246, 0.1)',
+        bgHover: 'rgba(59, 130, 246, 0.2)',
+        textPrimary: '#e0e0e0',
+        textSecondary: '#c0c0c0',
+        textMuted: '#9ca3af',
+        textOnPrimary: '#ffffff',
+        textOnLight: '#1f2937'
+      },
+      green: {
+        primary: '#10B981',
+        primaryLight: '#34D399',
+        primaryLighter: '#6EE7B7',
+        gradient: 'linear-gradient(135deg, #10B981 0%, #34D399 100%)',
+        bgPrimary: 'linear-gradient(135deg, #052e16 0%, #0a4d2a 50%, #0f6b3e 100%)',
+        bgSecondary: 'rgba(5, 46, 22, 0.8)',
+        bgAccent: 'rgba(16, 185, 129, 0.15)',
+        bgCard: 'rgba(16, 185, 129, 0.1)',
+        bgHover: 'rgba(16, 185, 129, 0.2)',
+        textPrimary: '#e0e0e0',
+        textSecondary: '#c0c0c0',
+        textMuted: '#9ca3af',
+        textOnPrimary: '#ffffff',
+        textOnLight: '#1f2937'
+      },
+      red: {
+        primary: '#EF4444',
+        primaryLight: '#F87171',
+        primaryLighter: '#FCA5A5',
+        gradient: 'linear-gradient(135deg, #EF4444 0%, #F87171 100%)',
+        bgPrimary: 'linear-gradient(135deg, #450a0a 0%, #7f1d1d 50%, #991b1b 100%)',
+        bgSecondary: 'rgba(69, 10, 10, 0.8)',
+        bgAccent: 'rgba(239, 68, 68, 0.15)',
+        bgCard: 'rgba(239, 68, 68, 0.1)',
+        bgHover: 'rgba(239, 68, 68, 0.2)',
+        textPrimary: '#e0e0e0',
+        textSecondary: '#c0c0c0',
+        textMuted: '#9ca3af',
+        textOnPrimary: '#ffffff',
+        textOnLight: '#1f2937'
+      },
+      orange: {
+        primary: '#F97316',
+        primaryLight: '#FB923C',
+        primaryLighter: '#FDBA74',
+        gradient: 'linear-gradient(135deg, #F97316 0%, #FB923C 100%)',
+        bgPrimary: 'linear-gradient(135deg, #431407 0%, #7c2d12 50%, #9a3412 100%)',
+        bgSecondary: 'rgba(67, 20, 7, 0.8)',
+        bgAccent: 'rgba(249, 115, 22, 0.15)',
+        bgCard: 'rgba(249, 115, 22, 0.1)',
+        bgHover: 'rgba(249, 115, 22, 0.2)',
+        textPrimary: '#e0e0e0',
+        textSecondary: '#c0c0c0',
+        textMuted: '#9ca3af',
+        textOnPrimary: '#ffffff',
+        textOnLight: '#1f2937'
+      },
+      yellow: {
+        primary: '#EAB308',
+        primaryLight: '#FACC15',
+        primaryLighter: '#FDE047',
+        gradient: 'linear-gradient(135deg, #EAB308 0%, #FACC15 100%)',
+        bgPrimary: 'linear-gradient(135deg, #422006 0%, #713f12 50%, #854d0e 100%)',
+        bgSecondary: 'rgba(66, 34, 6, 0.8)',
+        bgAccent: 'rgba(234, 179, 8, 0.15)',
+        bgCard: 'rgba(234, 179, 8, 0.1)',
+        bgHover: 'rgba(234, 179, 8, 0.2)',
+        textPrimary: '#1f2937',
+        textSecondary: '#374151',
+        textMuted: '#6b7280',
+        textOnPrimary: '#ffffff',
+        textOnLight: '#1f2937'
+      },
+      pink: {
+        primary: '#EC4899',
+        primaryLight: '#F472B6',
+        primaryLighter: '#F9A8D4',
+        gradient: 'linear-gradient(135deg, #EC4899 0%, #F472B6 100%)',
+        bgPrimary: 'linear-gradient(135deg, #500724 0%, #831843 50%, #9f1239 100%)',
+        bgSecondary: 'rgba(80, 7, 36, 0.8)',
+        bgAccent: 'rgba(236, 72, 153, 0.15)',
+        bgCard: 'rgba(236, 72, 153, 0.1)',
+        bgHover: 'rgba(236, 72, 153, 0.2)',
+        textPrimary: '#e0e0e0',
+        textSecondary: '#c0c0c0',
+        textMuted: '#9ca3af',
+        textOnPrimary: '#ffffff',
+        textOnLight: '#1f2937'
+      },
+      brown: {
+        primary: '#92400E',
+        primaryLight: '#B45309',
+        primaryLighter: '#D97706',
+        gradient: 'linear-gradient(135deg, #92400E 0%, #B45309 100%)',
+        bgPrimary: 'linear-gradient(135deg, #1c0f0a 0%, #442c1e 50%, #5c341e 100%)',
+        bgSecondary: 'rgba(28, 15, 10, 0.8)',
+        bgAccent: 'rgba(146, 64, 14, 0.15)',
+        bgCard: 'rgba(146, 64, 14, 0.1)',
+        bgHover: 'rgba(146, 64, 14, 0.2)',
+        textPrimary: '#e0e0e0',
+        textSecondary: '#c0c0c0',
+        textMuted: '#9ca3af',
+        textOnPrimary: '#ffffff',
+        textOnLight: '#1f2937'
+      },
+      grey: {
+        primary: '#6B7280',
+        primaryLight: '#9CA3AF',
+        primaryLighter: '#D1D5DB',
+        gradient: 'linear-gradient(135deg, #6B7280 0%, #9CA3AF 100%)',
+        bgPrimary: 'linear-gradient(135deg, #1f2937 0%, #374151 50%, #4b5563 100%)',
+        bgSecondary: 'rgba(31, 41, 55, 0.8)',
+        bgAccent: 'rgba(107, 114, 128, 0.15)',
+        bgCard: 'rgba(107, 114, 128, 0.1)',
+        bgHover: 'rgba(107, 114, 128, 0.2)',
+        textPrimary: '#e0e0e0',
+        textSecondary: '#c0c0c0',
+        textMuted: '#9ca3af',
+        textOnPrimary: '#ffffff',
+        textOnLight: '#1f2937'
+      },
+      black: {
+        primary: '#1F2937',
+        primaryLight: '#374151',
+        primaryLighter: '#4B5563',
+        gradient: 'linear-gradient(135deg, #1F2937 0%, #374151 100%)',
+        bgPrimary: 'linear-gradient(135deg, #000000 0%, #111827 50%, #1f2937 100%)',
+        bgSecondary: 'rgba(0, 0, 0, 0.8)',
+        bgAccent: 'rgba(31, 41, 55, 0.15)',
+        bgCard: 'rgba(31, 41, 55, 0.1)',
+        bgHover: 'rgba(31, 41, 55, 0.2)',
+        textPrimary: '#ffffff',
+        textSecondary: '#e5e7eb',
+        textMuted: '#9ca3af',
+        textOnPrimary: '#ffffff',
+        textOnLight: '#1f2937'
+      },
+      white: {
+        primary: '#F9FAFB',
+        primaryLight: '#F3F4F6',
+        primaryLighter: '#E5E7EB',
+        gradient: 'linear-gradient(135deg, #F9FAFB 0%, #F3F4F6 100%)',
+        bgPrimary: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%)',
+        bgSecondary: 'rgba(248, 250, 252, 0.9)',
+        bgAccent: 'rgba(249, 250, 251, 0.5)',
+        bgCard: 'rgba(249, 250, 251, 0.8)',
+        bgHover: 'rgba(241, 245, 249, 0.9)',
+        textPrimary: '#1f2937',
+        textSecondary: '#374151',
+        textMuted: '#6b7280',
+        textOnPrimary: '#ffffff',
+        textOnLight: '#1f2937'
+      }
+    };
+
+    const theme = themes[currentTheme];
+    if (!theme) return;
+
+    const root = document.documentElement;
+    
+    // Update CSS variables
+    root.style.setProperty('--theme-primary', theme.primary);
+    root.style.setProperty('--theme-primary-light', theme.primaryLight);
+    root.style.setProperty('--theme-primary-lighter', theme.primaryLighter);
+    root.style.setProperty('--theme-gradient', theme.gradient);
+    root.style.setProperty('--theme-bg-primary', theme.bgPrimary);
+    root.style.setProperty('--theme-bg-secondary', theme.bgSecondary);
+    root.style.setProperty('--theme-bg-accent', theme.bgAccent);
+    root.style.setProperty('--theme-bg-card', theme.bgCard);
+    root.style.setProperty('--theme-bg-hover', theme.bgHover);
+    root.style.setProperty('--theme-text-primary', theme.textPrimary);
+    root.style.setProperty('--theme-text-secondary', theme.textSecondary);
+    root.style.setProperty('--theme-text-muted', theme.textMuted);
+    root.style.setProperty('--theme-text-on-primary', theme.textOnPrimary);
+    root.style.setProperty('--theme-text-on-light', theme.textOnLight);
+    
+    // Update body background and color
+    document.body.style.background = theme.bgPrimary;
+    document.body.style.color = theme.textPrimary;
+    
+    console.log(`🎨 Chat applied theme: ${currentTheme}`);
+  } catch (error) {
+    console.error('Failed to apply theme to chat:', error);
+  }
+}
+
+/**
+ * Listen for theme changes from sheet popover
+ */
+function setupThemeListener() {
+  // Listen for storage changes (when theme changes in sheet popover)
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'owlcloud-theme') {
+      applyThemeFromSheet();
+    }
+  });
+  
+  // Also check periodically for theme changes
+  setInterval(() => {
+    applyThemeFromSheet();
+  }, 1000);
+}
+
 // ============== DOM Elements ==============
 
 const chatMessages = document.getElementById('chat-messages');
@@ -34,6 +273,10 @@ const characterNameEl = document.getElementById('character-name');
 OBR.onReady(async () => {
   isOwlbearReady = true;
   console.log('🦉 Owlbear SDK ready in chat window');
+
+  // Initialize theme synchronization
+  setupThemeListener();
+  applyThemeFromSheet();
 
   // Get player ID
   currentPlayerId = await OBR.player.getId();
