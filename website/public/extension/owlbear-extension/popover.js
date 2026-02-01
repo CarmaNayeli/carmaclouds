@@ -252,6 +252,13 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
       await addChatMessage(message, "combat", currentCharacter?.name, detailsHtml);
       return;
     }
+    console.log("\u{1F50D} Dice+ calculation debug:", {
+      numericTotal,
+      modifier,
+      rollContext,
+      rollSummary,
+      willCalculateFinal: numericTotal + (modifier || 0)
+    });
     const result = {
       total: numericTotal,
       rolls: groups && groups[0] ? groups[0].dice.filter((d) => d.kept).map((d) => d.value) : [numericTotal],
@@ -1879,6 +1886,12 @@ This will disconnect the character from this room. You can sync a different char
   async function showRollResult(name, result) {
     let detailsHtml = "";
     const finalTotal = result.modifier !== void 0 ? result.total + result.modifier : result.total;
+    console.log("\u{1F50D} showRollResult debug:", {
+      name,
+      resultTotal: result.total,
+      resultModifier: result.modifier,
+      calculatedFinalTotal: finalTotal
+    });
     if (result.mode === "advantage" && result.rolls.length === 2) {
       detailsHtml = `<strong>Advantage:</strong> Rolled 2d20, taking higher<br>
                    Roll 1: ${result.rolls[0]}<br>
