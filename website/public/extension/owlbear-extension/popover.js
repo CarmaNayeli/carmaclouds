@@ -145,9 +145,22 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
         executeLocalRoll(pendingRoll);
       }
     });
+    OBR.broadcast.onMessage("dice-plus/roll-result", (event) => {
+      console.log("\u{1F4E8} Dice+ roll-result received:", event.data);
+      const { rollId, totalValue, rollSummary, groups } = event.data;
+      const pendingRoll = pendingRolls.get(rollId);
+      if (!pendingRoll) {
+        console.warn("Received result for unknown roll:", rollId);
+        return;
+      }
+      pendingRolls.delete(rollId);
+      handleDicePlusResult(pendingRoll, totalValue, rollSummary, groups);
+    });
   }
   async function sendToDicePlus(diceNotation, rollContext) {
+    console.log("\u{1F3B2} sendToDicePlus called:", { diceNotation, isOwlbearReady, dicePlusReady });
     if (!isOwlbearReady || !dicePlusReady) {
+      console.log("\u26A0\uFE0F Falling back to local roll - OBR ready:", isOwlbearReady, "Dice+ ready:", dicePlusReady);
       return null;
     }
     try {
@@ -155,6 +168,7 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
       const playerId = await OBR.player.getId();
       const playerName = await OBR.player.getName();
       pendingRolls.set(rollId, rollContext);
+      console.log("\u{1F4E1} Sending roll request to Dice+:", { rollId, diceNotation });
       await OBR.broadcast.sendMessage("dice-plus/roll-request", {
         rollId,
         playerId,
@@ -175,7 +189,15 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
   }
   async function handleDicePlusResult(rollContext, totalValue, rollSummary, groups) {
     const { name, modifier, type, isDeathSave, isDamageRoll, actionName, damageFormula } = rollContext;
+    console.log("\u{1F3B2} Dice+ result received:", {
+      totalValue,
+      totalValueType: typeof totalValue,
+      rollSummary,
+      modifier,
+      rollContext
+    });
     const numericTotal = typeof totalValue === "number" ? totalValue : parseInt(totalValue) || 0;
+    console.log("\u{1F3B2} After parsing:", { numericTotal, modifier, willSubtract: modifier || 0 });
     if (isDeathSave && currentCharacter) {
       const roll = numericTotal;
       let message = "";
