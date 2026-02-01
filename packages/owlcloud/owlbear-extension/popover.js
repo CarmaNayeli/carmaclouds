@@ -131,18 +131,24 @@ async function checkDicePlusReady() {
 
   try {
     const requestId = `ready_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    console.log('🔍 Checking for Dice+ extension...', requestId);
+    console.log('🔍 Checking for Dice+ extension...');
 
     let responseReceived = false;
+    let unsubscribed = false;
 
     // Set up one-time listener for ready response BEFORE sending the request
     const unsubscribe = OBR.broadcast.onMessage('dice-plus/isReady', (event) => {
-      console.log('📩 Received Dice+ response:', event.data);
-      if (event.data.requestId === requestId && event.data.ready) {
-        responseReceived = true;
-        dicePlusReady = true;
-        console.log('✅ Dice+ is ready - 3D dice enabled!');
-        unsubscribe(); // Clean up listener
+      // Only process messages that match our requestId to avoid console spam
+      if (event.data.requestId === requestId) {
+        if (event.data.ready) {
+          responseReceived = true;
+          dicePlusReady = true;
+          console.log('✅ Dice+ is ready - 3D dice enabled!');
+        }
+        if (!unsubscribed) {
+          unsubscribed = true;
+          unsubscribe(); // Clean up listener
+        }
       }
     });
 
@@ -152,15 +158,18 @@ async function checkDicePlusReady() {
       timestamp: Date.now()
     }, { destination: 'ALL' });
 
-    console.log('📤 Sent Dice+ ready check:', requestId);
-
     // Wait for response with timeout
     await new Promise(resolve => setTimeout(resolve, 3000));
+
+    // Clean up listener if not already unsubscribed
+    if (!unsubscribed) {
+      unsubscribed = true;
+      unsubscribe();
+    }
 
     if (!responseReceived) {
       console.warn('⚠️ Dice+ not detected - 3D dice disabled, using built-in roller');
       dicePlusReady = false;
-      unsubscribe(); // Clean up listener
     }
 
   } catch (error) {
@@ -178,8 +187,6 @@ function setupDicePlusListeners() {
   // Listen for roll results
   OBR.broadcast.onMessage(`${OWLCLOUD_EXTENSION_ID}/roll-result`, (event) => {
     const { rollId, totalValue, rollSummary, groups } = event.data;
-
-    console.log('🎲 Dice+ result:', event.data);
 
     // Find the pending roll
     const pendingRoll = pendingRolls.get(rollId);
@@ -242,7 +249,6 @@ async function sendToDicePlus(diceNotation, rollContext) {
       source: OWLCLOUD_EXTENSION_ID
     }, { destination: 'ALL' });
 
-    console.log('🎲 Sent to Dice+:', diceNotation, rollId);
     return rollId;
 
   } catch (error) {
@@ -257,9 +263,14 @@ async function sendToDicePlus(diceNotation, rollContext) {
 async function handleDicePlusResult(rollContext, totalValue, rollSummary, groups) {
   const { name, modifier, type, isDeathSave, isDamageRoll, actionName, damageFormula } = rollContext;
 
+  // Ensure totalValue is a number (parse if needed)
+
+  // Ensure totalValue is a number
+  const numericTotal = typeof totalValue === 'number' ? totalValue : parseInt(totalValue) || 0;
+
   // Special handling for death saves
   if (isDeathSave && currentCharacter) {
-    const roll = totalValue;
+    const roll = numericTotal;
     let message = '';
     let messageType = 'combat';
 
@@ -289,7 +300,7 @@ async function handleDicePlusResult(rollContext, totalValue, rollSummary, groups
   // Special handling for damage rolls
   if (isDamageRoll) {
     const rolls = groups && groups[0] ? groups[0].dice.filter(d => d.kept).map(d => d.value) : [];
-    const message = `${actionName} Damage: <strong>${totalValue}</strong>`;
+    const message = `${actionName} Damage: <strong>${numericTotal}</strong>`;
 
     let detailsHtml = `<strong>Formula:</strong> ${damageFormula}<br>
                        <strong>Rolls:</strong> ${rolls.join(', ')}`;
@@ -300,10 +311,10 @@ async function handleDicePlusResult(rollContext, totalValue, rollSummary, groups
     if (modifier) {
       detailsHtml += ` ${modifier >= 0 ? '+' : ''}${modifier}`;
     }
-    detailsHtml += ` = ${totalValue}`;
+    detailsHtml += ` = ${numericTotal}`;
 
     if (isOwlbearReady) {
-      OBR.notification.show(`${currentCharacter?.name || 'Character'}: ${actionName} Damage = ${totalValue}`, 'INFO');
+      OBR.notification.show(`${currentCharacter?.name || 'Character'}: ${actionName} Damage = ${numericTotal}`, 'INFO');
     }
     console.log('⚔️', message);
     await addChatMessage(message, 'combat', currentCharacter?.name, detailsHtml);
@@ -314,8 +325,8 @@ async function handleDicePlusResult(rollContext, totalValue, rollSummary, groups
   // Note: totalValue from Dice+ already includes the modifier,
   // but showRollResult expects to add it, so we subtract it here
   const result = {
-    total: totalValue - (modifier || 0),
-    rolls: groups && groups[0] ? groups[0].dice.filter(d => d.kept).map(d => d.value) : [totalValue],
+    total: numericTotal - (modifier || 0),
+    rolls: groups && groups[0] ? groups[0].dice.filter(d => d.kept).map(d => d.value) : [numericTotal],
     modifier: modifier || 0,
     formula: rollSummary,
     mode: rollContext.mode || 'normal'
@@ -552,6 +563,14 @@ function updateAuthUI() {
             style="width: 100%; padding: 8px; background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%); border: none; border-radius: 6px; color: white; font-weight: 600; cursor: pointer; transition: all 0.2s;">
             🔄 Fetch Character
           </button>
+          ${currentCharacter ? `
+          <button
+            onclick="handleUnsyncCharacter()"
+            id="unsync-character-btn"
+            style="width: 100%; padding: 8px; background: rgba(251, 146, 60, 0.2); border: 1px solid #FB923C; border-radius: 6px; color: #FB923C; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+            🔓 Unsync from Owlbear
+          </button>
+          ` : ''}
           <button
             onclick="signOut()"
             style="width: 100%; padding: 8px; background: rgba(239, 68, 68, 0.2); border: 1px solid #EF4444; border-radius: 6px; color: #EF4444; font-weight: 600; cursor: pointer; transition: all 0.2s;">
@@ -693,6 +712,108 @@ window.handleFetchCharacter = async function() {
     // Reset button state
     fetchBtn.disabled = false;
     fetchBtn.textContent = '🔄 Fetch Character';
+  }
+};
+
+/**
+ * Handle unsync character button click
+ * Clears the Owlbear sync for the current character, allowing a new character to be synced
+ */
+window.handleUnsyncCharacter = async function() {
+  if (!currentCharacter) {
+    console.warn('No character to unsync');
+    return;
+  }
+
+  const unsyncBtn = document.getElementById('unsync-character-btn');
+  const statusDiv = document.getElementById('fetch-status');
+
+  if (!unsyncBtn || !statusDiv) return;
+
+  // Confirm with user
+  if (!confirm(`Unsync ${currentCharacter.name} from this Owlbear session?\n\nThis will disconnect the character from this room. You can sync a different character afterwards.`)) {
+    return;
+  }
+
+  // Show loading state
+  unsyncBtn.disabled = true;
+  unsyncBtn.textContent = '⏳ Unsyncing...';
+  statusDiv.style.display = 'block';
+  statusDiv.style.color = '#FB923C';
+  statusDiv.textContent = 'Unsyncing character...';
+
+  try {
+    const playerId = await OBR.player.getId();
+
+    // Call Supabase function to clear the owlbear_player_id
+    const response = await fetch(
+      `${SUPABASE_URL}/functions/v1/unsync-character`,
+      {
+        method: 'POST',
+        headers: SUPABASE_HEADERS,
+        body: JSON.stringify({
+          owlbearPlayerId: playerId,
+          supabaseUserId: currentUser?.id
+        })
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to unsync: ${errorText}`);
+    }
+
+    const result = await response.json();
+
+    if (result.success) {
+      console.log('✅ Character unsynced successfully');
+
+      // Clear local cache
+      const cacheKey = currentUser
+        ? `owlcloud_char_${currentUser.id}`
+        : `owlcloud_char_${playerId}`;
+      const versionKey = `${cacheKey}_version`;
+      localStorage.removeItem(cacheKey);
+      localStorage.removeItem(versionKey);
+
+      // Clear current character state
+      currentCharacter = null;
+      allCharacters = [];
+
+      // Show success
+      statusDiv.style.color = '#10B981';
+      statusDiv.textContent = '✓ Character unsynced! You can now sync a different character.';
+
+      // Show notification
+      if (isOwlbearReady) {
+        OBR.notification.show('Character unsynced from Owlbear session', 'SUCCESS');
+      }
+
+      // Update UI to show no character
+      showNoCharacter();
+
+      // Update auth UI to remove the unsync button
+      updateAuthUI();
+
+      // Hide status after 5 seconds
+      setTimeout(() => {
+        statusDiv.style.display = 'none';
+      }, 5000);
+    } else {
+      throw new Error(result.error || 'Unknown error');
+    }
+  } catch (error) {
+    console.error('Unsync error:', error);
+    statusDiv.style.color = '#EF4444';
+    statusDiv.textContent = `✗ Error: ${error.message || 'Failed to unsync character'}`;
+
+    if (isOwlbearReady) {
+      OBR.notification.show(`Error unsyncing character: ${error.message}`, 'ERROR');
+    }
+
+    // Re-enable button
+    unsyncBtn.disabled = false;
+    unsyncBtn.textContent = '🔓 Unsync from Owlbear';
   }
 };
 
