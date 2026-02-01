@@ -26,12 +26,12 @@ console.log(`Creating release packages v${version}...\n`);
 const owlcloudDist = path.join(distDir, 'owlcloud');
 if (fs.existsSync(owlcloudDist)) {
   console.log('Packaging OwlCloud for Chrome...');
-  const owlcloudChromeZip = path.join(releasesDir, `owlcloud-chrome-v${version}.zip`);
+  const owlcloudChromeZip = path.join(releasesDir, `owlcloud-chrome.zip`);
   execSync(`powershell Compress-Archive -Path "${owlcloudDist}\\*" -DestinationPath "${owlcloudChromeZip}" -Force`, { stdio: 'inherit' });
   console.log(`✓ Created ${owlcloudChromeZip}`);
 
   console.log('Packaging OwlCloud for Firefox...');
-  const owlcloudFirefoxZip = path.join(releasesDir, `owlcloud-firefox-v${version}.zip`);
+  const owlcloudFirefoxZip = path.join(releasesDir, `owlcloud-firefox.zip`);
   execSync(`powershell Compress-Archive -Path "${owlcloudDist}\\*" -DestinationPath "${owlcloudFirefoxZip}" -Force`, { stdio: 'inherit' });
   console.log(`✓ Created ${owlcloudFirefoxZip}`);
 }
@@ -40,12 +40,12 @@ if (fs.existsSync(owlcloudDist)) {
 const rollcloudDist = path.join(distDir, 'rollcloud');
 if (fs.existsSync(rollcloudDist)) {
   console.log('Packaging RollCloud for Chrome...');
-  const rollcloudChromeZip = path.join(releasesDir, `rollcloud-chrome-v${version}.zip`);
+  const rollcloudChromeZip = path.join(releasesDir, `rollcloud-chrome.zip`);
   execSync(`powershell Compress-Archive -Path "${rollcloudDist}\\*" -DestinationPath "${rollcloudChromeZip}" -Force`, { stdio: 'inherit' });
   console.log(`✓ Created ${rollcloudChromeZip}`);
 
   console.log('Packaging RollCloud for Firefox...');
-  const rollcloudFirefoxZip = path.join(releasesDir, `rollcloud-firefox-v${version}.zip`);
+  const rollcloudFirefoxZip = path.join(releasesDir, `rollcloud-firefox.zip`);
   execSync(`powershell Compress-Archive -Path "${rollcloudDist}\\*" -DestinationPath "${rollcloudFirefoxZip}" -Force`, { stdio: 'inherit' });
   console.log(`✓ Created ${rollcloudFirefoxZip}`);
 }
@@ -54,7 +54,7 @@ if (fs.existsSync(rollcloudDist)) {
 const websiteDist = path.join(distDir, 'website');
 if (fs.existsSync(websiteDist)) {
   console.log('Packaging Website...');
-  const websiteZip = path.join(releasesDir, `carmaclouds-website-v${version}.zip`);
+  const websiteZip = path.join(releasesDir, `carmaclouds-website.zip`);
   execSync(`powershell Compress-Archive -Path "${websiteDist}\\*" -DestinationPath "${websiteZip}" -Force`, { stdio: 'inherit' });
   console.log(`✓ Created ${websiteZip}`);
 }
