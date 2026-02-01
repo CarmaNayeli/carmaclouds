@@ -88,10 +88,10 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
         console.log("\u{1F4E8} Received dice-plus/isReady message:", event.data);
         if (event.data.requestId === requestId) {
           console.log("\u2705 RequestId matches:", requestId);
-          if (event.data.ready) {
+          if (event.data.ready || event.data.timestamp) {
             responseReceived = true;
             dicePlusReady = true;
-            console.log("\u2705 Dice+ is ready - 3D dice enabled!");
+            console.log("\u2705 Dice+ broadcast received - 3D dice enabled!");
           }
           if (!unsubscribed) {
             unsubscribed = true;

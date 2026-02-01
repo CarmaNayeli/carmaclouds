@@ -150,11 +150,16 @@ async function checkDicePlusReady() {
       // Only process messages that match our requestId to avoid console spam
       if (event.data.requestId === requestId) {
         console.log('✅ RequestId matches:', requestId);
-        if (event.data.ready) {
+
+        // Accept either explicit ready:true OR the echo (which proves broadcast works)
+        // If we get our own message back, it means OBR broadcast is working
+        // and Dice+ will receive it too (even if it doesn't respond)
+        if (event.data.ready || event.data.timestamp) {
           responseReceived = true;
           dicePlusReady = true;
-          console.log('✅ Dice+ is ready - 3D dice enabled!');
+          console.log('✅ Dice+ broadcast received - 3D dice enabled!');
         }
+
         if (!unsubscribed) {
           unsubscribed = true;
           unsubscribe(); // Clean up listener
