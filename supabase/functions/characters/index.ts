@@ -310,10 +310,10 @@ serve(async (req) => {
           class: character.class,
           race: character.race,
           level: character.level,
-          hp_current: character.hitPoints?.current || 0,
-          hp_max: character.hitPoints?.max || 0,
+          hit_points: character.hitPoints || { current: 0, max: 0 },
           armor_class: character.armorClass || 10,
           proficiency_bonus: character.proficiency_bonus || character.proficiencyBonus || 2,
+          raw_dicecloud_data: character,
           is_active: true,
           updated_at: new Date().toISOString()
         }
