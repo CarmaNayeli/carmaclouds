@@ -1,6 +1,6 @@
 {
   "name": "@carmaclouds/rollcloud",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "RollCloud - Discord/platform integrations and features for dice rolling",
   "main": "src/index.js",
   "type": "module",
@@ -18,7 +18,7 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@carmaclouds/core": "^2.1.0",
-    "@carmaclouds/pip": "^2.1.0"
+    "@carmaclouds/core": "^2.2.0",
+    "@carmaclouds/pip": "^2.2.0"
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "@carmaclouds/owlcloud",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "OwlCloud - Browser extension for DiceCloud with Owlbear Rodeo integration",
   "type": "module",
   "scripts": {
@@ -24,10 +24,10 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@carmaclouds/core": "^2.1.0"
+    "@carmaclouds/core": "^2.2.0"
   },
   "devDependencies": {
-    "@carmaclouds/build-tools": "^2.1.0",
+    "@carmaclouds/build-tools": "^2.2.0",
     "esbuild": "^0.19.0",
     "esbuild-plugin-copy": "^2.1.1",
     "web-ext": "^7.0.0"
