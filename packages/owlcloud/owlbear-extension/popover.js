@@ -138,8 +138,11 @@ async function checkDicePlusReady() {
 
     // Set up one-time listener for ready response BEFORE sending the request
     const unsubscribe = OBR.broadcast.onMessage('dice-plus/isReady', (event) => {
+      console.log('📨 Received dice-plus/isReady message:', event.data);
+
       // Only process messages that match our requestId to avoid console spam
       if (event.data.requestId === requestId) {
+        console.log('✅ RequestId matches:', requestId);
         if (event.data.ready) {
           responseReceived = true;
           dicePlusReady = true;
@@ -149,6 +152,8 @@ async function checkDicePlusReady() {
           unsubscribed = true;
           unsubscribe(); // Clean up listener
         }
+      } else {
+        console.log('⚠️ RequestId mismatch. Expected:', requestId, 'Got:', event.data.requestId);
       }
     });
 

@@ -888,10 +888,11 @@ window.addEventListener('message', async (event) => {
 
   const { type, source } = event.data;
 
-  // Only process messages from our Owlbear extension
-  // Silently ignore messages without the expected source field (likely SDK internal messages)
-  if (source !== 'owlbear-extension') {
-    return;
+  // Only process messages from our Owlbear extension or Dice+
+  // Allow Dice+ messages from its origin, but filter OwlCloud messages by source
+  const isDicePlus = event.origin === 'https://dice-plus.missinglinkdev.com';
+  if (!isDicePlus && source !== 'owlbear-extension') {
+    return; // Silently ignore messages without the expected source
   }
 
   // Messages are processed silently to avoid console spam

@@ -80,7 +80,9 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
       let responseReceived = false;
       let unsubscribed = false;
       const unsubscribe = OBR.broadcast.onMessage("dice-plus/isReady", (event) => {
+        console.log("\u{1F4E8} Received dice-plus/isReady message:", event.data);
         if (event.data.requestId === requestId) {
+          console.log("\u2705 RequestId matches:", requestId);
           if (event.data.ready) {
             responseReceived = true;
             dicePlusReady = true;
@@ -90,6 +92,8 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
             unsubscribed = true;
             unsubscribe();
           }
+        } else {
+          console.log("\u26A0\uFE0F RequestId mismatch. Expected:", requestId, "Got:", event.data.requestId);
         }
       });
       await OBR.broadcast.sendMessage("dice-plus/isReady", {

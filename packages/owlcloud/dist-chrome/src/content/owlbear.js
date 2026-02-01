@@ -9782,7 +9782,8 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
       return;
     }
     const { type, source } = event.data;
-    if (source !== "owlbear-extension") {
+    const isDicePlus = event.origin === "https://dice-plus.missinglinkdev.com";
+    if (!isDicePlus && source !== "owlbear-extension") {
       return;
     }
     debug.log("\u{1F4E8} Message from Owlbear extension:", type);
