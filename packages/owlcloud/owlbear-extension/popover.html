@@ -68,6 +68,7 @@
       border: 3px solid #8B5CF6;
       object-fit: cover;
       box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+      flex-shrink: 0;
     }
 
     .roll-mode-btn {
@@ -853,6 +854,27 @@
       font-size: 11px;
       line-height: 1.4;
       margin-top: 8px;
+    }
+
+    /* Responsive adjustments for small screens */
+    @media (max-width: 400px) {
+      .character-portrait {
+        width: 60px;
+        height: 60px;
+        border-width: 2px;
+      }
+
+      .character-header-content {
+        gap: 12px;
+      }
+
+      h1 {
+        font-size: 20px;
+      }
+
+      .subtitle {
+        font-size: 12px;
+      }
     }
 
   </style>
