@@ -461,19 +461,27 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
     const themeContent = document.getElementById("theme-section-content");
     if (!themeHeader || !themeContent)
       return;
-    let isExpanded = true;
+    let isExpanded = false;
+    themeContent.classList.add("collapsed");
+    themeHeader.classList.add("collapsed");
+    const arrow = themeHeader.querySelector("span");
+    if (arrow) {
+      arrow.style.transform = "rotate(-90deg)";
+    }
     themeHeader.addEventListener("click", () => {
       isExpanded = !isExpanded;
       if (isExpanded) {
-        themeContent.style.maxHeight = "1000px";
-        themeContent.style.marginTop = "12px";
-        themeHeader.querySelector("span").style.transform = "rotate(0deg)";
+        themeContent.classList.remove("collapsed");
         themeHeader.classList.remove("collapsed");
+        if (arrow) {
+          arrow.style.transform = "rotate(0deg)";
+        }
       } else {
-        themeContent.style.maxHeight = "0";
-        themeContent.style.marginTop = "0";
-        themeHeader.querySelector("span").style.transform = "rotate(-90deg)";
+        themeContent.classList.add("collapsed");
         themeHeader.classList.add("collapsed");
+        if (arrow) {
+          arrow.style.transform = "rotate(-90deg)";
+        }
       }
     });
   }
