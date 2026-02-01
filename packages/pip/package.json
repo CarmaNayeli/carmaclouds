@@ -1,35 +1,31 @@
 {
-  "name": "@carmaclouds/pip",
-  "version": "2.2.0",
-  "description": "Pip2 - Discord bot for CarmaClouds (handles RollCloud, OwlCloud, FoundCloud)",
+  "name": "pip2",
+  "version": "2.0.0",
+  "description": "Discord bot for RollCloud integration",
   "main": "src/index.js",
   "type": "module",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "nodemon src/index.js",
-    "deploy-commands": "node src/deploy-commands.js",
-    "clean": "rm -rf node_modules",
-    "test": "echo \"No tests yet\""
+    "dev": "node --watch src/index.js",
+    "deploy": "node src/deploy-commands.js",
+    "deploy-remote": "node deploy-remote.js",
+    "debug": "node debug-commands.js"
   },
   "keywords": [
     "discord",
     "bot",
-    "dicecloud",
-    "dnd",
-    "pip2",
-    "rollcloud",
-    "owlcloud",
-    "foundcloud"
+    "dice-cat"
   ],
-  "author": "",
+  "author": "Dice Cat Team",
   "license": "MIT",
   "dependencies": {
-    "@carmaclouds/core": "^2.2.0",
-    "@supabase/supabase-js": "^2.0.0",
-    "discord.js": "^14.16.3",
-    "dotenv": "^16.0.0"
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.3.1"
   },
   "devDependencies": {
-    "nodemon": "^3.0.0"
+    "eslint": "^8.56.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

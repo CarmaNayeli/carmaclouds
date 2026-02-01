@@ -1,5 +1,4 @@
-﻿import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
-import { CHARACTER_LIST } from '@carmaclouds/core';
+import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -23,9 +22,9 @@ export default {
             .setDescription(
               'You don\'t have any characters synced yet.\n\n' +
               '**To sync a character:**\n' +
-              '1. Make sure you\'ve run `/owlcloud` with your pairing code\n' +
+              '1. Make sure you\'ve run `/rollcloud` with your pairing code\n' +
               '2. Open a DiceCloud character sheet\n' +
-              '3. Click "Sync Character" in the OwlCloud extension'
+              '3. Click "Sync Character" in the RollCloud extension'
             )
           ]
         });
@@ -68,9 +67,8 @@ async function getCharactersByUser(discordUserId) {
     throw new Error('Supabase not configured');
   }
 
-  // Optimized query - only fetch needed fields to reduce egress
   const response = await fetch(
-    `${SUPABASE_URL}/rest/v1/clouds_characters?discord_user_id=eq.${discordUserId}&select=${CHARACTER_LIST}&order=is_active.desc,character_name.asc`,
+    `${SUPABASE_URL}/rest/v1/rollcloud_characters?discord_user_id=eq.${discordUserId}&select=*&order=is_active.desc,updated_at.desc`,
     {
       headers: {
         'apikey': SUPABASE_SERVICE_KEY,

@@ -17,10 +17,13 @@
       "import": "./dist/supabase/index.js",
       "types": "./dist/supabase/index.d.ts"
     },
+    "./supabase/config.js": "./src/supabase/config.js",
     "./types": {
       "import": "./dist/types/index.js",
       "types": "./dist/types/index.d.ts"
-    }
+    },
+    "./common/*": "./src/common/*",
+    "./modules/*": "./src/modules/*"
   },
   "scripts": {
     "build": "tsc",

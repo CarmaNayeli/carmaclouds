@@ -1,0 +1,20 @@
+services:
+  - type: worker
+    name: pip-bot
+    runtime: node
+    plan: starter  # $7/month for 24/7 uptime
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: DISCORD_TOKEN
+        sync: false  # Set this in Render dashboard
+      - key: DISCORD_CLIENT_ID
+        sync: false  # Set this in Render dashboard
+      - key: DISCORD_GUILD_ID
+        sync: false  # Optional: for testing in specific server only
+      - key: SUPABASE_URL
+        sync: false  # Set this in Render dashboard
+      - key: SUPABASE_SERVICE_KEY
+        sync: false  # Set this in Render dashboard
+      - key: NODE_ENV
+        value: production

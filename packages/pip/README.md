@@ -1,470 +1,283 @@
-# @carmaclouds/pip 🤖
+# Pip Bot 🎲
 
-**Pip2 - Discord bot for CarmaClouds ecosystem**
+Discord bot for the Dice Cat community server - a lightweight utility bot focused on changelogs and fun commands.
 
-Pip2 is the unified Discord bot that powers RollCloud, OwlCloud, and FoundCloud integrations. It syncs DiceCloud characters to Discord, enables dice rolling, character management, and cross-platform features.
-
----
+**🌐 Web Dashboard**: [https://pip-bot.vercel.app/](https://pip-bot.vercel.app/)
 
 ## Features
 
-- ✅ **DiceCloud Integration** - Sync and manage characters from DiceCloud
-- ✅ **Discord Commands** - Comprehensive slash commands for character management
-- ✅ **RollCloud Support** - Dice rolling with character stats and modifiers
-- ✅ **Heavy Caching** - 15-minute TTL cache reduces Supabase egress by 80%
-- ✅ **Real-time Updates** - Character HP, spell slots, resources
-- ✅ **Session Management** - Discord user pairing with DiceCloud accounts
-- ✅ **Owlbear Integration** - Supports OwlCloud browser extension
-- ✅ **Reaction Roles** - Automated role assignment via reactions
+### 📋 Changelog Management
+- `/changelog view` - View the latest Dice Cat app changelog
+- `/changelog post` - Post changelog to announcements (Admin only)
 
----
+### 🎭 Reaction Roles
+- `/reactionrole create` - Create a new reaction role message
+- `/reactionrole add` - Add a role assignment to a message
+- `/reactionrole remove` - Remove a role from a message
+- `/reactionrole list` - List all reaction roles on a message
+- `/reactionrole delete` - Delete all reaction roles from a message
+- Users can self-assign roles by reacting to configured messages
 
-## Structure
+### 🎲 Fun Utilities
+- `/roll [dice]` - Roll dice using standard notation (2d6, 1d20+5, etc.)
+- `/coin [count]` - Flip one or more coins
+- `/ping` - Check bot responsiveness
+- `/help` - Show help information
 
-```
-pip/
-├── src/
-│   ├── commands/           # Discord slash commands
-│   │   ├── character.js    # Set active character
-│   │   ├── characters.js   # List all characters
-│   │   ├── sheet.js        # View character sheet
-│   │   ├── roll.js         # Dice rolling with character stats
-│   │   ├── cast.js         # Spell casting
-│   │   ├── heal.js         # Heal character
-│   │   ├── takedamage.js   # Take damage
-│   │   ├── rest.js         # Rest & recovery
-│   │   ├── stats.js        # Ability scores & saves
-│   │   ├── spells.js       # Spell list
-│   │   └── ...             # (30+ total commands)
-│   │
-│   ├── events/             # Discord event handlers
-│   │   ├── ready.js        # Bot startup
-│   │   ├── interactionCreate.js
-│   │   ├── messageReactionAdd.js
-│   │   └── ...
-│   │
-│   ├── rollcloud/          # RollCloud-specific features
-│   │   ├── turnPoller.js   # Turn order tracking
-│   │   └── ...
-│   │
-│   ├── utils/              # Utilities
-│   │   ├── characterCache.js        # Character caching system
-│   │   ├── characterCacheManager.js # Cache manager wrapper
-│   │   ├── reactionRoleStorage.js   # Reaction role storage
-│   │   └── fetch-timeout.js         # Timeout utility
-│   │
-│   ├── index.js            # Bot entry point
-│   └── deploy-commands.js  # Command registration
-│
-├── package.json
-├── .env.example
-└── README.md
-```
+### 🎮 RollCloud Integration
+- `/rollcloud [code]` - Connect RollCloud extension to Discord
+- Receive real-time turn and action economy updates from Roll20 combat
+- One-click setup: extension generates code, type it in Discord, done!
 
----
+### 🛡️ Moderation & Welcome
+- Automatic welcome messages for new members
+- Ready for custom moderation commands
 
-## Installation
+## Changelog Features
+
+The bot can read the `CHANGELOG.md` file from the main Dice Cat repository and:
+- Display recent changes to users
+- Post formatted updates to announcement channels
+- Ping `@everyone` for new releases (admin only)
+
+Perfect for keeping your Discord community informed about app updates!
+
+## Setup
 
 ### Prerequisites
+- Node.js 18 or higher
+- Discord Bot Token
+- Discord Server with admin permissions
 
-- Node.js 18+
-- Discord Bot Token ([Discord Developer Portal](https://discord.com/developers/applications))
-- Supabase account (for character storage)
+### Installation
 
-### Setup
-
+1. Navigate to the pip-bot directory:
 ```bash
-# From monorepo root
-cd packages/pip
-
-# Install dependencies (or from root: npm install)
+cd pip-bot
 npm install
+```
 
-# Copy environment template
+2. Create a `.env` file based on `.env.example`:
+```bash
 cp .env.example .env
-
-# Edit .env with your credentials
-# - DISCORD_TOKEN
-# - DISCORD_CLIENT_ID
-# - SUPABASE_URL
-# - SUPABASE_SERVICE_KEY
 ```
 
-### Deploy Commands
-
-```bash
-# Register slash commands with Discord
-npm run deploy-commands
+3. Add your Discord bot configuration to `.env`:
+```env
+DISCORD_TOKEN=your_bot_token_here
+DISCORD_CLIENT_ID=your_client_id_here
+DISCORD_GUILD_ID=your_guild_id_here
 ```
 
-### Start Bot
-
+4. Deploy slash commands:
 ```bash
-# Development
-npm run dev
+npm run deploy
+```
 
-# Production
+5. Start the bot:
+```bash
 npm start
 ```
 
----
+For development with auto-reload:
+```bash
+npm run dev
+```
+
+## Deployment
+
+### Option 1: Render.com (Recommended for Cloud Hosting)
+
+Easy cloud deployment with $7/month for 24/7 uptime:
+
+1. Sign up at [render.com](https://render.com)
+2. Create a new Web Service from your GitHub repo
+3. Set root directory to `pip-bot`
+4. Add environment variables (DISCORD_TOKEN, DISCORD_CLIENT_ID, DISCORD_GUILD_ID)
+5. Choose Starter plan ($7/month) for always-on bot
+6. Deploy!
+
+See [RENDER_DEPLOY.md](RENDER_DEPLOY.md) for detailed instructions.
+
+**Note**: Free tier spins down after inactivity - not ideal for Discord bots.
+
+### Option 2: Railway.app
+
+Free tier with 500 hours/month (enough for 24/7):
+
+1. Sign up at [railway.app](https://railway.app)
+2. Deploy from GitHub
+3. Set root to `pip-bot`
+4. Add environment variables
+5. Deploy for free!
+
+### Option 3: Self-Hosted
+
+Run on your own server with PM2:
+```bash
+npm install -g pm2
+pm2 start src/index.js --name pip-bot
+pm2 save
+pm2 startup
+```
 
 ## Configuration
 
-### Environment Variables
+See `.env.example` for all available configuration options.
 
-Create a `.env` file:
+Key settings:
+- `DISCORD_TOKEN` - Your bot token from Discord Developer Portal
+- `DISCORD_CLIENT_ID` - Your bot's client ID
+- `DISCORD_GUILD_ID` - Your Discord server ID
 
-```env
-DISCORD_TOKEN=your_discord_bot_token
-DISCORD_CLIENT_ID=your_application_id
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_KEY=your_service_role_key
+## Command Examples
+
+### Dice Rolling
+```
+/roll 2d6          → Roll two 6-sided dice
+/roll 1d20+5       → Roll d20 and add 5
+/roll 3d10-2       → Roll three d10 and subtract 2
+/roll 100d6        → Roll 100 d6 (max supported)
 ```
 
-### Discord Permissions
-
-Required bot permissions:
-- Send Messages
-- Embed Links
-- Add Reactions
-- Use Slash Commands
-- Manage Roles (for reaction roles)
-
-Invite URL:
+### Coin Flipping
 ```
-https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=274877959168&scope=bot%20applications.commands
+/coin              → Flip one coin
+/coin 10           → Flip 10 coins
+/coin 100          → Flip 100 coins with statistics
 ```
 
----
-
-## Usage
-
-### Character Commands
-
-| Command | Description |
-|---------|-------------|
-| `/character <name>` | Set active character |
-| `/characters` | List all synced characters |
-| `/sheet [section]` | View character sheet |
-| `/stats` | View ability scores & saves |
-
-### Combat Commands
-
-| Command | Description |
-|---------|-------------|
-| `/roll <dice>` | Roll dice (e.g., 2d6+3) |
-| `/roll check:<ability>` | Make ability/skill check |
-| `/takedamage <amount>` | Take damage |
-| `/heal <amount>` | Heal HP |
-| `/rest [long]` | Short or long rest |
-
-### Spell Commands
-
-| Command | Description |
-|---------|-------------|
-| `/spells [level]` | View spell list |
-| `/cast <spell> [level]` | Cast spell (consumes slot) |
-
-### Utility Commands
-
-| Command | Description |
-|---------|-------------|
-| `/ping` | Check bot latency |
-| `/help` | Show help message |
-| `/changelog` | View recent updates |
-
----
-
-## Caching System
-
-Pip2 uses **heavy caching** to reduce Supabase egress costs:
-
-### Cache Manager
-
-Uses `@carmaclouds/core` CacheManager with Discord-specific wrappers:
-
-```javascript
-import cacheManager from './utils/characterCacheManager.js';
-
-// Get cached character by Discord user ID
-const character = cacheManager.getByDiscordUser(discordUserId);
-
-// Store character (caches under multiple keys)
-cacheManager.store(character);
-
-// Invalidate cache
-cacheManager.invalidate(characterId, discordUserId, diceCloudUserId);
+### Changelog
+```
+/changelog view    → View latest changes
+/changelog post    → Post to announcements (admin only)
+/changelog post #updates  → Post to specific channel
 ```
 
-### Cache Configuration
+### Reaction Roles
+```
+# Create a reaction role message
+/reactionrole create title:"Choose Your Games" description:"React to get game notifications!"
 
-- **TTL:** 15 minutes (Discord commands need fresher data than browser extensions)
-- **Cleanup:** Auto-cleanup every 5 minutes
-- **Multi-key storage:** Characters cached by Discord ID, DiceCloud ID, and User ID
-- **Hit rate:** Typically 70-85% for active users
+# Add roles to the message
+/reactionrole add message_id:123456789 emoji:🎲 role:@Dice Match Players
+/reactionrole add message_id:123456789 emoji:🎮 role:@General Gaming
 
-### Cache Statistics
+# List all reaction roles on a message
+/reactionrole list message_id:123456789
 
-```javascript
-const stats = cacheManager.getStats();
-// {
-//   size: 42,
-//   hits: 156,
-//   misses: 24,
-//   stores: 18,
-//   invalidations: 3,
-//   hitRate: '86.67%',
-//   expiryMinutes: 15
-// }
+# Remove a specific reaction role
+/reactionrole remove message_id:123456789 emoji:🎲
+
+# Delete all reaction roles from a message
+/reactionrole delete message_id:123456789
 ```
 
----
-
-## Optimized Field Selection
-
-Uses `@carmaclouds/core` field sets to reduce egress:
-
-```javascript
-import {
-  CHARACTER_COMBAT,  // Combat-focused fields (50-70% smaller)
-  CHARACTER_SPELLS,  // Spell-focused fields
-  CHARACTER_FULL,    // Full character data
-  CHARACTER_LIST     // Minimal list view
-} from '@carmaclouds/core';
-
-// Example: Fetch only combat data
-const response = await fetch(
-  `${SUPABASE_URL}/rest/v1/clouds_characters?discord_user_id=eq.${userId}&select=${CHARACTER_COMBAT}`
-);
+### RollCloud Integration
+```
+# Connect RollCloud extension (use code from extension)
+/rollcloud ABC123
 ```
 
-**Egress savings:** 50-70% reduction by excluding unused fields
-
----
-
-## Integration with Core
-
-Pip2 uses shared utilities from `@carmaclouds/core`:
-
-```javascript
-import {
-  CacheManager,           // Generic cache manager
-  CHARACTER_COMBAT,       // Field selections
-  CHARACTER_FULL,
-  CHARACTER_SPELLS,
-  PAIRING_FIELDS
-} from '@carmaclouds/core';
-```
-
-### Package Dependencies
-
-```json
-{
-  "dependencies": {
-    "@carmaclouds/core": "^1.0.0",
-    "discord.js": "^14.14.1",
-    "dotenv": "^16.3.1"
-  }
-}
-```
-
----
-
-## RollCloud Features
-
-Pip2 powers RollCloud's Discord integrations:
-
-- **Turn Polling** - Tracks turn order in combat
-- **Dice Rolling** - d20, advantage/disadvantage, character modifiers
-- **Character Checks** - Ability checks, saving throws, skill checks
-- **Webhook Integration** - Sends rolls to RollCloud channels
-
-See [@carmaclouds/rollcloud](../rollcloud/README.md) for RollCloud-specific features.
-
----
-
-## Database Schema
-
-### clouds_characters Table
-
-Key fields Pip2 uses:
-
-```typescript
-{
-  id: UUID,
-  dicecloud_character_id: string,
-  character_name: string,
-  discord_user_id: string,
-  user_id_dicecloud: string,
-  is_active: boolean,
-  hit_points: { current: number, max: number },
-  spell_slots: Record<string, { current: number, max: number }>,
-  attributes: Record<string, number>,
-  // ... (see @carmaclouds/core for full schema)
-}
-```
-
-### clouds_discord_links Table
-
-Discord user pairing:
-
-```typescript
-{
-  id: UUID,
-  discord_user_id: string,
-  dicecloud_user_id: string,
-  pairing_code: string,
-  status: 'pending' | 'active' | 'expired',
-  created_at: timestamp,
-  expires_at: timestamp
-}
-```
-
----
+**Setup Flow:**
+1. Open RollCloud extension → Discord Integration → Click "Setup Discord"
+2. Extension shows a 6-character code (e.g., `ABC123`) and opens Discord
+3. Add Pip Bot to your server (if not already added)
+4. In Discord, type `/rollcloud ABC123` (your code)
+5. Done! Extension auto-connects, turns appear in Discord!
 
 ## Development
 
 ### Adding New Commands
 
-1. Create command file in `src/commands/`:
+1. Create a new file in `src/commands/`
+2. Export an object with `data` and `execute` properties
+3. The bot will automatically load it on restart
 
+Example:
 ```javascript
-// src/commands/mycommand.js
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
-import { CHARACTER_COMBAT } from '@carmaclouds/core';
+import { SlashCommandBuilder } from 'discord.js';
 
 export default {
   data: new SlashCommandBuilder()
-    .setName('mycommand')
-    .setDescription('My command description'),
+    .setName('example')
+    .setDescription('Example command'),
 
   async execute(interaction) {
-    await interaction.deferReply();
-    // Command logic...
-    await interaction.editReply({ content: 'Done!' });
+    await interaction.reply('Hello!');
   }
 };
 ```
 
-2. Deploy commands:
+### Adding New Events
 
-```bash
-npm run deploy-commands
+1. Create a new file in `src/events/`
+2. Export an object with `name`, `once`, and `execute` properties
+3. The bot will automatically load it on restart
+
+## Architecture
+
+```
+pip-bot/
+├── src/
+│   ├── commands/            # Slash commands
+│   │   ├── changelog.js     # View/post changelogs
+│   │   ├── coin.js          # Coin flip
+│   │   ├── help.js          # Help system
+│   │   ├── ping.js          # Status check
+│   │   ├── reactionrole.js  # Reaction role management
+│   │   ├── roll.js          # Dice rolling
+│   │   └── rollcloud.js     # RollCloud webhook integration
+│   ├── events/              # Discord event handlers
+│   │   ├── ready.js         # Bot startup
+│   │   ├── guildMemberAdd.js        # Welcome messages
+│   │   ├── messageReactionAdd.js    # Reaction role assignment
+│   │   └── messageReactionRemove.js # Reaction role removal
+│   ├── utils/               # Utility functions
+│   │   └── reactionRoleStorage.js   # Reaction role data persistence
+│   ├── index.js             # Main bot file
+│   └── deploy-commands.js   # Command deployment
+├── dashboard/               # Web dashboard (Next.js)
+│   ├── app/                 # Next.js App Router
+│   │   ├── api/             # API routes
+│   │   ├── reaction-roles/  # Reaction roles page
+│   │   ├── changelog/       # Changelog page
+│   │   └── page.tsx         # Homepage
+│   ├── package.json
+│   └── README.md            # Dashboard docs
+├── data/                    # Bot data storage (gitignored)
+│   ├── reaction-roles.json  # Reaction role configurations
+│   └── rollcloud-webhooks.json  # RollCloud webhook URLs per server
+├── .env                     # Environment variables (gitignored)
+├── .env.example             # Example environment variables
+├── vercel.json              # Vercel deployment config
+├── package.json             # Dependencies
+└── README.md                # This file
 ```
 
-3. Restart bot
+## Web Dashboard
 
-### Using Optimized Field Sets
+A Next.js web dashboard is available for managing the bot:
 
-Always use optimized field selections from `@carmaclouds/core`:
+- **URL**: [https://pip-bot.vercel.app/](https://pip-bot.vercel.app/)
+- **Features**: View reaction roles, read changelog, command reference
+- **Deployment**: Vercel with root directory set to `pip-bot/dashboard`
 
-```javascript
-// ❌ BAD - Fetches all fields including 50-200KB raw_dicecloud_data
-const query = `${SUPABASE_URL}/rest/v1/clouds_characters?discord_user_id=eq.${userId}&select=*`;
+See `dashboard/README.md` for development and deployment instructions.
 
-// ✅ GOOD - Only fetch needed fields (85% smaller)
-import { CHARACTER_COMBAT } from '@carmaclouds/core';
-const query = `${SUPABASE_URL}/rest/v1/clouds_characters?discord_user_id=eq.${userId}&select=${CHARACTER_COMBAT}`;
-```
+## Future Ideas
 
-### Testing
-
-```bash
-# Test command deployment
-npm run deploy-commands
-
-# Check bot connection
-npm run dev
-# Use /ping in Discord to verify
-```
-
----
-
-## Deployment
-
-### Production (Render, Railway, etc.)
-
-```bash
-# Build command (if needed)
-npm run build
-
-# Start command
-npm start
-```
-
-### Environment Variables
-
-Set in deployment platform:
-- `DISCORD_TOKEN`
-- `DISCORD_CLIENT_ID`
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_KEY`
-
-### Auto-restart
-
-Recommended: Use PM2 or platform's auto-restart feature
-
----
-
-## Troubleshooting
-
-### Commands Not Showing
-
-```bash
-# Re-deploy commands
-npm run deploy-commands
-
-# Wait 1-2 minutes for Discord to propagate
-```
-
-### Database Connection Issues
-
-```bash
-# Test with /testdbconnection command in Discord
-# Check Supabase URL and service key in .env
-```
-
-### Cache Issues
-
-```javascript
-// Clear cache for a user
-cacheManager.invalidate(null, discordUserId, null);
-
-// Clear all cache
-cacheManager.clear();
-```
-
-### High Egress Costs
-
-1. Verify optimized field selections are used
-2. Check cache hit rate: `cacheManager.getStats()`
-3. Ensure 15-minute cache TTL is active
-4. Review Supabase dashboard for query patterns
-
----
-
-## Related Packages
-
-- [@carmaclouds/core](../core/README.md) - Shared utilities & types
-- [@carmaclouds/rollcloud](../rollcloud/README.md) - RollCloud features
-- [@carmaclouds/owlcloud](../owlcloud/README.md) - Browser extension
-- [@carmaclouds/foundcloud](../foundcloud/README.md) - Foundry VTT module
-
----
+- Discord OAuth authentication for dashboard
+- Real-time bot status monitoring
+- Dashboard-based reaction role creation
+- Custom announcement formatting
+- Scheduled changelog posts
+- Auto-moderation features (spam, invites, profanity filters)
+- Custom server stats and analytics
+- Integration with Dice Cat app API
+- Server logging (joins, leaves, message edits/deletes)
+- Custom tags/commands system
 
 ## License
 
 MIT
-
----
-
-## Contributing
-
-When making changes:
-
-1. Follow existing code patterns
-2. Use `@carmaclouds/core` for shared utilities
-3. Use optimized field selections (avoid `select=*`)
-4. Test with `npm run deploy-commands` before committing
-5. Update this README if adding new features

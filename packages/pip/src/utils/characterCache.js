@@ -1,10 +1,11 @@
-﻿/**
+/**
  * Optimized Character Cache and Fetching System
  * Prevents duplicate database calls and improves performance
- * Uses CharacterCacheManager for HEAVY caching (15 min TTL)
  */
 
-import cacheManager from './characterCacheManager.js';
+// Simple in-memory cache with TTL
+const characterCache = new Map();
+const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes (reduced for fresher data after syncs)
 
 // Supabase config
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -21,18 +22,21 @@ async function getActiveCharacter(discordUserId) {
     return null;
   }
 
-  // Check cache first using new cache manager
-  const cached = cacheManager.getByDiscordUser(discordUserId);
-  if (cached) {
-    return cached;
+  // Check cache first
+  const cacheKey = `active_${discordUserId}`;
+  const cached = characterCache.get(cacheKey);
+  
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    console.log(`[CACHE HIT] Active character for ${discordUserId}`);
+    return cached.data;
   }
 
-  console.log(`[DB FETCH] Active character for ${discordUserId}`);
+  console.log(`[CACHE MISS] Fetching active character for ${discordUserId}`);
 
   try {
-    // Optimized query - only fetch essential fields (reduces egress!)
+    // Optimized query - only fetch essential fields
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/clouds_characters?discord_user_id=eq.${discordUserId}&is_active=eq.true&select=dicecloud_character_id,character_name,class,level,race,alignment,hit_points,armor_class,speed,attributes,attribute_mods,discord_user_id,user_id_dicecloud&limit=1`,
+      `${SUPABASE_URL}/rest/v1/rollcloud_characters?discord_user_id=eq.${discordUserId}&is_active=eq.true&select=character_name,class,level,race,alignment,hit_points,armor_class,speed,attributes,attribute_mods&limit=1`,
       {
         headers: {
           'apikey': SUPABASE_SERVICE_KEY,
@@ -49,9 +53,12 @@ async function getActiveCharacter(discordUserId) {
     const data = await response.json();
     const character = data.length > 0 ? data[0] : null;
 
-    // Store in cache manager (15 min TTL)
+    // Cache the result
     if (character) {
-      cacheManager.store(character);
+      characterCache.set(cacheKey, {
+        data: character,
+        timestamp: Date.now()
+      });
     }
 
     return character;
@@ -73,9 +80,9 @@ async function setActiveCharacter(discordUserId, characterName) {
   }
 
   try {
-    // First, get all characters for this user (optimized fields)
+    // First, get all characters for this user
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/clouds_characters?discord_user_id=eq.${discordUserId}&select=id,dicecloud_character_id,character_name,class,level,race,alignment,hit_points,armor_class,speed,attributes,attribute_mods,discord_user_id,user_id_dicecloud`,
+      `${SUPABASE_URL}/rest/v1/rollcloud_characters?discord_user_id=eq.${discordUserId}&select=id,character_name,class,level,race,alignment,hit_points,armor_class,speed,attributes,attribute_mods`,
       {
         headers: {
           'apikey': SUPABASE_SERVICE_KEY,
@@ -104,7 +111,7 @@ async function setActiveCharacter(discordUserId, characterName) {
       const isActive = char.character_name.toLowerCase() === characterName.toLowerCase();
 
       return fetch(
-        `${SUPABASE_URL}/rest/v1/clouds_characters?id=eq.${char.id}`,
+        `${SUPABASE_URL}/rest/v1/rollcloud_characters?id=eq.${char.id}`,
         {
           method: 'PATCH',
           headers: {
@@ -119,16 +126,15 @@ async function setActiveCharacter(discordUserId, characterName) {
 
     await Promise.all(updatePromises);
 
-    // Invalidate cache for this user (all their characters)
-    cacheManager.invalidate(
-      character.dicecloud_character_id,
-      discordUserId,
-      character.user_id_dicecloud
-    );
+    // Clear cache for this user
+    const cacheKey = `active_${discordUserId}`;
+    characterCache.delete(cacheKey);
 
     // Cache the new active character
-    const activeCharacter = { ...character, is_active: true };
-    cacheManager.store(activeCharacter);
+    characterCache.set(cacheKey, {
+      data: { ...character, is_active: true },
+      timestamp: Date.now()
+    });
 
     return { success: true, character };
   } catch (error) {
@@ -142,29 +148,51 @@ async function setActiveCharacter(discordUserId, characterName) {
  * @param {string} discordUserId - Discord user ID
  */
 function clearUserCache(discordUserId) {
-  cacheManager.invalidate(null, discordUserId, null);
+  const cacheKey = `active_${discordUserId}`;
+  characterCache.delete(cacheKey);
 }
 
 /**
- * Clear all cache
+ * Clear expired cache entries
  */
-function clearAllCache() {
-  cacheManager.clear();
+function cleanupCache() {
+  const now = Date.now();
+  for (const [key, value] of characterCache.entries()) {
+    if (now - value.timestamp > CACHE_TTL_MS) {
+      characterCache.delete(key);
+    }
+  }
 }
 
 /**
  * Get cache statistics
  */
 function getCacheStats() {
-  return cacheManager.getStats();
+  const now = Date.now();
+  const stats = {
+    total: characterCache.size,
+    expired: 0,
+    valid: 0
+  };
+
+  for (const value of characterCache.values()) {
+    if (now - value.timestamp > CACHE_TTL_MS) {
+      stats.expired++;
+    } else {
+      stats.valid++;
+    }
+  }
+
+  return stats;
 }
 
-// Cache manager handles auto-cleanup internally
+// Auto-cleanup every 2 minutes
+setInterval(cleanupCache, 2 * 60 * 1000);
 
 export {
   getActiveCharacter,
   setActiveCharacter,
   clearUserCache,
-  clearAllCache,
+  cleanupCache,
   getCacheStats
 };

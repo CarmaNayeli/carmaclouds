@@ -83,7 +83,7 @@ const RACIAL_FEATURE_EDGE_CASES = {
     saveDC: '8 + con_mod + prof_bonus',
     description: 'Cone/line damage, Dex save for half'
   },
-  'damage resistance': {
+  'dragonborn damage resistance': {
     type: 'damage_resistance',
     damageType: 'chosen_draconic_ancestry',
     description: 'Resistance to chosen damage type'
@@ -129,7 +129,7 @@ const RACIAL_FEATURE_EDGE_CASES = {
     effect: 'two_skill_proficiencies',
     description: 'Choose two skill proficiencies'
   },
-  'fey ancestry': {
+  'half-elf fey ancestry': {
     type: 'save_advantage_and_immunity',
     saveAdvantage: 'charmed_saves',
     immunity: 'magic_sleep',
@@ -239,7 +239,7 @@ const RACIAL_FEATURE_EDGE_CASES = {
     ],
     description: 'Talk to beasts/plants + immune to elemental/fey charm/frighten'
   },
-  'powerful build': {
+  'firbolg powerful build': {
     type: 'carry_capacity',
     effect: 'double_carry_capacity_push_pull_lift',
     description: 'Double carry/push/pull/lift capacity'
@@ -254,7 +254,7 @@ const RACIAL_FEATURE_EDGE_CASES = {
     resource: 'once_per_short_rest',
     description: 'Reaction: reduce damage by 1d12 + Con mod'
   },
-  'powerful build': {
+  'goliath powerful build': {
     type: 'carry_capacity',
     effect: 'double_carry_capacity_push_pull_lift',
     description: 'Double carry/push/pull/lift capacity'
@@ -445,7 +445,7 @@ const RACIAL_FEATURE_EDGE_CASES = {
     saveDC: '8 + strength_mod + prof_bonus',
     description: 'Frighten creatures in 10ft for 1 minute (Wis save)'
   },
-  'damage resistance': {
+  'leonin damage resistance': {
     type: 'damage_resistance',
     damageType: 'necrotic',
     description: 'Necrotic resistance'

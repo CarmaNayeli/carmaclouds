@@ -1,6 +1,6 @@
-﻿import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { fetchWithTimeout } from '../utils/fetch-timeout.js';
-import { CHARACTER_SPELLS, PAIRING_FIELDS } from '@carmaclouds/core';
+
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -117,7 +117,7 @@ export default {
 
       // Get user's pairing for command queue
       const pairingResponse = await fetchWithTimeout(
-        `${SUPABASE_URL}/rest/v1/clouds_pairings?discord_user_id=eq.${discordUserId}&status=eq.connected&select=${PAIRING_FIELDS}`,
+        `${SUPABASE_URL}/rest/v1/rollcloud_pairings?discord_user_id=eq.${discordUserId}&status=eq.connected&select=*`,
         {
           headers: {
             'apikey': SUPABASE_SERVICE_KEY,
@@ -138,7 +138,7 @@ export default {
 
       if (pairings.length === 0) {
         return await interaction.editReply({
-          content: '❌ No extension connection found. Use `/owlcloud <code>` to connect your extension.',
+          content: '❌ No extension connection found. Use `/rollcloud <code>` to connect your extension.',
           flags: 64
         });
       }
@@ -222,7 +222,7 @@ export default {
 async function getActiveCharacter(discordUserId) {
   try {
     const response = await fetchWithTimeout(
-      `${SUPABASE_URL}/rest/v1/clouds_characters?discord_user_id=eq.${discordUserId}&is_active=eq.true&select=${CHARACTER_SPELLS}&limit=1`,
+      `${SUPABASE_URL}/rest/v1/rollcloud_characters?discord_user_id=eq.${discordUserId}&is_active=eq.true&select=*&limit=1`,
       {
         headers: {
           'apikey': SUPABASE_SERVICE_KEY,
@@ -239,7 +239,7 @@ async function getActiveCharacter(discordUserId) {
     }
 
     const fallbackResponse = await fetchWithTimeout(
-      `${SUPABASE_URL}/rest/v1/clouds_characters?discord_user_id=eq.${discordUserId}&is_active=eq.true&select=${CHARACTER_SPELLS}&order=updated_at.desc&limit=1`,
+      `${SUPABASE_URL}/rest/v1/rollcloud_characters?discord_user_id=eq.${discordUserId}&select=*&order=updated_at.desc&limit=1`,
       {
         headers: {
           'apikey': SUPABASE_SERVICE_KEY,
@@ -347,7 +347,7 @@ function buildSpellButtons(spell, characterName, pairingId, discordUserId) {
     const attackFormula = attackRoll.includes?.('d') ? attackRoll : `1d20+${attackRoll}`;
     buttons.push(
       new ButtonBuilder()
-        .setCustomId(`owlcloud:roll:${spell.name} - Spell Attack:${attackFormula}`)
+        .setCustomId(`rollcloud:roll:${spell.name} - Spell Attack:${attackFormula}`)
         .setLabel('Spell Attack')
         .setStyle(ButtonStyle.Primary)
         .setEmoji('🎯')
@@ -363,7 +363,7 @@ function buildSpellButtons(spell, characterName, pairingId, discordUserId) {
         const label = roll.name || (isHealing ? 'Healing' : damageType.charAt(0).toUpperCase() + damageType.slice(1));
         buttons.push(
           new ButtonBuilder()
-            .setCustomId(`owlcloud:roll:${spell.name} - ${damageType}:${roll.damage}`)
+            .setCustomId(`rollcloud:roll:${spell.name} - ${damageType}:${roll.damage}`)
             .setLabel(label)
             .setStyle(isHealing ? ButtonStyle.Success : ButtonStyle.Danger)
             .setEmoji(isHealing ? '💚' : '💥')
@@ -380,7 +380,7 @@ function buildSpellButtons(spell, characterName, pairingId, discordUserId) {
       const isHealing = damageType.toLowerCase() === 'healing';
       buttons.push(
         new ButtonBuilder()
-          .setCustomId(`owlcloud:roll:${spell.name} - ${damageType}:${damageRoll}`)
+          .setCustomId(`rollcloud:roll:${spell.name} - ${damageType}:${damageRoll}`)
           .setLabel(isHealing ? 'Healing' : `Damage${spell.damageType ? ` (${spell.damageType})` : ''}`)
           .setStyle(isHealing ? ButtonStyle.Success : ButtonStyle.Danger)
           .setEmoji(isHealing ? '💚' : '💥')
@@ -390,7 +390,7 @@ function buildSpellButtons(spell, characterName, pairingId, discordUserId) {
     if (healingRoll && buttons.length < 5) {
       buttons.push(
         new ButtonBuilder()
-          .setCustomId(`owlcloud:roll:${spell.name} - healing:${healingRoll}`)
+          .setCustomId(`rollcloud:roll:${spell.name} - healing:${healingRoll}`)
           .setLabel('Healing')
           .setStyle(ButtonStyle.Success)
           .setEmoji('💚')

@@ -1,4 +1,4 @@
-﻿import { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } from 'discord.js';
 import { getActiveCharacter, setActiveCharacter } from '../utils/characterCache.js';
 
 export default {
@@ -292,7 +292,7 @@ async function getUserCharacters(discordUserId) {
   try {
     // Optimized query - only fetch essential fields for autocomplete
     const response = await fetch(
-      `${process.env.SUPABASE_URL}/rest/v1/clouds_characters?discord_user_id=eq.${discordUserId}&select=character_name,class,level&order=character_name`,
+      `${process.env.SUPABASE_URL}/rest/v1/rollcloud_characters?discord_user_id=eq.${discordUserId}&select=character_name,class,level&order=character_name`,
       {
         headers: {
           'apikey': process.env.SUPABASE_SERVICE_KEY,
