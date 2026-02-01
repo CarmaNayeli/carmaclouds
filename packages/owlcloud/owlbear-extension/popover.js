@@ -525,6 +525,12 @@ async function linkExistingCharacterToUser() {
         if (isOwlbearReady) {
           OBR.notification.show('Character linked to your account!', 'SUCCESS');
         }
+
+        // Refresh character data to display the newly linked character
+        await checkForActiveCharacter();
+
+        // Update auth UI to show unsync button
+        updateAuthUI();
       } else {
         const errorText = await linkResponse.text();
         console.error('❌ Failed to link character:', errorText);
