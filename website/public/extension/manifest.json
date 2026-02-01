@@ -1,15 +1,55 @@
 {
-  "manifest_version": 1,
-  "name": "OwlCloud - DiceCloud Integration",
+  "manifest_version": 2,
+  "name": "OwlCloud: DiceCloud + Owlbear Rodeo Integration",
   "version": "2.1.0",
   "description": "Seamlessly integrate your DiceCloud V2 characters into Owlbear Rodeo",
-  "author": "Carmabella",
-  "icon": "/extension/icon.svg",
-  "action": {
-    "title": "Character Sheet",
-    "icon": "/extension/icon.svg",
-    "popover": "/extension/popover.html",
-    "height": 600,
-    "width": 400
-  }
+  "permissions": [
+    "storage",
+    "activeTab",
+    "tabs",
+    "https://dicecloud.com/*",
+    "https://*.dicecloud.com/*",
+    "https://www.owlbear.rodeo/*",
+    "https://luiesmfjdcmpywavvfqm.supabase.co/*"
+  ],
+  "background": {
+    "scripts": ["src/background.js"]
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://dicecloud.com/*",
+        "https://*.dicecloud.com/*"
+      ],
+      "js": [
+        "src/content/dicecloud.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://www.owlbear.rodeo/*"
+      ],
+      "js": [
+        "src/content/owlbear.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "browser_action": {
+    "default_popup": "src/popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "options_page": "src/options/welcome.html",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "web_accessible_resources": []
 }

@@ -70,7 +70,24 @@ export default function OwlCloudTab() {
           <div className="bg-black border border-gray-800 rounded-lg p-4 hover:border-[#a855f7] transition-colors">
             <h4 className="font-semibold text-[#a855f7] mb-2">🎲 3D Dice Integration</h4>
             <p className="text-gray-400 text-sm">
-              Beautiful physics-based 3D dice with Dice+ extension support
+              Beautiful physics-based 3D dice with{' '}
+              <a
+                href="https://extensions.owlbear.rodeo/dice-plus"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#a855f7] hover:text-[#c084fc] underline"
+              >
+                Dice+
+              </a>
+              {' '}extension support. If you enjoy Dice+, support the developer:{' '}
+              <a
+                href="https://www.patreon.com/c/MissingLinkDev"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#a855f7] hover:text-[#c084fc] underline"
+              >
+                Missing Link Dev on Patreon
+              </a>
             </p>
           </div>
           <div className="bg-black border border-gray-800 rounded-lg p-4 hover:border-[#a855f7] transition-colors">

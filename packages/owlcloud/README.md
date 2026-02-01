@@ -258,6 +258,14 @@ Verify the Owlbear extension manifest is correctly configured in `owlbear-extens
 
 ---
 
+## Acknowledgments
+
+OwlCloud integrates with [Dice+](https://extensions.owlbear.rodeo/dice-plus) for beautiful 3D dice animations. If you enjoy Dice+, consider supporting the developer:
+
+**[Missing Link Dev on Patreon](https://www.patreon.com/c/MissingLinkDev)**
+
+---
+
 ## Contributing
 
 When making changes:
