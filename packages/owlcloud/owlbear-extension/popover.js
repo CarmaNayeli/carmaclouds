@@ -301,9 +301,9 @@ const ThemeManager = {
       bgAccent: 'rgba(31, 41, 55, 0.15)',
       bgCard: 'rgba(31, 41, 55, 0.1)',
       bgHover: 'rgba(31, 41, 55, 0.2)',
-      // Text colors with proper contrast
-      textPrimary: '#e0e0e0',
-      textSecondary: '#c0c0c0',
+      // Text colors with proper contrast (dark theme - white text)
+      textPrimary: '#ffffff',
+      textSecondary: '#e5e7eb',
       textMuted: '#9ca3af',
       textOnPrimary: '#ffffff',
       textOnLight: '#1f2937'
@@ -323,7 +323,7 @@ const ThemeManager = {
       bgAccent: 'rgba(249, 250, 251, 0.5)',
       bgCard: 'rgba(249, 250, 251, 0.8)',
       bgHover: 'rgba(241, 245, 249, 0.9)',
-      // Text colors with proper contrast (light theme)
+      // Text colors with proper contrast (light theme - dark text)
       textPrimary: '#1f2937',
       textSecondary: '#374151',
       textMuted: '#6b7280',
@@ -375,11 +375,35 @@ const ThemeManager = {
   updateTextColors(theme) {
     const root = document.documentElement;
     
-    // Adjust text colors for very light themes
-    if (theme.name === 'White' || theme.name === 'Gold') {
-      root.style.setProperty('--theme-text-on-primary', '#1F2937'); // Dark text on light backgrounds
+    // Adjust text colors for specific themes
+    if (theme.name === 'White') {
+      // Light theme - use dark text throughout
+      root.style.setProperty('--theme-text-primary', '#1f2937');
+      root.style.setProperty('--theme-text-secondary', '#374151');
+      root.style.setProperty('--theme-text-muted', '#6b7280');
+      root.style.setProperty('--theme-text-on-primary', '#ffffff');
+      root.style.setProperty('--theme-text-on-light', '#1f2937');
+    } else if (theme.name === 'Black') {
+      // Dark theme - use white text throughout
+      root.style.setProperty('--theme-text-primary', '#ffffff');
+      root.style.setProperty('--theme-text-secondary', '#e5e7eb');
+      root.style.setProperty('--theme-text-muted', '#9ca3af');
+      root.style.setProperty('--theme-text-on-primary', '#ffffff');
+      root.style.setProperty('--theme-text-on-light', '#1f2937');
+    } else if (theme.name === 'Gold') {
+      // Gold theme - use dark text for readability
+      root.style.setProperty('--theme-text-primary', '#1f2937');
+      root.style.setProperty('--theme-text-secondary', '#374151');
+      root.style.setProperty('--theme-text-muted', '#6b7280');
+      root.style.setProperty('--theme-text-on-primary', '#ffffff');
+      root.style.setProperty('--theme-text-on-light', '#1f2937');
     } else {
-      root.style.setProperty('--theme-text-on-primary', '#e0e0e0'); // Light text on dark backgrounds
+      // All other themes - use light text on dark backgrounds
+      root.style.setProperty('--theme-text-primary', '#e0e0e0');
+      root.style.setProperty('--theme-text-secondary', '#c0c0c0');
+      root.style.setProperty('--theme-text-muted', '#9ca3af');
+      root.style.setProperty('--theme-text-on-primary', '#ffffff');
+      root.style.setProperty('--theme-text-on-light', '#1f2937');
     }
   },
 
