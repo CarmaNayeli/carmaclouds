@@ -2393,18 +2393,33 @@ async function addChatMessage(text, type = 'system', author = null, details = nu
     const metadata = await OBR.room.getMetadata();
     const messages = metadata['com.owlcloud.chat/messages'] || [];
 
+    // Strip HTML tags and truncate to reduce metadata size
+    const plainText = text.replace(/<[^>]*>/g, '');
+    const truncatedText = plainText.length > 500 ? plainText.substring(0, 497) + '...' : plainText;
+
+    // Truncate details as well if present
+    let truncatedDetails = null;
+    if (details) {
+      const plainDetails = details.replace(/<[^>]*>/g, '');
+      truncatedDetails = plainDetails.length > 300 ? plainDetails.substring(0, 297) + '...' : plainDetails;
+    }
+
     const newMessage = {
       id: Date.now() + Math.random(),
-      text: text,
+      text: truncatedText,
       type: type,
       author: author || (currentCharacter ? currentCharacter.name : 'Character'),
       playerId: playerId,
       timestamp: Date.now(),
-      details: details // Optional expandable details
+      details: truncatedDetails // Optional expandable details (truncated)
     };
 
-    // Keep last 20 messages to avoid exceeding OBR's 16KB metadata limit
-    const updatedMessages = [...messages, newMessage].slice(-20);
+    // Auto-cleanup: Remove messages older than 30 minutes
+    const thirtyMinutesAgo = Date.now() - (30 * 60 * 1000);
+    const recentMessages = messages.filter(msg => msg.timestamp > thirtyMinutesAgo);
+
+    // Keep last 10 messages (reduced from 20 to save space)
+    const updatedMessages = [...recentMessages, newMessage].slice(-10);
 
     await OBR.room.setMetadata({
       'com.owlcloud.chat/messages': updatedMessages

@@ -1718,17 +1718,26 @@ This will disconnect the character from this room. You can sync a different char
       const playerId = await OBR.player.getId();
       const metadata = await OBR.room.getMetadata();
       const messages = metadata["com.owlcloud.chat/messages"] || [];
+      const plainText = text.replace(/<[^>]*>/g, "");
+      const truncatedText = plainText.length > 500 ? plainText.substring(0, 497) + "..." : plainText;
+      let truncatedDetails = null;
+      if (details) {
+        const plainDetails = details.replace(/<[^>]*>/g, "");
+        truncatedDetails = plainDetails.length > 300 ? plainDetails.substring(0, 297) + "..." : plainDetails;
+      }
       const newMessage = {
         id: Date.now() + Math.random(),
-        text,
+        text: truncatedText,
         type,
         author: author || (currentCharacter ? currentCharacter.name : "Character"),
         playerId,
         timestamp: Date.now(),
-        details
-        // Optional expandable details
+        details: truncatedDetails
+        // Optional expandable details (truncated)
       };
-      const updatedMessages = [...messages, newMessage].slice(-20);
+      const thirtyMinutesAgo = Date.now() - 30 * 60 * 1e3;
+      const recentMessages = messages.filter((msg) => msg.timestamp > thirtyMinutesAgo);
+      const updatedMessages = [...recentMessages, newMessage].slice(-10);
       await OBR.room.setMetadata({
         "com.owlcloud.chat/messages": updatedMessages
       });
