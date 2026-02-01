@@ -305,6 +305,7 @@ serve(async (req) => {
 
         // Build upsert data - include both IDs if available
         const upsertData: any = {
+          user_id_dicecloud: character.userId || character.user_id_dicecloud,
           dicecloud_character_id: character.id,
           character_name: character.name,
           class: character.class,
