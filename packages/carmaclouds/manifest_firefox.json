@@ -6,6 +6,8 @@
   "permissions": [
     "storage",
     "activeTab",
+    "tabs",
+    "cookies",
     "https://dicecloud.com/*",
     "https://*.dicecloud.com/*",
     "https://app.roll20.net/*",
