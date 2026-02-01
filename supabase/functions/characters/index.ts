@@ -295,8 +295,8 @@ serve(async (req) => {
           level: character.level,
           hp_current: character.hitPoints?.current || 0,
           hp_max: character.hitPoints?.max || 0,
-          ac: character.armorClass || 10,
-          proficiency_bonus: character.proficiencyBonus || 2,
+          armor_class: character.armorClass || 10,
+          proficiency_bonus: character.proficiency_bonus || character.proficiencyBonus || 2,
           is_active: true,
           updated_at: new Date().toISOString()
         }
