@@ -253,7 +253,7 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
       return;
     }
     const result = {
-      total: numericTotal + (modifier || 0),
+      total: numericTotal,
       rolls: groups && groups[0] ? groups[0].dice.filter((d) => d.kept).map((d) => d.value) : [numericTotal],
       modifier: modifier || 0,
       formula: rollSummary,
@@ -1878,7 +1878,7 @@ This will disconnect the character from this room. You can sync a different char
   }
   async function showRollResult(name, result) {
     let detailsHtml = "";
-    const finalTotal = result.modifier !== void 0 ? result.total : result.total;
+    const finalTotal = result.modifier !== void 0 ? result.total + result.modifier : result.total;
     if (result.mode === "advantage" && result.rolls.length === 2) {
       detailsHtml = `<strong>Advantage:</strong> Rolled 2d20, taking higher<br>
                    Roll 1: ${result.rolls[0]}<br>

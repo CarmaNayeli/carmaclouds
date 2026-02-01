@@ -392,9 +392,9 @@ async function handleDicePlusResult(rollContext, totalValue, rollSummary, groups
   }
 
   // Create result object similar to local rolls
-  // Note: totalValue from Dice+ is the raw roll, so we need to add the modifier
+  // Note: totalValue from Dice+ is the raw roll, pass it as-is and let display logic add modifier
   const result = {
-    total: numericTotal + (modifier || 0),
+    total: numericTotal,
     rolls: groups && groups[0] ? groups[0].dice.filter(d => d.kept).map(d => d.value) : [numericTotal],
     modifier: modifier || 0,
     formula: rollSummary,
@@ -2641,7 +2641,7 @@ function rollDiceLocal(formula) {
  */
 async function showRollResult(name, result) {
   let detailsHtml = '';
-  const finalTotal = result.modifier !== undefined ? result.total : result.total;
+  const finalTotal = result.modifier !== undefined ? result.total + result.modifier : result.total;
 
   // Build detailed breakdown for expandable section
   if (result.mode === 'advantage' && result.rolls.length === 2) {
