@@ -543,12 +543,19 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
       const data = await response.json();
       const etag = response.headers.get("etag");
       if (data.success && data.character) {
+        console.log("\u{1F4E6} Character data received:", data.character);
+        console.log("  - Has raw_dicecloud_data:", !!data.character.raw_dicecloud_data);
+        console.log("  - Has character_name:", !!data.character.character_name);
         let characterData = data.character.raw_dicecloud_data || data.character;
         if (!data.character.raw_dicecloud_data && data.character.character_name) {
+          console.log("\u{1F504} Transforming database fields to UI format");
           characterData = {
             ...characterData,
             id: characterData.dicecloud_character_id,
             name: characterData.character_name,
+            class: characterData.class,
+            race: characterData.race,
+            level: characterData.level,
             hitPoints: {
               current: characterData.hp_current || 0,
               max: characterData.hp_max || 0
@@ -557,6 +564,7 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
             proficiencyBonus: characterData.proficiency_bonus
           };
         }
+        console.log("\u2705 Final character data for display:", characterData);
         localStorage.setItem(cacheKey, JSON.stringify(characterData));
         if (etag) {
           localStorage.setItem(versionKey, etag);
