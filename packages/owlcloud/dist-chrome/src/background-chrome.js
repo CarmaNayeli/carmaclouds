@@ -11730,7 +11730,7 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
     }
   }
   function isSupabaseConfigured() {
-    return window.SUPABASE_URL && !window.SUPABASE_URL.includes("your-project") && window.SUPABASE_ANON_KEY && window.SUPABASE_ANON_KEY !== "your-anon-key";
+    return SUPABASE_URL && !SUPABASE_URL.includes("your-project") && SUPABASE_ANON_KEY && SUPABASE_ANON_KEY !== "your-anon-key";
   }
   var realtimeSocket = null;
   var realtimeHeartbeat = null;
