@@ -3526,7 +3526,7 @@ import '../../../core/src/browser.js';
   /**
    * Listens for messages from popup and other parts of the extension
    */
-  browserAPI.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
+  browserAPI.runtime.onMessage.addListener((request, sender, sendResponse) => {
     debug.log('DiceCloud received message:', request);
 
     switch (request.action) {
@@ -3812,23 +3812,26 @@ import '../../../core/src/browser.js';
             };
 
             debug.log('📤 About to send response:', responseData);
-            // Return directly for Firefox async listener compatibility
-            return responseData;
+            // Use sendResponse for Chrome MV3 compatibility
+            sendResponse(responseData);
+            return true; // Keep channel open for async response
           } else {
             debug.warn('⚠️ No auth token found - user may not be logged in');
-            // Return directly for Firefox async listener compatibility
-            return {
+            // Use sendResponse for Chrome MV3 compatibility
+            sendResponse({
               success: false,
               error: 'Not logged in to DiceCloud. Please log in first.'
-            };
+            });
+            return true; // Keep channel open for async response
           }
         } catch (error) {
           debug.error('❌ Error extracting auth token:', error);
-          // Return directly for Firefox async listener compatibility
-          return {
+          // Use sendResponse for Chrome MV3 compatibility
+          sendResponse({
             success: false,
             error: 'Failed to extract token: ' + error.message
-          };
+          });
+          return true; // Keep channel open for async response
         }
 
       default:

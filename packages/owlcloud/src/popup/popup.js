@@ -673,23 +673,12 @@ function initializePopup() {
         autoConnectBtn.textContent = '⏳ Capturing token...';
 
         try {
-          // Send message to DiceCloud tab to extract token using runtime.sendMessage
+          // Send message directly to DiceCloud tab (bypass background script)
           console.log('📡 About to send message to tab:', dicecloudTab.id);
           debug.log('📡 About to send message to tab:', dicecloudTab.id);
-          
-          const response = await new Promise((resolve) => {
-            browserAPI.runtime.sendMessage({
-              action: 'extractAuthToken',
-              tabId: dicecloudTab.id
-            }, (response) => {
-              console.log('📡 Received callback response:', response);
-              debug.log('📡 Received callback response:', response);
-              // Extract the actual data from the background script response
-              const actualResponse = response.success ? response.data : response;
-              console.log('📡 Actual response object:', actualResponse);
-              debug.log('📡 Actual response object:', actualResponse);
-              resolve(actualResponse);
-            });
+
+          const response = await browserAPI.tabs.sendMessage(dicecloudTab.id, {
+            action: 'extractAuthToken'
           });
           
           console.log('📡 Received Promise response:', response);

@@ -9709,18 +9709,8 @@
             try {
               console.log("\u{1F4E1} About to send message to tab:", dicecloudTab.id);
               debug.log("\u{1F4E1} About to send message to tab:", dicecloudTab.id);
-              const response = await new Promise((resolve) => {
-                browserAPI3.runtime.sendMessage({
-                  action: "extractAuthToken",
-                  tabId: dicecloudTab.id
-                }, (response2) => {
-                  console.log("\u{1F4E1} Received callback response:", response2);
-                  debug.log("\u{1F4E1} Received callback response:", response2);
-                  const actualResponse = response2.success ? response2.data : response2;
-                  console.log("\u{1F4E1} Actual response object:", actualResponse);
-                  debug.log("\u{1F4E1} Actual response object:", actualResponse);
-                  resolve(actualResponse);
-                });
+              const response = await browserAPI3.tabs.sendMessage(dicecloudTab.id, {
+                action: "extractAuthToken"
               });
               console.log("\u{1F4E1} Received Promise response:", response);
               debug.log("\u{1F4E1} Received Promise response:", response);

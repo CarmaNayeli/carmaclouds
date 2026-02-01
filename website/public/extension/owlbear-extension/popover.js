@@ -1064,43 +1064,55 @@ This will disconnect the character from this room. You can sync a different char
     statusDiv.textContent = "Unsyncing character...";
     try {
       const playerId = await OBR.player.getId();
-      const response = await fetch(
-        `${SUPABASE_URL}/functions/v1/unsync-character`,
-        {
-          method: "POST",
-          headers: SUPABASE_HEADERS,
-          body: JSON.stringify({
-            owlbearPlayerId: playerId,
-            supabaseUserId: currentUser?.id
-          })
+      let cloudUnsyncSuccess = false;
+      if (currentUser && SUPABASE_HEADERS) {
+        try {
+          const response = await fetch(
+            `${SUPABASE_URL}/functions/v1/unsync-character`,
+            {
+              method: "POST",
+              headers: SUPABASE_HEADERS,
+              body: JSON.stringify({
+                owlbearPlayerId: playerId,
+                supabaseUserId: currentUser.id
+              })
+            }
+          );
+          if (response.ok) {
+            const result = await response.json();
+            cloudUnsyncSuccess = result.success;
+            console.log("\u2705 Character unsynced from cloud");
+          } else {
+            console.warn("\u26A0\uFE0F Failed to unsync from cloud, continuing with local unsync");
+          }
+        } catch (cloudError) {
+          console.warn("\u26A0\uFE0F Cloud unsync failed, continuing with local unsync:", cloudError);
         }
-      );
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to unsync: ${errorText}`);
-      }
-      const result = await response.json();
-      if (result.success) {
-        console.log("\u2705 Character unsynced successfully");
-        const cacheKey = currentUser ? `owlcloud_char_${currentUser.id}` : `owlcloud_char_${playerId}`;
-        const versionKey = `${cacheKey}_version`;
-        localStorage.removeItem(cacheKey);
-        localStorage.removeItem(versionKey);
-        currentCharacter = null;
-        allCharacters = [];
-        statusDiv.style.color = "#10B981";
-        statusDiv.textContent = "\u2713 Character unsynced! You can now sync a different character.";
-        if (isOwlbearReady) {
-          OBR.notification.show("Character unsynced from Owlbear session", "SUCCESS");
-        }
-        showNoCharacter();
-        updateAuthUI();
-        setTimeout(() => {
-          statusDiv.style.display = "none";
-        }, 5e3);
       } else {
-        throw new Error(result.error || "Unknown error");
+        console.log("\u2139\uFE0F Not authenticated, skipping cloud unsync");
       }
+      const cacheKey = currentUser ? `owlcloud_char_${currentUser.id}` : `owlcloud_char_${playerId}`;
+      const versionKey = `${cacheKey}_version`;
+      localStorage.removeItem(cacheKey);
+      localStorage.removeItem(versionKey);
+      currentCharacter = null;
+      allCharacters = [];
+      statusDiv.style.color = "#10B981";
+      if (cloudUnsyncSuccess) {
+        statusDiv.textContent = "\u2713 Character unsynced! You can now sync a different character.";
+      } else if (currentUser) {
+        statusDiv.textContent = "\u2713 Character disconnected locally (cloud unsync unavailable)";
+      } else {
+        statusDiv.textContent = "\u2713 Character disconnected locally";
+      }
+      if (isOwlbearReady) {
+        OBR.notification.show(cloudUnsyncSuccess ? "Character unsynced from Owlbear session" : "Character disconnected locally", "SUCCESS");
+      }
+      showNoCharacter();
+      updateAuthUI();
+      setTimeout(() => {
+        statusDiv.style.display = "none";
+      }, 5e3);
     } catch (error) {
       console.error("Unsync error:", error);
       statusDiv.style.color = "#EF4444";

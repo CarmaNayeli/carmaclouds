@@ -1427,64 +1427,75 @@ window.handleUnsyncCharacter = async function() {
 
   try {
     const playerId = await OBR.player.getId();
+    let cloudUnsyncSuccess = false;
 
-    // Call Supabase function to clear the owlbear_player_id
-    const response = await fetch(
-      `${SUPABASE_URL}/functions/v1/unsync-character`,
-      {
-        method: 'POST',
-        headers: SUPABASE_HEADERS,
-        body: JSON.stringify({
-          owlbearPlayerId: playerId,
-          supabaseUserId: currentUser?.id
-        })
+    // Try to unsync from cloud if authenticated
+    if (currentUser && SUPABASE_HEADERS) {
+      try {
+        // Call Supabase function to clear the owlbear_player_id
+        const response = await fetch(
+          `${SUPABASE_URL}/functions/v1/unsync-character`,
+          {
+            method: 'POST',
+            headers: SUPABASE_HEADERS,
+            body: JSON.stringify({
+              owlbearPlayerId: playerId,
+              supabaseUserId: currentUser.id
+            })
+          }
+        );
+
+        if (response.ok) {
+          const result = await response.json();
+          cloudUnsyncSuccess = result.success;
+          console.log('✅ Character unsynced from cloud');
+        } else {
+          console.warn('⚠️ Failed to unsync from cloud, continuing with local unsync');
+        }
+      } catch (cloudError) {
+        console.warn('⚠️ Cloud unsync failed, continuing with local unsync:', cloudError);
       }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to unsync: ${errorText}`);
-    }
-
-    const result = await response.json();
-
-    if (result.success) {
-      console.log('✅ Character unsynced successfully');
-
-      // Clear local cache
-      const cacheKey = currentUser
-        ? `owlcloud_char_${currentUser.id}`
-        : `owlcloud_char_${playerId}`;
-      const versionKey = `${cacheKey}_version`;
-      localStorage.removeItem(cacheKey);
-      localStorage.removeItem(versionKey);
-
-      // Clear current character state
-      currentCharacter = null;
-      allCharacters = [];
-
-      // Show success
-      statusDiv.style.color = '#10B981';
-      statusDiv.textContent = '✓ Character unsynced! You can now sync a different character.';
-
-      // Show notification
-      if (isOwlbearReady) {
-        OBR.notification.show('Character unsynced from Owlbear session', 'SUCCESS');
-      }
-
-      // Update UI to show no character
-      showNoCharacter();
-
-      // Update auth UI to remove the unsync button
-      updateAuthUI();
-
-      // Hide status after 5 seconds
-      setTimeout(() => {
-        statusDiv.style.display = 'none';
-      }, 5000);
     } else {
-      throw new Error(result.error || 'Unknown error');
+      console.log('ℹ️ Not authenticated, skipping cloud unsync');
     }
+
+    // Always clear local cache regardless of cloud unsync result
+    const cacheKey = currentUser
+      ? `owlcloud_char_${currentUser.id}`
+      : `owlcloud_char_${playerId}`;
+    const versionKey = `${cacheKey}_version`;
+    localStorage.removeItem(cacheKey);
+    localStorage.removeItem(versionKey);
+
+    // Clear current character state
+    currentCharacter = null;
+    allCharacters = [];
+
+    // Show success with appropriate message
+    statusDiv.style.color = '#10B981';
+    if (cloudUnsyncSuccess) {
+      statusDiv.textContent = '✓ Character unsynced! You can now sync a different character.';
+    } else if (currentUser) {
+      statusDiv.textContent = '✓ Character disconnected locally (cloud unsync unavailable)';
+    } else {
+      statusDiv.textContent = '✓ Character disconnected locally';
+    }
+
+    // Show notification
+    if (isOwlbearReady) {
+      OBR.notification.show(cloudUnsyncSuccess ? 'Character unsynced from Owlbear session' : 'Character disconnected locally', 'SUCCESS');
+    }
+
+    // Update UI to show no character
+    showNoCharacter();
+
+    // Update auth UI to remove the unsync button
+    updateAuthUI();
+
+    // Hide status after 5 seconds
+    setTimeout(() => {
+      statusDiv.style.display = 'none';
+    }, 5000);
   } catch (error) {
     console.error('Unsync error:', error);
     statusDiv.style.color = '#EF4444';

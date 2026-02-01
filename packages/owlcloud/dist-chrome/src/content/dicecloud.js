@@ -12033,7 +12033,7 @@ JSON file will download shortly.`);
         debug2.log("\u{1F50D} Check Structure button added");
       }
     }
-    browserAPI.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
+    browserAPI.runtime.onMessage.addListener((request, sender, sendResponse) => {
       debug2.log("DiceCloud received message:", request);
       switch (request.action) {
         case "syncCharacter":
@@ -12262,20 +12262,23 @@ JSON file will download shortly.`);
                 // Auth ID for database storage
               };
               debug2.log("\u{1F4E4} About to send response:", responseData);
-              return responseData;
+              sendResponse(responseData);
+              return true;
             } else {
               debug2.warn("\u26A0\uFE0F No auth token found - user may not be logged in");
-              return {
+              sendResponse({
                 success: false,
                 error: "Not logged in to DiceCloud. Please log in first."
-              };
+              });
+              return true;
             }
           } catch (error) {
             debug2.error("\u274C Error extracting auth token:", error);
-            return {
+            sendResponse({
               success: false,
               error: "Failed to extract token: " + error.message
-            };
+            });
+            return true;
           }
         default:
           debug2.warn("Unknown action:", request.action);
