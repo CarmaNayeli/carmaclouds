@@ -221,7 +221,7 @@ async function autoConnect() {
 
     if (!tabs || tabs.length === 0) {
       // No DiceCloud tab found
-      errorDiv.innerHTML = '<div style="background: #0d4a30; color: #16a75a; padding: 12px; border-radius: 6px; border: 1px solid #16a75a;"><strong>Navigate to DiceCloud First</strong><br>Open <a href="https://v2.dicecloud.com" target="_blank" style="color: #1bc76b; text-decoration: underline;">v2.dicecloud.com</a> in a tab, log in, then click this button to connect.</div>';
+      errorDiv.innerHTML = '<div style="background: #0d4a30; color: #16a75a; padding: 12px; border-radius: 6px; border: 1px solid #16a75a;"><strong>Navigate to DiceCloud First</strong><br>Open <a href="https://dicecloud.com" target="_blank" style="color: #1bc76b; text-decoration: underline;">dicecloud.com</a> in a tab, log in, then click this button to connect.</div>';
       errorDiv.classList.remove('hidden');
       btn.disabled = false;
       btn.textContent = '🔐 Connect with DiceCloud';
