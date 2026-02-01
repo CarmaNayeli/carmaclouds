@@ -16,6 +16,14 @@ let allCharacters = [];
 let isOwlbearReady = false;
 let rollMode = 'normal'; // 'advantage', 'normal', or 'disadvantage'
 
+// Supabase configuration
+const SUPABASE_URL = 'https://luiesmfjdcmpywavvfqm.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aWVzbWZqZGNtcHl3YXZ2ZnFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4ODYxNDksImV4cCI6MjA4NTQ2MjE0OX0.oqjHFf2HhCLcanh0HVryoQH7iSV7E9dHHZJdYehxZ0U';
+const SUPABASE_HEADERS = {
+  'apikey': SUPABASE_ANON_KEY,
+  'Content-Type': 'application/json'
+};
+
 // ============== DOM Elements ==============
 
 const statusText = document.getElementById('status-text');
@@ -120,14 +128,14 @@ async function checkForActiveCharacter() {
     }
 
     // Prepare headers for conditional fetch
-    const headers = {};
+    const headers = { ...SUPABASE_HEADERS };
     if (cachedVersion) {
       headers['If-None-Match'] = cachedVersion;
     }
 
     // Call unified characters edge function with conditional request
     const response = await fetch(
-      `https://luiesmfjdcmpywavvfqm.supabase.co/functions/v1/characters?owlbear_player_id=${encodeURIComponent(playerId)}&fields=full`,
+      `${SUPABASE_URL}/functions/v1/characters?owlbear_player_id=${encodeURIComponent(playerId)}&fields=full`,
       { headers }
     );
 
@@ -152,13 +160,16 @@ async function checkForActiveCharacter() {
     const etag = response.headers.get('etag');
 
     if (data.success && data.character) {
+      // Use raw_dicecloud_data if available (has proper field names)
+      const characterData = data.character.raw_dicecloud_data || data.character;
+
       // Update cache
-      localStorage.setItem(cacheKey, JSON.stringify(data.character));
+      localStorage.setItem(cacheKey, JSON.stringify(characterData));
       if (etag) {
         localStorage.setItem(versionKey, etag);
       }
 
-      displayCharacter(data.character);
+      displayCharacter(characterData);
       await fetchAllCharacters();
     } else {
       // Clear cache if no character found
@@ -182,7 +193,8 @@ async function fetchAllCharacters() {
     // Call unified characters edge function to get all characters
     // Note: Getting all characters by owlbear_player_id may require backend enhancement
     const response = await fetch(
-      `https://luiesmfjdcmpywavvfqm.supabase.co/functions/v1/characters?owlbear_player_id=${encodeURIComponent(playerId)}&fields=list`
+      `${SUPABASE_URL}/functions/v1/characters?owlbear_player_id=${encodeURIComponent(playerId)}&fields=list`,
+      { headers: SUPABASE_HEADERS }
     );
 
     if (!response.ok) {
@@ -249,12 +261,10 @@ window.switchToCharacter = async function(characterId) {
     // Update active character using unified characters edge function
     const playerId = await OBR.player.getId();
     const response = await fetch(
-      'https://luiesmfjdcmpywavvfqm.supabase.co/functions/v1/characters',
+      `${SUPABASE_URL}/functions/v1/characters`,
       {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: SUPABASE_HEADERS,
         body: JSON.stringify({
           owlbearPlayerId: playerId,
           character: character
@@ -380,9 +390,12 @@ async function uploadCircularTokenToSupabase(dataUrl, characterId) {
     formData.append('characterId', characterId);
 
     const uploadResponse = await fetch(
-      'https://luiesmfjdcmpywavvfqm.supabase.co/functions/v1/upload-token-image',
+      `${SUPABASE_URL}/functions/v1/upload-token-image`,
       {
         method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY
+        },
         body: formData
       }
     );
@@ -1406,12 +1419,10 @@ linkExtensionBtn.addEventListener('click', async () => {
 
     // Call Supabase edge function to link
     const response = await fetch(
-      'https://luiesmfjdcmpywavvfqm.supabase.co/functions/v1/link-owlbear-player',
+      `${SUPABASE_URL}/functions/v1/link-owlbear-player`,
       {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: SUPABASE_HEADERS,
         body: JSON.stringify({
           owlbearPlayerId: playerId,
           dicecloudUserId: dicecloudUserId.trim()
