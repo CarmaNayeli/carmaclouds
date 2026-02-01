@@ -54,6 +54,15 @@ function initializeTabs() {
   const tabContents = document.querySelectorAll('.tab-content');
   const brandingHeader = document.getElementById('branding-header');
   const characterHeader = document.getElementById('character-header');
+  const tabsNav = document.querySelector('.tabs-nav');
+
+  // Add mouse wheel scrolling to tab navigation
+  if (tabsNav) {
+    tabsNav.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      tabsNav.scrollLeft += e.deltaY;
+    });
+  }
 
   tabButtons.forEach(button => {
     button.addEventListener('click', () => {
@@ -304,7 +313,7 @@ async function sendToDicePlus(diceNotation, rollContext) {
       playerName,
       rollTarget: 'everyone', // Show to all players
       diceNotation,
-      showResults: true, // Show Dice+ popup notifications
+      showResults: false, // Hide Dice+ popup (OwlCloud chat shows results instead)
       timestamp: Date.now(),
       source: OWLCLOUD_EXTENSION_ID
     }, { destination: 'ALL' });
