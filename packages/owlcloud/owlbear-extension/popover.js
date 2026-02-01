@@ -29,6 +29,10 @@ const SUPABASE_HEADERS = {
   'Content-Type': 'application/json'
 };
 
+// Supabase Auth
+let supabase = null;
+let currentUser = null;
+
 // ============== DOM Elements ==============
 
 const statusText = document.getElementById('status-text');
@@ -97,6 +101,9 @@ OBR.onReady(async () => {
   } catch (error) {
     console.error('Error setting popover height:', error);
   }
+
+  // Initialize Supabase Auth
+  initializeSupabaseAuth();
 
   // Check for active character
   checkForActiveCharacter();
@@ -337,6 +344,219 @@ async function executeLocalRoll(rollContext) {
   await showRollResult(name, result);
 }
 
+// ============== Supabase Auth ==============
+
+/**
+ * Initialize Supabase Auth client and check for existing session
+ */
+async function initializeSupabaseAuth() {
+  try {
+    // Initialize Supabase client (createSupabaseClient is loaded from popover.html)
+    supabase = window.createSupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: false
+      }
+    });
+
+    // Check for existing session
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (session) {
+      currentUser = session.user;
+      console.log('✅ User already signed in:', currentUser.email);
+      updateAuthUI();
+    } else {
+      console.log('ℹ️ No active session');
+      updateAuthUI();
+    }
+
+    // Listen for auth state changes
+    supabase.auth.onAuthStateChange((event, session) => {
+      console.log('🔐 Auth state changed:', event);
+      currentUser = session?.user || null;
+      updateAuthUI();
+
+      // Refresh character data when user signs in/out
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        checkForActiveCharacter();
+      }
+    });
+  } catch (error) {
+    console.error('Failed to initialize Supabase Auth:', error);
+  }
+}
+
+/**
+ * Sign in with email/password
+ */
+async function signIn(email, password) {
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) throw error;
+
+    console.log('✅ Signed in successfully');
+    return { success: true };
+  } catch (error) {
+    console.error('Sign in error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Sign up with email/password
+ */
+async function signUp(email, password) {
+  try {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password
+    });
+
+    if (error) throw error;
+
+    console.log('✅ Signed up successfully');
+    return { success: true };
+  } catch (error) {
+    console.error('Sign up error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Sign out
+ */
+async function signOut() {
+  try {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+
+    console.log('✅ Signed out successfully');
+    return { success: true };
+  } catch (error) {
+    console.error('Sign out error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Update auth UI based on current user state
+ */
+function updateAuthUI() {
+  const authSection = document.getElementById('auth-section');
+  if (!authSection) return;
+
+  if (currentUser) {
+    // User is signed in
+    authSection.innerHTML = `
+      <div style="padding: 16px; background: rgba(139, 92, 246, 0.1); border-radius: 8px; border: 1px solid rgba(139, 92, 246, 0.3);">
+        <div style="margin-bottom: 12px;">
+          <div style="font-size: 12px; color: #A78BFA; margin-bottom: 4px;">Signed in as</div>
+          <div style="font-weight: 600; color: #e0e0e0;">${currentUser.email}</div>
+        </div>
+        <button
+          onclick="signOut()"
+          style="width: 100%; padding: 8px; background: rgba(239, 68, 68, 0.2); border: 1px solid #EF4444; border-radius: 6px; color: #EF4444; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+          Sign Out
+        </button>
+      </div>
+    `;
+  } else {
+    // User is not signed in
+    authSection.innerHTML = `
+      <div style="padding: 16px; background: rgba(59, 130, 246, 0.1); border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.3);">
+        <div style="margin-bottom: 12px; color: #A78BFA; font-size: 13px;">
+          Sign in to sync characters across devices
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <input
+            type="email"
+            id="auth-email"
+            placeholder="Email"
+            style="padding: 8px 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(138, 92, 246, 0.3); border-radius: 6px; color: #e0e0e0; font-size: 14px;">
+          <input
+            type="password"
+            id="auth-password"
+            placeholder="Password"
+            style="padding: 8px 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(138, 92, 246, 0.3); border-radius: 6px; color: #e0e0e0; font-size: 14px;">
+          <div style="display: flex; gap: 8px;">
+            <button
+              onclick="handleSignIn()"
+              style="flex: 1; padding: 8px; background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%); border: none; border-radius: 6px; color: white; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+              Sign In
+            </button>
+            <button
+              onclick="handleSignUp()"
+              style="flex: 1; padding: 8px; background: rgba(139, 92, 246, 0.2); border: 1px solid #8B5CF6; border-radius: 6px; color: #A78BFA; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+              Sign Up
+            </button>
+          </div>
+          <div id="auth-error" style="color: #EF4444; font-size: 12px; margin-top: 4px; display: none;"></div>
+        </div>
+      </div>
+    `;
+  }
+}
+
+/**
+ * Handle sign in button click
+ */
+window.handleSignIn = async function() {
+  const email = document.getElementById('auth-email').value;
+  const password = document.getElementById('auth-password').value;
+  const errorDiv = document.getElementById('auth-error');
+
+  if (!email || !password) {
+    errorDiv.textContent = 'Please enter email and password';
+    errorDiv.style.display = 'block';
+    return;
+  }
+
+  const result = await signIn(email, password);
+
+  if (!result.success) {
+    errorDiv.textContent = result.error;
+    errorDiv.style.display = 'block';
+  }
+};
+
+/**
+ * Handle sign up button click
+ */
+window.handleSignUp = async function() {
+  const email = document.getElementById('auth-email').value;
+  const password = document.getElementById('auth-password').value;
+  const errorDiv = document.getElementById('auth-error');
+
+  if (!email || !password) {
+    errorDiv.textContent = 'Please enter email and password';
+    errorDiv.style.display = 'block';
+    return;
+  }
+
+  if (password.length < 6) {
+    errorDiv.textContent = 'Password must be at least 6 characters';
+    errorDiv.style.display = 'block';
+    return;
+  }
+
+  const result = await signUp(email, password);
+
+  if (!result.success) {
+    errorDiv.textContent = result.error;
+    errorDiv.style.display = 'block';
+  } else {
+    errorDiv.textContent = 'Check your email to confirm your account!';
+    errorDiv.style.color = '#10B981';
+    errorDiv.style.display = 'block';
+  }
+};
+
 // ============== Character Management ==============
 
 /**
@@ -347,11 +567,24 @@ async function checkForActiveCharacter() {
     // Get current player's Owlbear ID
     const playerId = await OBR.player.getId();
 
-    console.log('🎭 Checking for character with player ID:', playerId);
+    // Determine query parameter based on auth status
+    let queryParam;
+    let cacheKey;
+
+    if (currentUser) {
+      // User is authenticated - query by supabase_user_id
+      queryParam = `supabase_user_id=${encodeURIComponent(currentUser.id)}&active_only=true`;
+      cacheKey = `owlcloud_char_${currentUser.id}`;
+      console.log('🎭 Checking for character with user ID:', currentUser.id);
+    } else {
+      // User not authenticated - query by owlbear_player_id
+      queryParam = `owlbear_player_id=${encodeURIComponent(playerId)}`;
+      cacheKey = `owlcloud_char_${playerId}`;
+      console.log('🎭 Checking for character with player ID:', playerId);
+    }
 
     // Check localStorage cache first
-    const cacheKey = `owlcloud_char_${playerId}`;
-    const versionKey = `owlcloud_char_version_${playerId}`;
+    const versionKey = `${cacheKey}_version`;
     const cachedChar = localStorage.getItem(cacheKey);
     const cachedVersion = localStorage.getItem(versionKey);
 
@@ -372,7 +605,7 @@ async function checkForActiveCharacter() {
 
     // Call unified characters edge function with conditional request
     const response = await fetch(
-      `${SUPABASE_URL}/functions/v1/characters?owlbear_player_id=${encodeURIComponent(playerId)}&fields=full`,
+      `${SUPABASE_URL}/functions/v1/characters?${queryParam}&fields=full`,
       { headers }
     );
 
