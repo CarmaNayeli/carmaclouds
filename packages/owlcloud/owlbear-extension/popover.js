@@ -230,7 +230,7 @@ async function sendToDicePlus(diceNotation, rollContext) {
       playerName,
       rollTarget: 'everyone', // Show to all players
       diceNotation,
-      showResults: true, // Show Dice+ popup
+      showResults: false, // Hide Dice+ popup (OwlCloud chat shows results instead)
       timestamp: Date.now(),
       source: OWLCLOUD_EXTENSION_ID
     }, { destination: 'ALL' });
