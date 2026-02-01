@@ -38,18 +38,28 @@ export default function OwlCloudTab() {
       </section>
 
       <section className="bg-black border border-[#a855f7] rounded-lg p-6">
-        <h3 className="text-2xl font-semibold mb-4 text-[#a855f7]">Download</h3>
+        <h3 className="text-2xl font-semibold mb-4 text-[#a855f7]">Download Browser Extension</h3>
         <div className="space-y-4">
-          <a
-            href="https://github.com/CarmaNayeli/carmaclouds/tree/master/packages/owlcloud"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block bg-[#a855f7] hover:bg-[#c084fc] text-white font-medium px-6 py-3 rounded-lg transition-colors"
-          >
-            Download from GitHub
-          </a>
+          <div className="flex gap-4">
+            <a
+              href="https://github.com/CarmaNayeli/carmaclouds/releases/download/owlcloud-v2.1.0/owlcloud-v2.1.0-firefox.zip"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block bg-[#a855f7] hover:bg-[#c084fc] text-white font-medium px-6 py-3 rounded-lg transition-colors"
+            >
+              📥 Download Firefox Extension
+            </a>
+            <a
+              href="https://github.com/CarmaNayeli/carmaclouds/releases/tag/owlcloud-v2.1.0"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block bg-gray-700 hover:bg-gray-600 text-white font-medium px-6 py-3 rounded-lg transition-colors"
+            >
+              📋 View Release Notes
+            </a>
+          </div>
           <p className="text-gray-500 text-sm">
-            Install the extension in your browser to get started with OwlCloud
+            Current version: <span className="text-[#a855f7] font-semibold">v2.1.0</span> - Includes Dice+ 3D dice integration!
           </p>
         </div>
       </section>
@@ -58,25 +68,37 @@ export default function OwlCloudTab() {
         <h3 className="text-2xl font-semibold mb-4 text-white">Features</h3>
         <div className="grid md:grid-cols-2 gap-4">
           <div className="bg-black border border-gray-800 rounded-lg p-4 hover:border-[#a855f7] transition-colors">
-            <h4 className="font-semibold text-[#a855f7] mb-2">DiceCloud Integration</h4>
+            <h4 className="font-semibold text-[#a855f7] mb-2">🎲 3D Dice Integration</h4>
+            <p className="text-gray-400 text-sm">
+              Beautiful physics-based 3D dice with Dice+ extension support
+            </p>
+          </div>
+          <div className="bg-black border border-gray-800 rounded-lg p-4 hover:border-[#a855f7] transition-colors">
+            <h4 className="font-semibold text-[#a855f7] mb-2">📜 DiceCloud Integration</h4>
             <p className="text-gray-400 text-sm">
               Access your DiceCloud character sheets from Owlbear Rodeo
             </p>
           </div>
           <div className="bg-black border border-gray-800 rounded-lg p-4 hover:border-[#a855f7] transition-colors">
-            <h4 className="font-semibold text-[#a855f7] mb-2">Owlbear Extension</h4>
+            <h4 className="font-semibold text-[#a855f7] mb-2">🦉 Owlbear Extension</h4>
             <p className="text-gray-400 text-sm">
               Native Owlbear Rodeo extension for in-game character management
             </p>
           </div>
           <div className="bg-black border border-gray-800 rounded-lg p-4 hover:border-[#a855f7] transition-colors">
-            <h4 className="font-semibold text-[#a855f7] mb-2">Dice Rolling</h4>
+            <h4 className="font-semibold text-[#a855f7] mb-2">💬 Persistent Chat</h4>
             <p className="text-gray-400 text-sm">
-              Roll dice directly from your character sheet in Owlbear
+              Session-long chat history with all rolls, spells, and actions
             </p>
           </div>
           <div className="bg-black border border-gray-800 rounded-lg p-4 hover:border-[#a855f7] transition-colors">
-            <h4 className="font-semibold text-[#a855f7] mb-2">Character State</h4>
+            <h4 className="font-semibold text-[#a855f7] mb-2">⚔️ Combat Tools</h4>
+            <p className="text-gray-400 text-sm">
+              Attack rolls, damage, death saves, and advantage/disadvantage
+            </p>
+          </div>
+          <div className="bg-black border border-gray-800 rounded-lg p-4 hover:border-[#a855f7] transition-colors">
+            <h4 className="font-semibold text-[#a855f7] mb-2">📊 Character State</h4>
             <p className="text-gray-400 text-sm">
               Track HP, spell slots, and other resources in real-time
             </p>
