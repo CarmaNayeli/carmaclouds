@@ -136,10 +136,7 @@ serve(async (req) => {
             )
           }
 
-          return new Response(
-            JSON.stringify({ success: true, characters: data }),
-            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return jsonResponse({ success: true, characters: data }, 200, req)
         }
       }
 
@@ -178,10 +175,7 @@ serve(async (req) => {
             )
           }
 
-          return new Response(
-            JSON.stringify({ success: true, character: data }),
-            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return jsonResponse({ success: true, character: data }, 200, req)
         } else {
           // Get all characters for user
           const { data, error } = await query
@@ -196,10 +190,7 @@ serve(async (req) => {
             )
           }
 
-          return new Response(
-            JSON.stringify({ success: true, characters: data }),
-            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return jsonResponse({ success: true, characters: data }, 200, req)
         }
       }
 
@@ -214,10 +205,7 @@ serve(async (req) => {
           )
         }
 
-        return new Response(
-          JSON.stringify({ success: true, characters: data }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        return jsonResponse({ success: true, characters: data }, 200, req)
       }
 
       // Get by character ID
@@ -233,10 +221,7 @@ serve(async (req) => {
           )
         }
 
-        return new Response(
-          JSON.stringify({ success: true, character: data }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        return jsonResponse({ success: true, character: data }, 200, req)
       }
 
       return new Response(
