@@ -4,7 +4,7 @@
 
 OwlCloud bridges DiceCloud character sheets with Owlbear Rodeo's virtual tabletop, allowing you to view character data, roll dice, and track resources directly in your game sessions.
 
-🌐 **[Visit owlcloud.vercel.app](https://owlcloud.vercel.app)** for installation instructions and downloads.
+🌐 **[Visit carmaclouds.vercel.app](https://carmaclouds.vercel.app)** for installation instructions and downloads.
 
 ---
 
@@ -42,7 +42,7 @@ Displays your character sheet UI and handles dice rolling inside Owlbear Rodeo.
 1. Open [Owlbear Rodeo](https://www.owlbear.rodeo) and join or create a room
 2. Click the Extensions menu (puzzle piece icon)
 3. Click "Add Extension"
-4. Paste this URL: `https://owlcloud.vercel.app/extension/manifest.json`
+4. Paste this URL: `https://carmaclouds.vercel.app/extension/owlbear-extension/manifest.json`
 5. Your DiceCloud characters will appear in the OwlCloud popover!
 
 ---

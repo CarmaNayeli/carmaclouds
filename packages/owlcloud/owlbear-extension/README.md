@@ -31,10 +31,19 @@ OwlCloud uses a **two-part architecture** to integrate DiceCloud with Owlbear Ro
 First, install the OwlCloud browser extension in Chrome/Firefox/Edge/Safari.
 
 ### 2. Install Owlbear Extension
+
+**Option A: Install via URL (Recommended)**
 1. Open Owlbear Rodeo ([owlbear.rodeo](https://www.owlbear.rodeo))
-2. Click the Extensions menu
-3. Click "Install Extension"
-4. Upload this `owlbear-extension` folder (or provide URL if hosted)
+2. Click the Extensions menu (puzzle piece icon)
+3. Click "Browse" or "Install Extension"
+4. Paste this URL: `https://carmaclouds.vercel.app/extension/owlbear-extension/manifest.json`
+5. The OwlCloud extension will install and appear in your extensions bar
+
+**Option B: Manual Upload**
+1. Download the `owlbear-extension` folder from the releases
+2. Open Owlbear Rodeo
+3. Click Extensions → Install Extension
+4. Upload the folder
 5. The OwlCloud button will appear in your Owlbear extensions bar
 
 ### 3. Connect the Two
