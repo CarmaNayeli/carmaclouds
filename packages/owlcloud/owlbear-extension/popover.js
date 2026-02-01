@@ -2684,7 +2684,10 @@ async function showRollResult(name, result) {
   }
 
   // Create concise message showing just the result
-  const modText = result.modifier !== 0 ? ` (${result.modifier >= 0 ? '+' : ''}${result.modifier})` : '';
+  // Don't double-add modifier if it's already in the name
+  const modText = result.modifier !== 0 && !name.includes(`(${result.modifier >= 0 ? '+' : ''}${result.modifier})`) 
+    ? ` (${result.modifier >= 0 ? '+' : ''}${result.modifier})` 
+    : '';
   const message = `${name}${modText}: <strong>${finalTotal}</strong>`;
 
   if (isOwlbearReady) {
