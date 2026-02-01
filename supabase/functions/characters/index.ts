@@ -18,10 +18,37 @@ const FIELDS = {
   list: 'dicecloud_character_id,character_name,class,level,race,hit_points,armor_class,is_active,discord_user_id,supabase_user_id'
 }
 
-// Helper: Create JSON response with optional compression
+// Helper: Generate ETag from data
+function generateETag(data: any): string {
+  // Simple hash based on JSON string
+  const jsonString = JSON.stringify(data)
+  let hash = 0
+  for (let i = 0; i < jsonString.length; i++) {
+    const char = jsonString.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash // Convert to 32-bit integer
+  }
+  return `"${Math.abs(hash).toString(36)}"`
+}
+
+// Helper: Create JSON response with ETag and optional compression
 function jsonResponse(data: any, status: number, req: Request): Response {
   const jsonString = JSON.stringify(data)
-  const headers = { ...corsHeaders, 'Content-Type': 'application/json' }
+  const headers: Record<string, string> = { ...corsHeaders, 'Content-Type': 'application/json' }
+
+  // Generate and add ETag for caching
+  const etag = generateETag(data)
+  headers['ETag'] = etag
+  headers['Cache-Control'] = 'private, must-revalidate'
+
+  // Check if client's cached version matches
+  const ifNoneMatch = req.headers.get('if-none-match')
+  if (ifNoneMatch && ifNoneMatch === etag) {
+    return new Response(null, {
+      status: 304,
+      headers: { ...headers, 'Content-Length': '0' }
+    })
+  }
 
   // Check if client supports gzip compression
   const acceptEncoding = req.headers.get('accept-encoding') || ''
@@ -94,10 +121,7 @@ serve(async (req) => {
             )
           }
 
-          return new Response(
-            JSON.stringify({ success: true, character: data }),
-            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return jsonResponse({ success: true, character: data }, 200, req)
         } else {
           // Get all characters for user
           const { data, error } = await query
@@ -133,10 +157,7 @@ serve(async (req) => {
           )
         }
 
-        return new Response(
-          JSON.stringify({ success: true, character: data }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        return jsonResponse({ success: true, character: data }, 200, req)
       }
 
       // Get by Discord user ID (for Discord bot)
