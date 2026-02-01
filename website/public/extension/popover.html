@@ -996,13 +996,16 @@
     </div>
   </div>
 
-  <!-- Load Owlbear SDK -->
+  <!-- Load Owlbear SDK and Supabase Auth -->
   <script type="module">
     import OBR, { buildImage } from 'https://esm.sh/@owlbear-rodeo/sdk@3.1.0';
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
     window.OBR = OBR;
     window.buildImage = buildImage;
+    window.createSupabaseClient = createClient;
 
-    // Load popover.js after SDK is ready
+    // Load popover.js after SDKs are ready
     const script = document.createElement('script');
     script.src = './popover.js';
     document.body.appendChild(script);
