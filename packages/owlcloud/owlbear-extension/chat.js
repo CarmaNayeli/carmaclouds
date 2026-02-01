@@ -13,6 +13,14 @@ let isOwlbearReady = false;
 let currentPlayerId = null;
 let lastLoadedMessageId = null;
 
+// Supabase configuration
+const SUPABASE_URL = 'https://luiesmfjdcmpywavvfqm.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aWVzbWZqZGNtcHl3YXZ2ZnFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4ODYxNDksImV4cCI6MjA4NTQ2MjE0OX0.oqjHFf2HhCLcanh0HVryoQH7iSV7E9dHHZJdYehxZ0U';
+const SUPABASE_HEADERS = {
+  'apikey': SUPABASE_ANON_KEY,
+  'Content-Type': 'application/json'
+};
+
 // ============== DOM Elements ==============
 
 const chatMessages = document.getElementById('chat-messages');
@@ -70,7 +78,8 @@ async function checkForActiveCharacter() {
     const playerId = await OBR.player.getId();
 
     const response = await fetch(
-      `https://luiesmfjdcmpywavvfqm.supabase.co/functions/v1/characters?owlbear_player_id=${encodeURIComponent(playerId)}&fields=essential`
+      `${SUPABASE_URL}/functions/v1/characters?owlbear_player_id=${encodeURIComponent(playerId)}&fields=essential`,
+      { headers: SUPABASE_HEADERS }
     );
 
     if (!response.ok) {
