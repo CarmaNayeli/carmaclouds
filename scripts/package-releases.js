@@ -22,22 +22,32 @@ const version = packageJson.version;
 
 console.log(`Creating release packages v${version}...\n`);
 
-// Package OwlCloud
+// Package OwlCloud for Chrome
 const owlcloudDist = path.join(distDir, 'owlcloud');
 if (fs.existsSync(owlcloudDist)) {
-  console.log('Packaging OwlCloud...');
-  const owlcloudZip = path.join(releasesDir, `owlcloud-v${version}.zip`);
-  execSync(`powershell Compress-Archive -Path "${owlcloudDist}\\*" -DestinationPath "${owlcloudZip}" -Force`, { stdio: 'inherit' });
-  console.log(`✓ Created ${owlcloudZip}`);
+  console.log('Packaging OwlCloud for Chrome...');
+  const owlcloudChromeZip = path.join(releasesDir, `owlcloud-chrome-v${version}.zip`);
+  execSync(`powershell Compress-Archive -Path "${owlcloudDist}\\*" -DestinationPath "${owlcloudChromeZip}" -Force`, { stdio: 'inherit' });
+  console.log(`✓ Created ${owlcloudChromeZip}`);
+
+  console.log('Packaging OwlCloud for Firefox...');
+  const owlcloudFirefoxZip = path.join(releasesDir, `owlcloud-firefox-v${version}.zip`);
+  execSync(`powershell Compress-Archive -Path "${owlcloudDist}\\*" -DestinationPath "${owlcloudFirefoxZip}" -Force`, { stdio: 'inherit' });
+  console.log(`✓ Created ${owlcloudFirefoxZip}`);
 }
 
-// Package RollCloud
+// Package RollCloud for Chrome
 const rollcloudDist = path.join(distDir, 'rollcloud');
 if (fs.existsSync(rollcloudDist)) {
-  console.log('Packaging RollCloud...');
-  const rollcloudZip = path.join(releasesDir, `rollcloud-v${version}.zip`);
-  execSync(`powershell Compress-Archive -Path "${rollcloudDist}\\*" -DestinationPath "${rollcloudZip}" -Force`, { stdio: 'inherit' });
-  console.log(`✓ Created ${rollcloudZip}`);
+  console.log('Packaging RollCloud for Chrome...');
+  const rollcloudChromeZip = path.join(releasesDir, `rollcloud-chrome-v${version}.zip`);
+  execSync(`powershell Compress-Archive -Path "${rollcloudDist}\\*" -DestinationPath "${rollcloudChromeZip}" -Force`, { stdio: 'inherit' });
+  console.log(`✓ Created ${rollcloudChromeZip}`);
+
+  console.log('Packaging RollCloud for Firefox...');
+  const rollcloudFirefoxZip = path.join(releasesDir, `rollcloud-firefox-v${version}.zip`);
+  execSync(`powershell Compress-Archive -Path "${rollcloudDist}\\*" -DestinationPath "${rollcloudFirefoxZip}" -Force`, { stdio: 'inherit' });
+  console.log(`✓ Created ${rollcloudFirefoxZip}`);
 }
 
 // Package Website
