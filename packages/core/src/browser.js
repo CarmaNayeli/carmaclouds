@@ -14,6 +14,8 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY, TABLES, PROJECT_CONFIGS, getProjectCon
 import './supabase/client.js';
 
 // Export Supabase config globally for legacy code
+// TODO: Fix race condition - code sometimes checks for Supabase config before this executes,
+// causing brief "Supabase not configured" flash before it connects successfully
 if (typeof window !== 'undefined') {
   window.SUPABASE_URL = SUPABASE_URL;
   window.SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
