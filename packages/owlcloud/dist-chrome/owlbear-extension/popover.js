@@ -147,7 +147,9 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
     });
   }
   async function sendToDicePlus(diceNotation, rollContext) {
+    console.log("\u{1F3B2} sendToDicePlus called:", { diceNotation, isOwlbearReady, dicePlusReady });
     if (!isOwlbearReady || !dicePlusReady) {
+      console.log("\u26A0\uFE0F Falling back to local roll - OBR ready:", isOwlbearReady, "Dice+ ready:", dicePlusReady);
       return null;
     }
     try {
@@ -155,6 +157,7 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
       const playerId = await OBR.player.getId();
       const playerName = await OBR.player.getName();
       pendingRolls.set(rollId, rollContext);
+      console.log("\u{1F4E1} Sending roll request to Dice+:", { rollId, diceNotation });
       await OBR.broadcast.sendMessage("dice-plus/roll-request", {
         rollId,
         playerId,

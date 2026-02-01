@@ -246,8 +246,11 @@ function setupDicePlusListeners() {
  * @returns {Promise<string>} - Roll ID
  */
 async function sendToDicePlus(diceNotation, rollContext) {
+  console.log('🎲 sendToDicePlus called:', { diceNotation, isOwlbearReady, dicePlusReady });
+
   if (!isOwlbearReady || !dicePlusReady) {
     // Fall back to local rolling
+    console.log('⚠️ Falling back to local roll - OBR ready:', isOwlbearReady, 'Dice+ ready:', dicePlusReady);
     return null;
   }
 
@@ -258,6 +261,8 @@ async function sendToDicePlus(diceNotation, rollContext) {
 
     // Store pending roll
     pendingRolls.set(rollId, rollContext);
+
+    console.log('📡 Sending roll request to Dice+:', { rollId, diceNotation });
 
     // Send roll request to Dice+
     await OBR.broadcast.sendMessage('dice-plus/roll-request', {
