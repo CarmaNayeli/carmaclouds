@@ -68,8 +68,9 @@
         const isActive = gmModeToggle.classList.contains('active');
 
         // Send message to Roll20 content script to toggle GM panel
-        if (window.opener && !window.opener.closed) {
-          window.opener.postMessage({
+        const globalScope = typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {});
+        if (globalScope.opener && !globalScope.opener.closed) {
+          globalScope.opener.postMessage({
             action: 'toggleGMMode',
             enabled: !isActive
           }, '*');
@@ -150,8 +151,9 @@
           const broadcastMessage = `👑[OWLCLOUD:CHARACTER:${encodedData}]👑`;
 
           // Send to Roll20 chat via parent window
-          if (window.opener && !window.opener.closed) {
-            window.opener.postMessage({
+          const globalScope = typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {});
+          if (globalScope.opener && !globalScope.opener.closed) {
+            globalScope.opener.postMessage({
               action: 'postChatMessageFromPopup',
               message: broadcastMessage
             }, '*');

@@ -1,11 +1,12 @@
-// Initialize debug globally
-if (typeof window !== "undefined" && !window.debug) { window.debug = { log: console.log, warn: console.warn, error: console.error, info: console.info, group: console.group, groupEnd: console.groupEnd, table: console.table, time: console.time, timeEnd: console.timeEnd, isEnabled: () => true }; }
-const debug = window.debug;
+// Initialize debug globally (supports both window and service worker contexts)
+const globalThis_ = typeof window !== "undefined" ? window : (typeof self !== "undefined" ? self : {});
+if (!globalThis_.debug) { globalThis_.debug = { log: console.log, warn: console.warn, error: console.error, info: console.info, group: console.group, groupEnd: console.groupEnd, table: console.table, time: console.time, timeEnd: console.timeEnd, isEnabled: () => true }; }
+const debug = globalThis_.debug;
 // Supabase config will be set by browser.js
-const SUPABASE_URL = typeof window !== "undefined" ? window.SUPABASE_URL : undefined;
-const SUPABASE_ANON_KEY = typeof window !== "undefined" ? window.SUPABASE_ANON_KEY : undefined;
+const SUPABASE_URL = typeof globalThis_ !== "undefined" ? globalThis_.SUPABASE_URL : undefined;
+const SUPABASE_ANON_KEY = typeof globalThis_ !== "undefined" ? globalThis_.SUPABASE_ANON_KEY : undefined;
 // SupabaseTokenManager will be set by browser.js
-const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseTokenManager : undefined;
+const SupabaseTokenManager = typeof globalThis_ !== "undefined" ? globalThis_.SupabaseTokenManager : undefined;
 (() => {
   // owlbear-extension/popover.js
   var currentCharacter = null;

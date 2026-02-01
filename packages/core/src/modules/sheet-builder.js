@@ -383,9 +383,10 @@
         color: data.notificationColor
       };
 
-      if (window.opener && !window.opener.closed) {
+      const globalScope = typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {});
+      if (globalScope.opener && !globalScope.opener.closed) {
         try {
-          window.opener.postMessage(messageData, '*');
+          globalScope.opener.postMessage(messageData, '*');
         } catch (error) {
           debug.log('❌ Failed to send initiative announcement:', error);
         }
@@ -441,9 +442,10 @@
           color: data.notificationColor
         };
 
-        if (window.opener && !window.opener.closed) {
+        const globalScope = typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {});
+        if (globalScope.opener && !globalScope.opener.closed) {
           try {
-            window.opener.postMessage(messageData, '*');
+            globalScope.opener.postMessage(messageData, '*');
           } catch (error) {
             debug.log('❌ Failed to send ability check announcement:', error);
           }
@@ -471,9 +473,10 @@
           color: data.notificationColor
         };
 
-        if (window.opener && !window.opener.closed) {
+        const globalScope = typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {});
+        if (globalScope.opener && !globalScope.opener.closed) {
           try {
-            window.opener.postMessage(messageData, '*');
+            globalScope.opener.postMessage(messageData, '*');
           } catch (error) {
             debug.log('❌ Failed to send saving throw announcement:', error);
           }
@@ -516,9 +519,10 @@
           color: data.notificationColor
         };
 
-        if (window.opener && !window.opener.closed) {
+        const globalScope = typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {});
+        if (globalScope.opener && !globalScope.opener.closed) {
           try {
-            window.opener.postMessage(messageData, '*');
+            globalScope.opener.postMessage(messageData, '*');
           } catch (error) {
             debug.log('❌ Failed to send skill check announcement:', error);
           }

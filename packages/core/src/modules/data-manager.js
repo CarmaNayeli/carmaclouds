@@ -132,17 +132,16 @@
       }
     };
 
-    // Try to send to DiceCloud sync
-    window.postMessage(syncMessage, '*');
-
-    // Also try to send via opener if available
-    if (window.opener && !window.opener.closed) {
-      window.opener.postMessage(syncMessage, '*');
+    // Try to send to DiceCloud sync (only if window is available)
+    const globalScope = typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {});
+    if (globalScope.postMessage) {
+      globalScope.postMessage(syncMessage, '*');
     }
 
-    // Also send to window opener if available (for backwards compatibility)
-    if (window.opener && !window.opener.closed) {
-      window.opener.postMessage({
+    // Also try to send via opener if available (only if window is available)
+    if (globalScope.opener && !globalScope.opener.closed) {
+      globalScope.opener.postMessage(syncMessage, '*');
+      globalScope.opener.postMessage({
         action: 'updateCharacterData',
         data: characterData
       }, '*');

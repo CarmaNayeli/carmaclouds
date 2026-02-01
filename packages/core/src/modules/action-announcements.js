@@ -76,7 +76,12 @@
   function postActionToChat(actionLabel, state) {
     const emoji = state === 'used' ? '❌' : '✅';
     const message = `${emoji} ${characterData.name} ${state === 'used' ? 'uses' : 'restores'} ${actionLabel}`;
-    postToChatIfOpener(message);
+    
+    // Post to chat if opener is available (only if window is available)
+    const globalScope = typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {});
+    if (globalScope.opener && !globalScope.opener.closed) {
+      globalScope.opener.postMessage(message, '*');
+    }
 
     // Also post to Discord
     postActionEconomyToDiscord();

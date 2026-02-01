@@ -458,8 +458,9 @@
         const colorBanner = getColoredBanner(characterData);
         const message = `&{template:default} {{name=${colorBanner}${characterData.name} uses Font of Magic⚡}} {{Action=Convert Spell Slot to Sorcery Points}} {{Result=Expended Level ${selectedLevel} spell slot for ${pointsGained} SP}} {{Sorcery Points=${sorceryPoints.current}/${sorceryPoints.max}}}`;
 
-        if (window.opener && !window.opener.closed) {
-          window.opener.postMessage({
+        const globalScope = typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {});
+        if (globalScope.opener && !globalScope.opener.closed) {
+          globalScope.opener.postMessage({
             action: 'roll',
             characterName: characterData.name,
             message: message,
@@ -589,8 +590,9 @@
         const colorBanner = getColoredBanner(characterData);
         const message = `&{template:default} {{name=${colorBanner}${characterData.name} uses Font of Magic⚡}} {{Action=Convert Sorcery Points to Spell Slot}} {{Result=Created Level ${selectedLevel} spell slot for ${cost} SP}} {{Sorcery Points=${sorceryPoints.current}/${sorceryPoints.max}}}`;
 
-        if (window.opener && !window.opener.closed) {
-          window.opener.postMessage({
+        const globalScope = typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {});
+        if (globalScope.opener && !globalScope.opener.closed) {
+          globalScope.opener.postMessage({
             action: 'roll',
             characterName: characterData.name,
             message: message,
@@ -751,9 +753,10 @@
       };
 
       // Send to Roll20
-      if (window.opener && !window.opener.closed) {
+      const globalScope = typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {});
+      if (globalScope.opener && !globalScope.opener.closed) {
         try {
-          window.opener.postMessage(messageData, '*');
+          globalScope.opener.postMessage(messageData, '*');
         } catch (error) {
           debug.warn('⚠️ Could not send via window.opener:', error.message);
           if (typeof browserAPI !== 'undefined') {

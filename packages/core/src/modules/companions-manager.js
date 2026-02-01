@@ -138,9 +138,10 @@
             color: characterData.notificationColor
           };
 
-          if (window.opener && !window.opener.closed) {
+          const globalScope = typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {});
+          if (globalScope.opener && !globalScope.opener.closed) {
             try {
-              window.opener.postMessage(messageData, '*');
+              globalScope.opener.postMessage(messageData, '*');
             } catch (error) {
               debug.log('❌ Failed to send companion attack announcement:', error);
             }
@@ -164,9 +165,10 @@
             color: characterData.notificationColor
           };
 
-          if (window.opener && !window.opener.closed) {
+          const globalScope = typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {});
+          if (globalScope.opener && !globalScope.opener.closed) {
             try {
-              window.opener.postMessage(messageData, '*');
+              globalScope.opener.postMessage(messageData, '*');
             } catch (error) {
               debug.log('❌ Failed to send companion damage announcement:', error);
             }

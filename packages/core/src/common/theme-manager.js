@@ -32,11 +32,12 @@ function createThemeManager(config = {}) {
       // Check system preference FIRST before loading saved preference
       debug.log('🎨 ThemeManager.init() starting...');
       try {
-        if (typeof window === 'undefined' || !window.matchMedia) {
-          debug.warn('⚠️ window.matchMedia not available, defaulting to light theme');
+        const globalScope = typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {});
+        if (!globalScope.matchMedia) {
+          debug.warn('⚠️ matchMedia not available, defaulting to light theme');
           this.systemPrefersDark = false;
         } else {
-          const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+          const darkModeQuery = globalScope.matchMedia('(prefers-color-scheme: dark)');
           this.systemPrefersDark = darkModeQuery.matches;
 
           debug.log('🎨 System dark mode query result:', {
@@ -194,9 +195,12 @@ function createThemeManager(config = {}) {
       }
 
       // Dispatch custom event for same-page listeners
-      window.dispatchEvent(new CustomEvent(eventName, {
-        detail: { theme: theme }
-      }));
+      const globalScope = typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {});
+      if (globalScope.dispatchEvent) {
+        globalScope.dispatchEvent(new CustomEvent(eventName, {
+          detail: { theme: theme }
+        }));
+      }
     },
 
     /**
@@ -219,8 +223,9 @@ function createThemeManager(config = {}) {
      */
     refreshSystemPreference() {
       try {
-        if (window.matchMedia) {
-          const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        const globalScope = typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {});
+        if (globalScope.matchMedia) {
+          const darkModeQuery = globalScope.matchMedia('(prefers-color-scheme: dark)');
           const oldValue = this.systemPrefersDark;
           this.systemPrefersDark = darkModeQuery.matches;
 
@@ -252,6 +257,7 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 
 // Make factory available globally
-if (typeof window !== 'undefined') {
-  window.createThemeManager = createThemeManager;
+const globalScope = typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {});
+if (globalScope) {
+  globalScope.createThemeManager = createThemeManager;
 }

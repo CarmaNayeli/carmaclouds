@@ -407,9 +407,10 @@
     const debug = window.debug || console;
 
     // Try window.opener first (Chrome)
-    if (window.opener && !window.opener.closed) {
+    const globalScope = typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {});
+    if (globalScope.opener && !globalScope.opener.closed) {
       try {
-        window.opener.postMessage(messageData, '*');
+        globalScope.opener.postMessage(messageData, '*');
         debug.log('✅ Spell data sent via window.opener');
         return;
       } catch (error) {
@@ -463,9 +464,10 @@
 
     // Send announcement to Roll20
     // Try window.opener first (Chrome)
-    if (window.opener && !window.opener.closed) {
+    const globalScope = typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {});
+    if (globalScope.opener && !globalScope.opener.closed) {
       try {
-        window.opener.postMessage(messageData, '*');
+        globalScope.opener.postMessage(messageData, '*');
         debug.log('✅ Spell announcement sent via window.opener');
       } catch (error) {
         debug.warn('⚠️ Could not send via window.opener:', error.message);

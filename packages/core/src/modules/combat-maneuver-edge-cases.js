@@ -461,7 +461,7 @@ const COMBAT_MANEUVER_EDGE_CASES = {
   },
 
   // ===== 2024 WEAPON MASTERIES (NEW SYSTEM) =====
-  'cleave': {
+  'cleave mastery': {
     type: 'weapon_mastery',
     condition: 'hit_creature',
     effect: 'hit_second_target_within_5ft',

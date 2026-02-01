@@ -137,6 +137,7 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 
 // Make available globally for popup-sheet.js
-if (typeof window !== 'undefined') {
-  window.CardCreator = { createCard, createSpellCard, createActionCard };
+const globalScope = typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {});
+if (globalScope) {
+  globalScope.CardCreator = { createCard, createSpellCard, createActionCard };
 }

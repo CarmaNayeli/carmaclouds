@@ -1339,12 +1339,10 @@ class SupabaseTokenManager {
 }
 
 // Export for use in other modules
-// Always export to window/self for browser extensions
-if (typeof window !== 'undefined') {
-  window.SupabaseTokenManager = SupabaseTokenManager;
-} else if (typeof self !== 'undefined') {
-  // Service worker context
-  self.SupabaseTokenManager = SupabaseTokenManager;
+// Always export to window/self for browser
+const globalScope = typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {});
+if (globalScope) {
+  globalScope.SupabaseTokenManager = SupabaseTokenManager;
 }
 
 // Also export as module for Node.js environments

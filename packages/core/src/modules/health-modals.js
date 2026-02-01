@@ -206,9 +206,10 @@ function showHPModal() {
     // Send message to Roll20
     if (messageData) {
       // Try window.opener first (Chrome)
-      if (window.opener && !window.opener.closed) {
+      const globalScope = typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {});
+      if (globalScope.opener && !globalScope.opener.closed) {
         try {
-          window.opener.postMessage(messageData, '*');
+          globalScope.opener.postMessage(messageData, '*');
         } catch (error) {
           debug.warn('⚠️ Could not send via window.opener:', error.message);
           // Fallback to background script relay

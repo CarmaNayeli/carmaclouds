@@ -392,13 +392,9 @@
             color: characterData.notificationColor
           };
 
-          if (window.opener && !window.opener.closed) {
-            try {
-              window.opener.postMessage(messageData, '*');
-              debug.log('✅ Custom macro sent via window.opener');
-            } catch (error) {
-              debug.warn('⚠️ Could not send via window.opener:', error.message);
-            }
+          const globalScope = typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {});
+          if (globalScope.opener && !globalScope.opener.closed) {
+            globalScope.opener.postMessage(messageData, '*');
           } else {
             browserAPI.runtime.sendMessage({
               action: 'relayRollToRoll20',
@@ -649,9 +645,10 @@
                   color: characterData.notificationColor
                 };
 
-                if (window.opener && !window.opener.closed) {
+                const globalScope = typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {});
+                if (globalScope.opener && !globalScope.opener.closed) {
                   try {
-                    window.opener.postMessage(messageData, '*');
+                    globalScope.opener.postMessage(messageData, '*');
                   } catch (error) {
                     debug.warn('⚠️ Could not send via window.opener:', error.message);
                   }

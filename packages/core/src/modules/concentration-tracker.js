@@ -139,17 +139,19 @@
   // ===== EXPORTS =====
 
   // Export concentratingSpell state variable to window (for access from content script context)
-  Object.defineProperty(window, 'concentratingSpell', {
+  // Export to global scope for popup-sheet.js
+  const globalScope = typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {});
+  Object.defineProperty(globalScope, 'concentratingSpell', {
     get: () => concentratingSpell,
     set: (value) => { concentratingSpell = value; },
     configurable: true
   });
 
-  // Export functions to window
-  window.updateConcentrationDisplay = updateConcentrationDisplay;
-  window.initConcentrationTracker = initConcentrationTracker;
-  window.setConcentration = setConcentration;
-  window.dropConcentration = dropConcentration;
+  // Export functions to global scope
+  globalScope.updateConcentrationDisplay = updateConcentrationDisplay;
+  globalScope.initConcentrationTracker = initConcentrationTracker;
+  globalScope.setConcentration = setConcentration;
+  globalScope.dropConcentration = dropConcentration;
 
   debug.log('✅ Concentration Tracker module loaded');
 

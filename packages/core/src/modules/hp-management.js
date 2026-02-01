@@ -233,9 +233,10 @@
       // Send message to Roll20
       if (messageData) {
         // Try window.opener first (Chrome)
-        if (window.opener && !window.opener.closed) {
+        const globalScope = typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {});
+        if (globalScope.opener && !globalScope.opener.closed) {
           try {
-            window.opener.postMessage(messageData, '*');
+            globalScope.opener.postMessage(messageData, '*');
           } catch (error) {
             debug.warn('⚠️ Could not send via window.opener:', error.message);
             // Fallback to background script relay
@@ -387,9 +388,10 @@
       debug.log(`🎲 Rolled ${hitDie}: ${roll} + ${conMod} = ${healing} HP (restored ${actualHealing})`);
 
       // Announce the roll with fancy formatting
-      if (window.opener && !window.opener.closed) {
+      const globalScope = typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {});
+      if (globalScope.opener && !globalScope.opener.closed) {
         const colorBanner = typeof getColoredBanner !== 'undefined' ? getColoredBanner(characterData) : '';
-        window.opener.postMessage({
+        globalScope.opener.postMessage({
           action: 'announceSpell',
           message: `&{template:default} {{name=${colorBanner}${characterData.name} spends hit dice}} {{Roll=🎲 ${hitDie}: ${roll} + ${conMod} CON}} {{HP Restored=${healing}}} {{Current HP=${characterData.hitPoints.current}/${characterData.hitPoints.max}}}`,
           color: characterData.notificationColor
@@ -416,9 +418,10 @@
       color: characterData.notificationColor
     };
 
-    if (window.opener && !window.opener.closed) {
+    const globalScope = typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {});
+    if (globalScope.opener && !globalScope.opener.closed) {
       try {
-        window.opener.postMessage(messageData, '*');
+        globalScope.opener.postMessage(messageData, '*');
       } catch (error) {
         debug.log('❌ Failed to send short rest announcement:', error);
       }
@@ -565,9 +568,10 @@
     };
 
     // Try window.opener first (Chrome)
-    if (window.opener && !window.opener.closed) {
+    const globalScope = typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {});
+    if (globalScope.opener && !globalScope.opener.closed) {
       try {
-        window.opener.postMessage(messageData, '*');
+        globalScope.opener.postMessage(messageData, '*');
       } catch (error) {
         debug.warn('⚠️ Could not send via window.opener:', error.message);
         // Fallback to background script relay
@@ -776,9 +780,10 @@
     };
 
     // Try window.opener first (Chrome)
-    if (window.opener && !window.opener.closed) {
+    const globalScope = typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {});
+    if (globalScope.opener && !globalScope.opener.closed) {
       try {
-        window.opener.postMessage(messageData, '*');
+        globalScope.opener.postMessage(messageData, '*');
       } catch (error) {
         debug.warn('⚠️ Could not send via window.opener:', error.message);
         // Fallback to background script relay
