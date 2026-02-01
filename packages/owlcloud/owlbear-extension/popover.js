@@ -290,10 +290,20 @@ async function sendToDicePlus(diceNotation, rollContext) {
 async function handleDicePlusResult(rollContext, totalValue, rollSummary, groups) {
   const { name, modifier, type, isDeathSave, isDamageRoll, actionName, damageFormula } = rollContext;
 
+  console.log('🎲 Dice+ result received:', {
+    totalValue,
+    totalValueType: typeof totalValue,
+    rollSummary,
+    modifier,
+    rollContext
+  });
+
   // Ensure totalValue is a number (parse if needed)
 
   // Ensure totalValue is a number
   const numericTotal = typeof totalValue === 'number' ? totalValue : parseInt(totalValue) || 0;
+
+  console.log('🎲 After parsing:', { numericTotal, modifier, willSubtract: (modifier || 0) });
 
   // Special handling for death saves
   if (isDeathSave && currentCharacter) {

@@ -178,7 +178,15 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
   }
   async function handleDicePlusResult(rollContext, totalValue, rollSummary, groups) {
     const { name, modifier, type, isDeathSave, isDamageRoll, actionName, damageFormula } = rollContext;
+    console.log("\u{1F3B2} Dice+ result received:", {
+      totalValue,
+      totalValueType: typeof totalValue,
+      rollSummary,
+      modifier,
+      rollContext
+    });
     const numericTotal = typeof totalValue === "number" ? totalValue : parseInt(totalValue) || 0;
+    console.log("\u{1F3B2} After parsing:", { numericTotal, modifier, willSubtract: modifier || 0 });
     if (isDeathSave && currentCharacter) {
       const roll = numericTotal;
       let message = "";
