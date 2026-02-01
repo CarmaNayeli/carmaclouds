@@ -1916,7 +1916,7 @@ This will disconnect the character from this room. You can sync a different char
       }
       detailsHtml += ` = ${finalTotal}`;
     }
-    const modText = result.modifier !== 0 ? ` (${result.modifier >= 0 ? "+" : ""}${result.modifier})` : "";
+    const modText = result.modifier !== 0 && !name.includes(`(${result.modifier >= 0 ? "+" : ""}${result.modifier})`) ? ` (${result.modifier >= 0 ? "+" : ""}${result.modifier})` : "";
     const message = `${name}${modText}: <strong>${finalTotal}</strong>`;
     if (isOwlbearReady) {
       OBR.notification.show(`${currentCharacter?.name || "Character"}: ${name} = ${finalTotal}`, "INFO");
