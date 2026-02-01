@@ -459,11 +459,20 @@ function updateAuthUI() {
           <div style="font-size: 12px; color: #A78BFA; margin-bottom: 4px;">Signed in as</div>
           <div style="font-weight: 600; color: #e0e0e0;">${currentUser.email}</div>
         </div>
-        <button
-          onclick="signOut()"
-          style="width: 100%; padding: 8px; background: rgba(239, 68, 68, 0.2); border: 1px solid #EF4444; border-radius: 6px; color: #EF4444; font-weight: 600; cursor: pointer; transition: all 0.2s;">
-          Sign Out
-        </button>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <button
+            onclick="handleFetchCharacter()"
+            id="fetch-character-btn"
+            style="width: 100%; padding: 8px; background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%); border: none; border-radius: 6px; color: white; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+            🔄 Fetch Character
+          </button>
+          <button
+            onclick="signOut()"
+            style="width: 100%; padding: 8px; background: rgba(239, 68, 68, 0.2); border: 1px solid #EF4444; border-radius: 6px; color: #EF4444; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+            Sign Out
+          </button>
+        </div>
+        <div id="fetch-status" style="margin-top: 8px; font-size: 12px; display: none;"></div>
       </div>
     `;
   } else {
@@ -560,6 +569,44 @@ window.handleSignUp = async function() {
     errorDiv.textContent = 'Check your email to confirm your account!';
     errorDiv.style.color = '#10B981';
     errorDiv.style.display = 'block';
+  }
+};
+
+/**
+ * Handle fetch character button click
+ */
+window.handleFetchCharacter = async function() {
+  const fetchBtn = document.getElementById('fetch-character-btn');
+  const statusDiv = document.getElementById('fetch-status');
+
+  if (!fetchBtn || !statusDiv) return;
+
+  // Show loading state
+  fetchBtn.disabled = true;
+  fetchBtn.textContent = '⏳ Fetching...';
+  statusDiv.style.display = 'block';
+  statusDiv.style.color = '#A78BFA';
+  statusDiv.textContent = 'Loading character...';
+
+  try {
+    await checkForActiveCharacter();
+
+    // Success
+    statusDiv.style.color = '#10B981';
+    statusDiv.textContent = '✓ Character loaded successfully!';
+
+    // Hide status after 3 seconds
+    setTimeout(() => {
+      statusDiv.style.display = 'none';
+    }, 3000);
+  } catch (error) {
+    console.error('Fetch character error:', error);
+    statusDiv.style.color = '#EF4444';
+    statusDiv.textContent = `✗ Error: ${error.message || 'Failed to fetch character'}`;
+  } finally {
+    // Reset button state
+    fetchBtn.disabled = false;
+    fetchBtn.textContent = '🔄 Fetch Character';
   }
 };
 
