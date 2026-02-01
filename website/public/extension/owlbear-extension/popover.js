@@ -522,10 +522,11 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
       if (cachedVersion) {
         headers["If-None-Match"] = cachedVersion;
       }
-      const response = await fetch(
-        `${SUPABASE_URL}/functions/v1/characters?${queryParam}&fields=full`,
-        { headers }
-      );
+      const fetchUrl = `${SUPABASE_URL}/functions/v1/characters?${queryParam}&fields=full`;
+      console.log("\u{1F310} Fetching character from:", fetchUrl);
+      console.log("\u{1F511} Headers:", headers);
+      const response = await fetch(fetchUrl, { headers });
+      console.log("\u{1F4E1} Response received:", response.status, response.statusText);
       if (response.status === 304) {
         console.log("\u2705 Character unchanged, using cache");
         if (cachedChar) {
@@ -577,7 +578,12 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
         showNoCharacter();
       }
     } catch (error) {
-      console.error("Error checking for active character:", error);
+      console.error("\u274C Error checking for active character:", error);
+      console.error("Error details:", {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
       showNoCharacter();
     }
   }

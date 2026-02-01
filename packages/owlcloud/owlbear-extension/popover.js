@@ -743,10 +743,13 @@ async function checkForActiveCharacter() {
     }
 
     // Call unified characters edge function with conditional request
-    const response = await fetch(
-      `${SUPABASE_URL}/functions/v1/characters?${queryParam}&fields=full`,
-      { headers }
-    );
+    const fetchUrl = `${SUPABASE_URL}/functions/v1/characters?${queryParam}&fields=full`;
+    console.log('🌐 Fetching character from:', fetchUrl);
+    console.log('🔑 Headers:', headers);
+
+    const response = await fetch(fetchUrl, { headers });
+
+    console.log('📡 Response received:', response.status, response.statusText);
 
     // Handle 304 Not Modified - character hasn't changed
     if (response.status === 304) {
@@ -812,7 +815,12 @@ async function checkForActiveCharacter() {
       showNoCharacter();
     }
   } catch (error) {
-    console.error('Error checking for active character:', error);
+    console.error('❌ Error checking for active character:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     showNoCharacter();
   }
 }
