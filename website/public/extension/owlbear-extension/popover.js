@@ -242,10 +242,13 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
         console.log("\u2139\uFE0F No active session");
         updateAuthUI();
       }
-      supabase.auth.onAuthStateChange((event, session2) => {
+      supabase.auth.onAuthStateChange(async (event, session2) => {
         console.log("\u{1F510} Auth state changed:", event);
         currentUser = session2?.user || null;
         updateAuthUI();
+        if (event === "SIGNED_IN") {
+          await linkExistingCharacterToUser();
+        }
         if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
           checkForActiveCharacter();
         }
@@ -284,6 +287,70 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
       return { success: false, error: error.message };
     }
   }
+  async function signOut() {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error)
+        throw error;
+      console.log("\u2705 Signed out successfully");
+      return { success: true };
+    } catch (error) {
+      console.error("Sign out error:", error);
+      return { success: false, error: error.message };
+    }
+  }
+  window.signOut = signOut;
+  async function linkExistingCharacterToUser() {
+    if (!currentUser)
+      return;
+    try {
+      const playerId = await OBR.player.getId();
+      console.log("\u{1F517} Checking for existing character to link...");
+      const userCharResponse = await fetch(
+        `${SUPABASE_URL}/functions/v1/characters?supabase_user_id=${encodeURIComponent(currentUser.id)}&active_only=true&fields=essential`,
+        { headers: SUPABASE_HEADERS }
+      );
+      if (userCharResponse.ok) {
+        const userData = await userCharResponse.json();
+        if (userData.success && userData.character) {
+          console.log("\u2705 User already has a linked character");
+          return;
+        }
+      }
+      const playerCharResponse = await fetch(
+        `${SUPABASE_URL}/functions/v1/characters?owlbear_player_id=${encodeURIComponent(playerId)}&active_only=true&fields=full`,
+        { headers: SUPABASE_HEADERS }
+      );
+      if (!playerCharResponse.ok) {
+        console.log("\u2139\uFE0F No existing character found to link");
+        return;
+      }
+      const playerData = await playerCharResponse.json();
+      if (playerData.success && playerData.character) {
+        console.log("\u{1F517} Linking existing character to user account...");
+        const character = playerData.character.raw_dicecloud_data || playerData.character;
+        const linkResponse = await fetch(
+          `${SUPABASE_URL}/functions/v1/characters`,
+          {
+            method: "POST",
+            headers: SUPABASE_HEADERS,
+            body: JSON.stringify({
+              owlbearPlayerId: playerId,
+              supabaseUserId: currentUser.id,
+              character
+            })
+          }
+        );
+        if (linkResponse.ok) {
+          console.log("\u2705 Character successfully linked to account!");
+        } else {
+          console.error("\u274C Failed to link character:", await linkResponse.text());
+        }
+      }
+    } catch (error) {
+      console.error("Error linking character to user:", error);
+    }
+  }
   function updateAuthUI() {
     const authSection = document.getElementById("auth-section");
     if (!authSection)
@@ -295,11 +362,20 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
           <div style="font-size: 12px; color: #A78BFA; margin-bottom: 4px;">Signed in as</div>
           <div style="font-weight: 600; color: #e0e0e0;">${currentUser.email}</div>
         </div>
-        <button
-          onclick="signOut()"
-          style="width: 100%; padding: 8px; background: rgba(239, 68, 68, 0.2); border: 1px solid #EF4444; border-radius: 6px; color: #EF4444; font-weight: 600; cursor: pointer; transition: all 0.2s;">
-          Sign Out
-        </button>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <button
+            onclick="handleFetchCharacter()"
+            id="fetch-character-btn"
+            style="width: 100%; padding: 8px; background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%); border: none; border-radius: 6px; color: white; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+            \u{1F504} Fetch Character
+          </button>
+          <button
+            onclick="signOut()"
+            style="width: 100%; padding: 8px; background: rgba(239, 68, 68, 0.2); border: 1px solid #EF4444; border-radius: 6px; color: #EF4444; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+            Sign Out
+          </button>
+        </div>
+        <div id="fetch-status" style="margin-top: 8px; font-size: 12px; display: none;"></div>
       </div>
     `;
     } else {
@@ -380,6 +456,32 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
       errorDiv.textContent = "Check your email to confirm your account!";
       errorDiv.style.color = "#10B981";
       errorDiv.style.display = "block";
+    }
+  };
+  window.handleFetchCharacter = async function() {
+    const fetchBtn = document.getElementById("fetch-character-btn");
+    const statusDiv = document.getElementById("fetch-status");
+    if (!fetchBtn || !statusDiv)
+      return;
+    fetchBtn.disabled = true;
+    fetchBtn.textContent = "\u23F3 Fetching...";
+    statusDiv.style.display = "block";
+    statusDiv.style.color = "#A78BFA";
+    statusDiv.textContent = "Loading character...";
+    try {
+      await checkForActiveCharacter();
+      statusDiv.style.color = "#10B981";
+      statusDiv.textContent = "\u2713 Character loaded successfully!";
+      setTimeout(() => {
+        statusDiv.style.display = "none";
+      }, 3e3);
+    } catch (error) {
+      console.error("Fetch character error:", error);
+      statusDiv.style.color = "#EF4444";
+      statusDiv.textContent = `\u2717 Error: ${error.message || "Failed to fetch character"}`;
+    } finally {
+      fetchBtn.disabled = false;
+      fetchBtn.textContent = "\u{1F504} Fetch Character";
     }
   };
   async function checkForActiveCharacter() {
