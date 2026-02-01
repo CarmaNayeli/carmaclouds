@@ -42,20 +42,20 @@ export default function OwlCloudTab() {
         <div className="space-y-4">
           <div className="flex gap-4">
             <a
-              href="https://github.com/CarmaNayeli/carmaclouds/releases/download/owlcloud-v2.1.0/owlcloud-v2.1.0-firefox.zip"
+              href="https://github.com/CarmaNayeli/carmaclouds/releases/download/latest/owlcloud-firefox.zip"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-block bg-[#a855f7] hover:bg-[#c084fc] text-white font-medium px-6 py-3 rounded-lg transition-colors"
             >
-              📥 Download Firefox Extension
+              🦊 Download Firefox Extension
             </a>
             <a
-              href="https://github.com/CarmaNayeli/carmaclouds/releases/tag/owlcloud-v2.1.0"
+              href="https://github.com/CarmaNayeli/carmaclouds/releases/download/latest/owlcloud-chrome.zip"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block bg-gray-700 hover:bg-gray-600 text-white font-medium px-6 py-3 rounded-lg transition-colors"
+              className="inline-block bg-[#a855f7] hover:bg-[#c084fc] text-white font-medium px-6 py-3 rounded-lg transition-colors"
             >
-              📋 View Release Notes
+              🌐 Download Chrome Extension
             </a>
           </div>
           <p className="text-gray-500 text-sm">

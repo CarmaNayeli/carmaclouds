@@ -25,14 +25,24 @@ export default function RollCloudTab() {
       <section className="bg-black border border-[#e91e8c] rounded-lg p-6">
         <h3 className="text-2xl font-semibold mb-4 text-[#e91e8c]">Download</h3>
         <div className="space-y-4">
-          <a
-            href="https://github.com/CarmaNayeli/carmaclouds/tree/master/rollcloud"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block bg-[#e91e8c] hover:bg-[#ff2ea0] text-white font-medium px-6 py-3 rounded-lg transition-colors"
-          >
-            Download from GitHub
-          </a>
+          <div className="flex gap-4">
+            <a
+              href="https://github.com/CarmaNayeli/carmaclouds/releases/download/latest/rollcloud-firefox.zip"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block bg-[#e91e8c] hover:bg-[#ff2ea0] text-white font-medium px-6 py-3 rounded-lg transition-colors"
+            >
+              🦊 Download Firefox Extension
+            </a>
+            <a
+              href="https://github.com/CarmaNayeli/carmaclouds/releases/download/latest/rollcloud-chrome.zip"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block bg-[#e91e8c] hover:bg-[#ff2ea0] text-white font-medium px-6 py-3 rounded-lg transition-colors"
+            >
+              🌐 Download Chrome Extension
+            </a>
+          </div>
           <p className="text-gray-500 text-sm">
             Install the extension in your browser to get started with RollCloud
           </p>

@@ -17,7 +17,7 @@ Get started with downloads, installation guides, and documentation for all Carma
 
 View and manage your DiceCloud characters directly in Owlbear Rodeo. Real-time HP tracking, dice rolling, and character sheet integration.
 
-- [Chrome Extension](#) | [Firefox Add-on](#)
+- [Chrome Extension](https://github.com/CarmaNayeli/carmaclouds/releases/download/latest/owlcloud-chrome.zip) | [Firefox Add-on](https://github.com/CarmaNayeli/carmaclouds/releases/download/latest/owlcloud-firefox.zip)
 - [Documentation](./packages/owlcloud/README.md)
 
 ### RollCloud
@@ -25,7 +25,7 @@ View and manage your DiceCloud characters directly in Owlbear Rodeo. Real-time H
 
 Manage your DiceCloud characters with enhanced features and Discord integration. Track HP, roll dice, and manage resources across platforms.
 
-- [Chrome Extension](#) | [Firefox Add-on](#)
+- [Chrome Extension](https://github.com/CarmaNayeli/carmaclouds/releases/download/latest/rollcloud-chrome.zip) | [Firefox Add-on](https://github.com/CarmaNayeli/carmaclouds/releases/download/latest/rollcloud-firefox.zip)
 - [Documentation](./packages/rollcloud/README.md)
 
 ### FoundCloud
