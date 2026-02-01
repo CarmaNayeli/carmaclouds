@@ -2032,7 +2032,7 @@ openChatWindowBtn.addEventListener('click', async () => {
     // Open chat as a persistent popover at bottom-left
     await OBR.popover.open({
       id: 'com.owlcloud.chat',
-      url: '/extension/chat.html',
+      url: '/extension/owlbear-extension/chat.html',
       height: chatHeight,
       width: 400,
       anchorOrigin: { horizontal: 'LEFT', vertical: 'BOTTOM' },
