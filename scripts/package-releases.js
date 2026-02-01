@@ -22,17 +22,21 @@ const version = packageJson.version;
 
 console.log(`Creating release packages v${version}...\n`);
 
-// Package OwlCloud for Chrome
-const owlcloudDist = path.join(distDir, 'owlcloud');
-if (fs.existsSync(owlcloudDist)) {
+// Package OwlCloud for Chrome (from dist-chrome)
+const owlcloudChromeDist = path.join(__dirname, '../packages/owlcloud/dist-chrome');
+if (fs.existsSync(owlcloudChromeDist)) {
   console.log('Packaging OwlCloud for Chrome...');
   const owlcloudChromeZip = path.join(releasesDir, `owlcloud-chrome.zip`);
-  execSync(`powershell Compress-Archive -Path "${owlcloudDist}\\*" -DestinationPath "${owlcloudChromeZip}" -Force`, { stdio: 'inherit' });
+  execSync(`powershell Compress-Archive -Path "${owlcloudChromeDist}\\*" -DestinationPath "${owlcloudChromeZip}" -Force`, { stdio: 'inherit' });
   console.log(`✓ Created ${owlcloudChromeZip}`);
+}
 
+// Package OwlCloud for Firefox (from dist)
+const owlcloudFirefoxDist = path.join(__dirname, '../packages/owlcloud/dist');
+if (fs.existsSync(owlcloudFirefoxDist)) {
   console.log('Packaging OwlCloud for Firefox...');
   const owlcloudFirefoxZip = path.join(releasesDir, `owlcloud-firefox.zip`);
-  execSync(`powershell Compress-Archive -Path "${owlcloudDist}\\*" -DestinationPath "${owlcloudFirefoxZip}" -Force`, { stdio: 'inherit' });
+  execSync(`powershell Compress-Archive -Path "${owlcloudFirefoxDist}\\*" -DestinationPath "${owlcloudFirefoxZip}" -Force`, { stdio: 'inherit' });
   console.log(`✓ Created ${owlcloudFirefoxZip}`);
 }
 

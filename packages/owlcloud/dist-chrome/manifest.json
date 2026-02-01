@@ -15,8 +15,7 @@
     "https://luiesmfjdcmpywavvfqm.supabase.co/*"
   ],
   "background": {
-    "service_worker": "src/background-chrome.js",
-    "type": "module"
+    "service_worker": "src/background-chrome.js"
   },
   "content_scripts": [
     {

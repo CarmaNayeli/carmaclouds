@@ -6,8 +6,22 @@
 // Import Supabase config directly for service worker context
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../../core/src/supabase/config.js';
 
-// Import all browser extension modules from @carmaclouds/core
-import '../../core/src/browser.js';
+// Service worker context doesn't have window, so define debug locally
+const debug = {
+  log: console.log.bind(console),
+  warn: console.warn.bind(console),
+  error: console.error.bind(console),
+  info: console.info.bind(console),
+  group: console.group.bind(console),
+  groupEnd: console.groupEnd.bind(console),
+  table: console.table.bind(console),
+  time: console.time.bind(console),
+  timeEnd: console.timeEnd.bind(console),
+  isEnabled: () => true
+};
+
+// Note: We don't import browser.js here because it's designed for DOM contexts
+// Service workers only need minimal dependencies
 
 debug.log('OwlCloud: Background script starting...');
 
