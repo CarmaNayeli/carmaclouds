@@ -177,8 +177,8 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
         rollTarget: "everyone",
         // Show to all players
         diceNotation,
-        showResults: false,
-        // Hide Dice+ popup (OwlCloud chat shows results instead)
+        showResults: true,
+        // Show Dice+ popup notifications
         timestamp: Date.now(),
         source: OWLCLOUD_EXTENSION_ID
       }, { destination: "ALL" });
