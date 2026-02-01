@@ -327,7 +327,7 @@ function displayCharacter(character) {
   // Populate character info in Settings tab
   characterInfo.innerHTML = `
     <div style="display: flex; align-items: center; gap: 16px;">
-      ${portraitUrl ? `<img src="${portraitUrl}" alt="Character Portrait" style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid #8B5CF6; object-fit: cover; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);">` : ''}
+      ${portraitUrl ? `<img id="settings-portrait" src="${portraitUrl}" alt="Character Portrait" style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid #8B5CF6; object-fit: cover; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);">` : ''}
       <div style="flex: 1;">
         <div class="character-name">${character.name || 'Unknown Character'}</div>
         <div class="character-detail">Level ${character.level || '?'} ${character.race || ''} ${character.class || ''}</div>
@@ -335,6 +335,12 @@ function displayCharacter(character) {
       </div>
     </div>
   `;
+
+  // Set up drag-and-drop for settings tab portrait
+  const settingsPortrait = document.getElementById('settings-portrait');
+  if (settingsPortrait && portraitUrl) {
+    setupPortraitDrag(settingsPortrait, character, portraitUrl);
+  }
 
   // Update character header for other tabs
   const characterHeaderName = document.getElementById('character-header-name');
