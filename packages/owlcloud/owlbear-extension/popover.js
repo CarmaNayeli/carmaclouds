@@ -444,6 +444,9 @@ async function signOut() {
   }
 }
 
+// Expose signOut to window for onclick handler
+window.signOut = signOut;
+
 /**
  * Update auth UI based on current user state
  */
