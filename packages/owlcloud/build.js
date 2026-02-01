@@ -88,3 +88,21 @@ if (fs.existsSync(path.join(chromeDist, 'manifest-chrome.json'))) {
 console.log('✅ Both builds complete!');
 console.log('   - Firefox (MV2): dist/');
 console.log('   - Chrome (MV3):  dist-chrome/');
+
+// Copy Owlbear extension to website for Vercel deployment
+console.log('\n📋 Syncing Owlbear extension to website...');
+const websiteExtensionDir = path.join('..', '..', 'website', 'public', 'extension', 'owlbear-extension');
+const chromeOwlbearDir = path.join('.', 'dist-chrome', 'owlbear-extension');
+
+if (fs.existsSync(chromeOwlbearDir)) {
+  // Create website extension directory if it doesn't exist
+  if (!fs.existsSync(websiteExtensionDir)) {
+    fs.mkdirSync(websiteExtensionDir, { recursive: true });
+  }
+
+  // Copy all files from dist-chrome/owlbear-extension to website
+  fs.cpSync(chromeOwlbearDir, websiteExtensionDir, { recursive: true });
+  console.log('✅ Synced Owlbear extension to website/public/extension/owlbear-extension/');
+} else {
+  console.warn('⚠️  Chrome Owlbear extension directory not found, skipping website sync');
+}
