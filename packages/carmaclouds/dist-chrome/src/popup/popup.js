@@ -25163,7 +25163,7 @@ Local data will also be removed.`)) {
   }
   async function getAuthToken() {
     const result = await chrome.storage.local.get("dicecloud_auth_token");
-    return result.dicecloud_auth_token || null;
+    return result?.dicecloud_auth_token || null;
   }
   async function saveAuthToken(token) {
     await chrome.storage.local.set({ dicecloud_auth_token: token });

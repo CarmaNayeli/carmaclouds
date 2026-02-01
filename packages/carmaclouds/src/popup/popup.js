@@ -140,7 +140,7 @@ function closeAuthModal() {
 // Get auth token from storage
 async function getAuthToken() {
   const result = await chrome.storage.local.get('dicecloud_auth_token');
-  return result.dicecloud_auth_token || null;
+  return result?.dicecloud_auth_token || null;
 }
 
 // Save auth token to storage
