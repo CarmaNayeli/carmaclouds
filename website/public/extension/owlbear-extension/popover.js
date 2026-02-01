@@ -36,6 +36,13 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
     const tabContents = document.querySelectorAll(".tab-content");
     const brandingHeader = document.getElementById("branding-header");
     const characterHeader = document.getElementById("character-header");
+    const tabsNav = document.querySelector(".tabs-nav");
+    if (tabsNav) {
+      tabsNav.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        tabsNav.scrollLeft += e.deltaY;
+      });
+    }
     tabButtons.forEach((button) => {
       button.addEventListener("click", () => {
         const tabName = button.getAttribute("data-tab");
