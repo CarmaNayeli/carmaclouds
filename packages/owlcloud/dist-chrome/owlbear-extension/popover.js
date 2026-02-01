@@ -252,16 +252,20 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
       await addChatMessage(message, "combat", currentCharacter?.name, detailsHtml);
       return;
     }
+    const diceAlreadyAddedModifier = rollSummary && rollSummary.includes("+") && rollSummary.includes("=");
+    const actualTotal = diceAlreadyAddedModifier ? numericTotal - (modifier || 0) : numericTotal;
     console.log("\u{1F50D} Dice+ calculation debug:", {
       numericTotal,
       modifier,
       rollContext,
       rollSummary,
-      willCalculateFinal: numericTotal + (modifier || 0)
+      diceAlreadyAddedModifier,
+      actualTotal,
+      willCalculateFinal: actualTotal + (modifier || 0)
     });
     const result = {
-      total: numericTotal,
-      rolls: groups && groups[0] ? groups[0].dice.filter((d) => d.kept).map((d) => d.value) : [numericTotal],
+      total: actualTotal,
+      rolls: groups && groups[0] ? groups[0].dice.filter((d) => d.kept).map((d) => d.value) : [actualTotal],
       modifier: modifier || 0,
       formula: rollSummary,
       mode: rollContext.mode || "normal"
