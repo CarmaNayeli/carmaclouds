@@ -16,6 +16,11 @@ let allCharacters = [];
 let isOwlbearReady = false;
 let rollMode = 'normal'; // 'advantage', 'normal', or 'disadvantage'
 
+// Dice+ integration
+const OWLCLOUD_EXTENSION_ID = 'com.owlcloud.extension';
+let dicePlusReady = false;
+let pendingRolls = new Map(); // Track rolls waiting for results from Dice+
+
 // Supabase configuration
 const SUPABASE_URL = 'https://luiesmfjdcmpywavvfqm.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aWVzbWZqZGNtcHl3YXZ2ZnFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4ODYxNDksImV4cCI6MjA4NTQ2MjE0OX0.oqjHFf2HhCLcanh0HVryoQH7iSV7E9dHHZJdYehxZ0U';
@@ -98,7 +103,223 @@ OBR.onReady(async () => {
 
   // Note: We don't auto-refresh character data because the local sheet state
   // is the source of truth during gameplay. Only sync when user explicitly requests it.
+
+  // Check if Dice+ is available
+  checkDicePlusReady();
+
+  // Set up Dice+ result listeners
+  setupDicePlusListeners();
 });
+
+// ============== Dice+ Integration ==============
+
+/**
+ * Check if Dice+ extension is ready
+ */
+async function checkDicePlusReady() {
+  if (!isOwlbearReady) return;
+
+  try {
+    const requestId = `ready_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // Set up one-time listener for ready response
+    const timeout = setTimeout(() => {
+      console.warn('⚠️ Dice+ not detected - 3D dice disabled, using built-in roller');
+      dicePlusReady = false;
+    }, 2000);
+
+    OBR.broadcast.onMessage('dice-plus/isReady', (event) => {
+      if (event.data.requestId === requestId && event.data.ready) {
+        clearTimeout(timeout);
+        dicePlusReady = true;
+        console.log('✅ Dice+ is ready - 3D dice enabled!');
+      }
+    });
+
+    // Send ready check
+    await OBR.broadcast.sendMessage('dice-plus/isReady', {
+      requestId,
+      timestamp: Date.now()
+    }, { destination: 'ALL' });
+
+  } catch (error) {
+    console.warn('Failed to check Dice+ status:', error);
+    dicePlusReady = false;
+  }
+}
+
+/**
+ * Set up listeners for Dice+ roll results
+ */
+function setupDicePlusListeners() {
+  if (!isOwlbearReady) return;
+
+  // Listen for roll results
+  OBR.broadcast.onMessage(`${OWLCLOUD_EXTENSION_ID}/roll-result`, (event) => {
+    const { rollId, totalValue, rollSummary, groups } = event.data;
+
+    console.log('🎲 Dice+ result:', event.data);
+
+    // Find the pending roll
+    const pendingRoll = pendingRolls.get(rollId);
+    if (!pendingRoll) {
+      console.warn('Received result for unknown roll:', rollId);
+      return;
+    }
+
+    // Remove from pending
+    pendingRolls.delete(rollId);
+
+    // Process the result
+    handleDicePlusResult(pendingRoll, totalValue, rollSummary, groups);
+  });
+
+  // Listen for roll errors
+  OBR.broadcast.onMessage(`${OWLCLOUD_EXTENSION_ID}/roll-error`, (event) => {
+    const { rollId, error } = event.data;
+    console.error('Dice+ roll error:', error);
+
+    const pendingRoll = pendingRolls.get(rollId);
+    if (pendingRoll) {
+      pendingRolls.delete(rollId);
+      // Fall back to local roll
+      console.warn('Falling back to built-in dice roller');
+      executeLocalRoll(pendingRoll);
+    }
+  });
+}
+
+/**
+ * Send a roll request to Dice+
+ * @param {string} diceNotation - Standard dice notation (e.g., "1d20+5", "2d20kh1+3")
+ * @param {object} rollContext - Context about the roll (name, modifier, etc.)
+ * @returns {Promise<string>} - Roll ID
+ */
+async function sendToDicePlus(diceNotation, rollContext) {
+  if (!isOwlbearReady || !dicePlusReady) {
+    // Fall back to local rolling
+    return null;
+  }
+
+  try {
+    const rollId = `roll_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const playerId = await OBR.player.getId();
+    const playerName = await OBR.player.getName();
+
+    // Store pending roll
+    pendingRolls.set(rollId, rollContext);
+
+    // Send roll request to Dice+
+    await OBR.broadcast.sendMessage('dice-plus/roll-request', {
+      rollId,
+      playerId,
+      playerName,
+      rollTarget: 'everyone', // Show to all players
+      diceNotation,
+      showResults: true, // Show Dice+ popup
+      timestamp: Date.now(),
+      source: OWLCLOUD_EXTENSION_ID
+    }, { destination: 'ALL' });
+
+    console.log('🎲 Sent to Dice+:', diceNotation, rollId);
+    return rollId;
+
+  } catch (error) {
+    console.error('Failed to send to Dice+:', error);
+    return null;
+  }
+}
+
+/**
+ * Handle result from Dice+
+ */
+async function handleDicePlusResult(rollContext, totalValue, rollSummary, groups) {
+  const { name, modifier, type, isDeathSave, isDamageRoll, actionName, damageFormula } = rollContext;
+
+  // Special handling for death saves
+  if (isDeathSave && currentCharacter) {
+    const roll = totalValue;
+    let message = '';
+    let messageType = 'combat';
+
+    if (roll === 20) {
+      message = `💀 Death Save: <strong>20 (Natural 20!)</strong> - Regain 1 HP!`;
+      if (!currentCharacter.hitPoints) {
+        currentCharacter.hitPoints = { current: 0, max: 0 };
+      }
+      currentCharacter.hitPoints.current = 1;
+      populateStatsTab(currentCharacter);
+    } else if (roll === 1) {
+      message = `💀 Death Save: <strong>1 (Natural 1!)</strong> - Two failures!`;
+    } else if (roll >= 10) {
+      message = `💀 Death Save: <strong>${roll}</strong> - Success`;
+    } else {
+      message = `💀 Death Save: <strong>${roll}</strong> - Failure`;
+    }
+
+    if (isOwlbearReady) {
+      OBR.notification.show(`${currentCharacter.name}: Death Save = ${roll}`, roll >= 10 ? 'SUCCESS' : 'ERROR');
+    }
+    console.log('💀', message);
+    await addChatMessage(message, messageType, currentCharacter.name);
+    return;
+  }
+
+  // Special handling for damage rolls
+  if (isDamageRoll) {
+    const rolls = groups && groups[0] ? groups[0].dice.filter(d => d.kept).map(d => d.value) : [];
+    const message = `${actionName} Damage: <strong>${totalValue}</strong>`;
+
+    let detailsHtml = `<strong>Formula:</strong> ${damageFormula}<br>
+                       <strong>Rolls:</strong> ${rolls.join(', ')}`;
+    if (modifier) {
+      detailsHtml += `<br>Modifier: ${modifier >= 0 ? '+' : ''}${modifier}`;
+    }
+    detailsHtml += `<br>Calculation: ${rolls.join(' + ')}`;
+    if (modifier) {
+      detailsHtml += ` ${modifier >= 0 ? '+' : ''}${modifier}`;
+    }
+    detailsHtml += ` = ${totalValue}`;
+
+    if (isOwlbearReady) {
+      OBR.notification.show(`${currentCharacter?.name || 'Character'}: ${actionName} Damage = ${totalValue}`, 'INFO');
+    }
+    console.log('⚔️', message);
+    await addChatMessage(message, 'combat', currentCharacter?.name, detailsHtml);
+    return;
+  }
+
+  // Create result object similar to local rolls
+  const result = {
+    total: totalValue,
+    rolls: groups && groups[0] ? groups[0].dice.filter(d => d.kept).map(d => d.value) : [totalValue],
+    modifier: modifier || 0,
+    formula: rollSummary,
+    mode: rollContext.mode || 'normal'
+  };
+
+  // Show the result using existing UI
+  await showRollResult(name, result);
+}
+
+/**
+ * Execute a local roll (fallback when Dice+ unavailable)
+ */
+async function executeLocalRoll(rollContext) {
+  const { name, modifier, type, mode } = rollContext;
+
+  let result;
+  if (type === 'd20') {
+    result = rollD20Local();
+  } else {
+    result = rollDiceLocal(rollContext.formula);
+  }
+
+  result.total += (modifier || 0);
+  result.modifier = modifier || 0;
+
+  await showRollResult(name, result);
+}
 
 // ============== Character Management ==============
 
@@ -1649,8 +1870,46 @@ window.setRollMode = async function(mode) {
 
 /**
  * Roll a d20 with advantage/disadvantage based on current roll mode
+ * Uses Dice+ if available, falls back to local rolling
  */
-function rollD20() {
+async function rollD20(name, modifier = 0) {
+  // Prepare dice notation for Dice+
+  let diceNotation;
+  if (rollMode === 'advantage') {
+    diceNotation = '2d20kh1'; // Keep highest
+  } else if (rollMode === 'disadvantage') {
+    diceNotation = '2d20kl1'; // Keep lowest
+  } else {
+    diceNotation = '1d20';
+  }
+
+  // Add modifier to notation
+  if (modifier !== 0) {
+    diceNotation += (modifier >= 0 ? '+' : '') + modifier;
+  }
+
+  const rollContext = {
+    name,
+    modifier,
+    type: 'd20',
+    mode: rollMode
+  };
+
+  // Try Dice+ first
+  const rollId = await sendToDicePlus(diceNotation, rollContext);
+  if (rollId) {
+    // Dice+ will handle the result via the listener
+    return { pending: true, rollId };
+  }
+
+  // Fall back to local roll
+  return rollD20Local();
+}
+
+/**
+ * Local d20 roll (fallback when Dice+ unavailable)
+ */
+function rollD20Local() {
   if (rollMode === 'advantage') {
     const roll1 = Math.floor(Math.random() * 20) + 1;
     const roll2 = Math.floor(Math.random() * 20) + 1;
@@ -1667,7 +1926,31 @@ function rollD20() {
   }
 }
 
-function rollDice(formula) {
+/**
+ * Roll dice using formula (tries Dice+ first, falls back to local)
+ */
+async function rollDice(formula, name, modifier = 0) {
+  const rollContext = {
+    name,
+    modifier,
+    formula,
+    type: 'custom'
+  };
+
+  // Try Dice+ first
+  const rollId = await sendToDicePlus(formula, rollContext);
+  if (rollId) {
+    return { pending: true, rollId };
+  }
+
+  // Fall back to local
+  return rollDiceLocal(formula);
+}
+
+/**
+ * Local dice roll (fallback when Dice+ unavailable)
+ */
+function rollDiceLocal(formula) {
   // Parse formula like "2d6+3" or "1d20"
   const match = formula.match(/(\d+)?d(\d+)([+-]\d+)?/i);
   if (!match) {
@@ -1756,9 +2039,15 @@ async function showRollResult(name, result) {
  */
 window.rollAbilityCheck = async function(abilityName, modifier) {
   console.log('🎲 rollAbilityCheck called:', abilityName, modifier);
-  const result = rollD20();
+  const name = `${abilityName} Check (${modifier >= 0 ? '+' : ''}${modifier})`;
+  const result = await rollD20(name, modifier);
+
+  // If using Dice+, result will be handled by listener
+  if (result.pending) return;
+
+  // Otherwise show local result
   const total = result.total + modifier;
-  await showRollResult(`${abilityName} Check (${modifier >= 0 ? '+' : ''}${modifier})`, {...result, total, modifier});
+  await showRollResult(name, {...result, total, modifier});
 };
 
 /**
@@ -1766,28 +2055,39 @@ window.rollAbilityCheck = async function(abilityName, modifier) {
  */
 window.rollSavingThrow = async function(abilityName, modifier) {
   console.log('🎲 rollSavingThrow called:', abilityName, modifier);
-  console.trace('Call stack');
-  const result = rollD20();
+  const name = `${abilityName} Save (${modifier >= 0 ? '+' : ''}${modifier})`;
+  const result = await rollD20(name, modifier);
+
+  if (result.pending) return;
+
   const total = result.total + modifier;
-  await showRollResult(`${abilityName} Save (${modifier >= 0 ? '+' : ''}${modifier})`, {...result, total, modifier});
+  await showRollResult(name, {...result, total, modifier});
 };
 
 /**
  * Roll skill check
  */
 window.rollSkillCheck = async function(skillName, bonus) {
-  const result = rollD20();
+  const name = `${skillName} (${bonus >= 0 ? '+' : ''}${bonus})`;
+  const result = await rollD20(name, bonus);
+
+  if (result.pending) return;
+
   const total = result.total + bonus;
-  await showRollResult(`${skillName} (${bonus >= 0 ? '+' : ''}${bonus})`, {...result, total, modifier: bonus});
+  await showRollResult(name, {...result, total, modifier: bonus});
 };
 
 /**
  * Roll initiative
  */
 window.rollInitiative = async function(initiativeBonus) {
-  const result = rollD20();
+  const name = `Initiative (${initiativeBonus >= 0 ? '+' : ''}${initiativeBonus})`;
+  const result = await rollD20(name, initiativeBonus);
+
+  if (result.pending) return;
+
   const total = result.total + initiativeBonus;
-  await showRollResult(`Initiative (${initiativeBonus >= 0 ? '+' : ''}${initiativeBonus})`, {...result, total, modifier: initiativeBonus});
+  await showRollResult(name, {...result, total, modifier: initiativeBonus});
 };
 
 /**
@@ -1796,7 +2096,18 @@ window.rollInitiative = async function(initiativeBonus) {
 window.rollDeathSave = async function() {
   if (!currentCharacter) return;
 
-  const result = rollDice('1d20');
+  const result = await rollDice('1d20', 'Death Save', 0);
+
+  // If using Dice+, we need to handle it differently
+  if (result.pending) {
+    // Store the context for the death save handler
+    const rollContext = pendingRolls.get(result.rollId);
+    if (rollContext) {
+      rollContext.isDeathSave = true;
+    }
+    return;
+  }
+
   const roll = result.total;
 
   let message = '';
@@ -1831,11 +2142,16 @@ window.rollDeathSave = async function() {
  * Roll attack only (no damage)
  */
 window.rollAttackOnly = async function(actionName, attackBonus) {
-  const attackRoll = rollD20();
+  const bonusText = attackBonus ? ` (+${attackBonus})` : '';
+  const name = `${actionName} Attack${bonusText}`;
+  const attackRoll = await rollD20(name, attackBonus || 0);
+
+  // If using Dice+, result will be handled by listener
+  if (attackRoll.pending) return;
+
   const attackTotal = attackRoll.total + (attackBonus || 0);
 
   // Create concise message
-  const bonusText = attackBonus ? ` (+${attackBonus})` : '';
   const message = `${actionName} Attack${bonusText}: <strong>${attackTotal}</strong>`;
 
   // Build details for expandable view
@@ -1877,7 +2193,19 @@ window.rollAttackOnly = async function(actionName, attackBonus) {
 window.rollDamageOnly = async function(actionName, damageFormula) {
   if (!damageFormula || !damageFormula.trim()) return;
 
-  const damageRoll = rollDice(damageFormula);
+  const name = `${actionName} Damage`;
+  const damageRoll = await rollDice(damageFormula, name, 0);
+
+  // If using Dice+, store additional context for damage display
+  if (damageRoll.pending) {
+    const rollContext = pendingRolls.get(damageRoll.rollId);
+    if (rollContext) {
+      rollContext.isDamageRoll = true;
+      rollContext.actionName = actionName;
+      rollContext.damageFormula = damageFormula;
+    }
+    return;
+  }
 
   // Create concise message
   const message = `${actionName} Damage: <strong>${damageRoll.total}</strong>`;
