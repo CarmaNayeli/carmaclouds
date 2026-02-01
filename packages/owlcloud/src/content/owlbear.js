@@ -888,15 +888,25 @@ window.addEventListener('message', async (event) => {
 
   const { type, source } = event.data;
 
-  // Only process messages from our Owlbear extension or Dice+
-  // Allow Dice+ messages from its origin, but filter OwlCloud messages by source
+  // Filter Dice+ messages - only process ready checks and roll requests
   const isDicePlus = event.origin === 'https://dice-plus.missinglinkdev.com';
-  if (!isDicePlus && source !== 'owlbear-extension') {
-    return; // Silently ignore messages without the expected source
+  if (isDicePlus) {
+    // Only process Dice+ isReady and roll messages, silently ignore everything else
+    const isDicePlusRelevant = type && (
+      type.includes('dice-plus/isReady') ||
+      type.includes('dice-plus/roll')
+    );
+    if (!isDicePlusRelevant) {
+      return; // Silently ignore non-relevant Dice+ messages
+    }
+    debug.log('📨 Dice+ message:', type);
+  } else {
+    // For non-Dice+ messages, require owlbear-extension source
+    if (source !== 'owlbear-extension') {
+      return; // Silently ignore messages without the expected source
+    }
+    debug.log('📨 Message from Owlbear extension:', type);
   }
-
-  // Messages are processed silently to avoid console spam
-  debug.log('📨 Message from Owlbear extension:', type);
 
   switch (type) {
     case 'OWLCLOUD_GET_ACTIVE_CHARACTER': {
