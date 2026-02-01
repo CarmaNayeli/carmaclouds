@@ -237,6 +237,25 @@ function setupDicePlusListeners() {
       executeLocalRoll(pendingRoll);
     }
   });
+
+  // ALSO listen on Dice+ channel for roll results
+  OBR.broadcast.onMessage('dice-plus/roll-result', (event) => {
+    console.log('📨 Dice+ roll-result received:', event.data);
+    const { rollId, totalValue, rollSummary, groups } = event.data;
+
+    // Find the pending roll
+    const pendingRoll = pendingRolls.get(rollId);
+    if (!pendingRoll) {
+      console.warn('Received result for unknown roll:', rollId);
+      return;
+    }
+
+    // Remove from pending
+    pendingRolls.delete(rollId);
+
+    // Process the result
+    handleDicePlusResult(pendingRoll, totalValue, rollSummary, groups);
+  });
 }
 
 /**

@@ -145,6 +145,17 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
         executeLocalRoll(pendingRoll);
       }
     });
+    OBR.broadcast.onMessage("dice-plus/roll-result", (event) => {
+      console.log("\u{1F4E8} Dice+ roll-result received:", event.data);
+      const { rollId, totalValue, rollSummary, groups } = event.data;
+      const pendingRoll = pendingRolls.get(rollId);
+      if (!pendingRoll) {
+        console.warn("Received result for unknown roll:", rollId);
+        return;
+      }
+      pendingRolls.delete(rollId);
+      handleDicePlusResult(pendingRoll, totalValue, rollSummary, groups);
+    });
   }
   async function sendToDicePlus(diceNotation, rollContext) {
     console.log("\u{1F3B2} sendToDicePlus called:", { diceNotation, isOwlbearReady, dicePlusReady });
