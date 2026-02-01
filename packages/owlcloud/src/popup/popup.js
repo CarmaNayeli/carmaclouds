@@ -235,9 +235,9 @@ function initializePopup() {
   }
   
   // Debug: Check if Supabase is available
-  debug.log('🔍 Supabase availability check:', typeof SupabaseTokenManager !== 'undefined' ? 'Available' : 'Not available');
-  if (typeof SupabaseTokenManager !== 'undefined') {
-    const testManager = new SupabaseTokenManager();
+  debug.log('🔍 Supabase availability check:', typeof window.SupabaseTokenManager !== 'undefined' ? 'Available' : 'Not available');
+  if (typeof window.SupabaseTokenManager !== 'undefined') {
+    const testManager = new window.SupabaseTokenManager();
     debug.log('🔍 Generated user ID:', testManager.generateUserId());
   }
   
@@ -274,8 +274,8 @@ function initializePopup() {
   // Periodic session validity check to detect conflicts from other browsers
   setInterval(async () => {
     try {
-      if (typeof SupabaseTokenManager !== 'undefined') {
-        const supabaseManager = new SupabaseTokenManager();
+      if (typeof window.SupabaseTokenManager !== 'undefined') {
+        const supabaseManager = new window.SupabaseTokenManager();
         const sessionCheck = await supabaseManager.checkSessionValidity();
         
         if (!sessionCheck.valid) {
@@ -418,8 +418,8 @@ function initializePopup() {
       debug.log('🔍 Checking login status...');
       
       // First check for session conflicts
-      if (typeof SupabaseTokenManager !== 'undefined') {
-        const supabaseManager = new SupabaseTokenManager();
+      if (typeof window.SupabaseTokenManager !== 'undefined') {
+        const supabaseManager = new window.SupabaseTokenManager();
         const sessionCheck = await supabaseManager.checkSessionValidity();
         
         if (!sessionCheck.valid) {
@@ -459,9 +459,9 @@ function initializePopup() {
             }
             // Try Supabase for cross-session persistence
             try {
-              if (typeof SupabaseTokenManager !== 'undefined') {
+              if (typeof window.SupabaseTokenManager !== 'undefined') {
                 debug.log('🌐 Attempting to retrieve token from Supabase...');
-                const supabaseManager = new SupabaseTokenManager();
+                const supabaseManager = new window.SupabaseTokenManager();
                 const userId = supabaseManager.generateUserId();
                 debug.log('🔍 Using user ID for Supabase lookup:', userId);
 
@@ -527,8 +527,8 @@ function initializePopup() {
           }
           // Try Supabase for cross-session persistence
           try {
-            if (typeof SupabaseTokenManager !== 'undefined') {
-              const supabaseManager = new SupabaseTokenManager();
+            if (typeof window.SupabaseTokenManager !== 'undefined') {
+              const supabaseManager = new window.SupabaseTokenManager();
               const supabaseResult = await supabaseManager.retrieveToken();
 
               if (supabaseResult.success) {
@@ -604,8 +604,8 @@ function initializePopup() {
       showLoginError(conflictMessage);
       
       // Clear conflict info after showing
-      if (typeof SupabaseTokenManager !== 'undefined') {
-        const supabaseManager = new SupabaseTokenManager();
+      if (typeof window.SupabaseTokenManager !== 'undefined') {
+        const supabaseManager = new window.SupabaseTokenManager();
         await supabaseManager.clearConflictInfo();
       }
       
@@ -717,8 +717,8 @@ function initializePopup() {
 
               // Also store in Supabase for cross-session persistence
               try {
-                if (typeof SupabaseTokenManager !== 'undefined') {
-                  const supabaseManager = new SupabaseTokenManager();
+                if (typeof window.SupabaseTokenManager !== 'undefined') {
+                  const supabaseManager = new window.SupabaseTokenManager();
                   const supabaseResult = await supabaseManager.storeToken({
                     token: response.token,
                     userId: response.userId,
@@ -837,8 +837,8 @@ function initializePopup() {
     try {
       // Delete from Supabase
       try {
-        if (typeof SupabaseTokenManager !== 'undefined') {
-          await SupabaseTokenManager.deleteToken();
+        if (typeof window.SupabaseTokenManager !== 'undefined') {
+          await window.SupabaseTokenManager.deleteToken();
         }
       } catch (supabaseError) {
         debug.log('⚠️ Supabase not available for logout (non-critical):', supabaseError);
@@ -1131,12 +1131,12 @@ function initializePopup() {
   async function refreshFromDatabase() {
     try {
       // Check if Supabase is available
-      if (typeof SupabaseTokenManager === 'undefined') {
+      if (typeof window.SupabaseTokenManager === 'undefined') {
         console.log('Cloud sync not available, skipping database refresh');
         return;
       }
 
-      const supabaseManager = new SupabaseTokenManager();
+      const supabaseManager = new window.SupabaseTokenManager();
       
       // Get current token from storage
       const result = await browserAPI.storage.local.get(['diceCloudToken', 'username', 'tokenExpires', 'diceCloudUserId', 'authId']);
@@ -1601,12 +1601,12 @@ function initializePopup() {
       }
 
       // Check if Supabase is available
-      if (typeof SupabaseTokenManager === 'undefined') {
+      if (typeof window.SupabaseTokenManager === 'undefined') {
         showError('Cloud sync not available');
         return;
       }
 
-      const supabaseManager = new SupabaseTokenManager();
+      const supabaseManager = new window.SupabaseTokenManager();
       debug.log('🌐 Manual cloud sync - Browser ID:', supabaseManager.generateUserId());
 
       const supabaseResult = await supabaseManager.storeToken({
@@ -1803,7 +1803,7 @@ function initializePopup() {
       }
 
       // Get auth token from database to check its session
-      const supabaseManager = new SupabaseTokenManager();
+      const supabaseManager = new window.SupabaseTokenManager();
       const tokenCheck = await supabaseManager.getTokenFromDatabase();
       
       if (!tokenCheck.success || !tokenCheck.tokenData) {
@@ -1901,7 +1901,7 @@ function initializePopup() {
           }
 
           // Sync to cloud (override cloud session with current session)
-          const supabaseManager = new SupabaseTokenManager();
+          const supabaseManager = new window.SupabaseTokenManager();
           const supabaseResult = await supabaseManager.storeToken({
             token: result.diceCloudToken,
             userId: result.diceCloudUserId,
@@ -2219,7 +2219,7 @@ function initializePopup() {
       // If no local character, try to get active character from Supabase
       if (!currentCharacter) {
         debug.log('📋 No local active character, checking Supabase...');
-        const supabaseManager = new SupabaseTokenManager();
+        const supabaseManager = new window.SupabaseTokenManager();
         const userId = await supabaseManager.getOrCreatePersistentUserId();
 
         // Get auth token to find Discord user ID
