@@ -25171,8 +25171,8 @@ Local data will also be removed.`)) {
   }
   async function saveAuthToken(token) {
     await chrome.storage.local.set({ dicecloud_auth_token: token });
-    updateAuthStatus();
-    updateAuthView();
+    await updateAuthStatus();
+    await updateAuthView();
     await reloadCurrentTab();
   }
   async function clearAuthToken() {

@@ -1,6 +1,6 @@
 {
   "name": "@carmaclouds/core",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "Core utilities and types shared across CarmaClouds packages",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -23,7 +23,9 @@
       "types": "./dist/types/index.d.ts"
     },
     "./common/*": "./src/common/*",
-    "./modules/*": "./src/modules/*"
+    "./modules/*": "./src/modules/*",
+    "./browser.js": "./src/browser.js",
+    "./src/*": "./src/*"
   },
   "scripts": {
     "build": "tsc",

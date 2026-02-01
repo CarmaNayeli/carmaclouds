@@ -1,6 +1,6 @@
 {
   "name": "carmaclouds",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "private": true,
   "description": "CarmaClouds - Unified cloud services for tabletop gaming platforms",
   "workspaces": [
@@ -8,13 +8,15 @@
     "build-tools"
   ],
   "scripts": {
-    "build": "node scripts/build-and-copy.js",
+    "sync-versions": "node scripts/sync-versions.js",
+    "build": "npm run sync-versions && node scripts/build-and-copy.js",
     "package": "node scripts/package-releases.js",
     "release": "npm run build && npm run package",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "clean": "npm run clean --workspaces --if-present && rm -rf node_modules dist releases",
     "dev": "npm run dev --workspaces --if-present",
+    "carmaclouds:dev": "npm run dev -w @carmaclouds/carmaclouds",
     "owlcloud:dev": "npm run dev -w @carmaclouds/owlcloud",
     "rollcloud:dev": "npm run dev -w @carmaclouds/rollcloud",
     "foundcloud:dev": "npm run dev -w @carmaclouds/foundcloud"

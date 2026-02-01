@@ -232,6 +232,11 @@ body {
   cursor: not-allowed;
 }
 
+/* Utility Classes */
+.hidden {
+  display: none !important;
+}
+
 /* Settings Modal */
 #settings-modal {
   display: none;

@@ -150,8 +150,8 @@ async function getAuthToken() {
 // Save auth token to storage
 async function saveAuthToken(token) {
   await chrome.storage.local.set({ dicecloud_auth_token: token });
-  updateAuthStatus();
-  updateAuthView();
+  await updateAuthStatus();
+  await updateAuthView();
   // Reload current tab to show adapter content
   await reloadCurrentTab();
 }
