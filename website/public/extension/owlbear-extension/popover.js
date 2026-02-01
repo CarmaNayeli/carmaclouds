@@ -148,7 +148,11 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
     OBR.broadcast.onMessage("dice-plus/roll-result", (event) => {
       console.log("\u{1F4E8} Dice+ roll-result received:", event.data);
       const { result } = event.data;
-      const { rollId, totalValue, rollSummary, groups } = result || {};
+      if (!result || !result.rollId || result.totalValue === void 0) {
+        console.warn("\u{1F6AB} Invalid Dice+ result structure, ignoring:", result);
+        return;
+      }
+      const { rollId, totalValue, rollSummary, groups } = result;
       const pendingRoll = pendingRolls.get(rollId);
       if (!pendingRoll) {
         console.warn("Received result for unknown roll:", rollId);
