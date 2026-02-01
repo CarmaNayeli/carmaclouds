@@ -34,6 +34,14 @@ const owlcloudTarget = path.join(distDir, 'owlcloud');
 if (fs.existsSync(owlcloudDist)) {
   console.log('Copying OwlCloud extension...');
   execSync(`xcopy /E /I /Y "${owlcloudDist}" "${owlcloudTarget}"`, { stdio: 'inherit' });
+
+  // Also copy Owlbear extension to website/public for Vercel deployment
+  const owlbearExtDist = path.join(owlcloudDist, 'owlbear-extension');
+  const owlbearExtTarget = path.join(__dirname, '../website/public/extension/owlbear-extension');
+  if (fs.existsSync(owlbearExtDist)) {
+    console.log('Copying Owlbear extension to website/public for Vercel...');
+    execSync(`xcopy /E /I /Y "${owlbearExtDist}" "${owlbearExtTarget}"`, { stdio: 'inherit' });
+  }
 }
 
 // Copy RollCloud extension
