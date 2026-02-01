@@ -405,7 +405,7 @@ async function loadChatHistory() {
 
     if (messages && Array.isArray(messages)) {
       messages.forEach(msg => {
-        displayChatMessage(msg.text, msg.type, msg.author, msg.timestamp, msg.details);
+        displayChatMessage(msg.text, msg.type, msg.author, msg.timestamp, msg.details, msg.themeColor);
         lastLoadedMessageId = msg.id;
       });
       scrollChatToBottom();
@@ -426,7 +426,7 @@ function loadNewMessages(messages) {
   );
 
   newMessages.forEach(msg => {
-    displayChatMessage(msg.text, msg.type, msg.author, msg.timestamp, msg.details);
+    displayChatMessage(msg.text, msg.type, msg.author, msg.timestamp, msg.details, msg.themeColor);
     lastLoadedMessageId = msg.id;
   });
 
@@ -452,8 +452,10 @@ function scrollChatToBottom() {
  * @param {string} type - Message type: 'system', 'roll', 'action', 'spell', 'combat', 'user'
  * @param {string} author - Message author (optional)
  * @param {number} timestamp - Message timestamp (optional)
+ * @param {object} details - Message details (optional)
+ * @param {string} themeColor - Theme color for author name (optional)
  */
-function displayChatMessage(text, type = 'system', author = null, timestamp = null, details = null) {
+function displayChatMessage(text, type = 'system', author = null, timestamp = null, details = null, themeColor = null) {
   const messageDiv = document.createElement('div');
   messageDiv.className = `chat-message ${type}`;
 
@@ -464,9 +466,11 @@ function displayChatMessage(text, type = 'system', author = null, timestamp = nu
   let messageHTML = '';
 
   if (author) {
+    // Use theme color for author name if provided, otherwise use default
+    const authorStyle = themeColor ? `style="color: ${themeColor}"` : '';
     messageHTML = `
       <div class="chat-message-header">
-        <span class="chat-message-author">${author}</span>
+        <span class="chat-message-author" ${authorStyle}>${author}</span>
         <span class="chat-message-time">${timeStr}</span>
       </div>
       <div class="chat-message-text">${text}</div>
@@ -479,7 +483,7 @@ function displayChatMessage(text, type = 'system', author = null, timestamp = nu
   if (details) {
     const detailsHTML = typeof details === 'string' ? details : JSON.stringify(details, null, 2);
     messageHTML += `
-      <div class="chat-message-details" style="display: none; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(138, 92, 246, 0.2); font-size: 12px; color: #aaa;">
+      <div class="chat-message-details" style="display: none; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--theme-border); font-size: 12px; color: var(--theme-text-muted);">
         ${detailsHTML}
       </div>
     `;
@@ -505,6 +509,8 @@ function displayChatMessage(text, type = 'system', author = null, timestamp = nu
   if (messages.length > 100) {
     messages[0].remove();
   }
+
+  scrollChatToBottom();
 }
 
 /**
@@ -524,13 +530,31 @@ async function addChatMessageToMetadata(text, type = 'system', author = null) {
     const plainText = text.replace(/<[^>]*>/g, '');
     const truncatedText = plainText.length > 500 ? plainText.substring(0, 497) + '...' : plainText;
 
+    // Get current theme color
+    const currentTheme = localStorage.getItem('owlcloud-theme') || 'purple';
+    const themeColors = {
+      purple: '#8B5CF6',
+      blue: '#3B82F6', 
+      green: '#10B981',
+      red: '#EF4444',
+      orange: '#F97316',
+      yellow: '#EAB308',
+      pink: '#EC4899',
+      brown: '#92400E',
+      grey: '#6B7280',
+      black: '#1F2937',
+      white: '#F9FAFB'
+    };
+    const themeColor = themeColors[currentTheme] || themeColors.purple;
+
     const newMessage = {
       id: Date.now() + Math.random(), // Unique ID
       text: truncatedText,
       type: type,
       author: author,
       playerId: currentPlayerId,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      themeColor: themeColor // Add theme color to message
     };
 
     // Auto-cleanup: Remove messages older than 30 minutes
