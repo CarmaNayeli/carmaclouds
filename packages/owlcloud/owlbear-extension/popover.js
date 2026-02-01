@@ -882,16 +882,16 @@ function updateAuthUI() {
   if (currentUser) {
     // User is signed in
     authSection.innerHTML = `
-      <div style="padding: 16px; background: rgba(139, 92, 246, 0.1); border-radius: 8px; border: 1px solid rgba(139, 92, 246, 0.3);">
+      <div style="padding: 16px; background: var(--theme-background); border-radius: 8px; border: 1px solid var(--theme-border);">
         <div style="margin-bottom: 12px;">
-          <div style="font-size: 12px; color: #A78BFA; margin-bottom: 4px;">Signed in as</div>
+          <div style="font-size: 12px; color: var(--theme-primary-light); margin-bottom: 4px;">Signed in as</div>
           <div style="font-weight: 600; color: #e0e0e0;">${currentUser.email}</div>
         </div>
         <div style="display: flex; flex-direction: column; gap: 8px;">
           <button
             onclick="handleFetchCharacter()"
             id="fetch-character-btn"
-            style="width: 100%; padding: 8px; background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%); border: none; border-radius: 6px; color: white; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+            style="width: 100%; padding: 8px; background: var(--theme-gradient); border: none; border-radius: 6px; color: white; font-weight: 600; cursor: pointer; transition: all 0.2s;">
             🔄 Fetch Character
           </button>
           ${currentCharacter ? `
@@ -915,7 +915,7 @@ function updateAuthUI() {
     // User is not signed in
     authSection.innerHTML = `
       <div style="padding: 16px; background: rgba(59, 130, 246, 0.1); border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.3);">
-        <div style="font-weight: 600; color: #A78BFA; font-size: 14px; margin-bottom: 8px;">
+        <div style="font-weight: 600; color: var(--theme-primary-light); font-size: 14px; margin-bottom: 8px;">
           🔐 Cross-Device Character Sync
         </div>
         <div style="margin-bottom: 12px; color: #c0c0c0; font-size: 12px; line-height: 1.4;">
@@ -926,21 +926,21 @@ function updateAuthUI() {
             type="email"
             id="auth-email"
             placeholder="Email"
-            style="padding: 8px 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(138, 92, 246, 0.3); border-radius: 6px; color: #e0e0e0; font-size: 14px;">
+            style="padding: 8px 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--theme-border); border-radius: 6px; color: #e0e0e0; font-size: 14px;">
           <input
             type="password"
             id="auth-password"
             placeholder="Password (min 6 characters)"
-            style="padding: 8px 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(138, 92, 246, 0.3); border-radius: 6px; color: #e0e0e0; font-size: 14px;">
+            style="padding: 8px 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--theme-border); border-radius: 6px; color: #e0e0e0; font-size: 14px;">
           <div style="display: flex; gap: 8px;">
             <button
               onclick="handleSignIn()"
-              style="flex: 1; padding: 8px; background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%); border: none; border-radius: 6px; color: white; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+              style="flex: 1; padding: 8px; background: var(--theme-gradient); border: none; border-radius: 6px; color: white; font-weight: 600; cursor: pointer; transition: all 0.2s;">
               Sign In
             </button>
             <button
               onclick="handleSignUp()"
-              style="flex: 1; padding: 8px; background: rgba(139, 92, 246, 0.2); border: 1px solid #8B5CF6; border-radius: 6px; color: #A78BFA; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+              style="flex: 1; padding: 8px; background: var(--theme-background); border: 1px solid var(--theme-primary); border-radius: 6px; color: var(--theme-primary-light); font-weight: 600; cursor: pointer; transition: all 0.2s;">
               Sign Up
             </button>
           </div>
@@ -1021,7 +1021,7 @@ window.handleFetchCharacter = async function() {
   fetchBtn.disabled = true;
   fetchBtn.textContent = '⏳ Fetching...';
   statusDiv.style.display = 'block';
-  statusDiv.style.color = '#A78BFA';
+  statusDiv.style.color = 'var(--theme-primary-light)';
   statusDiv.textContent = 'Loading character...';
 
   try {
@@ -1878,13 +1878,13 @@ function populateAbilitiesTab(character) {
           <div class="ability-name">${abilityLabel}</div>
           <div class="ability-score" style="font-size: 18px; font-weight: bold;">${score}</div>
         </div>
-        <div style="display: flex; border-top: 1px solid rgba(139, 92, 246, 0.3);">
-          <div style="flex: 1; padding: 6px; cursor: pointer; text-align: center; border-right: 1px solid rgba(139, 92, 246, 0.3);" onclick="event.stopPropagation(); event.preventDefault(); rollAbilityCheck('${abilityLabel}', ${modifier})" title="Roll ${abilityLabel} check">
-            <div style="font-size: 11px; color: #A78BFA; pointer-events: none;">Check</div>
+        <div style="display: flex; border-top: 1px solid var(--theme-border);">
+          <div style="flex: 1; padding: 6px; cursor: pointer; text-align: center; border-right: 1px solid var(--theme-border);" onclick="event.stopPropagation(); event.preventDefault(); rollAbilityCheck('${abilityLabel}', ${modifier})" title="Roll ${abilityLabel} check">
+            <div style="font-size: 11px; color: var(--theme-primary-light); pointer-events: none;">Check</div>
             <div style="font-weight: bold; pointer-events: none;">${modifier >= 0 ? '+' : ''}${modifier}</div>
           </div>
           <div style="flex: 1; padding: 6px; cursor: pointer; text-align: center;" onclick="event.stopPropagation(); event.preventDefault(); rollSavingThrow('${abilityLabel}', ${saveMod})" title="Roll ${abilityLabel} save">
-            <div style="font-size: 11px; color: ${isProficient ? '#10B981' : '#A78BFA'}; pointer-events: none;">Save</div>
+            <div style="font-size: 11px; color: ${isProficient ? '#10B981' : 'var(--theme-primary-light)'}; pointer-events: none;">Save</div>
             <div style="font-weight: bold; color: ${isProficient ? '#10B981' : 'inherit'}; pointer-events: none;">${saveMod >= 0 ? '+' : ''}${saveMod}</div>
           </div>
         </div>
