@@ -304,8 +304,10 @@ async function handleDicePlusResult(rollContext, totalValue, rollSummary, groups
   }
 
   // Create result object similar to local rolls
+  // Note: totalValue from Dice+ already includes the modifier,
+  // but showRollResult expects to add it, so we subtract it here
   const result = {
-    total: totalValue,
+    total: totalValue - (modifier || 0),
     rolls: groups && groups[0] ? groups[0].dice.filter(d => d.kept).map(d => d.value) : [totalValue],
     modifier: modifier || 0,
     formula: rollSummary,
