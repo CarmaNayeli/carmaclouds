@@ -187,16 +187,20 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
     try {
       const metadata = await OBR.room.getMetadata();
       const messages = metadata["com.owlcloud.chat/messages"] || [];
+      const plainText = text.replace(/<[^>]*>/g, "");
+      const truncatedText = plainText.length > 500 ? plainText.substring(0, 497) + "..." : plainText;
       const newMessage = {
         id: Date.now() + Math.random(),
         // Unique ID
-        text,
+        text: truncatedText,
         type,
         author,
         playerId: currentPlayerId,
         timestamp: Date.now()
       };
-      const updatedMessages = [...messages, newMessage].slice(-20);
+      const thirtyMinutesAgo = Date.now() - 30 * 60 * 1e3;
+      const recentMessages = messages.filter((msg) => msg.timestamp > thirtyMinutesAgo);
+      const updatedMessages = [...recentMessages, newMessage].slice(-10);
       await OBR.room.setMetadata({
         "com.owlcloud.chat/messages": updatedMessages
       });

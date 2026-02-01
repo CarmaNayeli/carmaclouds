@@ -136,6 +136,13 @@ async function checkDicePlusReady() {
     let responseReceived = false;
     let unsubscribed = false;
 
+    // DEBUG: Listen to ALL broadcast channels temporarily
+    const debugUnsubscribe = OBR.broadcast.onMessage('*', (event) => {
+      if (event.id.includes('dice-plus') || event.id.includes('dice+')) {
+        console.log('🐛 DEBUG - Received broadcast on channel:', event.id, 'data:', event.data);
+      }
+    });
+
     // Set up one-time listener for ready response BEFORE sending the request
     const unsubscribe = OBR.broadcast.onMessage('dice-plus/isReady', (event) => {
       console.log('📨 Received dice-plus/isReady message:', event.data);
@@ -158,10 +165,12 @@ async function checkDicePlusReady() {
     });
 
     // Send ready check after listener is set up
+    console.log('📡 Sending dice-plus/isReady broadcast with requestId:', requestId);
     await OBR.broadcast.sendMessage('dice-plus/isReady', {
       requestId,
       timestamp: Date.now()
     }, { destination: 'ALL' });
+    console.log('✅ Broadcast sent, waiting 3 seconds for response...');
 
     // Wait for response with timeout
     await new Promise(resolve => setTimeout(resolve, 3000));
@@ -171,6 +180,9 @@ async function checkDicePlusReady() {
       unsubscribed = true;
       unsubscribe();
     }
+
+    // Clean up debug listener
+    debugUnsubscribe();
 
     if (!responseReceived) {
       console.warn('⚠️ Dice+ not detected - 3D dice disabled, using built-in roller');

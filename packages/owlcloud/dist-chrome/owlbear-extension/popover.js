@@ -79,6 +79,11 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
       console.log("\u{1F50D} Checking for Dice+ extension...");
       let responseReceived = false;
       let unsubscribed = false;
+      const debugUnsubscribe = OBR.broadcast.onMessage("*", (event) => {
+        if (event.id.includes("dice-plus") || event.id.includes("dice+")) {
+          console.log("\u{1F41B} DEBUG - Received broadcast on channel:", event.id, "data:", event.data);
+        }
+      });
       const unsubscribe = OBR.broadcast.onMessage("dice-plus/isReady", (event) => {
         console.log("\u{1F4E8} Received dice-plus/isReady message:", event.data);
         if (event.data.requestId === requestId) {
@@ -96,15 +101,18 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
           console.log("\u26A0\uFE0F RequestId mismatch. Expected:", requestId, "Got:", event.data.requestId);
         }
       });
+      console.log("\u{1F4E1} Sending dice-plus/isReady broadcast with requestId:", requestId);
       await OBR.broadcast.sendMessage("dice-plus/isReady", {
         requestId,
         timestamp: Date.now()
       }, { destination: "ALL" });
+      console.log("\u2705 Broadcast sent, waiting 3 seconds for response...");
       await new Promise((resolve) => setTimeout(resolve, 3e3));
       if (!unsubscribed) {
         unsubscribed = true;
         unsubscribe();
       }
+      debugUnsubscribe();
       if (!responseReceived) {
         console.warn("\u26A0\uFE0F Dice+ not detected - 3D dice disabled, using built-in roller");
         dicePlusReady = false;

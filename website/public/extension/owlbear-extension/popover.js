@@ -80,7 +80,9 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
       let responseReceived = false;
       let unsubscribed = false;
       const unsubscribe = OBR.broadcast.onMessage("dice-plus/isReady", (event) => {
+        console.log("\u{1F4E8} Received dice-plus/isReady message:", event.data);
         if (event.data.requestId === requestId) {
+          console.log("\u2705 RequestId matches:", requestId);
           if (event.data.ready) {
             responseReceived = true;
             dicePlusReady = true;
@@ -90,6 +92,8 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
             unsubscribed = true;
             unsubscribe();
           }
+        } else {
+          console.log("\u26A0\uFE0F RequestId mismatch. Expected:", requestId, "Got:", event.data.requestId);
         }
       });
       await OBR.broadcast.sendMessage("dice-plus/isReady", {
@@ -667,6 +671,7 @@ This will disconnect the character from this room. You can sync a different char
         }
         displayCharacter(characterData);
         await fetchAllCharacters();
+        updateAuthUI();
       } else {
         localStorage.removeItem(cacheKey);
         localStorage.removeItem(versionKey);
@@ -752,6 +757,7 @@ This will disconnect the character from this room. You can sync a different char
       if (response.ok && result.success) {
         displayCharacter(character);
         displayCharacterList();
+        updateAuthUI();
         if (isOwlbearReady) {
           OBR.notification.show(`Switched to ${character.name}`, "SUCCESS");
         }
@@ -1652,6 +1658,7 @@ This will disconnect the character from this room. You can sync a different char
       case "OWLCLOUD_ACTIVE_CHARACTER_RESPONSE":
         if (data && data.character) {
           displayCharacter(data.character);
+          updateAuthUI();
         } else {
           showNoCharacter();
         }
@@ -1659,6 +1666,7 @@ This will disconnect the character from this room. You can sync a different char
       case "OWLCLOUD_CHARACTER_UPDATED":
         if (data && data.character) {
           displayCharacter(data.character);
+          updateAuthUI();
           if (isOwlbearReady) {
             OBR.notification.show(`Character updated: ${data.character.name}`, "SUCCESS");
           }
@@ -1710,17 +1718,26 @@ This will disconnect the character from this room. You can sync a different char
       const playerId = await OBR.player.getId();
       const metadata = await OBR.room.getMetadata();
       const messages = metadata["com.owlcloud.chat/messages"] || [];
+      const plainText = text.replace(/<[^>]*>/g, "");
+      const truncatedText = plainText.length > 500 ? plainText.substring(0, 497) + "..." : plainText;
+      let truncatedDetails = null;
+      if (details) {
+        const plainDetails = details.replace(/<[^>]*>/g, "");
+        truncatedDetails = plainDetails.length > 300 ? plainDetails.substring(0, 297) + "..." : plainDetails;
+      }
       const newMessage = {
         id: Date.now() + Math.random(),
-        text,
+        text: truncatedText,
         type,
         author: author || (currentCharacter ? currentCharacter.name : "Character"),
         playerId,
         timestamp: Date.now(),
-        details
-        // Optional expandable details
+        details: truncatedDetails
+        // Optional expandable details (truncated)
       };
-      const updatedMessages = [...messages, newMessage].slice(-20);
+      const thirtyMinutesAgo = Date.now() - 30 * 60 * 1e3;
+      const recentMessages = messages.filter((msg) => msg.timestamp > thirtyMinutesAgo);
+      const updatedMessages = [...recentMessages, newMessage].slice(-10);
       await OBR.room.setMetadata({
         "com.owlcloud.chat/messages": updatedMessages
       });
