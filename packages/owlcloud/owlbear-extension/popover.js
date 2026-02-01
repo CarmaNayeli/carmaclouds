@@ -92,15 +92,75 @@ const ThemeManager = {
       border: 'rgba(239, 68, 68, 0.3)',
       shadow: 'rgba(239, 68, 68, 0.4)'
     },
-    amber: {
-      name: 'Amber',
-      primary: '#F59E0B',
-      primaryLight: '#FBBF24',
-      primaryLighter: '#FCD34D',
-      gradient: 'linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%)',
-      background: 'rgba(245, 158, 11, 0.1)',
-      border: 'rgba(245, 158, 11, 0.3)',
-      shadow: 'rgba(245, 158, 11, 0.4)'
+    orange: {
+      name: 'Orange',
+      primary: '#F97316',
+      primaryLight: '#FB923C',
+      primaryLighter: '#FDBA74',
+      gradient: 'linear-gradient(135deg, #F97316 0%, #FB923C 100%)',
+      background: 'rgba(249, 115, 22, 0.1)',
+      border: 'rgba(249, 115, 22, 0.3)',
+      shadow: 'rgba(249, 115, 22, 0.4)'
+    },
+    yellow: {
+      name: 'Gold',
+      primary: '#EAB308',
+      primaryLight: '#FACC15',
+      primaryLighter: '#FDE047',
+      gradient: 'linear-gradient(135deg, #EAB308 0%, #FACC15 100%)',
+      background: 'rgba(234, 179, 8, 0.1)',
+      border: 'rgba(234, 179, 8, 0.3)',
+      shadow: 'rgba(234, 179, 8, 0.4)'
+    },
+    pink: {
+      name: 'Pink',
+      primary: '#EC4899',
+      primaryLight: '#F472B6',
+      primaryLighter: '#F9A8D4',
+      gradient: 'linear-gradient(135deg, #EC4899 0%, #F472B6 100%)',
+      background: 'rgba(236, 72, 153, 0.1)',
+      border: 'rgba(236, 72, 153, 0.3)',
+      shadow: 'rgba(236, 72, 153, 0.4)'
+    },
+    brown: {
+      name: 'Brown',
+      primary: '#92400E',
+      primaryLight: '#B45309',
+      primaryLighter: '#D97706',
+      gradient: 'linear-gradient(135deg, #92400E 0%, #B45309 100%)',
+      background: 'rgba(146, 64, 14, 0.1)',
+      border: 'rgba(146, 64, 14, 0.3)',
+      shadow: 'rgba(146, 64, 14, 0.4)'
+    },
+    grey: {
+      name: 'Grey',
+      primary: '#6B7280',
+      primaryLight: '#9CA3AF',
+      primaryLighter: '#D1D5DB',
+      gradient: 'linear-gradient(135deg, #6B7280 0%, #9CA3AF 100%)',
+      background: 'rgba(107, 114, 128, 0.1)',
+      border: 'rgba(107, 114, 128, 0.3)',
+      shadow: 'rgba(107, 114, 128, 0.4)'
+    },
+    black: {
+      name: 'Black',
+      primary: '#1F2937',
+      primaryLight: '#374151',
+      primaryLighter: '#4B5563',
+      gradient: 'linear-gradient(135deg, #1F2937 0%, #374151 100%)',
+      background: 'rgba(31, 41, 55, 0.1)',
+      border: 'rgba(31, 41, 55, 0.3)',
+      shadow: 'rgba(31, 41, 55, 0.4)'
+    },
+    white: {
+      name: 'White',
+      primary: '#F9FAFB',
+      primaryLight: '#F3F4F6',
+      primaryLighter: '#E5E7EB',
+      gradient: 'linear-gradient(135deg, #F9FAFB 0%, #F3F4F6 100%)',
+      background: 'rgba(249, 250, 251, 0.1)',
+      border: 'rgba(249, 250, 251, 0.3)',
+      shadow: 'rgba(249, 250, 251, 0.4)'
     }
   },
 
@@ -132,10 +192,27 @@ const ThemeManager = {
     // Update inline styles in JavaScript
     this.updateInlineStyles(theme);
     
+    // Handle special text color adjustments for light themes
+    this.updateTextColors(theme);
+    
     // Save to localStorage
     localStorage.setItem('owlcloud-theme', this.currentTheme);
     
     console.log(`🎨 Applied theme: ${theme.name}`);
+  },
+
+  /**
+   * Update text colors for light themes to ensure readability
+   */
+  updateTextColors(theme) {
+    const root = document.documentElement;
+    
+    // Adjust text colors for very light themes
+    if (theme.name === 'White' || theme.name === 'Gold') {
+      root.style.setProperty('--theme-text-on-primary', '#1F2937'); // Dark text on light backgrounds
+    } else {
+      root.style.setProperty('--theme-text-on-primary', '#e0e0e0'); // Light text on dark backgrounds
+    }
   },
 
   /**

@@ -281,9 +281,9 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 12px 8px;
+      padding: 8px 6px;
       border: 2px solid var(--theme-border);
-      border-radius: 8px;
+      border-radius: 6px;
       background: var(--theme-background);
       cursor: pointer;
       transition: all 0.2s ease;
@@ -292,25 +292,25 @@
 
     .theme-option:hover {
       background: var(--theme-border);
-      transform: translateY(-2px);
+      transform: translateY(-1px);
     }
 
     .theme-option.active {
       border-color: var(--theme-primary);
       background: var(--theme-border);
-      box-shadow: 0 4px 12px var(--theme-shadow);
+      box-shadow: 0 2px 8px var(--theme-shadow);
     }
 
     .theme-color-preview {
-      width: 24px;
-      height: 24px;
+      width: 20px;
+      height: 20px;
       border-radius: 50%;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
       border: 2px solid rgba(255, 255, 255, 0.2);
     }
 
     .theme-name {
-      font-size: 12px;
+      font-size: 10px;
       font-weight: 600;
       color: var(--theme-primary-light);
     }
@@ -1010,7 +1010,7 @@
           <div style="color: var(--theme-primary-light); font-weight: 600; margin-bottom: 12px; font-size: 14px;">
             🎨 Theme
           </div>
-          <div id="theme-selector" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px;">
+          <div id="theme-selector" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 6px;">
             <!-- Theme options will be populated here -->
           </div>
         </div>
