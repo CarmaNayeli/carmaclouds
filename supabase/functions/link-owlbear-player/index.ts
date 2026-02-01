@@ -59,6 +59,29 @@ serve(async (req) => {
 
     console.log(`✅ Linked ${data?.length || 0} character(s) to Owlbear player ${owlbearPlayerId}`)
 
+    // If exactly one character, activate it automatically
+    // If multiple characters, activate the most recently updated one
+    if (data && data.length > 0) {
+      // First, deactivate all characters for this player
+      await supabaseClient
+        .from('clouds_characters')
+        .update({ is_active: false })
+        .eq('owlbear_player_id', owlbearPlayerId)
+
+      // Find the character to activate (most recently updated)
+      const characterToActivate = data.sort((a: any, b: any) =>
+        new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      )[0]
+
+      // Activate it
+      await supabaseClient
+        .from('clouds_characters')
+        .update({ is_active: true })
+        .eq('dicecloud_character_id', characterToActivate.dicecloud_character_id)
+
+      console.log(`✅ Activated character: ${characterToActivate.character_name}`)
+    }
+
     return new Response(
       JSON.stringify({
         success: true,

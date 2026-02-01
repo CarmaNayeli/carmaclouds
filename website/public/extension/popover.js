@@ -380,7 +380,7 @@ async function uploadCircularTokenToSupabase(dataUrl, characterId) {
     formData.append('characterId', characterId);
 
     const uploadResponse = await fetch(
-      'https://gkfpxwvmumaylahtxqrk.supabase.co/functions/v1/upload-token-image',
+      'https://luiesmfjdcmpywavvfqm.supabase.co/functions/v1/upload-token-image',
       {
         method: 'POST',
         body: formData
@@ -1406,7 +1406,7 @@ linkExtensionBtn.addEventListener('click', async () => {
 
     // Call Supabase edge function to link
     const response = await fetch(
-      'https://gkfpxwvmumaylahtxqrk.supabase.co/functions/v1/link-owlbear-player',
+      'https://luiesmfjdcmpywavvfqm.supabase.co/functions/v1/link-owlbear-player',
       {
         method: 'POST',
         headers: {

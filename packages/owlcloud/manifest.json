@@ -10,7 +10,7 @@
     "https://dicecloud.com/*",
     "https://*.dicecloud.com/*",
     "https://www.owlbear.rodeo/*",
-    "https://gkfpxwvmumaylahtxqrk.supabase.co/*"
+    "https://luiesmfjdcmpywavvfqm.supabase.co/*"
   ],
   "background": {
     "scripts": ["src/background.js"]
