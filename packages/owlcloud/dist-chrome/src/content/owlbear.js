@@ -9783,18 +9783,7 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
     }
     const { type, source } = event.data;
     const isDicePlus = event.origin === "https://dice-plus.missinglinkdev.com";
-    if (isDicePlus) {
-      const isDicePlusRelevant = type && (type.includes("dice-plus/isReady") || type.includes("dice-plus/roll"));
-      if (!isDicePlusRelevant) {
-        return;
-      }
-      debug.log("\u{1F4E8} Dice+ message:", type);
-    } else {
-      if (source !== "owlbear-extension") {
-        return;
-      }
-      debug.log("\u{1F4E8} Message from Owlbear extension:", type);
-    }
+    console.log("\u{1F4E8} ALL MESSAGE:", { origin: event.origin, type, source, data: event.data });
     switch (type) {
       case "OWLCLOUD_GET_ACTIVE_CHARACTER": {
         try {
