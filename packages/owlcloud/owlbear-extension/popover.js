@@ -373,10 +373,15 @@ async function initializeSupabaseAuth() {
     }
 
     // Listen for auth state changes
-    supabase.auth.onAuthStateChange((event, session) => {
+    supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('🔐 Auth state changed:', event);
       currentUser = session?.user || null;
       updateAuthUI();
+
+      // When user signs in, link any existing character to their account
+      if (event === 'SIGNED_IN') {
+        await linkExistingCharacterToUser();
+      }
 
       // Refresh character data when user signs in/out
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
@@ -446,6 +451,74 @@ async function signOut() {
 
 // Expose signOut to window for onclick handler
 window.signOut = signOut;
+
+/**
+ * Link existing character (by owlbear_player_id) to the signed-in user's account
+ * This handles the case where a user had a character before creating an account
+ */
+async function linkExistingCharacterToUser() {
+  if (!currentUser) return;
+
+  try {
+    const playerId = await OBR.player.getId();
+
+    console.log('🔗 Checking for existing character to link...');
+
+    // First check if user already has a character linked
+    const userCharResponse = await fetch(
+      `${SUPABASE_URL}/functions/v1/characters?supabase_user_id=${encodeURIComponent(currentUser.id)}&active_only=true&fields=essential`,
+      { headers: SUPABASE_HEADERS }
+    );
+
+    if (userCharResponse.ok) {
+      const userData = await userCharResponse.json();
+      if (userData.success && userData.character) {
+        console.log('✅ User already has a linked character');
+        return; // User already has a character, no need to link
+      }
+    }
+
+    // No character found by supabase_user_id, check by owlbear_player_id
+    const playerCharResponse = await fetch(
+      `${SUPABASE_URL}/functions/v1/characters?owlbear_player_id=${encodeURIComponent(playerId)}&active_only=true&fields=full`,
+      { headers: SUPABASE_HEADERS }
+    );
+
+    if (!playerCharResponse.ok) {
+      console.log('ℹ️ No existing character found to link');
+      return;
+    }
+
+    const playerData = await playerCharResponse.json();
+
+    if (playerData.success && playerData.character) {
+      console.log('🔗 Linking existing character to user account...');
+
+      // Update the character to include supabase_user_id
+      const character = playerData.character.raw_dicecloud_data || playerData.character;
+      const linkResponse = await fetch(
+        `${SUPABASE_URL}/functions/v1/characters`,
+        {
+          method: 'POST',
+          headers: SUPABASE_HEADERS,
+          body: JSON.stringify({
+            owlbearPlayerId: playerId,
+            supabaseUserId: currentUser.id,
+            character: character
+          })
+        }
+      );
+
+      if (linkResponse.ok) {
+        console.log('✅ Character successfully linked to account!');
+      } else {
+        console.error('❌ Failed to link character:', await linkResponse.text());
+      }
+    }
+  } catch (error) {
+    console.error('Error linking character to user:', error);
+  }
+}
 
 /**
  * Update auth UI based on current user state
