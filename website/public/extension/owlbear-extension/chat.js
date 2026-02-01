@@ -21,6 +21,7 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
   var chatMessages = document.getElementById("chat-messages");
   var chatInput = document.getElementById("chat-input");
   var chatSendBtn = document.getElementById("chat-send-btn");
+  var chatCloseBtn = document.getElementById("chat-close-btn");
   var characterNameEl = document.getElementById("character-name");
   OBR.onReady(async () => {
     isOwlbearReady = true;
@@ -215,6 +216,15 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
   chatInput.addEventListener("keypress", (e) => {
     if (e.key === "Enter") {
       sendChatMessage();
+    }
+  });
+  chatCloseBtn.addEventListener("click", async () => {
+    if (isOwlbearReady) {
+      try {
+        await OBR.popover.close("com.owlcloud.chat");
+      } catch (error) {
+        console.error("Error closing chat:", error);
+      }
     }
   });
   window.owlcloudChat = {

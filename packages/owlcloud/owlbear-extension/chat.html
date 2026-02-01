@@ -37,6 +37,35 @@
       padding: 16px 20px;
       background: rgba(139, 92, 246, 0.2);
       border-bottom: 1px solid rgba(138, 92, 246, 0.3);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .chat-header-left {
+      flex: 1;
+    }
+
+    .chat-close-btn {
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 6px;
+      color: #EF4444;
+      cursor: pointer;
+      font-size: 18px;
+      font-weight: bold;
+      padding: 4px 10px;
+      transition: all 0.2s ease;
+      line-height: 1;
+    }
+
+    .chat-close-btn:hover {
+      background: rgba(239, 68, 68, 0.3);
+      border-color: rgba(239, 68, 68, 0.5);
+    }
+
+    .chat-close-btn:active {
+      transform: scale(0.95);
     }
 
     .chat-title {
@@ -264,8 +293,11 @@
 <body>
   <div class="chat-container">
     <div class="chat-header">
-      <div class="chat-title">🎲 OwlCloud Chat</div>
-      <div class="chat-subtitle" id="character-name">No character selected</div>
+      <div class="chat-header-left">
+        <div class="chat-title">🎲 OwlCloud Chat</div>
+        <div class="chat-subtitle" id="character-name">No character selected</div>
+      </div>
+      <button id="chat-close-btn" class="chat-close-btn" title="Close chat">×</button>
     </div>
 
     <div id="chat-messages" class="chat-messages">

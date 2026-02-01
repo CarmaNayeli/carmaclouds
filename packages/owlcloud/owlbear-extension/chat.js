@@ -26,6 +26,7 @@ const SUPABASE_HEADERS = {
 const chatMessages = document.getElementById('chat-messages');
 const chatInput = document.getElementById('chat-input');
 const chatSendBtn = document.getElementById('chat-send-btn');
+const chatCloseBtn = document.getElementById('chat-close-btn');
 const characterNameEl = document.getElementById('character-name');
 
 // ============== Owlbear SDK Initialization ==============
@@ -318,6 +319,16 @@ chatSendBtn.addEventListener('click', sendChatMessage);
 chatInput.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') {
     sendChatMessage();
+  }
+});
+
+chatCloseBtn.addEventListener('click', async () => {
+  if (isOwlbearReady) {
+    try {
+      await OBR.popover.close('com.owlcloud.chat');
+    } catch (error) {
+      console.error('Error closing chat:', error);
+    }
   }
 });
 
