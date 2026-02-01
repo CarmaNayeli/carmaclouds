@@ -305,8 +305,11 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
     } else {
       authSection.innerHTML = `
       <div style="padding: 16px; background: rgba(59, 130, 246, 0.1); border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.3);">
-        <div style="margin-bottom: 12px; color: #A78BFA; font-size: 13px;">
-          Sign in to sync characters across devices
+        <div style="font-weight: 600; color: #A78BFA; font-size: 14px; margin-bottom: 8px;">
+          \u{1F510} Cross-Device Character Sync
+        </div>
+        <div style="margin-bottom: 12px; color: #c0c0c0; font-size: 12px; line-height: 1.4;">
+          Create a free account to access your characters from any device. This is separate from your DiceCloud login.
         </div>
         <div style="display: flex; flex-direction: column; gap: 8px;">
           <input
@@ -317,7 +320,7 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
           <input
             type="password"
             id="auth-password"
-            placeholder="Password"
+            placeholder="Password (min 6 characters)"
             style="padding: 8px 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(138, 92, 246, 0.3); border-radius: 6px; color: #e0e0e0; font-size: 14px;">
           <div style="display: flex; gap: 8px;">
             <button
@@ -330,6 +333,9 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
               style="flex: 1; padding: 8px; background: rgba(139, 92, 246, 0.2); border: 1px solid #8B5CF6; border-radius: 6px; color: #A78BFA; font-weight: 600; cursor: pointer; transition: all 0.2s;">
               Sign Up
             </button>
+          </div>
+          <div style="color: #888; font-size: 11px; margin-top: 4px; text-align: center;">
+            New? Click <strong>Sign Up</strong> to create an account
           </div>
           <div id="auth-error" style="color: #EF4444; font-size: 12px; margin-top: 4px; display: none;"></div>
         </div>
