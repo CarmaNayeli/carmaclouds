@@ -127,6 +127,10 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
       return;
     OBR.broadcast.onMessage(`${OWLCLOUD_EXTENSION_ID}/roll-result`, (event) => {
       const { rollId, totalValue, rollSummary, groups } = event.data;
+      if (!rollId || totalValue === void 0) {
+        console.warn("\u{1F6AB} Invalid roll result structure, ignoring:", event.data);
+        return;
+      }
       const pendingRoll = pendingRolls.get(rollId);
       if (!pendingRoll) {
         console.warn("Received result for unknown roll:", rollId);

@@ -210,6 +210,12 @@ function setupDicePlusListeners() {
   OBR.broadcast.onMessage(`${OWLCLOUD_EXTENSION_ID}/roll-result`, (event) => {
     const { rollId, totalValue, rollSummary, groups } = event.data;
 
+    // Validate result structure before processing
+    if (!rollId || totalValue === undefined) {
+      console.warn('🚫 Invalid roll result structure, ignoring:', event.data);
+      return;
+    }
+
     // Find the pending roll
     const pendingRoll = pendingRolls.get(rollId);
     if (!pendingRoll) {
