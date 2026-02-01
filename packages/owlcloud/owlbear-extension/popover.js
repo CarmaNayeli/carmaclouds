@@ -160,13 +160,16 @@ async function checkForActiveCharacter() {
     const etag = response.headers.get('etag');
 
     if (data.success && data.character) {
+      // Use raw_dicecloud_data if available (has proper field names)
+      const characterData = data.character.raw_dicecloud_data || data.character;
+
       // Update cache
-      localStorage.setItem(cacheKey, JSON.stringify(data.character));
+      localStorage.setItem(cacheKey, JSON.stringify(characterData));
       if (etag) {
         localStorage.setItem(versionKey, etag);
       }
 
-      displayCharacter(data.character);
+      displayCharacter(characterData);
       await fetchAllCharacters();
     } else {
       // Clear cache if no character found

@@ -14,7 +14,7 @@ const corsHeaders = {
 // Optimized field selections (reduces egress!)
 const FIELDS = {
   essential: 'dicecloud_character_id,character_name,class,level,race,alignment,discord_user_id,user_id_dicecloud,is_active',
-  full: 'dicecloud_character_id,character_name,class,level,race,alignment,hit_points,hit_dice,temporary_hp,death_saves,armor_class,speed,initiative,proficiency_bonus,attributes,attribute_mods,saves,skills,spell_slots,resources,conditions,discord_user_id,user_id_dicecloud,is_active,updated_at',
+  full: 'dicecloud_character_id,character_name,class,level,race,alignment,hit_points,hit_dice,temporary_hp,death_saves,armor_class,speed,initiative,proficiency_bonus,attributes,attribute_mods,saves,skills,spell_slots,resources,conditions,discord_user_id,user_id_dicecloud,is_active,updated_at,raw_dicecloud_data',
   list: 'dicecloud_character_id,character_name,class,level,race,hit_points,armor_class,is_active,discord_user_id'
 }
 
