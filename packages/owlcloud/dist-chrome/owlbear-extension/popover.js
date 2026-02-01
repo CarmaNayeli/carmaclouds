@@ -253,7 +253,7 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
       return;
     }
     const result = {
-      total: numericTotal - (modifier || 0),
+      total: numericTotal + (modifier || 0),
       rolls: groups && groups[0] ? groups[0].dice.filter((d) => d.kept).map((d) => d.value) : [numericTotal],
       modifier: modifier || 0,
       formula: rollSummary,
