@@ -517,11 +517,11 @@ browserAPI.runtime.onMessage.addListener((request, sender, sendResponse) => {
             if (stored.discordPairingId && isSupabaseConfigured()) {
               try {
                 const pairingResponse = await fetch(
-                  `${SUPABASE_URL}/rest/v1/clouds_pairings?id=eq.${stored.discordPairingId}&select=discord_user_id,discord_username,discord_global_name`,
+                  `${window.SUPABASE_URL}/rest/v1/clouds_pairings?id=eq.${stored.discordPairingId}&select=discord_user_id,discord_username,discord_global_name`,
                   {
                     headers: {
-                      'apikey': SUPABASE_ANON_KEY,
-                      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                      'apikey': window.SUPABASE_ANON_KEY,
+                      'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
                     }
                   }
                 );
@@ -1884,11 +1884,11 @@ async function markCharacterActiveInSupabase(characterId, characterName) {
 
     // First, get the Discord user ID for this character
     const pairingResponse = await fetch(
-      `${SUPABASE_URL}/rest/v1/clouds_characters?dicecloud_character_id=eq.${characterId}&select=discord_user_id`,
+      `${window.SUPABASE_URL}/rest/v1/clouds_characters?dicecloud_character_id=eq.${characterId}&select=discord_user_id`,
       {
         headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          'apikey': window.SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
         }
       }
     );
@@ -1901,12 +1901,12 @@ async function markCharacterActiveInSupabase(characterId, characterName) {
         if (discordUserId && discordUserId !== 'not_linked') {
           // Deactivate all other characters for this user
           await fetch(
-            `${SUPABASE_URL}/rest/v1/clouds_characters?discord_user_id=eq.${discordUserId}`,
+            `${window.SUPABASE_URL}/rest/v1/clouds_characters?discord_user_id=eq.${discordUserId}`,
             {
               method: 'PATCH',
               headers: {
-                'apikey': SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                'apikey': window.SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
                 'Content-Type': 'application/json'
               },
               body: JSON.stringify({ is_active: false })
@@ -1915,12 +1915,12 @@ async function markCharacterActiveInSupabase(characterId, characterName) {
 
           // Activate this character
           const updateResponse = await fetch(
-            `${SUPABASE_URL}/rest/v1/clouds_characters?dicecloud_character_id=eq.${characterId}`,
+            `${window.SUPABASE_URL}/rest/v1/clouds_characters?dicecloud_character_id=eq.${characterId}`,
             {
               method: 'PATCH',
               headers: {
-                'apikey': SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                'apikey': window.SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
                 'Content-Type': 'application/json'
               },
               body: JSON.stringify({ is_active: true })
@@ -2029,12 +2029,12 @@ async function deleteCharacterFromCloud(characterId) {
     let deleted = false;
     for (const idToDelete of idsToTry) {
       const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/clouds_characters?dicecloud_character_id=eq.${encodeURIComponent(idToDelete)}`,
+        `${window.SUPABASE_URL}/rest/v1/clouds_characters?dicecloud_character_id=eq.${encodeURIComponent(idToDelete)}`,
         {
           method: 'DELETE',
           headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'apikey': window.SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
             'Prefer': 'return=representation'  // Return deleted rows to verify
           }
         }
@@ -2230,12 +2230,12 @@ async function setDiscordWebhookSettings(webhookUrl, enabled = true, serverName 
         if (stored.discordPairingId) {
           debug.log('☁️ Syncing webhook URL to pairing record:', stored.discordPairingId);
           await fetch(
-            `${SUPABASE_URL}/rest/v1/clouds_pairings?id=eq.${stored.discordPairingId}`,
+            `${window.SUPABASE_URL}/rest/v1/clouds_pairings?id=eq.${stored.discordPairingId}`,
             {
               method: 'PATCH',
               headers: {
-                'apikey': SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                'apikey': window.SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
                 'Content-Type': 'application/json',
                 'Prefer': 'return=minimal'
               },
@@ -2561,12 +2561,12 @@ async function linkDiscordUserToAuthTokens(discordUserId, discordUsername, disco
 
     // Upsert auth_tokens with Discord info (insert if not exists, update if exists)
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/auth_tokens`,
+      `${window.SUPABASE_URL}/rest/v1/auth_tokens`,
       {
         method: 'POST',
         headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'apikey': window.SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json',
           'Prefer': 'resolution=merge-duplicates,return=minimal'
         },
@@ -2592,12 +2592,12 @@ async function linkDiscordUserToAuthTokens(discordUserId, discordUsername, disco
         debug.log('⚠️ Auth token exists, trying PATCH update:', visitorId);
 
         const patchResponse = await fetch(
-          `${SUPABASE_URL}/rest/v1/auth_tokens?user_id=eq.${encodeURIComponent(visitorId)}`,
+          `${window.SUPABASE_URL}/rest/v1/auth_tokens?user_id=eq.${encodeURIComponent(visitorId)}`,
           {
             method: 'PATCH',
             headers: {
-              'apikey': SUPABASE_ANON_KEY,
-              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'apikey': window.SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
               'Content-Type': 'application/json',
               'Prefer': 'return=minimal'
             },
@@ -2642,12 +2642,12 @@ async function linkDiscordUserToCharacters(discordUserId, diceCloudUserId) {
 
     // Update characters that have user_id_dicecloud matching but discord_user_id is 'not_linked'
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/clouds_characters?user_id_dicecloud=eq.${diceCloudUserId}&discord_user_id=eq.not_linked`,
+      `${window.SUPABASE_URL}/rest/v1/clouds_characters?user_id_dicecloud=eq.${diceCloudUserId}&discord_user_id=eq.not_linked`,
       {
         method: 'PATCH',
         headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'apikey': window.SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json',
           'Prefer': 'return=minimal'
         },
@@ -2897,11 +2897,11 @@ async function storeCharacterToCloud(characterData, pairingCode = null) {
     // If pairing code provided, look up the pairing to link
     if (pairingCode) {
       const pairingResponse = await fetch(
-        `${SUPABASE_URL}/rest/v1/clouds_pairings?pairing_code=eq.${pairingCode}&select=id,discord_user_id`,
+        `${window.SUPABASE_URL}/rest/v1/clouds_pairings?pairing_code=eq.${pairingCode}&select=id,discord_user_id`,
         {
           headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            'apikey': window.SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
           }
         }
       );
@@ -2921,11 +2921,11 @@ async function storeCharacterToCloud(characterData, pairingCode = null) {
       // 1. First check auth_tokens
       try {
         const authResponse = await fetch(
-          `${SUPABASE_URL}/rest/v1/auth_tokens?user_id=eq.${visitorId}&select=discord_user_id`,
+          `${window.SUPABASE_URL}/rest/v1/auth_tokens?user_id=eq.${visitorId}&select=discord_user_id`,
           {
             headers: {
-              'apikey': SUPABASE_ANON_KEY,
-              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+              'apikey': window.SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
             }
           }
         );
@@ -2944,11 +2944,11 @@ async function storeCharacterToCloud(characterData, pairingCode = null) {
       if (!discordUserId && payload.user_id_dicecloud) {
         try {
           const pairingResponse = await fetch(
-            `${SUPABASE_URL}/rest/v1/clouds_pairings?dicecloud_user_id=eq.${payload.user_id_dicecloud}&status=eq.connected&select=id,discord_user_id,discord_username,discord_global_name,webhook_url`,
+            `${window.SUPABASE_URL}/rest/v1/clouds_pairings?dicecloud_user_id=eq.${payload.user_id_dicecloud}&status=eq.connected&select=id,discord_user_id,discord_username,discord_global_name,webhook_url`,
             {
               headers: {
-                'apikey': SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                'apikey': window.SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
               }
             }
           );
@@ -2987,11 +2987,11 @@ async function storeCharacterToCloud(characterData, pairingCode = null) {
           const stored = await browserAPI.storage.local.get(['discordPairingId']);
           if (stored.discordPairingId) {
             const pairingResponse = await fetch(
-              `${SUPABASE_URL}/rest/v1/clouds_pairings?id=eq.${stored.discordPairingId}&select=id,discord_user_id,discord_username,discord_global_name,webhook_url`,
+              `${window.SUPABASE_URL}/rest/v1/clouds_pairings?id=eq.${stored.discordPairingId}&select=id,discord_user_id,discord_username,discord_global_name,webhook_url`,
               {
                 headers: {
-                  'apikey': SUPABASE_ANON_KEY,
-                  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                  'apikey': window.SUPABASE_ANON_KEY,
+                  'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
                 }
               }
             );
@@ -3063,12 +3063,12 @@ async function storeCharacterToCloud(characterData, pairingCode = null) {
     // This handles cases where the same character was stored with different IDs
     try {
       const deleteResponse = await fetch(
-        `${SUPABASE_URL}/rest/v1/clouds_characters?user_id_dicecloud=eq.${encodeURIComponent(payload.user_id_dicecloud)}&character_name=eq.${encodeURIComponent(payload.character_name)}`,
+        `${window.SUPABASE_URL}/rest/v1/clouds_characters?user_id_dicecloud=eq.${encodeURIComponent(payload.user_id_dicecloud)}&character_name=eq.${encodeURIComponent(payload.character_name)}`,
         {
           method: 'DELETE',
           headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'apikey': window.SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
             'Prefer': 'return=minimal'
           }
         }
@@ -3083,12 +3083,12 @@ async function storeCharacterToCloud(characterData, pairingCode = null) {
 
     // Insert the new character record
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/clouds_characters`,
+      `${window.SUPABASE_URL}/rest/v1/clouds_characters`,
       {
         method: 'POST',
         headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'apikey': window.SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json',
           'Prefer': 'resolution=merge-duplicates,return=minimal'
         },
@@ -3102,12 +3102,12 @@ async function storeCharacterToCloud(characterData, pairingCode = null) {
 
       // Try PATCH (update) instead
       const updateResponse = await fetch(
-        `${SUPABASE_URL}/rest/v1/clouds_characters?dicecloud_character_id=eq.${characterData.id}`,
+        `${window.SUPABASE_URL}/rest/v1/clouds_characters?dicecloud_character_id=eq.${characterData.id}`,
         {
           method: 'PATCH',
           headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'apikey': window.SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
             'Content-Type': 'application/json',
             'Prefer': 'return=minimal'
           },
@@ -3158,12 +3158,12 @@ async function syncCharacterColorToSupabase(characterId, color) {
 
     // Update only the notification_color field
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/clouds_characters?dicecloud_character_id=eq.${characterId}`,
+      `${window.SUPABASE_URL}/rest/v1/clouds_characters?dicecloud_character_id=eq.${characterId}`,
       {
         method: 'PATCH',
         headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'apikey': window.SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json',
           'Prefer': 'return=minimal'
         },
@@ -3331,10 +3331,10 @@ async function fetchFromDiceCloudAPI(url, token) {
  * Check if Supabase is configured
  */
 function isSupabaseConfigured() {
-  return SUPABASE_URL &&
-         !SUPABASE_URL.includes('your-project') &&
-         SUPABASE_ANON_KEY &&
-         SUPABASE_ANON_KEY !== 'your-anon-key';
+  return window.window.SUPABASE_URL &&
+         !window.window.SUPABASE_URL.includes('your-project') &&
+         window.window.SUPABASE_ANON_KEY &&
+         window.window.SUPABASE_ANON_KEY !== 'your-anon-key';
 }
 
 // ============================================================================
@@ -3364,8 +3364,8 @@ function subscribeToRealtimePairing(pairingCode) {
   }
 
   // Extract project ref from URL
-  const projectRef = SUPABASE_URL.replace('https://', '').split('.')[0];
-  const wsUrl = `wss://${projectRef}.supabase.co/realtime/v1/websocket?apikey=${SUPABASE_ANON_KEY}&vsn=1.0.0`;
+  const projectRef = window.SUPABASE_URL.replace('https://', '').split('.')[0];
+  const wsUrl = `wss://${projectRef}.supabase.co/realtime/v1/websocket?apikey=${window.SUPABASE_ANON_KEY}&vsn=1.0.0`;
 
   debug.log('🔌 Connecting to Supabase Realtime for pairing:', pairingCode);
 
@@ -3541,13 +3541,13 @@ async function createDiscordPairing(code, diceCloudUsername, diceCloudUserId) {
     if (diceCloudUserId) {
       try {
         const expireResponse = await fetch(
-          `${SUPABASE_URL}/rest/v1/clouds_pairings?dicecloud_user_id=eq.${diceCloudUserId}&status=in.(pending,connected)`,
+          `${window.SUPABASE_URL}/rest/v1/clouds_pairings?dicecloud_user_id=eq.${diceCloudUserId}&status=in.(pending,connected)`,
           {
             method: 'PATCH',
             headers: {
               'Content-Type': 'application/json',
-              'apikey': SUPABASE_ANON_KEY,
-              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'apikey': window.SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
               'Prefer': 'return=minimal'
             },
             body: JSON.stringify({ status: 'expired' })
@@ -3562,12 +3562,12 @@ async function createDiscordPairing(code, diceCloudUsername, diceCloudUserId) {
       }
     }
 
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/clouds_pairings`, {
+    const response = await fetch(`${window.SUPABASE_URL}/rest/v1/clouds_pairings`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'apikey': window.SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
         'Prefer': 'return=representation'
       },
       body: JSON.stringify({
@@ -3608,11 +3608,11 @@ async function checkDiscordPairing(code) {
 
   try {
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/clouds_pairings?pairing_code=eq.${code}&select=*`,
+      `${window.SUPABASE_URL}/rest/v1/clouds_pairings?pairing_code=eq.${code}&select=*`,
       {
         headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          'apikey': window.SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
         }
       }
     );
@@ -3663,11 +3663,11 @@ async function getUserCharactersFromCloud(pairingId = null) {
     if (pairingId) {
       // Get characters for specific pairing
       const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/clouds_pairings?id=eq.${pairingId}&select=discord_user_id`,
+        `${window.SUPABASE_URL}/rest/v1/clouds_pairings?id=eq.${pairingId}&select=discord_user_id`,
         {
           headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            'apikey': window.SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
           }
         }
       );
@@ -3679,11 +3679,11 @@ async function getUserCharactersFromCloud(pairingId = null) {
           
           // Get characters for this Discord user
           const charsResponse = await fetch(
-            `${SUPABASE_URL}/rest/v1/clouds_characters?discord_user_id=eq.${discordUserId}&select=character_name,level,race,class,is_active,updated_at&order=updated_at.desc`,
+            `${window.SUPABASE_URL}/rest/v1/clouds_characters?discord_user_id=eq.${discordUserId}&select=character_name,level,race,class,is_active,updated_at&order=updated_at.desc`,
             {
               headers: {
-                'apikey': SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                'apikey': window.SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
               }
             }
           );
@@ -3750,8 +3750,8 @@ async function subscribeToCommandRealtime(pairingId) {
 
   currentPairingId = pairingId;
 
-  const projectRef = SUPABASE_URL.replace('https://', '').split('.')[0];
-  const wsUrl = `wss://${projectRef}.supabase.co/realtime/v1/websocket?apikey=${SUPABASE_ANON_KEY}&vsn=1.0.0`;
+  const projectRef = window.SUPABASE_URL.replace('https://', '').split('.')[0];
+  const wsUrl = `wss://${projectRef}.supabase.co/realtime/v1/websocket?apikey=${window.SUPABASE_ANON_KEY}&vsn=1.0.0`;
 
   debug.log('🔌 Connecting to Supabase Realtime for commands, pairing:', pairingId);
 
@@ -3922,11 +3922,11 @@ async function drainPendingCommands() {
 
   try {
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/clouds_commands?pairing_id=eq.${currentPairingId}&status=eq.pending&order=created_at.asc&limit=10`,
+      `${window.SUPABASE_URL}/rest/v1/clouds_commands?pairing_id=eq.${currentPairingId}&status=eq.pending&order=created_at.asc&limit=10`,
       {
         headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          'apikey': window.SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
         }
       }
     );
@@ -4235,10 +4235,10 @@ async function getCharacterDataForDiscordCommand(characterName, characterId) {
     // Last resort: try Supabase (but this is unlikely to work for most users)
     if (characterId && isSupabaseConfigured()) {
       const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/raw_dicecloud_data?character_id=eq.${characterId}&select=*`,
+        `${window.SUPABASE_URL}/rest/v1/raw_dicecloud_data?character_id=eq.${characterId}&select=*`,
         {
           headers: {
-            'apikey': SUPABASE_ANON_KEY,
+            'apikey': window.SUPABASE_ANON_KEY,
             'Content-Type': 'application/json'
           }
         }
@@ -4291,13 +4291,13 @@ async function updateCommandStatus(commandId, status, result = null, errorMessag
     }
 
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/clouds_commands?id=eq.${commandId}`,
+      `${window.SUPABASE_URL}/rest/v1/clouds_commands?id=eq.${commandId}`,
       {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          'apikey': window.SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
         },
         body: JSON.stringify(update)
       }
@@ -4330,12 +4330,12 @@ async function cleanupDiscordCommands() {
     }
 
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/rpc/cleanup_and_maintain_commands`,
+      `${window.SUPABASE_URL}/rest/v1/rpc/cleanup_and_maintain_commands`,
       {
         method: 'POST',
         headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'apikey': window.SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json'
         }
       }
@@ -4362,12 +4362,12 @@ async function getCommandHealthMetrics() {
     }
 
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/rpc/get_command_health_metrics`,
+      `${window.SUPABASE_URL}/rest/v1/rpc/get_command_health_metrics`,
       {
         method: 'POST',
         headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'apikey': window.SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json'
         }
       }
@@ -4489,12 +4489,12 @@ async function postTurnToSupabase(payload) {
       status: 'pending'
     };
 
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/clouds_turns`, {
+    const response = await fetch(`${window.SUPABASE_URL}/rest/v1/clouds_turns`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'apikey': window.SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
         'Prefer': 'return=representation'
       },
       body: JSON.stringify(turnData)
