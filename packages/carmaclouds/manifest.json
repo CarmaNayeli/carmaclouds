@@ -5,7 +5,9 @@
   "description": "Sync DiceCloud V2 characters to Roll20, Owlbear Rodeo, and Foundry VTT with cloud storage",
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "tabs",
+    "cookies"
   ],
   "host_permissions": [
     "https://dicecloud.com/*",

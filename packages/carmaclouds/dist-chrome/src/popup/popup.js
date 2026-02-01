@@ -25095,8 +25095,6 @@ Local data will also be removed.`)) {
       <button
         id="open-auth-from-tab"
         style="background: #16a75a; color: #000; font-weight: 700; border: none; padding: 12px 24px; border-radius: 6px; font-size: 14px; cursor: pointer; transition: background 0.2s ease;"
-        onmouseover="this.style.background='#1bc76b'"
-        onmouseout="this.style.background='#16a75a'"
       >
         \u{1F510} Open Login Modal
       </button>
@@ -25105,6 +25103,12 @@ Local data will also be removed.`)) {
     const btn = contentEl.querySelector("#open-auth-from-tab");
     if (btn) {
       btn.addEventListener("click", openAuthModal);
+      btn.addEventListener("mouseover", () => {
+        btn.style.background = "#1bc76b";
+      });
+      btn.addEventListener("mouseout", () => {
+        btn.style.background = "#16a75a";
+      });
     }
   }
   async function switchTab(tabName) {
@@ -25216,7 +25220,7 @@ Local data will also be removed.`)) {
       btn.textContent = "\u23F3 Checking...";
       errorDiv.classList.add("hidden");
       const tabs = await chrome.tabs.query({ url: "*://*.dicecloud.com/*" });
-      if (tabs.length === 0) {
+      if (!tabs || tabs.length === 0) {
         errorDiv.innerHTML = '<div style="background: #0d4a30; color: #16a75a; padding: 12px; border-radius: 6px; border: 1px solid #16a75a;"><strong>Navigate to DiceCloud First</strong><br>Open <a href="https://v2.dicecloud.com" target="_blank" style="color: #1bc76b; text-decoration: underline;">v2.dicecloud.com</a> in a tab, log in, then click this button to connect.</div>';
         errorDiv.classList.remove("hidden");
         btn.disabled = false;
