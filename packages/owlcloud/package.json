@@ -5,15 +5,20 @@
   "type": "module",
   "scripts": {
     "build": "node build.js",
+    "build:firefox": "node build.js --firefox",
     "build:watch": "node build.js --watch",
+    "build:watch:firefox": "node build.js --watch --firefox",
     "build:prod": "node build.js --minify",
+    "build:prod:firefox": "node build.js --minify --firefox",
     "dev": "npm run build:watch & web-ext run --source-dir=dist --verbose",
-    "dev:firefox": "npm run build:watch & web-ext run --source-dir=dist --firefox=firefox --verbose",
-    "dev:firefox-dev": "npm run build:watch & web-ext run --source-dir=dist --firefox=firefoxdeveloperedition --verbose",
+    "dev:firefox": "npm run build:watch:firefox & web-ext run --source-dir=dist --firefox=firefox --verbose",
+    "dev:firefox-dev": "npm run build:watch:firefox & web-ext run --source-dir=dist --firefox=firefoxdeveloperedition --verbose",
     "package": "npm run build:prod && web-ext build --source-dir=dist --artifacts-dir=./web-ext-artifacts",
+    "package:firefox": "npm run build:prod:firefox && web-ext build --source-dir=dist --artifacts-dir=./web-ext-artifacts-firefox",
     "lint": "web-ext lint --source-dir=dist",
     "sign": "npm run build:prod && web-ext sign --source-dir=dist --api-key=$AMO_JWT_ISSUER --api-secret=$AMO_JWT_SECRET",
-    "clean": "rm -rf dist web-ext-artifacts"
+    "sign:firefox": "npm run build:prod:firefox && web-ext sign --source-dir=dist --api-key=$AMO_JWT_ISSUER --api-secret=$AMO_JWT_SECRET",
+    "clean": "rm -rf dist web-ext-artifacts web-ext-artifacts-firefox"
   },
   "keywords": [
     "dicecloud",

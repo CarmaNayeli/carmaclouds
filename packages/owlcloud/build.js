@@ -7,6 +7,10 @@ import { buildExtension } from '../../build-tools/esbuild-extension.js';
 
 const watch = process.argv.includes('--watch');
 const minify = process.argv.includes('--minify');
+const isFirefox = process.argv.includes('--firefox');
+
+// Use Firefox-specific manifest for Firefox builds
+const manifestFile = isFirefox ? 'manifest-firefox.json' : 'manifest.json';
 
 await buildExtension({
   packageDir: '.',
@@ -14,6 +18,7 @@ await buildExtension({
   entryPoints: {
     // Main extension files
     'src/background': './src/background.js',
+    'src/background-firefox': './src/background-firefox.js',
     'src/popup/popup': './src/popup/popup.js',
     'src/content/dicecloud': './src/content/dicecloud.js',
     'src/content/owlbear': './src/content/owlbear.js',
@@ -23,7 +28,7 @@ await buildExtension({
     'owlbear-extension/chat': './owlbear-extension/chat.js',
   },
   copyFiles: [
-    'manifest.json',
+    manifestFile,
     'icons',
     'src/popup/popup.html',
     'src/popup/popup.css',

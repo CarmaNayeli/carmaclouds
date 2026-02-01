@@ -81,7 +81,7 @@ export async function buildExtension(config) {
       'process.env.NODE_ENV': JSON.stringify(minify ? 'production' : 'development')
     },
     banner: {
-      js: '// Initialize debug globally\nif (typeof window !== "undefined" && !window.debug) { window.debug = { log: console.log, warn: console.warn, error: console.error, info: console.info, group: console.group, groupEnd: console.groupEnd, table: console.table, time: console.time, timeEnd: console.timeEnd, isEnabled: () => true }; }\nconst debug = window.debug;\n// Supabase config will be set by browser.js\nconst SUPABASE_URL = typeof window !== "undefined" ? window.SUPABASE_URL : undefined;\nconst SUPABASE_ANON_KEY = typeof window !== "undefined" ? window.SUPABASE_ANON_KEY : undefined;\n// SupabaseTokenManager will be set by browser.js\nconst SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseTokenManager : undefined;'
+      js: '// Initialize debug globally (supports both window and service worker contexts)\nconst globalThis_ = typeof window !== "undefined" ? window : (typeof self !== "undefined" ? self : {});\nif (!globalThis_.debug) { globalThis_.debug = { log: console.log, warn: console.warn, error: console.error, info: console.info, group: console.group, groupEnd: console.groupEnd, table: console.table, time: console.time, timeEnd: console.timeEnd, isEnabled: () => true }; }\nconst debug = globalThis_.debug;'
     }
   };
 
@@ -100,7 +100,16 @@ export async function buildExtension(config) {
   console.log('📋 Copying static files...');
   for (const file of copyFiles) {
     const srcPath = path.join(packageDir, file);
-    const destPath = path.join(outPath, file);
+    let destPath = path.join(outPath, file);
+    
+    // If this is the main manifest file (not owlbear-extension), always copy it as manifest.json
+    if ((file.includes('manifest.json') || file.includes('manifest-firefox.json')) && !file.includes('owlbear-extension')) {
+      destPath = path.join(outPath, 'manifest.json');
+      // Force delete existing manifest to ensure fresh copy
+      if (fs.existsSync(destPath)) {
+        fs.unlinkSync(destPath);
+      }
+    }
 
     if (fs.existsSync(srcPath)) {
       copyRecursive(srcPath, destPath);
