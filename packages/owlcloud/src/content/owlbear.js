@@ -877,8 +877,13 @@ browserAPI.runtime.onMessage.addListener(async (request, sender, sendResponse) =
 window.addEventListener('message', async (event) => {
   console.log('🔍 OwlCloud received message:', { origin: event.origin, data: event.data });
 
-  // Only accept messages from Owlbear Rodeo domain or OwlCloud popover
-  const allowedOrigins = ['https://www.owlbear.rodeo', 'https://owlcloud.vercel.app', 'https://carmaclouds.vercel.app'];
+  // Only accept messages from Owlbear Rodeo domain, OwlCloud popover, or Dice+ extension
+  const allowedOrigins = [
+    'https://www.owlbear.rodeo',
+    'https://owlcloud.vercel.app',
+    'https://carmaclouds.vercel.app',
+    'https://dice-plus.missinglinkdev.com'
+  ];
   if (!allowedOrigins.includes(event.origin)) {
     console.log('❌ OwlCloud rejected: wrong origin', event.origin);
     return;

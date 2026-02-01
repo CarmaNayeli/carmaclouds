@@ -119,28 +119,42 @@ OBR.onReady(async () => {
 async function checkDicePlusReady() {
   if (!isOwlbearReady) return;
 
+  // Wait a bit for other extensions to load
+  await new Promise(resolve => setTimeout(resolve, 500));
+
   try {
     const requestId = `ready_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    console.log('🔍 Checking for Dice+ extension...', requestId);
 
-    // Set up one-time listener for ready response
-    const timeout = setTimeout(() => {
-      console.warn('⚠️ Dice+ not detected - 3D dice disabled, using built-in roller');
-      dicePlusReady = false;
-    }, 2000);
+    let responseReceived = false;
 
-    OBR.broadcast.onMessage('dice-plus/isReady', (event) => {
+    // Set up one-time listener for ready response BEFORE sending the request
+    const unsubscribe = OBR.broadcast.onMessage('dice-plus/isReady', (event) => {
+      console.log('📩 Received Dice+ response:', event.data);
       if (event.data.requestId === requestId && event.data.ready) {
-        clearTimeout(timeout);
+        responseReceived = true;
         dicePlusReady = true;
         console.log('✅ Dice+ is ready - 3D dice enabled!');
+        unsubscribe(); // Clean up listener
       }
     });
 
-    // Send ready check
+    // Send ready check after listener is set up
     await OBR.broadcast.sendMessage('dice-plus/isReady', {
       requestId,
       timestamp: Date.now()
     }, { destination: 'ALL' });
+
+    console.log('📤 Sent Dice+ ready check:', requestId);
+
+    // Wait for response with timeout
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    if (!responseReceived) {
+      console.warn('⚠️ Dice+ not detected - 3D dice disabled, using built-in roller');
+      dicePlusReady = false;
+      unsubscribe(); // Clean up listener
+    }
 
   } catch (error) {
     console.warn('Failed to check Dice+ status:', error);

@@ -70,23 +70,31 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
   async function checkDicePlusReady() {
     if (!isOwlbearReady)
       return;
+    await new Promise((resolve) => setTimeout(resolve, 500));
     try {
       const requestId = `ready_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const timeout = setTimeout(() => {
-        console.warn("\u26A0\uFE0F Dice+ not detected - 3D dice disabled, using built-in roller");
-        dicePlusReady = false;
-      }, 2e3);
-      OBR.broadcast.onMessage("dice-plus/isReady", (event) => {
+      console.log("\u{1F50D} Checking for Dice+ extension...", requestId);
+      let responseReceived = false;
+      const unsubscribe = OBR.broadcast.onMessage("dice-plus/isReady", (event) => {
+        console.log("\u{1F4E9} Received Dice+ response:", event.data);
         if (event.data.requestId === requestId && event.data.ready) {
-          clearTimeout(timeout);
+          responseReceived = true;
           dicePlusReady = true;
           console.log("\u2705 Dice+ is ready - 3D dice enabled!");
+          unsubscribe();
         }
       });
       await OBR.broadcast.sendMessage("dice-plus/isReady", {
         requestId,
         timestamp: Date.now()
       }, { destination: "ALL" });
+      console.log("\u{1F4E4} Sent Dice+ ready check:", requestId);
+      await new Promise((resolve) => setTimeout(resolve, 3e3));
+      if (!responseReceived) {
+        console.warn("\u26A0\uFE0F Dice+ not detected - 3D dice disabled, using built-in roller");
+        dicePlusReady = false;
+        unsubscribe();
+      }
     } catch (error) {
       console.warn("Failed to check Dice+ status:", error);
       dicePlusReady = false;
