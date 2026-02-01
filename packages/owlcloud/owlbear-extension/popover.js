@@ -770,7 +770,22 @@ async function checkForActiveCharacter() {
 
     if (data.success && data.character) {
       // Use raw_dicecloud_data if available (has proper field names)
-      const characterData = data.character.raw_dicecloud_data || data.character;
+      let characterData = data.character.raw_dicecloud_data || data.character;
+
+      // If no raw_dicecloud_data, transform database fields to expected format
+      if (!data.character.raw_dicecloud_data && data.character.character_name) {
+        characterData = {
+          ...characterData,
+          id: characterData.dicecloud_character_id,
+          name: characterData.character_name,
+          hitPoints: {
+            current: characterData.hp_current || 0,
+            max: characterData.hp_max || 0
+          },
+          armorClass: characterData.armor_class,
+          proficiencyBonus: characterData.proficiency_bonus
+        };
+      }
 
       // Update cache
       localStorage.setItem(cacheKey, JSON.stringify(characterData));

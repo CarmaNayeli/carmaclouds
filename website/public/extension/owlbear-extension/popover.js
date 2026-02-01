@@ -543,7 +543,20 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
       const data = await response.json();
       const etag = response.headers.get("etag");
       if (data.success && data.character) {
-        const characterData = data.character.raw_dicecloud_data || data.character;
+        let characterData = data.character.raw_dicecloud_data || data.character;
+        if (!data.character.raw_dicecloud_data && data.character.character_name) {
+          characterData = {
+            ...characterData,
+            id: characterData.dicecloud_character_id,
+            name: characterData.character_name,
+            hitPoints: {
+              current: characterData.hp_current || 0,
+              max: characterData.hp_max || 0
+            },
+            armorClass: characterData.armor_class,
+            proficiencyBonus: characterData.proficiency_bonus
+          };
+        }
         localStorage.setItem(cacheKey, JSON.stringify(characterData));
         if (etag) {
           localStorage.setItem(versionKey, etag);
