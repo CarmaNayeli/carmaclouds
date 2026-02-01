@@ -44,6 +44,210 @@ const openExtensionBtn = document.getElementById('open-extension-btn');
 const linkExtensionBtn = document.getElementById('link-extension-btn');
 const openChatWindowBtn = document.getElementById('open-chat-window-btn');
 
+// ============== Theme Management ==============
+
+/**
+ * Theme manager for OBR extension
+ */
+const ThemeManager = {
+  // Predefined themes
+  themes: {
+    purple: {
+      name: 'Purple',
+      primary: '#8B5CF6',
+      primaryLight: '#A78BFA',
+      primaryLighter: '#C4B5FD',
+      gradient: 'linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%)',
+      background: 'rgba(139, 92, 246, 0.1)',
+      border: 'rgba(139, 92, 246, 0.3)',
+      shadow: 'rgba(139, 92, 246, 0.4)'
+    },
+    blue: {
+      name: 'Blue',
+      primary: '#3B82F6',
+      primaryLight: '#60A5FA',
+      primaryLighter: '#93C5FD',
+      gradient: 'linear-gradient(135deg, #3B82F6 0%, #60A5FA 100%)',
+      background: 'rgba(59, 130, 246, 0.1)',
+      border: 'rgba(59, 130, 246, 0.3)',
+      shadow: 'rgba(59, 130, 246, 0.4)'
+    },
+    green: {
+      name: 'Green',
+      primary: '#10B981',
+      primaryLight: '#34D399',
+      primaryLighter: '#6EE7B7',
+      gradient: 'linear-gradient(135deg, #10B981 0%, #34D399 100%)',
+      background: 'rgba(16, 185, 129, 0.1)',
+      border: 'rgba(16, 185, 129, 0.3)',
+      shadow: 'rgba(16, 185, 129, 0.4)'
+    },
+    red: {
+      name: 'Red',
+      primary: '#EF4444',
+      primaryLight: '#F87171',
+      primaryLighter: '#FCA5A5',
+      gradient: 'linear-gradient(135deg, #EF4444 0%, #F87171 100%)',
+      background: 'rgba(239, 68, 68, 0.1)',
+      border: 'rgba(239, 68, 68, 0.3)',
+      shadow: 'rgba(239, 68, 68, 0.4)'
+    },
+    amber: {
+      name: 'Amber',
+      primary: '#F59E0B',
+      primaryLight: '#FBBF24',
+      primaryLighter: '#FCD34D',
+      gradient: 'linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%)',
+      background: 'rgba(245, 158, 11, 0.1)',
+      border: 'rgba(245, 158, 11, 0.3)',
+      shadow: 'rgba(245, 158, 11, 0.4)'
+    }
+  },
+
+  // Current active theme
+  currentTheme: 'purple',
+
+  /**
+   * Initialize theme manager
+   */
+  init() {
+    // Load saved theme from localStorage
+    const savedTheme = localStorage.getItem('owlcloud-theme');
+    if (savedTheme && this.themes[savedTheme]) {
+      this.currentTheme = savedTheme;
+    }
+    this.applyTheme();
+  },
+
+  /**
+   * Apply current theme to all elements
+   */
+  applyTheme() {
+    const theme = this.themes[this.currentTheme];
+    if (!theme) return;
+
+    // Update CSS variables
+    this.updateCSSVariables(theme);
+    
+    // Update inline styles in JavaScript
+    this.updateInlineStyles(theme);
+    
+    // Save to localStorage
+    localStorage.setItem('owlcloud-theme', this.currentTheme);
+    
+    console.log(`🎨 Applied theme: ${theme.name}`);
+  },
+
+  /**
+   * Update CSS custom properties
+   */
+  updateCSSVariables(theme) {
+    const root = document.documentElement;
+    root.style.setProperty('--theme-primary', theme.primary);
+    root.style.setProperty('--theme-primary-light', theme.primaryLight);
+    root.style.setProperty('--theme-primary-lighter', theme.primaryLighter);
+    root.style.setProperty('--theme-gradient', theme.gradient);
+    root.style.setProperty('--theme-background', theme.background);
+    root.style.setProperty('--theme-border', theme.border);
+    root.style.setProperty('--theme-shadow', theme.shadow);
+  },
+
+  /**
+   * Update inline styles that use hardcoded colors
+   */
+  updateInlineStyles(theme) {
+    // This will be expanded to update all hardcoded color references
+    // For now, we'll focus on the most common ones
+    this.updateCharacterPortraits(theme);
+    this.updateCircularImageBorders(theme);
+  },
+
+  /**
+   * Update character portrait borders
+   */
+  updateCharacterPortraits(theme) {
+    const portraits = document.querySelectorAll('#settings-portrait, .character-portrait');
+    portraits.forEach(portrait => {
+      if (portrait) {
+        portrait.style.borderColor = theme.primary;
+        portrait.style.boxShadow = `0 4px 12px ${theme.shadow}`;
+      }
+    });
+  },
+
+  /**
+   * Update circular image borders (for tokens)
+   */
+  updateCircularImageBorders(theme) {
+    // This will be called when creating circular images
+    // The actual border color will be updated in the createCircularImage function
+  },
+
+  /**
+   * Switch to a different theme
+   */
+  switchTheme(themeName) {
+    if (this.themes[themeName]) {
+      this.currentTheme = themeName;
+      this.applyTheme();
+      return true;
+    }
+    return false;
+  },
+
+  /**
+   * Get current theme
+   */
+  getCurrentTheme() {
+    return this.themes[this.currentTheme];
+  },
+
+  /**
+   * Get all available themes
+   */
+  getAvailableThemes() {
+    return Object.keys(this.themes).map(key => ({
+      key,
+      ...this.themes[key]
+    }));
+  }
+};
+
+/**
+ * Initialize theme selector
+ */
+function initializeThemeSelector() {
+  const themeSelector = document.getElementById('theme-selector');
+  if (!themeSelector) return;
+
+  const themes = ThemeManager.getAvailableThemes();
+  const currentTheme = ThemeManager.getCurrentTheme();
+
+  themes.forEach(theme => {
+    const themeOption = document.createElement('div');
+    themeOption.className = `theme-option ${theme.key === ThemeManager.currentTheme ? 'active' : ''}`;
+    themeOption.dataset.theme = theme.key;
+    
+    themeOption.innerHTML = `
+      <div class="theme-color-preview" style="background: ${theme.primary}"></div>
+      <div class="theme-name">${theme.name}</div>
+    `;
+
+    themeOption.addEventListener('click', () => {
+      // Remove active class from all options
+      document.querySelectorAll('.theme-option').forEach(opt => opt.classList.remove('active'));
+      
+      // Add active class to clicked option
+      themeOption.classList.add('active');
+      
+      // Switch theme
+      ThemeManager.switchTheme(theme.key);
+    });
+
+    themeSelector.appendChild(themeOption);
+  });
+}
+
 // ============== Tab Management ==============
 
 /**
@@ -1230,7 +1434,7 @@ function displayCharacter(character) {
   // Populate character info in Settings tab
   characterInfo.innerHTML = `
     <div style="display: flex; align-items: center; gap: 16px;">
-      ${portraitUrl ? `<img id="settings-portrait" src="${portraitUrl}" alt="Character Portrait" style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid #8B5CF6; object-fit: cover; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);">` : ''}
+      ${portraitUrl ? `<img id="settings-portrait" src="${portraitUrl}" alt="Character Portrait" style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--theme-primary); object-fit: cover; box-shadow: 0 4px 12px var(--theme-shadow);">` : ''}
       <div style="flex: 1;">
         <div class="character-name">${character.name || 'Unknown Character'}</div>
         <div class="character-detail">Level ${character.level || '?'} ${character.race || ''} ${character.class || ''}</div>
@@ -1357,10 +1561,11 @@ async function createCircularImage(imageUrl, size) {
       // Restore context to remove clipping
       ctx.restore();
 
-      // Draw purple outline
+      // Draw theme-colored outline
       ctx.beginPath();
       ctx.arc(size / 2, size / 2, radius, 0, Math.PI * 2);
-      ctx.strokeStyle = '#8B5CF6'; // Purple color matching OwlCloud theme
+      const theme = ThemeManager.getCurrentTheme();
+      ctx.strokeStyle = theme ? theme.primary : '#8B5CF6'; // Use theme color or fallback purple
       ctx.lineWidth = borderWidth;
       ctx.stroke();
 
@@ -3414,6 +3619,10 @@ window.toggleFeatureCard = function(cardId) {
 
 console.log('🎲 OwlCloud Owlbear extension popover loaded');
 statusText.textContent = 'Initializing...';
+
+// Initialize theme manager
+ThemeManager.init();
+initializeThemeSelector();
 
 // Initial check for character (will happen after OBR.onReady)
 setTimeout(() => {
