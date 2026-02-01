@@ -875,8 +875,6 @@ browserAPI.runtime.onMessage.addListener(async (request, sender, sendResponse) =
  * Listen for messages from the Owlbear extension
  */
 window.addEventListener('message', async (event) => {
-  console.log('🔍 OwlCloud received message:', { origin: event.origin, data: event.data });
-
   // Only accept messages from Owlbear Rodeo domain, OwlCloud popover, or Dice+ extension
   const allowedOrigins = [
     'https://www.owlbear.rodeo',
@@ -885,8 +883,7 @@ window.addEventListener('message', async (event) => {
     'https://dice-plus.missinglinkdev.com'
   ];
   if (!allowedOrigins.includes(event.origin)) {
-    console.log('❌ OwlCloud rejected: wrong origin', event.origin);
-    return;
+    return; // Silently reject wrong origins to avoid spam
   }
 
   const { type, source } = event.data;
@@ -896,6 +893,9 @@ window.addEventListener('message', async (event) => {
   if (source !== 'owlbear-extension') {
     return;
   }
+
+  // Log only messages we actually process
+  console.log('🔍 OwlCloud received message:', { type, source });
 
   console.log('📨 OwlCloud message from Owlbear extension:', type);
   debug.log('📨 Message from Owlbear extension:', type);

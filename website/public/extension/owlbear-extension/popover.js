@@ -352,6 +352,8 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
           if (isOwlbearReady) {
             OBR.notification.show("Character linked to your account!", "SUCCESS");
           }
+          await checkForActiveCharacter();
+          updateAuthUI();
         } else {
           const errorText = await linkResponse.text();
           console.error("\u274C Failed to link character:", errorText);

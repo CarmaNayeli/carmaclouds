@@ -9772,7 +9772,6 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
     return true;
   });
   window.addEventListener("message", async (event) => {
-    console.log("\u{1F50D} OwlCloud received message:", { origin: event.origin, data: event.data });
     const allowedOrigins = [
       "https://www.owlbear.rodeo",
       "https://owlcloud.vercel.app",
@@ -9780,13 +9779,13 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
       "https://dice-plus.missinglinkdev.com"
     ];
     if (!allowedOrigins.includes(event.origin)) {
-      console.log("\u274C OwlCloud rejected: wrong origin", event.origin);
       return;
     }
     const { type, source } = event.data;
     if (source !== "owlbear-extension") {
       return;
     }
+    console.log("\u{1F50D} OwlCloud received message:", { type, source });
     console.log("\u{1F4E8} OwlCloud message from Owlbear extension:", type);
     debug.log("\u{1F4E8} Message from Owlbear extension:", type);
     switch (type) {
