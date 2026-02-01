@@ -56,12 +56,23 @@ function jsonResponse(data: any, status: number, req: Request): Response {
 
   if (supportsGzip && jsonString.length > 1024) { // Only compress if > 1KB
     try {
-      // Note: Deno's native compression requires Deno.gzip which may not be available
-      // For now, return uncompressed with a note for future enhancement
-      headers['X-Compression-Available'] = 'true'
-      return new Response(jsonString, { status, headers })
+      // Use CompressionStream API for gzip compression
+      const encoder = new TextEncoder()
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode(jsonString))
+          controller.close()
+        }
+      })
+
+      const compressedStream = stream.pipeThrough(new CompressionStream('gzip'))
+      headers['Content-Encoding'] = 'gzip'
+      headers['Vary'] = 'Accept-Encoding'
+
+      return new Response(compressedStream, { status, headers })
     } catch (e) {
       // Compression failed, return uncompressed
+      console.warn('Compression failed:', e)
       return new Response(jsonString, { status, headers })
     }
   }

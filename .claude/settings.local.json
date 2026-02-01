@@ -11,7 +11,9 @@
       "Bash(npx supabase:*)",
       "Bash(supabase functions deploy:*)",
       "Bash(supabase login:*)",
-      "Bash(supabase secrets list:*)"
+      "Bash(supabase secrets list:*)",
+      "Bash(git merge:*)",
+      "Bash(xargs cat:*)"
     ],
     "additionalDirectories": [
       "c:\\Users\\c_dow\\carmaclouds\\packages\\core\\src"

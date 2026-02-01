@@ -511,12 +511,22 @@ async function linkExistingCharacterToUser() {
 
       if (linkResponse.ok) {
         console.log('✅ Character successfully linked to account!');
+        if (isOwlbearReady) {
+          OBR.notification.show('Character linked to your account!', 'SUCCESS');
+        }
       } else {
-        console.error('❌ Failed to link character:', await linkResponse.text());
+        const errorText = await linkResponse.text();
+        console.error('❌ Failed to link character:', errorText);
+        if (isOwlbearReady) {
+          OBR.notification.show('Failed to link character to account', 'ERROR');
+        }
       }
     }
   } catch (error) {
     console.error('Error linking character to user:', error);
+    if (isOwlbearReady) {
+      OBR.notification.show('Error linking character: ' + (error.message || 'Unknown error'), 'ERROR');
+    }
   }
 }
 
