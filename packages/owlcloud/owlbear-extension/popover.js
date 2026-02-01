@@ -241,8 +241,8 @@ function setupDicePlusListeners() {
   // ALSO listen on Dice+ channel for roll results
   OBR.broadcast.onMessage('dice-plus/roll-result', (event) => {
     console.log('📨 Dice+ roll-result received:', event.data);
-    const { rollId, result } = event.data;
-    const { totalValue, rollSummary, groups } = result || {};
+    const { result } = event.data;
+    const { rollId, totalValue, rollSummary, groups } = result || {};
 
     // Find the pending roll
     const pendingRoll = pendingRolls.get(rollId);
