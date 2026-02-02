@@ -1250,7 +1250,7 @@ window.browserAPI = browserAPI;
       }
     } else if (request.type === 'PUSH_CHARACTER') {
       // Handle character push from RollCloud adapter
-      debug.log('📤 Received PUSH_CHARACTER - processing character data');
+      debug.log('📤 Received PUSH_CHARACTER - preparing character data');
       
       try {
         // 1. Refresh character data from storage
@@ -1265,22 +1265,57 @@ window.browserAPI = browserAPI;
         const formattedData = request.data;
         debug.log('📋 Formatted character data received:', formattedData);
         
-        // 3. Store the character data for use in Roll20
-        // This makes it available for the character sheet overlay and other features
+        // 3. Store the character data for when the sheet requests it
         if (typeof window !== 'undefined') {
-          window.currentCharacterData = formattedData;
-          debug.log('✅ Character data stored in window.currentCharacterData');
+          window.carmacloudsPendingData = formattedData;
+          window.carmacloudsPendingTimestamp = Date.now();
+          debug.log('✅ Character data stored and ready for sheet request');
         }
         
-        // Update any existing character sheet overlays
-        if (typeof updateCharacterSheet === 'function') {
-          updateCharacterSheet(formattedData);
-        }
-        
-        debug.log('✅ Character data integrated into Roll20');
-        sendResponse({ success: true, message: 'Character data pushed to Roll20 successfully' });
+        debug.log('✅ Character data prepared - waiting for sheet to request it');
+        sendResponse({ success: true, message: 'Character data prepared and waiting for sheet' });
       } catch (error) {
         debug.error('❌ Error in PUSH_CHARACTER:', error);
+        sendResponse({ success: false, error: error.message });
+      }
+      return true;
+    } else if (request.type === 'REQUEST_PREPARED_DATA') {
+      // Handle request from character sheet for prepared data
+      debug.log('📥 Character sheet requesting prepared data');
+      
+      try {
+        if (typeof window !== 'undefined' && window.carmacloudsPendingData) {
+          const data = window.carmacloudsPendingData;
+          const timestamp = window.carmacloudsPendingTimestamp;
+          
+          // Check if data is recent (within 5 minutes)
+          const now = Date.now();
+          const age = now - timestamp;
+          
+          if (age < 5 * 60 * 1000) { // 5 minutes
+            debug.log('✅ Sending prepared character data to sheet:', data.name);
+            sendResponse({ 
+              success: true, 
+              data: data,
+              timestamp: timestamp,
+              age: age
+            });
+          } else {
+            debug.warn('⚠️ Prepared data is too old, ignoring');
+            sendResponse({ 
+              success: false, 
+              error: 'Prepared data expired. Please push character data again.' 
+            });
+          }
+        } else {
+          debug.warn('⚠️ No prepared character data available');
+          sendResponse({ 
+            success: false, 
+            error: 'No character data prepared. Please use "Push to Roll20" first.' 
+          });
+        }
+      } catch (error) {
+        debug.error('❌ Error sending prepared data:', error);
         sendResponse({ success: false, error: error.message });
       }
       return true;

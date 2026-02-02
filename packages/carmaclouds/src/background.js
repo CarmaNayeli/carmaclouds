@@ -76,6 +76,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // Keep channel open for async response
   }
 
+  // Handle requestPreparedData from character sheet popup
+  if (message.action === 'requestPreparedData') {
+    console.log('📤 Character sheet requesting prepared data');
+    handleRequestPreparedData()
+      .then(result => {
+        console.log('✅ Prepared data request completed:', result.success ? 'success' : 'failed');
+        sendResponse(result);
+      })
+      .catch(error => {
+        console.error('❌ Failed to handle prepared data request:', error);
+        sendResponse({ success: false, error: error.message });
+      });
+    return true; // Keep channel open for async response
+  }
+
   // Handle different message types
   switch (message.type) {
     case 'CHARACTER_UPDATED':
@@ -205,6 +220,46 @@ async function handleSetActiveCharacter(characterId) {
     };
   } catch (error) {
     console.error('Error setting active character:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+// Handle request for prepared character data from popup
+async function handleRequestPreparedData() {
+  try {
+    // Find Roll20 tab
+    const tabs = await chrome.tabs.query({ url: '*://app.roll20.net/*' });
+    
+    if (tabs.length === 0) {
+      return {
+        success: false,
+        error: 'No Roll20 tab found. Please open Roll20 first.'
+      };
+    }
+
+    // Request prepared data from Roll20 content script
+    const response = await chrome.tabs.sendMessage(tabs[0].id, {
+      type: 'REQUEST_PREPARED_DATA'
+    });
+
+    if (response && response.success) {
+      return {
+        success: true,
+        data: response.data,
+        timestamp: response.timestamp,
+        age: response.age
+      };
+    } else {
+      return {
+        success: false,
+        error: response?.error || 'No prepared character data available. Please use "Push to Roll20" first.'
+      };
+    }
+  } catch (error) {
+    console.error('Error requesting prepared data:', error);
     return {
       success: false,
       error: error.message

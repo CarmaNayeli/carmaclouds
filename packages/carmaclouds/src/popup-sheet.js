@@ -365,11 +365,47 @@ if (document.readyState === 'loading') {
 debug.log('✅ Waiting for character data via postMessage...');
 
 // Fallback: If we don't receive data via postMessage within 1.5 seconds,
-// load directly from storage (Firefox sometimes blocks postMessage between windows)
+// first try to request prepared data from Roll20, then load from storage
 setTimeout(() => {
   if (!characterData && domReady) {
-    debug.log('⏱️ No data received via postMessage, loading from storage...');
-    loadCharacterWithTabs();
+    debug.log('⏱️ No data received via postMessage, requesting prepared data...');
+    
+    // First try to get prepared data from Roll20 content script via background script
+    try {
+      browserAPI.runtime.sendMessage({
+        action: 'requestPreparedData'
+      }).then(response => {
+        if (response && response.success) {
+          debug.log('✅ Received prepared data from Roll20:', response.data.name);
+          characterData = response.data;
+          
+          // Build the sheet with the received data
+          buildSheet(characterData);
+          initRacialTraits();
+          initFeatTraits();
+          initClassFeatures();
+          initCompanions();
+          initResources();
+          initSpells();
+          initActions();
+          initInventory();
+          initHealth();
+          initConcentration();
+          initStatusEffects();
+          
+          showNotification(`✅ Loaded character: ${characterData.name}`, 'success');
+        } else {
+          debug.log('⚠️ No prepared data available, loading from storage...');
+          loadCharacterWithTabs();
+        }
+      }).catch(error => {
+        debug.log('⚠️ Error requesting prepared data, loading from storage:', error);
+        loadCharacterWithTabs();
+      });
+    } catch (error) {
+      debug.log('⚠️ Browser API not available, loading from storage...');
+      loadCharacterWithTabs();
+    }
   } else if (!characterData && !domReady) {
     debug.log('⏳ DOM not ready yet, will retry fallback...');
     setTimeout(() => {
