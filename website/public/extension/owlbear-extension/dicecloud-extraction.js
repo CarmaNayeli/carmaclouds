@@ -399,7 +399,7 @@ function parseCharacterData(apiData, characterId) {
  * Parse raw DiceCloud data into Roll20-specific format
  * Called by RollCloud adapter when tab is loaded
  */
-export function parseForRollCloud(rawData) {
+function parseForRollCloud(rawData) {
   if (!rawData || !rawData.creature || !rawData.variables || !rawData.properties) {
     throw new Error('Invalid raw data format');
   }
@@ -890,7 +890,7 @@ export function parseForRollCloud(rawData) {
  * Parse raw DiceCloud data into Owlbear Rodeo-specific format
  * Called by OwlCloud adapter when tab is loaded
  */
-export function parseForOwlCloud(rawData) {
+function parseForOwlCloud(rawData) {
   // For now, use same format as Roll20
   return parseForRollCloud(rawData);
 }
@@ -899,8 +899,13 @@ export function parseForOwlCloud(rawData) {
  * Parse raw DiceCloud data into Foundry VTT-specific format
  * Called by FoundCloud adapter when tab is loaded
  */
-export function parseForFoundCloud(rawData) {
+function parseForFoundCloud(rawData) {
   // For now, use same format as Roll20
   // TODO: Customize for Foundry VTT's data structure
   return parseForRollCloud(rawData);
+}
+
+// Expose parseCharacterData to global scope for use in popover.js
+if (typeof window !== 'undefined') {
+  window.parseCharacterData = parseCharacterData;
 }
