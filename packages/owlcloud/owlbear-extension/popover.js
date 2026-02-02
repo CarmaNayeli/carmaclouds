@@ -1664,9 +1664,21 @@ async function checkForActiveCharacter() {
         } else if (rawData.creature && rawData.variables && rawData.properties) {
           // This is already extracted by CarmaClouds - use parseForRollCloud
           console.log('✅ Using pre-extracted character data');
+          console.log('🔍 Creature object keys:', Object.keys(rawData.creature));
+          console.log('🔍 Creature picture fields:', {
+            picture: rawData.creature.picture,
+            avatarPicture: rawData.creature.avatarPicture,
+            avatar: rawData.creature.avatar,
+            image: rawData.creature.image,
+            pictureUrl: rawData.creature.pictureUrl
+          });
 
           // Extract portrait before parsing (it gets lost in flattening)
-          const portraitUrl = rawData.creature.picture || rawData.creature.avatarPicture;
+          const portraitUrl = rawData.creature.picture || rawData.creature.avatarPicture || rawData.creature.avatar || rawData.creature.image;
+
+          // Log property types for debugging features
+          const propertyTypes = new Set(rawData.properties.map(p => p.type));
+          console.log('🔍 Property types in character data:', Array.from(propertyTypes).sort());
 
           // Parse it with the comprehensive Roll20 parser (works for OBR too)
           try {
@@ -1678,6 +1690,7 @@ async function checkForActiveCharacter() {
             }
 
             console.log('✅ Parsed extracted data:', characterData);
+            console.log('🔍 Features count:', characterData.features?.length || 0);
           } catch (parseError) {
             console.error('❌ Failed to parse extracted data:', parseError);
             // Fallback to basic flattening

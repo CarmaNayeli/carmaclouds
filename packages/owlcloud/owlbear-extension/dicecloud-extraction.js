@@ -858,6 +858,20 @@ function parseForRollCloud(rawData) {
       requiresAttunement: item.requiresAttunement || false
     }));
 
+  // Parse features from properties (features, traits, proficiencies, exclude inactive)
+  const features = properties
+    .filter(p => (p.type === 'feature' || p.type === 'trait' || p.type === 'proficiency' || p.type === 'buff') && !p.inactive && !p.disabled)
+    .map(feature => ({
+      id: feature._id,
+      name: feature.name || 'Unnamed Feature',
+      description: extractText(feature.description),
+      summary: extractText(feature.summary),
+      uses: feature.uses || 0,
+      usesUsed: feature.usesUsed || 0,
+      reset: feature.reset || '',
+      tags: feature.tags || []
+    }));
+
   return {
     name: characterName,
     race,
@@ -882,7 +896,8 @@ function parseForRollCloud(rawData) {
     resources,
     inventory,
     spells,
-    actions
+    actions,
+    features
   };
 }
 
