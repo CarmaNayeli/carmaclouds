@@ -1459,7 +1459,6 @@ function buildActionsDisplay(container, actions) {
     actionCard.appendChild(actionHeader);
 
     // Add details section if any useful information exists (hidden by default, toggled by Details button)
-    const hasDetails = action.description || action.summary || action.damageType || action.attackRoll || action.damage || action.source || action.range;
     if (hasDetails) {
       const detailsDiv = document.createElement('div');
       detailsDiv.className = 'action-details';
