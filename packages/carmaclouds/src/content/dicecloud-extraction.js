@@ -182,7 +182,7 @@ export function parseCharacterData(apiData, characterId) {
   console.log('CarmaClouds: Property types in character:', propertyTypes);
 
   // Just extract basic metadata for display
-  let characterName = creature.name || '';
+  const characterName = creature.name || '';
 
   // Check if race is stored directly on creature
   if (creature.race) {
