@@ -81,11 +81,16 @@
     },
     {
       "resources": [
-        "src/popup-sheet.html",
-        "src/popup-sheet.js",
-        "src/content/dicecloud-extraction.js",
         "common/*",
         "modules/*"
+      ],
+      "matches": ["<all_urls>"]
+    },
+    {
+      "resources": [
+        "src/popup-sheet.html",
+        "src/popup-sheet.js",
+        "src/content/dicecloud-extraction.js"
       ],
       "matches": [
         "https://app.roll20.net/*"
