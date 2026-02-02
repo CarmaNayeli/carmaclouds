@@ -667,8 +667,8 @@ OBR.onReady(async () => {
     console.error('Error setting popover height:', error);
   }
 
-  // Initialize Supabase Auth
-  initializeSupabaseAuth();
+  // Initialize Supabase Auth (and link any existing characters)
+  await initializeSupabaseAuth();
 
   // Check for active character
   checkForActiveCharacter();
@@ -1137,15 +1137,20 @@ async function linkExistingCharacterToUser() {
     const playerId = await OBR.player.getId();
 
     console.log('🔗 Checking for existing character to link...');
+    console.log('  - Current user ID:', currentUser.id);
+    console.log('  - Owlbear player ID:', playerId);
 
     // First check if user already has a character linked by supabase_user_id
+    console.log('📡 Checking if user already has a character...');
     const userCharResponse = await fetch(
       `${SUPABASE_URL}/functions/v1/characters?supabase_user_id=${encodeURIComponent(currentUser.id)}&active_only=true&fields=essential`,
       { headers: SUPABASE_HEADERS }
     );
 
+    console.log('📡 User character check response:', userCharResponse.status);
     if (userCharResponse.ok) {
       const userData = await userCharResponse.json();
+      console.log('📦 User character data:', userData);
       if (userData.success && userData.character) {
         console.log('✅ User already has a linked character');
         return; // User already has a character, no need to link
@@ -1153,17 +1158,20 @@ async function linkExistingCharacterToUser() {
     }
 
     // No character found by supabase_user_id, check by owlbear_player_id to link existing character
+    console.log('🔍 Checking for character by owlbear_player_id...');
     const playerCharResponse = await fetch(
       `${SUPABASE_URL}/functions/v1/characters?owlbear_player_id=${encodeURIComponent(playerId)}&active_only=true&fields=full`,
       { headers: SUPABASE_HEADERS }
     );
 
+    console.log('📡 Player character check response:', playerCharResponse.status);
     if (!playerCharResponse.ok) {
       console.log('ℹ️ No existing character found to link');
       return;
     }
 
     const playerData = await playerCharResponse.json();
+    console.log('📦 Player character data:', playerData);
 
     if (playerData.success && playerData.character) {
       console.log('🔗 Linking existing OBR character to user account...');

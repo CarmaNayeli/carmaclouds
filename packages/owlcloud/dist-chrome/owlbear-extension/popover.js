@@ -518,7 +518,7 @@
     } catch (error) {
       console.error("Error setting popover height:", error);
     }
-    initializeSupabaseAuth();
+    await initializeSupabaseAuth();
     checkForActiveCharacter();
     checkDicePlusReady();
     setupDicePlusListeners();
@@ -829,26 +829,34 @@
     try {
       const playerId = await OBR.player.getId();
       console.log("\u{1F517} Checking for existing character to link...");
+      console.log("  - Current user ID:", currentUser.id);
+      console.log("  - Owlbear player ID:", playerId);
+      console.log("\u{1F4E1} Checking if user already has a character...");
       const userCharResponse = await fetch(
         `${SUPABASE_URL}/functions/v1/characters?supabase_user_id=${encodeURIComponent(currentUser.id)}&active_only=true&fields=essential`,
         { headers: SUPABASE_HEADERS }
       );
+      console.log("\u{1F4E1} User character check response:", userCharResponse.status);
       if (userCharResponse.ok) {
         const userData = await userCharResponse.json();
+        console.log("\u{1F4E6} User character data:", userData);
         if (userData.success && userData.character) {
           console.log("\u2705 User already has a linked character");
           return;
         }
       }
+      console.log("\u{1F50D} Checking for character by owlbear_player_id...");
       const playerCharResponse = await fetch(
         `${SUPABASE_URL}/functions/v1/characters?owlbear_player_id=${encodeURIComponent(playerId)}&active_only=true&fields=full`,
         { headers: SUPABASE_HEADERS }
       );
+      console.log("\u{1F4E1} Player character check response:", playerCharResponse.status);
       if (!playerCharResponse.ok) {
         console.log("\u2139\uFE0F No existing character found to link");
         return;
       }
       const playerData = await playerCharResponse.json();
+      console.log("\u{1F4E6} Player character data:", playerData);
       if (playerData.success && playerData.character) {
         console.log("\u{1F517} Linking existing OBR character to user account...");
         const character = playerData.character.raw_dicecloud_data || playerData.character;
