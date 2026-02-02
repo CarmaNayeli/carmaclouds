@@ -173,14 +173,14 @@
                     statusIcon.textContent = "\u2705";
                   if (statusText) {
                     statusText.innerHTML = `
-                    <div style="margin-bottom: 10px;">Character synced to database!</div>
-                    <div style="background: var(--bg-secondary, #f5f5f5); padding: 10px; border-radius: 4px; font-family: monospace;">
-                      <div style="margin-bottom: 5px; font-size: 12px; opacity: 0.8;">Your DiceCloud User ID:</div>
+                    <div style="margin-bottom: 12px; color: #fff;">Character synced to database!</div>
+                    <div style="padding: 0; font-family: monospace;">
+                      <div style="margin-bottom: 8px; font-size: 12px; color: rgba(255, 255, 255, 0.7);">Your DiceCloud User ID:</div>
                       <div style="display: flex; gap: 8px; align-items: center;">
-                        <input type="text" value="${diceCloudUserId}" readonly style="flex: 1; padding: 8px; border: 1px solid var(--border-color, #ddd); border-radius: 4px; font-family: monospace; font-size: 14px; background: white;">
-                        <button id="copyUserIdBtn" style="padding: 8px 12px; background: #16a75a; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">Copy</button>
+                        <input type="text" value="${diceCloudUserId}" readonly style="flex: 1; padding: 8px; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 4px; font-family: monospace; font-size: 14px; background: transparent; color: #fff; cursor: text;" onclick="this.select()">
+                        <button id="copyUserIdBtn" style="padding: 8px 16px; background: #16a75a; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; white-space: nowrap;">Copy</button>
                       </div>
-                      <div style="margin-top: 8px; font-size: 11px; opacity: 0.7;">Paste this into the Owlbear extension to link your character.</div>
+                      <div style="margin-top: 8px; font-size: 11px; color: rgba(255, 255, 255, 0.6);">Paste this into the Owlbear extension to link your character.</div>
                     </div>
                   `;
                     const copyBtn2 = statusSection.querySelector("#copyUserIdBtn");
