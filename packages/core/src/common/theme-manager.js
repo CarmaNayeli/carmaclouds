@@ -254,4 +254,12 @@ if (typeof module !== 'undefined' && module.exports) {
 // Make factory available globally
 if (typeof window !== 'undefined') {
   window.createThemeManager = createThemeManager;
+  
+  // Create default instance for carmaclouds
+  if (!window.ThemeManager) {
+    window.ThemeManager = createThemeManager({
+      storageKey: 'carmaclouds-theme',
+      eventName: 'carmaclouds-theme-changed'
+    });
+  }
 }
