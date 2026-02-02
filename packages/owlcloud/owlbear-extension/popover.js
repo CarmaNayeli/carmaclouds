@@ -1596,8 +1596,22 @@ async function checkForActiveCharacter() {
       // Use raw_dicecloud_data if available (has proper field names)
       let characterData = data.character.raw_dicecloud_data || data.character;
 
+      // If raw_dicecloud_data exists, extract top-level fields from creature for easy access
+      if (data.character.raw_dicecloud_data && characterData.creature) {
+        console.log('🔄 Extracting fields from creature object');
+        characterData = {
+          ...characterData,
+          id: data.character.dicecloud_character_id || characterData.creature._id,
+          name: characterData.creature.name,
+          picture: characterData.creature.picture,
+          avatarPicture: characterData.creature.avatarPicture,
+          class: data.character.class,
+          race: data.character.race,
+          level: data.character.level
+        };
+      }
       // If no raw_dicecloud_data, transform database fields to expected format
-      if (!data.character.raw_dicecloud_data && data.character.character_name) {
+      else if (!data.character.raw_dicecloud_data && data.character.character_name) {
         console.log('🔄 Transforming database fields to UI format');
         characterData = {
           ...characterData,
@@ -1781,18 +1795,18 @@ function displayCharacter(character) {
   noCharacterSection.style.display = 'none';
 
   // Get portrait URL for use in multiple places
-  // Portrait data is stored in rawDiceCloudData.creature
+  // Portrait data can be at top level or inside creature object
   console.log('🖼️ Checking for portrait in character data:');
   console.log('  character.picture:', character.picture);
   console.log('  character.avatarPicture:', character.avatarPicture);
-  console.log('  character.rawDiceCloudData?.creature?.picture:', character.rawDiceCloudData?.creature?.picture);
-  console.log('  character.rawDiceCloudData?.creature?.avatarPicture:', character.rawDiceCloudData?.creature?.avatarPicture);
+  console.log('  character.creature?.picture:', character.creature?.picture);
+  console.log('  character.creature?.avatarPicture:', character.creature?.avatarPicture);
 
-  // Try top-level fields first, then check inside rawDiceCloudData.creature
+  // Try top-level fields first, then check inside creature object
   const portraitUrl = character.picture ||
                       character.avatarPicture ||
-                      character.rawDiceCloudData?.creature?.picture ||
-                      character.rawDiceCloudData?.creature?.avatarPicture;
+                      character.creature?.picture ||
+                      character.creature?.avatarPicture;
 
   // Populate character info in Settings tab
   characterInfo.innerHTML = `

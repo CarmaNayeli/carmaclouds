@@ -1171,7 +1171,19 @@ This will disconnect the character from this room. You can sync a different char
         console.log("  - Has raw_dicecloud_data:", !!data.character.raw_dicecloud_data);
         console.log("  - Has character_name:", !!data.character.character_name);
         let characterData = data.character.raw_dicecloud_data || data.character;
-        if (!data.character.raw_dicecloud_data && data.character.character_name) {
+        if (data.character.raw_dicecloud_data && characterData.creature) {
+          console.log("\u{1F504} Extracting fields from creature object");
+          characterData = {
+            ...characterData,
+            id: data.character.dicecloud_character_id || characterData.creature._id,
+            name: characterData.creature.name,
+            picture: characterData.creature.picture,
+            avatarPicture: characterData.creature.avatarPicture,
+            class: data.character.class,
+            race: data.character.race,
+            level: data.character.level
+          };
+        } else if (!data.character.raw_dicecloud_data && data.character.character_name) {
           console.log("\u{1F504} Transforming database fields to UI format");
           characterData = {
             ...characterData,
@@ -1305,9 +1317,9 @@ This will disconnect the character from this room. You can sync a different char
     console.log("\u{1F5BC}\uFE0F Checking for portrait in character data:");
     console.log("  character.picture:", character.picture);
     console.log("  character.avatarPicture:", character.avatarPicture);
-    console.log("  character.rawDiceCloudData?.creature?.picture:", character.rawDiceCloudData?.creature?.picture);
-    console.log("  character.rawDiceCloudData?.creature?.avatarPicture:", character.rawDiceCloudData?.creature?.avatarPicture);
-    const portraitUrl = character.picture || character.avatarPicture || character.rawDiceCloudData?.creature?.picture || character.rawDiceCloudData?.creature?.avatarPicture;
+    console.log("  character.creature?.picture:", character.creature?.picture);
+    console.log("  character.creature?.avatarPicture:", character.creature?.avatarPicture);
+    const portraitUrl = character.picture || character.avatarPicture || character.creature?.picture || character.creature?.avatarPicture;
     characterInfo.innerHTML = `
     <div style="display: flex; align-items: center; gap: 16px;">
       ${portraitUrl ? `<img id="settings-portrait" src="${portraitUrl}" alt="Character Portrait" style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--theme-primary); object-fit: cover; box-shadow: 0 4px 12px var(--theme-shadow);">` : ""}
