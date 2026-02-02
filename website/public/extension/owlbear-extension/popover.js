@@ -1229,8 +1229,12 @@ This will disconnect the character from this room. You can sync a different char
             }
           } else if (rawData.creature && rawData.variables && rawData.properties) {
             console.log("\u2705 Using pre-extracted character data");
+            const portraitUrl = rawData.creature.picture || rawData.creature.avatarPicture;
             try {
               characterData = window.parseForRollCloud ? window.parseForRollCloud(rawData) : parseForRollCloud(rawData);
+              if (portraitUrl) {
+                characterData.picture = portraitUrl;
+              }
               console.log("\u2705 Parsed extracted data:", characterData);
             } catch (parseError) {
               console.error("\u274C Failed to parse extracted data:", parseError);
@@ -1240,7 +1244,8 @@ This will disconnect the character from this room. You can sync a different char
                 name: rawData.creature.name || data.character.character_name,
                 race: rawData.creature.race || data.character.race,
                 class: rawData.creature.class || data.character.class,
-                level: rawData.creature.level || data.character.level
+                level: rawData.creature.level || data.character.level,
+                picture: portraitUrl
               };
             }
           } else {

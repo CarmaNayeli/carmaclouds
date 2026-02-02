@@ -1665,9 +1665,18 @@ async function checkForActiveCharacter() {
           // This is already extracted by CarmaClouds - use parseForRollCloud
           console.log('✅ Using pre-extracted character data');
 
+          // Extract portrait before parsing (it gets lost in flattening)
+          const portraitUrl = rawData.creature.picture || rawData.creature.avatarPicture;
+
           // Parse it with the comprehensive Roll20 parser (works for OBR too)
           try {
             characterData = window.parseForRollCloud ? window.parseForRollCloud(rawData) : parseForRollCloud(rawData);
+
+            // Add portrait back to parsed data
+            if (portraitUrl) {
+              characterData.picture = portraitUrl;
+            }
+
             console.log('✅ Parsed extracted data:', characterData);
           } catch (parseError) {
             console.error('❌ Failed to parse extracted data:', parseError);
@@ -1678,7 +1687,8 @@ async function checkForActiveCharacter() {
               name: rawData.creature.name || data.character.character_name,
               race: rawData.creature.race || data.character.race,
               class: rawData.creature.class || data.character.class,
-              level: rawData.creature.level || data.character.level
+              level: rawData.creature.level || data.character.level,
+              picture: portraitUrl
             };
           }
         } else {
