@@ -760,6 +760,7 @@
         currentUser = session.user;
         console.log("\u2705 User already signed in:", currentUser.email);
         updateAuthUI();
+        await linkExistingCharacterToUser();
       } else {
         console.log("\u2139\uFE0F No active session");
         updateAuthUI();

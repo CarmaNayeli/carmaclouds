@@ -1038,6 +1038,9 @@ async function initializeSupabaseAuth() {
       currentUser = session.user;
       console.log('✅ User already signed in:', currentUser.email);
       updateAuthUI();
+
+      // Link any existing character to this user's account
+      await linkExistingCharacterToUser();
     } else {
       console.log('ℹ️ No active session');
       updateAuthUI();
