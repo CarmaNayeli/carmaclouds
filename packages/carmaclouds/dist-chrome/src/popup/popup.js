@@ -131,6 +131,27 @@
                   if (!deactivateResponse.ok) {
                     console.warn("\u26A0\uFE0F Failed to deactivate other characters, continuing anyway...");
                   }
+                  const supabase = window.supabaseClient;
+                  let supabaseUserId = null;
+                  if (supabase) {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    supabaseUserId = session?.user?.id;
+                  }
+                  const characterData = {
+                    dicecloud_character_id: character.id,
+                    character_name: character.name || "Unknown",
+                    user_id_dicecloud: diceCloudUserId,
+                    level: character.preview?.level || null,
+                    class: character.preview?.class || null,
+                    race: character.preview?.race || null,
+                    raw_dicecloud_data: character.raw,
+                    is_active: true,
+                    updated_at: (/* @__PURE__ */ new Date()).toISOString()
+                  };
+                  if (supabaseUserId) {
+                    characterData.supabase_user_id = supabaseUserId;
+                    console.log("\u2705 Including Supabase user ID for cross-device sync:", supabaseUserId);
+                  }
                   const updateResponse = await fetch(
                     `${SUPABASE_URL}/rest/v1/clouds_characters?on_conflict=user_id_dicecloud,dicecloud_character_id`,
                     {
@@ -141,17 +162,7 @@
                         "Content-Type": "application/json",
                         "Prefer": "resolution=merge-duplicates,return=representation"
                       },
-                      body: JSON.stringify({
-                        dicecloud_character_id: character.id,
-                        character_name: character.name || "Unknown",
-                        user_id_dicecloud: diceCloudUserId,
-                        level: character.preview?.level || null,
-                        class: character.preview?.class || null,
-                        race: character.preview?.race || null,
-                        raw_dicecloud_data: character.raw,
-                        is_active: true,
-                        updated_at: (/* @__PURE__ */ new Date()).toISOString()
-                      })
+                      body: JSON.stringify(characterData)
                     }
                   );
                   if (updateResponse.ok) {
@@ -1392,6 +1403,21 @@
       console.error("\u274C Error checking auth token:", error);
     }
   }
+  function updateSupabaseAuthUI(user) {
+    const loginView = document.getElementById("supabase-login-view");
+    const loggedInView = document.getElementById("supabase-logged-in-view");
+    const emailDisplay = document.getElementById("supabase-user-email");
+    if (user) {
+      loginView.classList.add("hidden");
+      loggedInView.classList.remove("hidden");
+      if (emailDisplay) {
+        emailDisplay.textContent = user.email;
+      }
+    } else {
+      loginView.classList.remove("hidden");
+      loggedInView.classList.add("hidden");
+    }
+  }
   async function init4() {
     console.log("Initializing CarmaClouds popup...");
     const settings = await getSettings();
@@ -1439,6 +1465,67 @@
       manualLogin(username, password);
     });
     document.getElementById("logoutBtn").addEventListener("click", logout);
+    document.querySelectorAll("[data-auth-tab]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const tabName = btn.dataset.authTab;
+        document.querySelectorAll("[data-auth-tab]").forEach((b) => {
+          b.classList.toggle("active", b.dataset.authTab === tabName);
+        });
+        document.querySelectorAll(".auth-tab-pane").forEach((pane) => {
+          pane.style.display = pane.id === `${tabName}-auth-content` ? "block" : "none";
+        });
+      });
+    });
+    const supabase = window.supabaseClient;
+    if (supabase) {
+      const { data: { session } } = await supabase.auth.getSession();
+      updateSupabaseAuthUI(session?.user);
+      supabase.auth.onAuthStateChange((event, session2) => {
+        updateSupabaseAuthUI(session2?.user);
+      });
+      document.getElementById("supabase-auth-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const email = document.getElementById("supabase-email").value;
+        const password = document.getElementById("supabase-password").value;
+        const errorDiv = document.getElementById("supabase-auth-error");
+        try {
+          const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+          if (error)
+            throw error;
+          errorDiv.classList.add("hidden");
+        } catch (error) {
+          errorDiv.textContent = error.message;
+          errorDiv.classList.remove("hidden");
+        }
+      });
+      document.getElementById("supabase-signup-btn").addEventListener("click", async () => {
+        const email = document.getElementById("supabase-email").value;
+        const password = document.getElementById("supabase-password").value;
+        const errorDiv = document.getElementById("supabase-auth-error");
+        if (!email || !password) {
+          errorDiv.textContent = "Please enter email and password";
+          errorDiv.classList.remove("hidden");
+          return;
+        }
+        try {
+          const { data, error } = await supabase.auth.signUp({ email, password });
+          if (error)
+            throw error;
+          errorDiv.classList.add("hidden");
+          alert("Account created! Please check your email to verify your account.");
+        } catch (error) {
+          errorDiv.textContent = error.message;
+          errorDiv.classList.remove("hidden");
+        }
+      });
+      document.getElementById("supabase-signout-btn").addEventListener("click", async () => {
+        try {
+          await supabase.auth.signOut();
+        } catch (error) {
+          console.error("Error signing out:", error);
+        }
+      });
+    }
     await updateAuthStatus();
     document.getElementById("open-website").addEventListener("click", (e) => {
       e.preventDefault();

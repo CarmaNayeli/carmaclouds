@@ -681,6 +681,26 @@ async function checkAndUpdateAuthToken() {
   }
 }
 
+// Update Supabase auth UI based on user state
+function updateSupabaseAuthUI(user) {
+  const loginView = document.getElementById('supabase-login-view');
+  const loggedInView = document.getElementById('supabase-logged-in-view');
+  const emailDisplay = document.getElementById('supabase-user-email');
+
+  if (user) {
+    // User is signed in
+    loginView.classList.add('hidden');
+    loggedInView.classList.remove('hidden');
+    if (emailDisplay) {
+      emailDisplay.textContent = user.email;
+    }
+  } else {
+    // User is not signed in
+    loginView.classList.remove('hidden');
+    loggedInView.classList.add('hidden');
+  }
+}
+
 // Initialize popup
 async function init() {
   console.log('Initializing CarmaClouds popup...');
@@ -754,6 +774,85 @@ async function init() {
 
   // Logout button
   document.getElementById('logoutBtn').addEventListener('click', logout);
+
+  // Set up auth modal tab switching
+  document.querySelectorAll('[data-auth-tab]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tabName = btn.dataset.authTab;
+
+      // Update tab buttons
+      document.querySelectorAll('[data-auth-tab]').forEach(b => {
+        b.classList.toggle('active', b.dataset.authTab === tabName);
+      });
+
+      // Update tab panes
+      document.querySelectorAll('.auth-tab-pane').forEach(pane => {
+        pane.style.display = pane.id === `${tabName}-auth-content` ? 'block' : 'none';
+      });
+    });
+  });
+
+  // Supabase auth handlers
+  const supabase = window.supabaseClient;
+  if (supabase) {
+    // Check current Supabase auth state
+    const { data: { session } } = await supabase.auth.getSession();
+    updateSupabaseAuthUI(session?.user);
+
+    // Listen for auth state changes
+    supabase.auth.onAuthStateChange((event, session) => {
+      updateSupabaseAuthUI(session?.user);
+    });
+
+    // Sign in form
+    document.getElementById('supabase-auth-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('supabase-email').value;
+      const password = document.getElementById('supabase-password').value;
+      const errorDiv = document.getElementById('supabase-auth-error');
+
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        errorDiv.classList.add('hidden');
+      } catch (error) {
+        errorDiv.textContent = error.message;
+        errorDiv.classList.remove('hidden');
+      }
+    });
+
+    // Sign up button
+    document.getElementById('supabase-signup-btn').addEventListener('click', async () => {
+      const email = document.getElementById('supabase-email').value;
+      const password = document.getElementById('supabase-password').value;
+      const errorDiv = document.getElementById('supabase-auth-error');
+
+      if (!email || !password) {
+        errorDiv.textContent = 'Please enter email and password';
+        errorDiv.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        errorDiv.classList.add('hidden');
+        alert('Account created! Please check your email to verify your account.');
+      } catch (error) {
+        errorDiv.textContent = error.message;
+        errorDiv.classList.remove('hidden');
+      }
+    });
+
+    // Sign out button
+    document.getElementById('supabase-signout-btn').addEventListener('click', async () => {
+      try {
+        await supabase.auth.signOut();
+      } catch (error) {
+        console.error('Error signing out:', error);
+      }
+    });
+  }
 
   // Check and update auth status
   await updateAuthStatus();

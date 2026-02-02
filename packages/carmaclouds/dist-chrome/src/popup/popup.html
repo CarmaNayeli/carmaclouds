@@ -119,74 +119,135 @@
     </div>
   </div>
 
-  <!-- DiceCloud Authentication Modal -->
+  <!-- Authentication Modal -->
   <div id="dicecloud-auth-modal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <h2>DiceCloud Authentication</h2>
+        <h2>Authentication</h2>
         <button class="modal-close" id="close-dicecloud-auth">&times;</button>
       </div>
+
+      <!-- Auth Tabs -->
+      <div class="tabs" style="border-bottom: 1px solid #16a75a;">
+        <button class="tab-button active" data-auth-tab="dicecloud">
+          DiceCloud
+        </button>
+        <button class="tab-button" data-auth-tab="supabase">
+          Account
+        </button>
+      </div>
+
       <div class="modal-body">
-        <!-- Not Authenticated State -->
-        <div id="auth-login-view">
-          <p class="auth-description">
-            Connect to DiceCloud to sync your characters across Roll20, Owlbear Rodeo, and Foundry VTT.
-          </p>
-
-          <!-- Auto-Connect Button (Recommended) -->
-          <div style="margin-bottom: 20px;">
-            <button type="button" class="btn btn-primary" id="autoConnectBtn" style="width: 100%; padding: 15px; font-size: 1.1em;">
-              🔐 Connect with DiceCloud
-            </button>
-            <p class="help-text" style="margin-top: 8px; text-align: center;">
-              Works with <strong>Google Sign-In</strong>, username/password, or any login method<br>
-              <small style="color: #b0b0b0;">Click button → Log in to DiceCloud → Click button again</small>
+        <!-- DiceCloud Auth Tab -->
+        <div id="dicecloud-auth-content" class="auth-tab-pane active">
+          <!-- Not Authenticated State -->
+          <div id="auth-login-view">
+            <p class="auth-description">
+              Connect to DiceCloud to sync your characters across Roll20, Owlbear Rodeo, and Foundry VTT.
             </p>
-          </div>
 
-          <div style="text-align: center; margin: 15px 0; color: #b0b0b0;">
-            <span style="display: inline-block; padding: 0 10px; background: #1a1a1a; position: relative; z-index: 1;">or</span>
-            <hr style="margin-top: -12px; border: none; border-top: 1px solid #16a75a;">
-          </div>
-
-          <!-- Manual Login Form -->
-          <details style="margin-top: 15px;">
-            <summary style="cursor: pointer; padding: 10px; background: #0d4a30; border: 1px solid #16a75a; border-radius: 5px; font-weight: bold; color: #16a75a;">
-              🔑 Manual Login (if auto-connect doesn't work)
-            </summary>
-            <form id="usernameLoginForm" style="margin-top: 15px;">
-              <div class="form-group">
-                <label for="username">Username or Email</label>
-                <input type="text" id="username" name="username" required autocomplete="username" placeholder="Your DiceCloud username or email">
-              </div>
-              <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" required autocomplete="current-password" placeholder="Your DiceCloud password">
-              </div>
-              <button type="submit" class="btn btn-primary" id="usernameLoginBtn">
-                🔐 Login to DiceCloud
+            <!-- Auto-Connect Button (Recommended) -->
+            <div style="margin-bottom: 20px;">
+              <button type="button" class="btn btn-primary" id="autoConnectBtn" style="width: 100%; padding: 15px; font-size: 1.1em;">
+                🔐 Connect with DiceCloud
               </button>
-            </form>
-          </details>
+              <p class="help-text" style="margin-top: 8px; text-align: center;">
+                Works with <strong>Google Sign-In</strong>, username/password, or any login method<br>
+                <small style="color: #b0b0b0;">Click button → Log in to DiceCloud → Click button again</small>
+              </p>
+            </div>
 
-          <div id="loginError" class="error-message hidden"></div>
+            <div style="text-align: center; margin: 15px 0; color: #b0b0b0;">
+              <span style="display: inline-block; padding: 0 10px; background: #1a1a1a; position: relative; z-index: 1;">or</span>
+              <hr style="margin-top: -12px; border: none; border-top: 1px solid #16a75a;">
+            </div>
+
+            <!-- Manual Login Form -->
+            <details style="margin-top: 15px;">
+              <summary style="cursor: pointer; padding: 10px; background: #0d4a30; border: 1px solid #16a75a; border-radius: 5px; font-weight: bold; color: #16a75a;">
+                🔑 Manual Login (if auto-connect doesn't work)
+              </summary>
+              <form id="usernameLoginForm" style="margin-top: 15px;">
+                <div class="form-group">
+                  <label for="username">Username or Email</label>
+                  <input type="text" id="username" name="username" required autocomplete="username" placeholder="Your DiceCloud username or email">
+                </div>
+                <div class="form-group">
+                  <label for="password">Password</label>
+                  <input type="password" id="password" name="password" required autocomplete="current-password" placeholder="Your DiceCloud password">
+                </div>
+                <button type="submit" class="btn btn-primary" id="usernameLoginBtn">
+                  🔐 Login to DiceCloud
+                </button>
+              </form>
+            </details>
+
+            <div id="loginError" class="error-message hidden"></div>
+          </div>
+
+          <!-- Authenticated State -->
+          <div id="auth-logged-in-view" class="hidden">
+            <div class="auth-success">
+              <div style="text-align: center; margin-bottom: 15px;">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#16a75a" stroke-width="2">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+              </div>
+              <h3 style="text-align: center; color: #16a75a; margin-bottom: 10px;">Connected to DiceCloud</h3>
+              <p style="text-align: center; color: #b0b0b0; margin-bottom: 20px;">
+                Your authentication is active across all tabs
+              </p>
+              <button type="button" class="btn btn-danger" id="logoutBtn" style="width: 100%;">
+                🚪 Logout from DiceCloud
+              </button>
+            </div>
+          </div>
         </div>
 
-        <!-- Authenticated State -->
-        <div id="auth-logged-in-view" class="hidden">
-          <div class="auth-success">
-            <div style="text-align: center; margin-bottom: 15px;">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#16a75a" stroke-width="2">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                <polyline points="22 4 12 14.01 9 11.01"></polyline>
-              </svg>
+        <!-- Supabase Auth Tab -->
+        <div id="supabase-auth-content" class="auth-tab-pane" style="display: none;">
+          <p class="auth-description">
+            Create a free account to sync characters across all devices and Owlbear Rodeo sessions.
+          </p>
+
+          <!-- Not Signed In -->
+          <div id="supabase-login-view">
+            <form id="supabase-auth-form" style="display: flex; flex-direction: column; gap: 12px; margin-top: 20px;">
+              <div class="form-group">
+                <label for="supabase-email">Email</label>
+                <input type="email" id="supabase-email" required autocomplete="email" placeholder="your@email.com">
+              </div>
+              <div class="form-group">
+                <label for="supabase-password">Password</label>
+                <input type="password" id="supabase-password" required autocomplete="current-password" placeholder="Min 6 characters" minlength="6">
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <button type="submit" class="btn btn-primary" id="supabase-signin-btn" style="flex: 1;">
+                  Sign In
+                </button>
+                <button type="button" class="btn" id="supabase-signup-btn" style="flex: 1; background: #0d4a30; border: 1px solid #16a75a; color: #16a75a;">
+                  Sign Up
+                </button>
+              </div>
+              <p style="color: #888; font-size: 11px; margin: 0; text-align: center;">
+                New? Click <strong>Sign Up</strong> to create a free account
+              </p>
+            </form>
+            <div id="supabase-auth-error" class="error-message hidden" style="margin-top: 10px;"></div>
+          </div>
+
+          <!-- Signed In -->
+          <div id="supabase-logged-in-view" class="hidden">
+            <div style="background: rgba(22, 167, 90, 0.1); border: 1px solid rgba(22, 167, 90, 0.3); border-radius: 6px; padding: 15px; margin-top: 20px; margin-bottom: 15px;">
+              <div style="font-size: 13px; color: #b0b0b0; margin-bottom: 6px;">Signed in as</div>
+              <div id="supabase-user-email" style="font-weight: 600; color: #e0e0e0; font-size: 15px;"></div>
             </div>
-            <h3 style="text-align: center; color: #16a75a; margin-bottom: 10px;">Connected to DiceCloud</h3>
-            <p style="text-align: center; color: #b0b0b0; margin-bottom: 20px;">
-              Your authentication is active across all tabs
+            <p style="color: #b0b0b0; font-size: 13px; margin-bottom: 15px;">
+              Your characters will sync automatically across all devices and Owlbear sessions.
             </p>
-            <button type="button" class="btn btn-danger" id="logoutBtn" style="width: 100%;">
-              🚪 Logout from DiceCloud
+            <button type="button" class="btn btn-danger" id="supabase-signout-btn" style="width: 100%;">
+              Sign Out
             </button>
           </div>
         </div>

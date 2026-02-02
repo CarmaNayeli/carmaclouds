@@ -83,6 +83,27 @@
                   if (!deactivateResponse.ok) {
                     console.warn("\u26A0\uFE0F Failed to deactivate other characters, continuing anyway...");
                   }
+                  const supabase = window.supabaseClient;
+                  let supabaseUserId = null;
+                  if (supabase) {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    supabaseUserId = session?.user?.id;
+                  }
+                  const characterData = {
+                    dicecloud_character_id: character.id,
+                    character_name: character.name || "Unknown",
+                    user_id_dicecloud: diceCloudUserId,
+                    level: character.preview?.level || null,
+                    class: character.preview?.class || null,
+                    race: character.preview?.race || null,
+                    raw_dicecloud_data: character.raw,
+                    is_active: true,
+                    updated_at: (/* @__PURE__ */ new Date()).toISOString()
+                  };
+                  if (supabaseUserId) {
+                    characterData.supabase_user_id = supabaseUserId;
+                    console.log("\u2705 Including Supabase user ID for cross-device sync:", supabaseUserId);
+                  }
                   const updateResponse = await fetch(
                     `${SUPABASE_URL}/rest/v1/clouds_characters?on_conflict=user_id_dicecloud,dicecloud_character_id`,
                     {
@@ -93,17 +114,7 @@
                         "Content-Type": "application/json",
                         "Prefer": "resolution=merge-duplicates,return=representation"
                       },
-                      body: JSON.stringify({
-                        dicecloud_character_id: character.id,
-                        character_name: character.name || "Unknown",
-                        user_id_dicecloud: diceCloudUserId,
-                        level: character.preview?.level || null,
-                        class: character.preview?.class || null,
-                        race: character.preview?.race || null,
-                        raw_dicecloud_data: character.raw,
-                        is_active: true,
-                        updated_at: (/* @__PURE__ */ new Date()).toISOString()
-                      })
+                      body: JSON.stringify(characterData)
                     }
                   );
                   if (updateResponse.ok) {
