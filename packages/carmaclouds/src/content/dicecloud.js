@@ -3,6 +3,8 @@
  * Adds sync button to DiceCloud website and captures character data
  */
 
+import { parseCharacterData } from './dicecloud-extraction.js';
+
 console.log('CarmaClouds: DiceCloud content script loaded');
 
 // Wait for page to load
@@ -348,117 +350,9 @@ async function extractCharacterData() {
 
     const data = await response.json();
     console.log('CarmaClouds: Received API data');
-    
-    // Parse the character data
-    if (!data.creatures || data.creatures.length === 0) {
-      throw new Error('No character data found in API response');
-    }
 
-    const creature = data.creatures[0];
-    const variables = (data.creatureVariables && data.creatureVariables[0]) || {};
-    const properties = data.creatureProperties || [];
-
-    // Extract race, class, and level from properties (not creature fields)
-    let characterRace = 'Unknown';
-    let characterClass = '';
-    let characterLevel = 0;
-    const uniqueClasses = new Set();
-
-    console.log('CarmaClouds: Extracting race, class, level from properties...');
-    for (const prop of properties) {
-      if (!prop) continue;
-
-      // Extract race (check multiple possible types)
-      if (prop.type === 'race' || prop.type === 'species' || prop.type === 'characterRace') {
-        if (prop.name) {
-          characterRace = prop.name;
-          console.log('CarmaClouds: Found race:', characterRace);
-        }
-      }
-
-      // Extract class
-      if (prop.type === 'class' && prop.name && !prop.inactive && !prop.disabled) {
-        const cleanName = prop.name.replace(/\s*\[Multiclass\]/i, '').trim();
-        const normalizedClassName = cleanName.toLowerCase().trim();
-        if (!uniqueClasses.has(normalizedClassName)) {
-          uniqueClasses.add(normalizedClassName);
-          if (characterClass) {
-            characterClass += ` / ${cleanName}`;
-          } else {
-            characterClass = cleanName;
-          }
-          console.log('CarmaClouds: Found class:', cleanName);
-        }
-      }
-
-      // Extract level (count classLevel properties)
-      if (prop.type === 'classLevel' && !prop.inactive && !prop.disabled) {
-        characterLevel += 1;
-        // Also add the class name if not already added
-        if (prop.name) {
-          const cleanName = prop.name.replace(/\s*\[Multiclass\]/i, '').trim();
-          const normalizedClassName = cleanName.toLowerCase().trim();
-          if (!uniqueClasses.has(normalizedClassName)) {
-            uniqueClasses.add(normalizedClassName);
-            if (characterClass) {
-              characterClass += ` / ${cleanName}`;
-            } else {
-              characterClass = cleanName;
-            }
-          }
-        }
-      }
-    }
-
-    console.log('CarmaClouds: Extracted race:', characterRace, 'class:', characterClass || 'Unknown', 'level:', characterLevel);
-
-    // Extract basic character info
-    const characterData = {
-      id: creature._id || characterId,
-      name: creature.name || 'Unknown Character',
-      race: characterRace,
-      class: characterClass || 'Unknown',
-      level: characterLevel,
-      alignment: creature.alignment || '',
-      url: window.location.href,
-      timestamp: new Date().toISOString(),
-      source: 'dicecloud',
-      
-      // Core stats
-      hitPoints: {
-        current: (variables.hitPoints && (variables.hitPoints.currentValue ?? variables.hitPoints.value)) || 0,
-        max: (variables.hitPoints && (variables.hitPoints.total ?? variables.hitPoints.max)) || 0
-      },
-      armorClass: variables.armorClass?.total || variables.armorClass?.value || 10,
-      speed: variables.speed?.total || variables.speed?.value || 30,
-      initiative: variables.initiative?.total || variables.initiative?.value || 0,
-      proficiencyBonus: variables.proficiencyBonus?.total || variables.proficiencyBonus?.value || 0,
-      
-      // Abilities
-      attributes: {
-        strength: variables.strength?.total || variables.strength?.value || 10,
-        dexterity: variables.dexterity?.total || variables.dexterity?.value || 10,
-        constitution: variables.constitution?.total || variables.constitution?.value || 10,
-        intelligence: variables.intelligence?.total || variables.intelligence?.value || 10,
-        wisdom: variables.wisdom?.total || variables.wisdom?.value || 10,
-        charisma: variables.charisma?.total || variables.charisma?.value || 10
-      },
-      
-      // Store raw data for debugging
-      rawDiceCloudData: {
-        creature: creature,
-        variables: variables,
-        properties: properties
-      }
-    };
-
-    // Calculate ability modifiers
-    Object.keys(characterData.attributes).forEach(attr => {
-      const score = characterData.attributes[attr] || 10;
-      characterData.attributes[attr] = score;
-      characterData[`${attr}Mod`] = Math.floor((score - 10) / 2);
-    });
-
+    // Parse the character data using comprehensive extraction
+    const characterData = parseCharacterData(data, characterId);
     console.log('CarmaClouds: Successfully extracted character data:', characterData);
     return characterData;
     
