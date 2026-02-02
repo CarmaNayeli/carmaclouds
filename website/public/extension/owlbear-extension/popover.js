@@ -22,8 +22,6 @@
   var noCharacterSection = document.getElementById("no-character-section");
   var characterInfo = document.getElementById("character-info");
   var syncCharacterBtn = document.getElementById("sync-character-btn");
-  var openExtensionBtn = document.getElementById("open-extension-btn");
-  var linkExtensionBtn = document.getElementById("link-extension-btn");
   var openChatWindowBtn = document.getElementById("open-chat-window-btn");
   function generateComplementaryBackgrounds(primaryColor) {
     const hex = primaryColor.replace("#", "");
@@ -2337,54 +2335,6 @@ This will disconnect the character from this room. You can sync a different char
       });
       isChatOpen = true;
       openChatWindowBtn.textContent = "\u{1F4AC} Close Chat Window";
-    }
-  });
-  linkExtensionBtn.addEventListener("click", async () => {
-    try {
-      if (!isOwlbearReady) {
-        alert("Owlbear SDK not ready. Please wait a moment and try again.");
-        return;
-      }
-      const playerId = await OBR.player.getId();
-      console.log("\u{1F517} Linking player ID:", playerId);
-      const dicecloudUserId = prompt(
-        "Enter your DiceCloud User ID:\n\nYou can find this in the OwlCloud extension popup after syncing a character.\nIt looks like: aBcDeFgHiJkLmNoP1"
-      );
-      if (!dicecloudUserId || dicecloudUserId.trim() === "") {
-        return;
-      }
-      linkExtensionBtn.textContent = "\u23F3 Linking...";
-      linkExtensionBtn.disabled = true;
-      const requestBody = {
-        owlbearPlayerId: playerId,
-        dicecloudUserId: dicecloudUserId.trim()
-      };
-      if (currentUser) {
-        requestBody.supabaseUserId = currentUser.id;
-        console.log("\u{1F517} Including supabaseUserId for cross-device sync:", currentUser.id);
-      }
-      const response = await fetch(
-        `${SUPABASE_URL}/functions/v1/link-owlbear-player`,
-        {
-          method: "POST",
-          headers: SUPABASE_HEADERS,
-          body: JSON.stringify(requestBody)
-        }
-      );
-      const result = await response.json();
-      if (response.ok && result.success) {
-        alert(`\u2705 Successfully linked! ${result.linkedCharacters} character(s) are now connected to Owlbear.`);
-        await fetchAllCharacters();
-        await checkForActiveCharacter();
-      } else {
-        alert(`\u274C Linking failed: ${result.error || "Unknown error"}`);
-      }
-    } catch (error) {
-      console.error("Error linking to extension:", error);
-      alert(`\u274C Error: ${error.message}`);
-    } finally {
-      linkExtensionBtn.textContent = "\u{1F517} Link to Browser Extension";
-      linkExtensionBtn.disabled = false;
     }
   });
   window.addEventListener("message", (event) => {

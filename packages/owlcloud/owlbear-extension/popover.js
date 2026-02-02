@@ -42,8 +42,6 @@ const characterSection = document.getElementById('character-section');
 const noCharacterSection = document.getElementById('no-character-section');
 const characterInfo = document.getElementById('character-info');
 const syncCharacterBtn = document.getElementById('sync-character-btn');
-const openExtensionBtn = document.getElementById('open-extension-btn');
-const linkExtensionBtn = document.getElementById('link-extension-btn');
 const openChatWindowBtn = document.getElementById('open-chat-window-btn');
 
 // ============== Theme Management ==============
@@ -3129,77 +3127,6 @@ openChatWindowBtn.addEventListener('click', async () => {
     });
     isChatOpen = true;
     openChatWindowBtn.textContent = '💬 Close Chat Window';
-  }
-});
-
-/**
- * Link Owlbear player to browser extension characters
- */
-linkExtensionBtn.addEventListener('click', async () => {
-  try {
-    if (!isOwlbearReady) {
-      alert('Owlbear SDK not ready. Please wait a moment and try again.');
-      return;
-    }
-
-    // Get Owlbear player ID
-    const playerId = await OBR.player.getId();
-    console.log('🔗 Linking player ID:', playerId);
-
-    // Prompt user for their DiceCloud user ID
-    const dicecloudUserId = prompt(
-      'Enter your DiceCloud User ID:\n\n' +
-      'You can find this in the OwlCloud extension popup after syncing a character.\n' +
-      'It looks like: aBcDeFgHiJkLmNoP1'
-    );
-
-    if (!dicecloudUserId || dicecloudUserId.trim() === '') {
-      return; // User cancelled
-    }
-
-    // Show loading state
-    linkExtensionBtn.textContent = '⏳ Linking...';
-    linkExtensionBtn.disabled = true;
-
-    // Call Supabase edge function to link
-    const requestBody = {
-      owlbearPlayerId: playerId,
-      dicecloudUserId: dicecloudUserId.trim()
-    };
-
-    // Include supabase_user_id if authenticated for cross-device sync
-    if (currentUser) {
-      requestBody.supabaseUserId = currentUser.id;
-      console.log('🔗 Including supabaseUserId for cross-device sync:', currentUser.id);
-    }
-
-    const response = await fetch(
-      `${SUPABASE_URL}/functions/v1/link-owlbear-player`,
-      {
-        method: 'POST',
-        headers: SUPABASE_HEADERS,
-        body: JSON.stringify(requestBody)
-      }
-    );
-
-    const result = await response.json();
-
-    if (response.ok && result.success) {
-      alert(`✅ Successfully linked! ${result.linkedCharacters} character(s) are now connected to Owlbear.`);
-
-      // Refresh character data - fetch all characters first to show the list
-      await fetchAllCharacters();
-      await checkForActiveCharacter();
-    } else {
-      alert(`❌ Linking failed: ${result.error || 'Unknown error'}`);
-    }
-  } catch (error) {
-    console.error('Error linking to extension:', error);
-    alert(`❌ Error: ${error.message}`);
-  } finally {
-    // Restore button state
-    linkExtensionBtn.textContent = '🔗 Link to Browser Extension';
-    linkExtensionBtn.disabled = false;
   }
 });
 
