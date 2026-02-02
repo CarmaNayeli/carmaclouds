@@ -1231,7 +1231,7 @@ This will disconnect the character from this room. You can sync a different char
       let queryParam;
       let cacheKey;
       if (currentUser) {
-        queryParam = `supabase_user_id=${encodeURIComponent(currentUser.id)}&active_only=true`;
+        queryParam = `supabase_user_id=${encodeURIComponent(currentUser.id)}`;
         cacheKey = `owlcloud_char_${currentUser.id}`;
         console.log("\u{1F3AD} Checking for character with user ID:", currentUser.id);
       } else {

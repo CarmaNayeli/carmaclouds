@@ -1651,7 +1651,7 @@ async function checkForActiveCharacter() {
 
     if (currentUser) {
       // User is authenticated - query by supabase_user_id for cross-device sync
-      queryParam = `supabase_user_id=${encodeURIComponent(currentUser.id)}&active_only=true`;
+      queryParam = `supabase_user_id=${encodeURIComponent(currentUser.id)}`;
       cacheKey = `owlcloud_char_${currentUser.id}`;
       console.log('🎭 Checking for character with user ID:', currentUser.id);
     } else {
