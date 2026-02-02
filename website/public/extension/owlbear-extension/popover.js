@@ -952,14 +952,6 @@
             style="width: 100%; padding: 8px; background: var(--theme-gradient); border: none; border-radius: 6px; color: white; font-weight: 600; cursor: pointer; transition: all 0.2s;">
             \u{1F504} Fetch Character
           </button>
-          ${currentCharacter ? `
-          <button
-            onclick="handleUnsyncCharacter()"
-            id="unsync-character-btn"
-            style="width: 100%; padding: 8px; background: rgba(251, 146, 60, 0.2); border: 1px solid #FB923C; border-radius: 6px; color: #FB923C; font-weight: 600; cursor: pointer; transition: all 0.2s;">
-            \u{1F513} Unsync from Owlbear
-          </button>
-          ` : ""}
           <button
             onclick="signOut()"
             style="width: 100%; padding: 8px; background: rgba(239, 68, 68, 0.2); border: 1px solid #EF4444; border-radius: 6px; color: #EF4444; font-weight: 600; cursor: pointer; transition: all 0.2s;">
@@ -1127,6 +1119,7 @@ This will disconnect the character from this room. You can sync a different char
       const versionKey = `${cacheKey}_version`;
       localStorage.removeItem(cacheKey);
       localStorage.removeItem(versionKey);
+      localStorage.setItem("owlcloud_manual_unsync", "true");
       currentCharacter = null;
       allCharacters = [];
       statusDiv.style.color = "#10B981";
@@ -1141,7 +1134,6 @@ This will disconnect the character from this room. You can sync a different char
         OBR.notification.show(cloudUnsyncSuccess ? "Character unsynced from Owlbear session" : "Character disconnected locally", "SUCCESS");
       }
       showNoCharacter();
-      updateAuthUI();
       setTimeout(() => {
         statusDiv.style.display = "none";
       }, 5e3);
@@ -1381,6 +1373,10 @@ This will disconnect the character from this room. You can sync a different char
     currentCharacter = character;
     characterSection.style.display = "block";
     noCharacterSection.style.display = "none";
+    const unsyncBtn = document.getElementById("unsync-character-btn");
+    if (unsyncBtn) {
+      unsyncBtn.style.display = "block";
+    }
     console.log("\u{1F5BC}\uFE0F Checking for portrait in character data:");
     console.log("  character.picture:", character.picture);
     console.log("  character.avatarPicture:", character.avatarPicture);
@@ -2173,8 +2169,13 @@ This will disconnect the character from this room. You can sync a different char
     characterSection.style.display = "none";
     noCharacterSection.style.display = "block";
     statusText.textContent = "No character selected";
+    const unsyncBtn = document.getElementById("unsync-character-btn");
+    if (unsyncBtn) {
+      unsyncBtn.style.display = "none";
+    }
   }
   syncCharacterBtn.addEventListener("click", () => {
+    localStorage.removeItem("owlcloud_manual_unsync");
     const message = {
       type: "OWLCLOUD_SYNC_CHARACTER",
       source: "owlbear-extension"
@@ -2268,17 +2269,24 @@ This will disconnect the character from this room. You can sync a different char
     const { type, data } = event.data;
     switch (type) {
       case "OWLCLOUD_ACTIVE_CHARACTER_RESPONSE":
+        if (localStorage.getItem("owlcloud_manual_unsync") === "true") {
+          console.log("\u2139\uFE0F Character auto-sync prevented - user manually unsynced. Use Sync button to re-sync.");
+          showNoCharacter();
+          break;
+        }
         if (data && data.character) {
           displayCharacter(data.character);
-          updateAuthUI();
         } else {
           showNoCharacter();
         }
         break;
       case "OWLCLOUD_CHARACTER_UPDATED":
+        if (localStorage.getItem("owlcloud_manual_unsync") === "true") {
+          console.log("\u2139\uFE0F Character auto-update prevented - user manually unsynced. Use Sync button to re-sync.");
+          break;
+        }
         if (data && data.character) {
           displayCharacter(data.character);
-          updateAuthUI();
           if (isOwlbearReady) {
             OBR.notification.show(`Character updated: ${data.character.name}`, "SUCCESS");
           }
