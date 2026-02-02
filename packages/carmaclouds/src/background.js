@@ -368,6 +368,20 @@ async function handleSyncToCarmaClouds(characterData) {
 
     console.log('🎉 Character successfully synced to CarmaClouds storage');
 
+    // Send message to popup to notify about the sync
+    try {
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tabs.length > 0) {
+        await chrome.tabs.sendMessage(tabs[0].id, {
+          action: 'dataSynced',
+          characterName: characterData.name
+        });
+        console.log('📤 Sent dataSynced message to popup');
+      }
+    } catch (tabError) {
+      console.log('⚠️ Could not send sync notification to popup:', tabError);
+    }
+
     return {
       success: true,
       message: 'Character synced successfully',

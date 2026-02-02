@@ -276,7 +276,8 @@ function initializePopup() {
       debug.log('📥 Received data sync notification:', message);
       // Refresh character data to show the newly synced character
       loadCharacterData();
-      showSuccess(`${message.characterName} synced successfully!`);
+      const characterName = message.characterName || 'Character';
+      showSuccess(`${characterName} synced successfully!`);
     }
   });
   
