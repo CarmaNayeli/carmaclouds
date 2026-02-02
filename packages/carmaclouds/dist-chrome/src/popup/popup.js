@@ -131,9 +131,26 @@
           console.error("Failed to load pushed characters:", error);
         }
       }
-      if (!diceCloudUserId) {
-        if (loginPrompt)
+      const supabase = window.supabaseClient;
+      let supabaseUserId = null;
+      if (supabase) {
+        const { data: { session } } = await supabase.auth.getSession();
+        supabaseUserId = session?.user?.id;
+      }
+      if (!diceCloudUserId || !supabaseUserId) {
+        if (loginPrompt) {
           loginPrompt.classList.remove("hidden");
+          const promptText = loginPrompt.querySelector("p");
+          if (promptText) {
+            if (!diceCloudUserId && !supabaseUserId) {
+              promptText.textContent = "Please login to both DiceCloud and your Account to sync characters.";
+            } else if (!diceCloudUserId) {
+              promptText.textContent = "Please login to DiceCloud to sync your characters.";
+            } else {
+              promptText.textContent = "Please login to your Account (Account tab) for cross-device sync.";
+            }
+          }
+        }
         if (syncBox)
           syncBox.classList.add("hidden");
         const openAuthBtn = wrapper.querySelector("#openAuthModalBtn");
@@ -169,11 +186,11 @@
             try {
               pushBtn.disabled = true;
               pushBtn.innerHTML = "\u23F3 Pushing...";
-              const supabase = window.supabaseClient;
-              let supabaseUserId = null;
-              if (supabase) {
-                const { data: { session } } = await supabase.auth.getSession();
-                supabaseUserId = session?.user?.id;
+              const supabase2 = window.supabaseClient;
+              let supabaseUserId2 = null;
+              if (supabase2) {
+                const { data: { session } } = await supabase2.auth.getSession();
+                supabaseUserId2 = session?.user?.id;
               }
               const characterData = {
                 dicecloud_character_id: character2.id,
@@ -186,9 +203,9 @@
                 is_active: false,
                 updated_at: (/* @__PURE__ */ new Date()).toISOString()
               };
-              if (supabaseUserId) {
-                characterData.supabase_user_id = supabaseUserId;
-                console.log("\u2705 Including Supabase user ID:", supabaseUserId);
+              if (supabaseUserId2) {
+                characterData.supabase_user_id = supabaseUserId2;
+                console.log("\u2705 Including Supabase user ID:", supabaseUserId2);
               }
               const response2 = await fetch(
                 `${SUPABASE_URL}/rest/v1/clouds_characters?on_conflict=user_id_dicecloud,dicecloud_character_id`,

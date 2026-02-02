@@ -114,10 +114,29 @@ export async function init(containerEl) {
       }
     }
 
-    // Check if user is logged in to DiceCloud
-    if (!diceCloudUserId) {
-      // Show login prompt
-      if (loginPrompt) loginPrompt.classList.remove('hidden');
+    // Check if user is logged in to BOTH DiceCloud AND Supabase
+    const supabase = window.supabaseClient;
+    let supabaseUserId = null;
+    if (supabase) {
+      const { data: { session } } = await supabase.auth.getSession();
+      supabaseUserId = session?.user?.id;
+    }
+
+    if (!diceCloudUserId || !supabaseUserId) {
+      // Show login prompt - need both logins
+      if (loginPrompt) {
+        loginPrompt.classList.remove('hidden');
+        const promptText = loginPrompt.querySelector('p');
+        if (promptText) {
+          if (!diceCloudUserId && !supabaseUserId) {
+            promptText.textContent = 'Please login to both DiceCloud and your Account to sync characters.';
+          } else if (!diceCloudUserId) {
+            promptText.textContent = 'Please login to DiceCloud to sync your characters.';
+          } else {
+            promptText.textContent = 'Please login to your Account (Account tab) for cross-device sync.';
+          }
+        }
+      }
       if (syncBox) syncBox.classList.add('hidden');
 
       // Add login button handler
