@@ -16,6 +16,7 @@ let allCharacters = [];
 let isOwlbearReady = false;
 let rollMode = 'normal'; // 'advantage', 'normal', or 'disadvantage'
 let concentratingSpell = null; // Track which spell is currently being concentrated on
+const concentrationByCharacter = new Map(); // Persist concentration per character ID
 
 // Dice+ integration
 const OWLCLOUD_EXTENSION_ID = 'com.owlcloud.extension';
@@ -1923,6 +1924,10 @@ function displayCharacter(character) {
   // TODO: Save previous character's local state (HP, spell slots, etc.) before switching
   // so that it persists when switching back. Could use a Map keyed by character ID
   // or store in room metadata per character.
+
+  // Restore concentration state for this character
+  const characterId = character._id || character.id || character.name;
+  concentratingSpell = concentrationByCharacter.get(characterId) || null;
 
   currentCharacter = character;
 

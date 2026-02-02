@@ -5,6 +5,7 @@
   var isOwlbearReady = false;
   var rollMode = "normal";
   var concentratingSpell = null;
+  var concentrationByCharacter = /* @__PURE__ */ new Map();
   var OWLCLOUD_EXTENSION_ID = "com.owlcloud.extension";
   var dicePlusReady = false;
   var pendingRolls = /* @__PURE__ */ new Map();
@@ -1426,6 +1427,8 @@ This will disconnect the character from this room. You can sync a different char
     }
   };
   function displayCharacter(character) {
+    const characterId = character._id || character.id || character.name;
+    concentratingSpell = concentrationByCharacter.get(characterId) || null;
     currentCharacter = character;
     characterSection.style.display = "block";
     noCharacterSection.style.display = "none";
