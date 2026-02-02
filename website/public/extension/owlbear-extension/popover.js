@@ -1868,6 +1868,7 @@ This will disconnect the character from this room. You can sync a different char
         const damage = action.damage || "";
         const attackRoll = action.attackRoll || "";
         const uses = action.uses;
+        console.log(`[OwlCloud] Action "${action.name}" uses:`, uses);
         let attackBonus = 0;
         if (attackRoll) {
           const bonusMatch = attackRoll.match(/[+-](\d+)/);

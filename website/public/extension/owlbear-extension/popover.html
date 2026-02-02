@@ -86,8 +86,8 @@
     }
 
     .character-portrait {
-      width: 100px;
-      height: 100px;
+      width: 80px;
+      height: 80px;
       border-radius: 50%;
       border: 3px solid var(--theme-primary);
       object-fit: cover;
@@ -646,6 +646,7 @@
       display: grid;
       gap: 8px;
       margin-top: 12px;
+      padding-right: 4px;
     }
 
     .feature-card {
@@ -944,16 +945,16 @@
     /* Larger portrait on wider screens */
     @media (min-width: 400px) {
       .character-portrait {
-        width: 150px;
-        height: 150px;
+        width: 120px;
+        height: 120px;
       }
     }
 
     /* Responsive adjustments for small screens */
     @media (max-width: 399px) {
       .character-portrait {
-        width: 80px;
-        height: 80px;
+        width: 64px;
+        height: 64px;
         border-width: 2px;
       }
 
