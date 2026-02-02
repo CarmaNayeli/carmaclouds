@@ -9,7 +9,7 @@
     "title": "Character Sheet",
     "icon": "/extension/owlbear-extension/icon.svg",
     "popover": "/extension/owlbear-extension/popover.html",
-    "height": 600,
+    "height": 450,
     "width": 400
   }
 }
