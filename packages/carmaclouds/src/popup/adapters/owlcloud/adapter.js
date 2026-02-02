@@ -111,6 +111,9 @@ export async function init(containerEl) {
                       dicecloud_character_id: character.id,
                       character_name: character.name || 'Unknown',
                       user_id_dicecloud: diceCloudUserId,
+                      level: character.preview?.level || null,
+                      class: character.preview?.class || null,
+                      race: character.preview?.race || null,
                       raw_dicecloud_data: character.raw,
                       updated_at: new Date().toISOString()
                     })
