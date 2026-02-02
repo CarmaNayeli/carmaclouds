@@ -14,6 +14,10 @@
       padding: 0;
     }
 
+    html, body {
+      overflow: hidden;
+    }
+
     :root {
       --theme-primary: #8B5CF6;
       --theme-primary-light: #A78BFA;
@@ -41,7 +45,7 @@
       background: var(--theme-bg-primary);
       color: var(--theme-text-primary);
       padding: 8px;
-      min-height: 240px;
+      min-height: 450px;
     }
 
     .container {
@@ -82,8 +86,8 @@
     }
 
     .character-portrait {
-      width: 100px;
-      height: 100px;
+      width: 80px;
+      height: 80px;
       border-radius: 50%;
       border: 3px solid var(--theme-primary);
       object-fit: cover;
@@ -642,6 +646,7 @@
       display: grid;
       gap: 8px;
       margin-top: 12px;
+      padding-right: 4px;
     }
 
     .feature-card {
@@ -895,12 +900,29 @@
     }
 
     .spell-concentration-badge {
-      background: rgba(245, 158, 11, 0.2);
-      color: #FCD34D;
+      background: rgba(107, 114, 128, 0.2);
+      color: #9CA3AF;
       font-size: 10px;
       padding: 2px 6px;
       border-radius: 4px;
       font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .spell-concentration-badge:hover {
+      background: rgba(107, 114, 128, 0.3);
+      transform: scale(1.1);
+    }
+
+    .spell-concentration-badge.active {
+      background: rgba(245, 158, 11, 0.4);
+      color: #FDE047;
+      box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+    }
+
+    .spell-concentration-badge.active:hover {
+      background: rgba(245, 158, 11, 0.5);
     }
 
     .spell-ritual-badge {
@@ -940,16 +962,16 @@
     /* Larger portrait on wider screens */
     @media (min-width: 400px) {
       .character-portrait {
-        width: 150px;
-        height: 150px;
+        width: 120px;
+        height: 120px;
       }
     }
 
     /* Responsive adjustments for small screens */
     @media (max-width: 399px) {
       .character-portrait {
-        width: 80px;
-        height: 80px;
+        width: 64px;
+        height: 64px;
         border-width: 2px;
       }
 
@@ -965,6 +987,122 @@
       .subtitle {
         font-size: 12px;
       }
+    }
+
+    /* Modal Styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .modal-dialog {
+      background: var(--theme-bg-secondary);
+      border: 1px solid var(--theme-border);
+      border-radius: 12px;
+      padding: 20px;
+      max-width: 320px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+      animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .modal-header h3 {
+      background: var(--theme-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-size: 18px;
+      margin: 0;
+    }
+
+    .modal-close-btn {
+      background: none;
+      border: none;
+      color: var(--theme-text-primary);
+      font-size: 28px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    .modal-close-btn:hover {
+      color: var(--theme-primary);
+      transform: scale(1.2);
+    }
+
+    .modal-body {
+      color: var(--theme-text-primary);
+    }
+
+    .spell-level-options {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .spell-level-option {
+      background: var(--theme-bg-card);
+      border: 2px solid var(--theme-border);
+      border-radius: 8px;
+      padding: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .spell-level-option:hover {
+      background: var(--theme-bg-hover);
+      border-color: var(--theme-primary);
+      transform: translateX(4px);
+    }
+
+    .spell-level-option:active {
+      transform: scale(0.98);
+    }
+
+    .spell-level-label {
+      font-weight: 600;
+      color: var(--theme-primary-light);
+    }
+
+    .spell-level-slots {
+      color: var(--theme-text-muted);
+      font-size: 12px;
     }
 
   </style>
@@ -1047,20 +1185,10 @@
           💬 Open Chat Window
         </button>
 
-        <!-- Theme selector -->
-        <div style="margin-top: 20px; padding: 16px; background: var(--theme-bg-accent); border-radius: 8px; border: 1px solid var(--theme-border);">
-          <div class="section-header collapsible" id="theme-section-header" style="cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s ease;">
-            <div style="color: var(--theme-primary-light); font-weight: 600; font-size: 14px;">
-              🎨 Theme
-            </div>
-            <span style="color: var(--theme-primary-light); font-size: 12px; transition: transform 0.2s ease;">▼</span>
-          </div>
-          <div id="theme-section-content" class="collapsible-content" style="margin-top: 12px;">
-            <div id="theme-selector" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 6px;">
-              <!-- Theme options will be populated here -->
-            </div>
-          </div>
-        </div>
+        <!-- Unsync button - visible when character is loaded -->
+        <button class="button" id="unsync-character-btn" onclick="handleUnsyncCharacter()" style="margin-top: 8px; background: rgba(251, 146, 60, 0.2); border: 1px solid #FB923C; color: #FB923C; display: none;">
+          🔓 Unsync from Owlbear
+        </button>
 
         <div class="status" style="margin-top: 20px;">
           <div class="status-title">Extension Status</div>
@@ -1074,6 +1202,21 @@
       <div class="tab-content" id="tab-account">
         <div id="auth-section">
           <!-- Auth UI will be populated here by updateAuthUI() -->
+        </div>
+
+        <!-- Theme selector - always visible under sign in -->
+        <div style="margin-top: 16px; padding: 16px; background: var(--theme-bg-accent); border-radius: 8px; border: 1px solid var(--theme-border);">
+          <div class="section-header collapsible" id="theme-section-header" style="cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s ease;">
+            <div style="color: var(--theme-primary-light); font-weight: 600; font-size: 14px;">
+              🎨 Theme
+            </div>
+            <span style="color: var(--theme-primary-light); font-size: 12px; transition: transform 0.2s ease;">▼</span>
+          </div>
+          <div id="theme-section-content" class="collapsible-content" style="margin-top: 12px;">
+            <div id="theme-selector" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 6px;">
+              <!-- Theme options will be populated here -->
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1131,6 +1274,20 @@
         </div>
       </div>
 
+    </div>
+  </div>
+
+  <!-- Spell Level Selection Modal -->
+  <div id="spell-level-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="modal-spell-name">Cast Spell</h3>
+        <button class="modal-close-btn" onclick="closeSpellLevelModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 12px; color: var(--theme-text-secondary);">Choose a spell slot level:</p>
+        <div id="spell-level-options" class="spell-level-options"></div>
+      </div>
     </div>
   </div>
 

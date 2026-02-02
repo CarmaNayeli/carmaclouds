@@ -1164,10 +1164,6 @@
           <button class="button button-secondary" id="sync-character-btn">
             🔄 Sync from DiceCloud
           </button>
-
-          <button class="button" id="unsync-character-btn" onclick="handleUnsyncCharacter()" style="margin-top: 8px; background: rgba(251, 146, 60, 0.2); border: 1px solid #FB923C; color: #FB923C; display: none;">
-            🔓 Unsync from Owlbear
-          </button>
         </div>
 
         <div id="no-character-section" style="display: none;">
@@ -1189,20 +1185,10 @@
           💬 Open Chat Window
         </button>
 
-        <!-- Theme selector -->
-        <div style="margin-top: 20px; padding: 16px; background: var(--theme-bg-accent); border-radius: 8px; border: 1px solid var(--theme-border);">
-          <div class="section-header collapsible" id="theme-section-header" style="cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s ease;">
-            <div style="color: var(--theme-primary-light); font-weight: 600; font-size: 14px;">
-              🎨 Theme
-            </div>
-            <span style="color: var(--theme-primary-light); font-size: 12px; transition: transform 0.2s ease;">▼</span>
-          </div>
-          <div id="theme-section-content" class="collapsible-content" style="margin-top: 12px;">
-            <div id="theme-selector" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 6px;">
-              <!-- Theme options will be populated here -->
-            </div>
-          </div>
-        </div>
+        <!-- Unsync button - visible when character is loaded -->
+        <button class="button" id="unsync-character-btn" onclick="handleUnsyncCharacter()" style="margin-top: 8px; background: rgba(251, 146, 60, 0.2); border: 1px solid #FB923C; color: #FB923C; display: none;">
+          🔓 Unsync from Owlbear
+        </button>
 
         <div class="status" style="margin-top: 20px;">
           <div class="status-title">Extension Status</div>
@@ -1216,6 +1202,21 @@
       <div class="tab-content" id="tab-account">
         <div id="auth-section">
           <!-- Auth UI will be populated here by updateAuthUI() -->
+        </div>
+
+        <!-- Theme selector - always visible under sign in -->
+        <div style="margin-top: 16px; padding: 16px; background: var(--theme-bg-accent); border-radius: 8px; border: 1px solid var(--theme-border);">
+          <div class="section-header collapsible" id="theme-section-header" style="cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s ease;">
+            <div style="color: var(--theme-primary-light); font-weight: 600; font-size: 14px;">
+              🎨 Theme
+            </div>
+            <span style="color: var(--theme-primary-light); font-size: 12px; transition: transform 0.2s ease;">▼</span>
+          </div>
+          <div id="theme-section-content" class="collapsible-content" style="margin-top: 12px;">
+            <div id="theme-selector" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 6px;">
+              <!-- Theme options will be populated here -->
+            </div>
+          </div>
         </div>
       </div>
 
