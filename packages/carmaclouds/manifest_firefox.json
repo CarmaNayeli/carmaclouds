@@ -15,6 +15,9 @@
     "https://*.owlbear.rodeo/*",
     "https://owlbear.rodeo/*"
   ],
+  "optional_permissions": [
+    "webNavigation"
+  ],
   "background": {
     "scripts": [
       "src/background.js"

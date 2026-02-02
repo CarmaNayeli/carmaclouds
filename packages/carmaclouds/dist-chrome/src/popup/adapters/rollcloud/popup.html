@@ -104,14 +104,14 @@
 
         <!-- Discord Integration -->
           <details id="discordSettings" style="margin-top: 15px;">
-            <summary style="cursor: pointer; padding: 10px; background: #404EED; color: #5865F2; border: 2px solid #5865F2; border-radius: 5px; font-weight: bold;">
+            <summary style="cursor: pointer; padding: 10px; background: #2a2a2a; color: #e0e0e0; border: 1px solid #333; border-radius: 5px; font-weight: bold;">
               🎮 Discord Integration
             </summary>
-            <div style="margin-top: 10px; padding: 12px; background: #404EED; border: 1px solid #5865F2; border-radius: 5px;">
+            <div style="margin-top: 10px; padding: 12px; background: #2a2a2a; border: 1px solid #333; border-radius: 5px;">
 
               <!-- Prompt shown after install/update to remind user to re-sync Discord -->
-              <div id="discordResyncPrompt" style="display: none; margin-bottom: 12px; padding: 10px; background: #1a1a1a; border: 2px solid #5865F2; border-radius: 6px;">
-                <p style="margin: 0 0 8px 0; color: #5865F2; font-weight: 600;">Heads up — please re-sync your Discord integration</p>
+              <div id="discordResyncPrompt" style="display: none; margin-bottom: 12px; padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 6px;">
+                <p style="margin: 0 0 8px 0; color: #e0e0e0; font-weight: 600;">Heads up — please re-sync your Discord integration</p>
                 <div style="display:flex; gap:8px;">
                   <button id="discordResyncBtn" class="btn btn-primary">Re-sync Discord</button>
                   <button id="discordDismissResyncBtn" class="btn btn-outline">Dismiss</button>
@@ -136,7 +136,7 @@
                 <p style="margin-top: 0; font-size: 0.9em; color: #b0b0b0;">
                   In Discord, type this command:
                 </p>
-                <div style="background: #404EED; color: #5865F2; padding: 15px; border: 2px solid #5865F2; border-radius: 8px; margin: 10px 0;">
+                <div style="background: #1a1a1a; color: #e0e0e0; padding: 15px; border: 1px solid #333; border-radius: 8px; margin: 10px 0;">
                   <code style="font-size: 1.1em; font-family: monospace;">/rollcloud <span id="pairingCode" style="font-weight: bold; letter-spacing: 2px;">------</span></code>
                 </div>
                 <p style="font-size: 0.8em; color: #707070; margin-bottom: 5px;">
@@ -150,15 +150,15 @@
               <!-- Connected State -->
               <div id="discordConnected" style="display: none;">
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
-                  <span style="color: #5865F2; font-size: 1.2em;">✓</span>
-                  <span style="font-weight: bold; color: #5865F2;">Connected to Discord!</span>
+                  <span style="color: #16a75a; font-size: 1.2em;">✓</span>
+                  <span style="font-weight: bold; color: #e0e0e0;">Connected to Discord!</span>
                 </div>
                 <p style="font-size: 0.85em; color: #b0b0b0; margin: 0 0 10px 0;">
-                  Server: <strong id="discordServerName" style="color: #5865F2;">-</strong>
+                  Server: <strong id="discordServerName" style="color: #16a75a;">-</strong>
                 </p>
                 <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 10px;">
                   <input type="checkbox" id="discordWebhookEnabled" checked style="width: 16px; height: 16px; cursor: pointer;">
-                  <span style="font-size: 0.9em;">Enable notifications</span>
+                  <span style="font-size: 0.9em; color: #e0e0e0;">Enable notifications</span>
                 </label>
                 <div style="display: flex; gap: 8px;">
                   <button type="button" id="testDiscordWebhook" class="btn btn-secondary" style="flex: 1; padding: 8px; font-size: 0.85em;">
@@ -183,7 +183,7 @@
                 <div style="margin-top: 8px;">
                   <input type="url" id="discordWebhookUrl"
                          placeholder="https://discord.com/api/webhooks/..."
-                         style="width: 100%; padding: 6px; border: 1px solid #5865F2; background: #404EED; color: #e0e0e0; border-radius: 4px; font-size: 0.8em; box-sizing: border-box; margin-bottom: 6px;">
+                         style="width: 100%; padding: 6px; border: 1px solid #333; background: #1a1a1a; color: #e0e0e0; border-radius: 4px; font-size: 0.8em; box-sizing: border-box; margin-bottom: 6px;">
                   <button type="button" id="saveDiscordWebhook" class="btn btn-secondary" style="width: 100%; padding: 6px; font-size: 0.8em;">
                     💾 Save Webhook URL
                   </button>
@@ -193,8 +193,8 @@
           </details>
 
           <!-- Experimental Build Instructions (hidden by default) -->
-          <div id="experimentalInstructions" class="experimental-instructions hidden" style="margin-top: 15px; padding: 12px; background: #404EED; border: 2px solid #5865F2; border-radius: 5px;">
-            <h4 style="margin-top: 0; color: #5865F2;">🧪 Experimental Features</h4>
+          <div id="experimentalInstructions" class="experimental-instructions hidden" style="margin-top: 15px; padding: 12px; background: #2a2a2a; border: 1px solid #333; border-radius: 5px;">
+            <h4 style="margin-top: 0; color: #e0e0e0;">🧪 Experimental Features</h4>
             <ul style="margin-bottom: 10px; color: #b0b0b0;">
               <li><strong>Two-Way Sync:</strong> Changes in Roll20 automatically update DiceCloud</li>
               <li><strong>Real-time Updates:</strong> HP, resources, and conditions sync instantly</li>
@@ -202,8 +202,8 @@
             </ul>
 
             <!-- Auto Backwards Sync Toggle -->
-            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #5865F2;">
-              <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: #5865F2; font-weight: bold;">
+            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #333;">
+              <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: #e0e0e0; font-weight: bold;">
                 <input type="checkbox" id="autoBackwardsSyncToggle" style="width: 18px; height: 18px; cursor: pointer;">
                 <span>Enable Auto Backwards Sync</span>
               </label>
@@ -213,7 +213,7 @@
             </div>
 
             <p style="margin-bottom: 0; margin-top: 10px; font-size: 0.85em; color: #b0b0b0;">
-              <strong style="color: #5865F2;">⚠️ Experimental:</strong> These features are in testing - report any issues!
+              <strong style="color: #e0e0e0;">⚠️ Experimental:</strong> These features are in testing - report any issues!
             </p>
           </div>
         </div>
@@ -222,7 +222,7 @@
 
     <footer>
       <p class="version" id="versionDisplay"></p>
-      <div id="experimentalNotice" class="experimental-notice hidden" style="margin-top: 5px; padding: 8px; background: #404EED; border: 2px solid #5865F2; color: #5865F2; border-radius: 4px; font-size: 0.85em; text-align: center;">
+      <div id="experimentalNotice" class="experimental-notice hidden" style="margin-top: 5px; padding: 8px; background: #2a2a2a; border: 1px solid #333; color: #e0e0e0; border-radius: 4px; font-size: 0.85em; text-align: center;">
         ⚠️ <strong>EXPERIMENTAL BUILD</strong> - Contains two-way sync features
       </div>
     </footer>

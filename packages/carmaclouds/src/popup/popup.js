@@ -184,7 +184,7 @@ async function updateAuthStatus() {
 
   if (token) {
     statusText.textContent = 'Logged In';
-    statusText.style.color = '#16a75a';
+    statusText.style.color = '#000000'; // Black text on green background
   } else {
     statusText.textContent = 'Login';
     statusText.style.color = 'white';
@@ -228,16 +228,156 @@ async function autoConnect() {
       return;
     }
 
-    // DiceCloud tab found, try to get auth token from cookies
+    // Try to inject a content script to get auth data from the page
+    try {
+      // Use different APIs for Chrome vs Firefox
+      let results;
+      
+      if (typeof chrome !== 'undefined' && chrome.scripting) {
+        // Chrome (Manifest V3) - use chrome.scripting
+        results = await chrome.scripting.executeScript({
+          target: { tabId: tabs[0].id },
+          func: () => {
+            // Try to get auth data from localStorage, sessionStorage, or window object
+            const authData = {
+              localStorage: {},
+              sessionStorage: {},
+              meteor: null,
+              authToken: null
+            };
+            
+            // Check localStorage
+            for (let i = 0; i < localStorage.length; i++) {
+              const key = localStorage.key(i);
+              if (key && (key.includes('auth') || key.includes('token') || key.includes('meteor') || key.includes('login'))) {
+                authData.localStorage[key] = localStorage.getItem(key);
+              }
+            }
+            
+            // Check sessionStorage
+            for (let i = 0; i < sessionStorage.length; i++) {
+              const key = sessionStorage.key(i);
+              if (key && (key.includes('auth') || key.includes('token') || key.includes('meteor') || key.includes('login'))) {
+                authData.sessionStorage[key] = sessionStorage.getItem(key);
+              }
+            }
+            
+            // Check for Meteor/MongoDB auth (common in DiceCloud)
+            if (window.Meteor && window.Meteor.userId) {
+              authData.meteor = {
+                userId: window.Meteor.userId(),
+                loginToken: window.Meteor._localStorage && window.Meteor._localStorage.getItem('Meteor.loginToken')
+              };
+            }
+            
+            // Check for any global auth variables
+            if (window.authToken) authData.authToken = window.authToken;
+            if (window.token) authData.authToken = window.token;
+            
+            return authData;
+          }
+        });
+      } else if (typeof browser !== 'undefined' && browser.tabs) {
+        // Firefox (Manifest V2) - use browser.tabs.executeScript
+        results = await browser.tabs.executeScript(tabs[0].id, {
+          code: `
+            // Try to get auth data from localStorage, sessionStorage, or window object
+            const authData = {
+              localStorage: {},
+              sessionStorage: {},
+              meteor: null,
+              authToken: null
+            };
+            
+            // Check localStorage
+            for (let i = 0; i < localStorage.length; i++) {
+              const key = localStorage.key(i);
+              if (key && (key.includes('auth') || key.includes('token') || key.includes('meteor') || key.includes('login'))) {
+                authData.localStorage[key] = localStorage.getItem(key);
+              }
+            }
+            
+            // Check sessionStorage
+            for (let i = 0; i < sessionStorage.length; i++) {
+              const key = sessionStorage.key(i);
+              if (key && (key.includes('auth') || key.includes('token') || key.includes('meteor') || key.includes('login'))) {
+                authData.sessionStorage[key] = sessionStorage.getItem(key);
+              }
+            }
+            
+            // Check for Meteor/MongoDB auth (common in DiceCloud)
+            if (window.Meteor && window.Meteor.userId) {
+              authData.meteor = {
+                userId: window.Meteor.userId(),
+                loginToken: window.Meteor._localStorage && window.Meteor._localStorage.getItem('Meteor.loginToken')
+              };
+            }
+            
+            // Check for any global auth variables
+            if (window.authToken) authData.authToken = window.authToken;
+            if (window.token) authData.authToken = window.token;
+            
+            authData;
+          `
+        });
+      } else {
+        throw new Error('No scripting API available');
+      }
+      
+      const authData = results[0]?.result;
+      console.log('Auth data from DiceCloud page:', authData);
+      
+      // Try to extract a token from the collected data
+      let token = null;
+      
+      if (authData?.meteor?.loginToken) {
+        token = authData.meteor.loginToken;
+      } else if (authData?.authToken) {
+        token = authData.authToken;
+      } else {
+        // Check localStorage for tokens
+        for (const [key, value] of Object.entries(authData?.localStorage || {})) {
+          if (value && value.length > 10) { // Assume tokens are longer than 10 chars
+            token = value;
+            break;
+          }
+        }
+      }
+      
+      if (token) {
+        await saveAuthToken(token);
+        errorDiv.classList.add('hidden');
+        closeAuthModal();
+        return;
+      }
+      
+    } catch (scriptError) {
+      console.warn('Could not inject script:', scriptError);
+    }
+
+    // Fallback to cookie method if script injection fails
     const cookies = await chrome.cookies.getAll({ domain: '.dicecloud.com' });
-    const authCookie = cookies.find(c => c.name === 'dicecloud_auth' || c.name === 'meteor_login_token');
+    console.log('Available DiceCloud cookies:', cookies.map(c => ({ name: c.name, domain: c.domain, value: c.value ? '***' : 'empty' })));
+    
+    const authCookie = cookies.find(c => 
+      c.name === 'dicecloud_auth' || 
+      c.name === 'meteor_login_token' ||
+      c.name === 'authToken' ||
+      c.name === 'loginToken' ||
+      c.name === 'userId' ||
+      c.name === 'token' ||
+      c.name.includes('auth') ||
+      c.name.includes('token')
+    );
 
     if (authCookie && authCookie.value) {
       await saveAuthToken(authCookie.value);
       errorDiv.classList.add('hidden');
       closeAuthModal();
     } else {
-      errorDiv.innerHTML = '<div style="color: #ff6b6b;">No login detected. Make sure you\'re logged in to DiceCloud in your open tab, then click the button again.</div>';
+      const cookieNames = cookies.map(c => c.name).join(', ');
+      const cookieCount = cookies.length;
+      errorDiv.innerHTML = `<div style="color: #ff6b6b;">No login detected. Found ${cookieCount} cookies: ${cookieNames || 'none'}. Make sure you're logged in to DiceCloud in your open tab, then click the button again.</div>`;
       errorDiv.classList.remove('hidden');
       btn.disabled = false;
       btn.textContent = '🔐 Connect with DiceCloud';
@@ -262,29 +402,60 @@ async function manualLogin(username, password) {
     btn.textContent = '⏳ Logging in...';
     errorDiv.classList.add('hidden');
 
-    // Call DiceCloud API for login
-    const response = await fetch('https://v2.dicecloud.com/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
-    });
+    // Try multiple possible DiceCloud API endpoints
+    const endpoints = [
+      'https://dicecloud.com/api/login',
+      'https://v2.dicecloud.com/api/login',
+      'https://app.dicecloud.com/api/login',
+      'https://dicecloud.com/login',
+      'https://v2.dicecloud.com/login'
+    ];
 
-    if (!response.ok) {
-      throw new Error('Invalid username or password');
+    let lastError = null;
+    let success = false;
+
+    for (const endpoint of endpoints) {
+      try {
+        console.log(`Trying login endpoint: ${endpoint}`);
+        
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+          mode: 'cors',
+          credentials: 'omit'
+        });
+
+        console.log(`Response status: ${response.status}`);
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log(`Success with ${endpoint}:`, data);
+          
+          if (data.token || data.authToken || data.loginToken) {
+            const token = data.token || data.authToken || data.loginToken;
+            await saveAuthToken(token);
+            errorDiv.classList.add('hidden');
+            closeAuthModal();
+            success = true;
+            break;
+          }
+        } else {
+          console.warn(`Failed with ${endpoint}: ${response.status} ${response.statusText}`);
+        }
+      } catch (endpointError) {
+        console.warn(`Failed with ${endpoint}:`, endpointError.message);
+        lastError = endpointError;
+      }
     }
 
-    const data = await response.json();
-    if (data.token) {
-      await saveAuthToken(data.token);
-      errorDiv.classList.add('hidden');
-      closeAuthModal();
-    } else {
-      throw new Error('No token received from server');
+    if (!success) {
+      throw new Error(`Login failed. Tried ${endpoints.length} endpoints. Last error: ${lastError?.message || 'Unknown error'}`);
     }
 
   } catch (error) {
     console.error('Manual login error:', error);
-    errorDiv.textContent = `Login failed: ${error.message}`;
+    errorDiv.innerHTML = `<div style="color: #ff6b6b;">${error.message}</div>`;
     errorDiv.classList.remove('hidden');
   } finally {
     btn.disabled = false;

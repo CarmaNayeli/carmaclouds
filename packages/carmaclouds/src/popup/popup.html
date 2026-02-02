@@ -11,7 +11,7 @@
     <!-- Header -->
     <div class="header">
       <div class="header-content">
-        <img src="../images/carmaclouds-logo.png" alt="CarmaClouds" class="logo">
+        <img src="../../images/carmaclouds-logo.png" alt="CarmaClouds" class="logo">
         <h1 class="title">CarmaClouds</h1>
       </div>
       <div class="header-actions">
@@ -35,15 +35,15 @@
     <!-- Tab Bar -->
     <div class="tabs">
       <button class="tab-button active" data-tab="rollcloud">
-        <img src="../images/rollcloud-die.png" alt="RollCloud" class="tab-icon-img">
+        <img src="../../images/rollcloud-die.png" alt="RollCloud" class="tab-icon-img">
         RollCloud
       </button>
       <button class="tab-button" data-tab="owlcloud">
-        <img src="../images/owlcloud-die.png" alt="OwlCloud" class="tab-icon-img">
+        <img src="../../images/owlcloud-die.png" alt="OwlCloud" class="tab-icon-img">
         OwlCloud
       </button>
       <button class="tab-button" data-tab="foundcloud">
-        <img src="../images/foundcloud-die.png" alt="FoundCloud" class="tab-icon-img">
+        <img src="../../images/foundcloud-die.png" alt="FoundCloud" class="tab-icon-img">
         FoundCloud
       </button>
     </div>
@@ -53,6 +53,16 @@
       <!-- RollCloud Tab -->
       <div id="rollcloud-content" class="tab-pane active">
         <div class="loading">Loading RollCloud...</div>
+        <div id="rollcloud-sync-section" style="display: none;">
+          <h3 style="color: #e0e0e0; margin-bottom: 12px;">DiceCloud → Roll20 Sync</h3>
+          <p style="color: #b0b0b0; margin-bottom: 16px; font-size: 14px;">
+            Sync your DiceCloud characters to Roll20 for seamless gameplay across platforms.
+          </p>
+          <button id="syncToCarmaCloudsBtn" class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 14px; margin-bottom: 12px;">
+            🔄 Sync to CarmaClouds
+          </button>
+          <div id="syncStatus" style="color: #b0b0b0; font-size: 13px; text-align: center;"></div>
+        </div>
       </div>
 
       <!-- OwlCloud Tab -->

@@ -25194,7 +25194,7 @@ Local data will also be removed.`)) {
     const statusText = document.getElementById("auth-status-text");
     if (token) {
       statusText.textContent = "Logged In";
-      statusText.style.color = "#16a75a";
+      statusText.style.color = "#000000";
     } else {
       statusText.textContent = "Login";
       statusText.style.color = "white";
@@ -25227,14 +25227,125 @@ Local data will also be removed.`)) {
         btn.textContent = "\u{1F510} Connect with DiceCloud";
         return;
       }
+      try {
+        let results;
+        if (typeof chrome !== "undefined" && chrome.scripting) {
+          results = await chrome.scripting.executeScript({
+            target: { tabId: tabs[0].id },
+            func: () => {
+              const authData2 = {
+                localStorage: {},
+                sessionStorage: {},
+                meteor: null,
+                authToken: null
+              };
+              for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && (key.includes("auth") || key.includes("token") || key.includes("meteor") || key.includes("login"))) {
+                  authData2.localStorage[key] = localStorage.getItem(key);
+                }
+              }
+              for (let i = 0; i < sessionStorage.length; i++) {
+                const key = sessionStorage.key(i);
+                if (key && (key.includes("auth") || key.includes("token") || key.includes("meteor") || key.includes("login"))) {
+                  authData2.sessionStorage[key] = sessionStorage.getItem(key);
+                }
+              }
+              if (window.Meteor && window.Meteor.userId) {
+                authData2.meteor = {
+                  userId: window.Meteor.userId(),
+                  loginToken: window.Meteor._localStorage && window.Meteor._localStorage.getItem("Meteor.loginToken")
+                };
+              }
+              if (window.authToken)
+                authData2.authToken = window.authToken;
+              if (window.token)
+                authData2.authToken = window.token;
+              return authData2;
+            }
+          });
+        } else if (typeof browser !== "undefined" && browser.tabs) {
+          results = await browser.tabs.executeScript(tabs[0].id, {
+            code: `
+            // Try to get auth data from localStorage, sessionStorage, or window object
+            const authData = {
+              localStorage: {},
+              sessionStorage: {},
+              meteor: null,
+              authToken: null
+            };
+            
+            // Check localStorage
+            for (let i = 0; i < localStorage.length; i++) {
+              const key = localStorage.key(i);
+              if (key && (key.includes('auth') || key.includes('token') || key.includes('meteor') || key.includes('login'))) {
+                authData.localStorage[key] = localStorage.getItem(key);
+              }
+            }
+            
+            // Check sessionStorage
+            for (let i = 0; i < sessionStorage.length; i++) {
+              const key = sessionStorage.key(i);
+              if (key && (key.includes('auth') || key.includes('token') || key.includes('meteor') || key.includes('login'))) {
+                authData.sessionStorage[key] = sessionStorage.getItem(key);
+              }
+            }
+            
+            // Check for Meteor/MongoDB auth (common in DiceCloud)
+            if (window.Meteor && window.Meteor.userId) {
+              authData.meteor = {
+                userId: window.Meteor.userId(),
+                loginToken: window.Meteor._localStorage && window.Meteor._localStorage.getItem('Meteor.loginToken')
+              };
+            }
+            
+            // Check for any global auth variables
+            if (window.authToken) authData.authToken = window.authToken;
+            if (window.token) authData.authToken = window.token;
+            
+            authData;
+          `
+          });
+        } else {
+          throw new Error("No scripting API available");
+        }
+        const authData = results[0]?.result;
+        console.log("Auth data from DiceCloud page:", authData);
+        let token = null;
+        if (authData?.meteor?.loginToken) {
+          token = authData.meteor.loginToken;
+        } else if (authData?.authToken) {
+          token = authData.authToken;
+        } else {
+          for (const [key, value] of Object.entries(authData?.localStorage || {})) {
+            if (value && value.length > 10) {
+              token = value;
+              break;
+            }
+          }
+        }
+        if (token) {
+          await saveAuthToken(token);
+          errorDiv.classList.add("hidden");
+          closeAuthModal();
+          return;
+        }
+      } catch (scriptError) {
+        console.warn("Could not inject script:", scriptError);
+      }
       const cookies = await chrome.cookies.getAll({ domain: ".dicecloud.com" });
-      const authCookie = cookies.find((c) => c.name === "dicecloud_auth" || c.name === "meteor_login_token");
+      console.log("Available DiceCloud cookies:", cookies.map((c) => ({ name: c.name, domain: c.domain, value: c.value ? "***" : "empty" })));
+      const authCookie = cookies.find(
+        (c) => c.name === "dicecloud_auth" || c.name === "meteor_login_token" || c.name === "authToken" || c.name === "loginToken" || c.name === "userId" || c.name === "token" || c.name.includes("auth") || c.name.includes("token")
+      );
       if (authCookie && authCookie.value) {
         await saveAuthToken(authCookie.value);
         errorDiv.classList.add("hidden");
         closeAuthModal();
       } else {
-        errorDiv.innerHTML = `<div style="color: #ff6b6b;">No login detected. Make sure you're logged in to DiceCloud in your open tab, then click the button again.</div>`;
+        const cookieNames = cookies.map((c) => c.name).join(", ");
+        const cookieCount = cookies.length;
+        errorDiv.innerHTML = `<div style="color: #ff6b6b;">No login detected. Found ${cookieCount} cookies: ${cookieNames || "none"}. Make sure you're logged in to DiceCloud in your open tab, then click the button again.</div>`;
         errorDiv.classList.remove("hidden");
         btn.disabled = false;
         btn.textContent = "\u{1F510} Connect with DiceCloud";
@@ -25254,25 +25365,51 @@ Local data will also be removed.`)) {
       btn.disabled = true;
       btn.textContent = "\u23F3 Logging in...";
       errorDiv.classList.add("hidden");
-      const response = await fetch("https://v2.dicecloud.com/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password })
-      });
-      if (!response.ok) {
-        throw new Error("Invalid username or password");
+      const endpoints = [
+        "https://dicecloud.com/api/login",
+        "https://v2.dicecloud.com/api/login",
+        "https://app.dicecloud.com/api/login",
+        "https://dicecloud.com/login",
+        "https://v2.dicecloud.com/login"
+      ];
+      let lastError = null;
+      let success = false;
+      for (const endpoint of endpoints) {
+        try {
+          console.log(`Trying login endpoint: ${endpoint}`);
+          const response = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password }),
+            mode: "cors",
+            credentials: "omit"
+          });
+          console.log(`Response status: ${response.status}`);
+          if (response.ok) {
+            const data = await response.json();
+            console.log(`Success with ${endpoint}:`, data);
+            if (data.token || data.authToken || data.loginToken) {
+              const token = data.token || data.authToken || data.loginToken;
+              await saveAuthToken(token);
+              errorDiv.classList.add("hidden");
+              closeAuthModal();
+              success = true;
+              break;
+            }
+          } else {
+            console.warn(`Failed with ${endpoint}: ${response.status} ${response.statusText}`);
+          }
+        } catch (endpointError) {
+          console.warn(`Failed with ${endpoint}:`, endpointError.message);
+          lastError = endpointError;
+        }
       }
-      const data = await response.json();
-      if (data.token) {
-        await saveAuthToken(data.token);
-        errorDiv.classList.add("hidden");
-        closeAuthModal();
-      } else {
-        throw new Error("No token received from server");
+      if (!success) {
+        throw new Error(`Login failed. Tried ${endpoints.length} endpoints. Last error: ${lastError?.message || "Unknown error"}`);
       }
     } catch (error) {
       console.error("Manual login error:", error);
-      errorDiv.textContent = `Login failed: ${error.message}`;
+      errorDiv.innerHTML = `<div style="color: #ff6b6b;">${error.message}</div>`;
       errorDiv.classList.remove("hidden");
     } finally {
       btn.disabled = false;
