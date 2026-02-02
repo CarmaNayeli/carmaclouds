@@ -280,12 +280,56 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
       const creature = data.creatures[0];
       const variables = data.creatureVariables && data.creatureVariables[0] || {};
       const properties = data.creatureProperties || [];
+      let characterRace = "Unknown";
+      let characterClass = "";
+      let characterLevel = 0;
+      const uniqueClasses = /* @__PURE__ */ new Set();
+      console.log("CarmaClouds: Extracting race, class, level from properties...");
+      for (const prop of properties) {
+        if (!prop)
+          continue;
+        if (prop.type === "race" || prop.type === "species" || prop.type === "characterRace") {
+          if (prop.name) {
+            characterRace = prop.name;
+            console.log("CarmaClouds: Found race:", characterRace);
+          }
+        }
+        if (prop.type === "class" && prop.name && !prop.inactive && !prop.disabled) {
+          const cleanName = prop.name.replace(/\s*\[Multiclass\]/i, "").trim();
+          const normalizedClassName = cleanName.toLowerCase().trim();
+          if (!uniqueClasses.has(normalizedClassName)) {
+            uniqueClasses.add(normalizedClassName);
+            if (characterClass) {
+              characterClass += ` / ${cleanName}`;
+            } else {
+              characterClass = cleanName;
+            }
+            console.log("CarmaClouds: Found class:", cleanName);
+          }
+        }
+        if (prop.type === "classLevel" && !prop.inactive && !prop.disabled) {
+          characterLevel += 1;
+          if (prop.name) {
+            const cleanName = prop.name.replace(/\s*\[Multiclass\]/i, "").trim();
+            const normalizedClassName = cleanName.toLowerCase().trim();
+            if (!uniqueClasses.has(normalizedClassName)) {
+              uniqueClasses.add(normalizedClassName);
+              if (characterClass) {
+                characterClass += ` / ${cleanName}`;
+              } else {
+                characterClass = cleanName;
+              }
+            }
+          }
+        }
+      }
+      console.log("CarmaClouds: Extracted race:", characterRace, "class:", characterClass || "Unknown", "level:", characterLevel);
       const characterData = {
         id: creature._id || characterId,
         name: creature.name || "Unknown Character",
-        race: creature.race || "Unknown",
-        class: creature.levels && creature.levels.length > 0 ? creature.levels.map((l) => `${l.name} ${l.level}`).join(", ") : "Unknown",
-        level: creature.level || 0,
+        race: characterRace,
+        class: characterClass || "Unknown",
+        level: characterLevel,
         alignment: creature.alignment || "",
         url: window.location.href,
         timestamp: (/* @__PURE__ */ new Date()).toISOString(),
