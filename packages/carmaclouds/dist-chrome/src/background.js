@@ -51,6 +51,17 @@
       });
       return true;
     }
+    if (message.action === "requestPreparedData") {
+      console.log("\u{1F4E4} Character sheet requesting prepared data");
+      handleRequestPreparedData().then((result) => {
+        console.log("\u2705 Prepared data request completed:", result.success ? "success" : "failed");
+        sendResponse(result);
+      }).catch((error) => {
+        console.error("\u274C Failed to handle prepared data request:", error);
+        sendResponse({ success: false, error: error.message });
+      });
+      return true;
+    }
     switch (message.type) {
       case "CHARACTER_UPDATED":
         handleCharacterUpdate(message.data);
@@ -160,8 +171,41 @@
       };
     }
   }
+  async function handleRequestPreparedData() {
+    try {
+      const tabs = await chrome.tabs.query({ url: "*://app.roll20.net/*" });
+      if (tabs.length === 0) {
+        return {
+          success: false,
+          error: "No Roll20 tab found. Please open Roll20 first."
+        };
+      }
+      const response = await chrome.tabs.sendMessage(tabs[0].id, {
+        type: "REQUEST_PREPARED_DATA"
+      });
+      if (response && response.success) {
+        return {
+          success: true,
+          data: response.data,
+          timestamp: response.timestamp,
+          age: response.age
+        };
+      } else {
+        return {
+          success: false,
+          error: response?.error || 'No prepared character data available. Please use "Push to Roll20" first.'
+        };
+      }
+    } catch (error) {
+      console.error("Error requesting prepared data:", error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
   function extractClass(rawData) {
-    if (!rawData || !rawData.variables)
+    if (!rawData || !rawData.variables || !Array.isArray(rawData.variables))
       return "Unknown";
     for (const variable of rawData.variables) {
       if (variable.variableName === "class") {
@@ -171,7 +215,7 @@
     return "Unknown";
   }
   function extractLevel(rawData) {
-    if (!rawData || !rawData.variables)
+    if (!rawData || !rawData.variables || !Array.isArray(rawData.variables))
       return 1;
     for (const variable of rawData.variables) {
       if (variable.variableName === "level") {
@@ -181,7 +225,7 @@
     return 1;
   }
   function extractRace(rawData) {
-    if (!rawData || !rawData.variables)
+    if (!rawData || !rawData.variables || !Array.isArray(rawData.variables))
       return "Unknown";
     for (const variable of rawData.variables) {
       if (variable.variableName === "race") {

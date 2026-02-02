@@ -2939,11 +2939,16 @@ ${spellDescription || "No description available"}`;
         setStatusBarAdvantage(event.data.state);
       }
     });
+    let lastRefreshTime = 0;
     setInterval(() => {
       if (statusBarVisible && statusBarElement) {
-        loadStatusBarData();
+        const now = Date.now();
+        if (now - lastRefreshTime > 1e4) {
+          lastRefreshTime = now;
+          loadStatusBarData();
+        }
       }
-    }, 5e3);
+    }, 15e3);
     browserAPI.storage.onChanged.addListener((changes, areaName) => {
       if (areaName === "local" && statusBarVisible && statusBarElement) {
         const relevantKeys = ["carmaclouds_characters"];

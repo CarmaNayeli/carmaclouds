@@ -241,6 +241,7 @@
       return finalAC;
     };
     return {
+      name: characterName,
       race,
       class: characterClass || "Unknown",
       level,

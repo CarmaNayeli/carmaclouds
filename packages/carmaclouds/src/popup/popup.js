@@ -469,6 +469,79 @@ async function logout() {
   closeAuthModal();
 }
 
+/**
+ * Check and update auth token if available
+ * This function validates the current auth token and updates the auth_tokens table if necessary
+ */
+async function checkAndUpdateAuthToken() {
+  try {
+    // Check if SupabaseTokenManager is available
+    if (typeof SupabaseTokenManager === 'undefined') {
+      console.log('⚠️ SupabaseTokenManager not available, skipping auth token check');
+      return;
+    }
+
+    const supabaseManager = new SupabaseTokenManager();
+    
+    // Get current token from storage
+    const result = await chrome.storage.local.get(['diceCloudToken', 'username', 'tokenExpires', 'diceCloudUserId', 'authId']);
+    
+    if (!result.diceCloudToken) {
+      console.log('⚠️ No auth token found, skipping auth token check');
+      return;
+    }
+
+    console.log('🔍 Checking auth token validity...');
+    
+    // Check session validity
+    const sessionCheck = await supabaseManager.checkSessionValidity();
+    
+    if (!sessionCheck.valid) {
+      console.log('⚠️ Auth token session is invalid, attempting to refresh...');
+      
+      // Try to refresh the token
+      const refreshResult = await supabaseManager.refreshToken();
+      
+      if (refreshResult.success) {
+        console.log('✅ Auth token refreshed successfully');
+        
+        // Update local storage with new token
+        await chrome.storage.local.set({
+          diceCloudToken: refreshResult.token,
+          tokenExpires: refreshResult.expires,
+          diceCloudUserId: refreshResult.userId
+        });
+        
+        // Update auth status display
+        await updateAuthStatus();
+        
+        showNotification('✅ Authentication refreshed', 'success');
+      } else {
+        console.log('❌ Failed to refresh auth token');
+        showNotification('❌ Authentication expired. Please log in again.', 'error');
+      }
+    } else {
+      console.log('✅ Auth token is valid');
+      
+      // Optionally, update the auth_tokens table with latest session info
+      try {
+        await supabaseManager.updateAuthTokenRecord({
+          token: result.diceCloudToken,
+          userId: result.diceCloudUserId,
+          lastChecked: new Date().toISOString()
+        });
+        console.log('✅ Auth tokens table updated');
+      } catch (updateError) {
+        console.log('⚠️ Failed to update auth_tokens table:', updateError);
+        // Don't show error to user as this is non-critical
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error checking auth token:', error);
+    // Don't show error to user as this is non-critical functionality
+  }
+}
+
 // Initialize popup
 async function init() {
   console.log('Initializing CarmaClouds popup...');
@@ -497,6 +570,9 @@ async function init() {
     // Get current active tab
     const activeTab = document.querySelector('.tab-button.active')?.dataset.tab;
     if (activeTab) {
+      // Check and update auth token if available
+      await checkAndUpdateAuthToken();
+      
       // Clear the loaded adapter
       loadedAdapters[activeTab] = null;
       // Reload the current tab

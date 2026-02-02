@@ -467,7 +467,7 @@ function showSettingsModal() {
   });
   
   // Set up theme options
-  const currentTheme = ThemeManager.getCurrentTheme();
+  const currentTheme = typeof ThemeManager !== 'undefined' ? ThemeManager.getCurrentTheme() : 'light';
   modal.querySelectorAll('.theme-option').forEach(option => {
     if (option.dataset.theme === currentTheme) {
       option.style.borderColor = 'var(--accent-primary)';
@@ -476,7 +476,9 @@ function showSettingsModal() {
     
     option.addEventListener('click', () => {
       const theme = option.dataset.theme;
-      ThemeManager.setTheme(theme);
+      if (typeof ThemeManager !== 'undefined') {
+        ThemeManager.setTheme(theme);
+      }
       
       // Update active state
       modal.querySelectorAll('.theme-option').forEach(opt => {
@@ -487,6 +489,21 @@ function showSettingsModal() {
       option.classList.add('active');
     });
   });
+
+  // Set up GM share button
+  const showToGMBtn = modal.querySelector('#show-to-gm-btn');
+  if (showToGMBtn) {
+    showToGMBtn.addEventListener('click', () => {
+      // Call the global shareCharacterWithGM function if it exists
+      if (typeof shareCharacterWithGM === 'function') {
+        shareCharacterWithGM();
+        // Close the settings modal after sharing
+        document.body.removeChild(modal);
+      } else {
+        debug.error('❌ shareCharacterWithGM function not available');
+      }
+    });
+  }
   
   // Load macros into settings
   updateMacrosDisplayInSettings();

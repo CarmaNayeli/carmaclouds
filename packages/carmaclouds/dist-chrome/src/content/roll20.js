@@ -2903,7 +2903,7 @@
             sendResponse({ success: false, error: endTurnError.message });
           }
         } else if (request.type === "PUSH_CHARACTER") {
-          debug.log("\u{1F4E4} Received PUSH_CHARACTER - processing character data");
+          debug.log("\u{1F4E4} Received PUSH_CHARACTER - preparing character data");
           try {
             const characterData = await refreshCharacterData();
             if (!characterData) {
@@ -2912,11 +2912,50 @@
             debug.log("\u2705 Character data refreshed:", characterData.name);
             const formattedData = request.data;
             debug.log("\u{1F4CB} Formatted character data received:", formattedData);
-            await sendToCharacterSheet(formattedData);
-            debug.log("\u2705 Character data sent to sheet popup");
-            sendResponse({ success: true, message: "Character pushed to sheet successfully" });
+            if (typeof window !== "undefined") {
+              window.carmacloudsPendingData = formattedData;
+              window.carmacloudsPendingTimestamp = Date.now();
+              debug.log("\u2705 Character data stored and ready for sheet request");
+            }
+            debug.log("\u2705 Character data prepared - waiting for sheet to request it");
+            sendResponse({ success: true, message: "Character data prepared and waiting for sheet" });
           } catch (error) {
             debug.error("\u274C Error in PUSH_CHARACTER:", error);
+            sendResponse({ success: false, error: error.message });
+          }
+          return true;
+        } else if (request.type === "REQUEST_PREPARED_DATA") {
+          debug.log("\u{1F4E5} Character sheet requesting prepared data");
+          try {
+            if (typeof window !== "undefined" && window.carmacloudsPendingData) {
+              const data = window.carmacloudsPendingData;
+              const timestamp = window.carmacloudsPendingTimestamp;
+              const now = Date.now();
+              const age = now - timestamp;
+              if (age < 5 * 60 * 1e3) {
+                debug.log("\u2705 Sending prepared character data to sheet:", data.name);
+                sendResponse({
+                  success: true,
+                  data,
+                  timestamp,
+                  age
+                });
+              } else {
+                debug.warn("\u26A0\uFE0F Prepared data is too old, ignoring");
+                sendResponse({
+                  success: false,
+                  error: "Prepared data expired. Please push character data again."
+                });
+              }
+            } else {
+              debug.warn("\u26A0\uFE0F No prepared character data available");
+              sendResponse({
+                success: false,
+                error: 'No character data prepared. Please use "Push to Roll20" first.'
+              });
+            }
+          } catch (error) {
+            debug.error("\u274C Error sending prepared data:", error);
             sendResponse({ success: false, error: error.message });
           }
           return true;
@@ -4629,6 +4668,14 @@ ${player.deathSaves ? `Death Saves: \u2713${player.deathSaves.successes || 0} / 
       if (event.data && event.data.action === "toggleGMMode") {
         debug.log("\u{1F451} Processing toggleGMMode message:", event.data.enabled);
         toggleGMMode(event.data.enabled);
+      } else if (event.data && event.data.action === "shareCharacterWithGM") {
+        debug.log("\u{1F451} Processing shareCharacterWithGM message");
+        try {
+          postChatMessage(event.data.message);
+          debug.log("\u2705 Character broadcast posted to chat");
+        } catch (error) {
+          debug.error("\u274C Error posting character broadcast:", error);
+        }
       } else if (event.data && event.data.action === "registerPopup") {
         if (event.data.characterName && event.source) {
           window.rollcloudRegisterPopup(event.data.characterName, event.source);
@@ -4819,38 +4866,6 @@ ${player.deathSaves ? `Death Saves: \u2713${player.deathSaves.successes || 0} / 
       } catch (error) {
         debug.error("\u274C Error refreshing character data:", error);
         return null;
-      }
-    }
-    async function sendToCharacterSheet(characterData) {
-      try {
-        const popupUrl = browserAPI2.runtime.getURL("src/popup-sheet.html");
-        const tabs = await browserAPI2.tabs.query({ url: popupUrl });
-        if (tabs.length > 0) {
-          await browserAPI2.tabs.sendMessage(tabs[0].id, {
-            type: "UPDATE_CHARACTER_DATA",
-            data: characterData
-          });
-          await browserAPI2.tabs.update(tabs[0].id, { active: true });
-        } else {
-          const tab = await browserAPI2.tabs.create({
-            url: popupUrl,
-            active: true
-          });
-          setTimeout(async () => {
-            try {
-              await browserAPI2.tabs.sendMessage(tab.id, {
-                type: "UPDATE_CHARACTER_DATA",
-                data: characterData
-              });
-            } catch (error) {
-              debug.error("\u274C Error sending data to new popup:", error);
-            }
-          }, 500);
-        }
-        debug.log("\u2705 Character sheet popup opened/updated");
-      } catch (error) {
-        debug.error("\u274C Error opening character sheet popup:", error);
-        throw error;
       }
     }
   })();

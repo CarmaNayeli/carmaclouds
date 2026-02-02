@@ -231,6 +231,7 @@
       return finalAC;
     };
     return {
+      name: characterName,
       race,
       class: characterClass || "Unknown",
       level,
@@ -1043,6 +1044,53 @@
     await clearAuthToken();
     closeAuthModal();
   }
+  async function checkAndUpdateAuthToken() {
+    try {
+      if (typeof SupabaseTokenManager === "undefined") {
+        console.log("\u26A0\uFE0F SupabaseTokenManager not available, skipping auth token check");
+        return;
+      }
+      const supabaseManager = new SupabaseTokenManager();
+      const result = await chrome.storage.local.get(["diceCloudToken", "username", "tokenExpires", "diceCloudUserId", "authId"]);
+      if (!result.diceCloudToken) {
+        console.log("\u26A0\uFE0F No auth token found, skipping auth token check");
+        return;
+      }
+      console.log("\u{1F50D} Checking auth token validity...");
+      const sessionCheck = await supabaseManager.checkSessionValidity();
+      if (!sessionCheck.valid) {
+        console.log("\u26A0\uFE0F Auth token session is invalid, attempting to refresh...");
+        const refreshResult = await supabaseManager.refreshToken();
+        if (refreshResult.success) {
+          console.log("\u2705 Auth token refreshed successfully");
+          await chrome.storage.local.set({
+            diceCloudToken: refreshResult.token,
+            tokenExpires: refreshResult.expires,
+            diceCloudUserId: refreshResult.userId
+          });
+          await updateAuthStatus();
+          showNotification("\u2705 Authentication refreshed", "success");
+        } else {
+          console.log("\u274C Failed to refresh auth token");
+          showNotification("\u274C Authentication expired. Please log in again.", "error");
+        }
+      } else {
+        console.log("\u2705 Auth token is valid");
+        try {
+          await supabaseManager.updateAuthTokenRecord({
+            token: result.diceCloudToken,
+            userId: result.diceCloudUserId,
+            lastChecked: (/* @__PURE__ */ new Date()).toISOString()
+          });
+          console.log("\u2705 Auth tokens table updated");
+        } catch (updateError) {
+          console.log("\u26A0\uFE0F Failed to update auth_tokens table:", updateError);
+        }
+      }
+    } catch (error) {
+      console.error("\u274C Error checking auth token:", error);
+    }
+  }
   async function init4() {
     console.log("Initializing CarmaClouds popup...");
     const settings = await getSettings();
@@ -1061,6 +1109,7 @@
     document.getElementById("refresh-button").addEventListener("click", async () => {
       const activeTab = document.querySelector(".tab-button.active")?.dataset.tab;
       if (activeTab) {
+        await checkAndUpdateAuthToken();
         loadedAdapters[activeTab] = null;
         await switchTab(activeTab);
       }

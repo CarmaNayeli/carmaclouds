@@ -109,7 +109,7 @@
       }
     });
     console.log("CarmaClouds: Property types in character:", propertyTypes);
-    let characterName = creature.name || "";
+    let characterName2 = creature.name || "";
     if (creature.race) {
       console.log("CarmaClouds: Found race on creature:", creature.race);
       characterRace = creature.race;
@@ -260,11 +260,11 @@
         console.log("CarmaClouds: No race variables found");
       }
     }
-    console.log("CarmaClouds: Character preview:", characterName, characterLevel, characterRace, characterClass);
+    console.log("CarmaClouds: Character preview:", characterName2, characterLevel, characterRace, characterClass);
     const characterData = {
       // Metadata
       id: creature._id || characterId,
-      name: characterName,
+      name: characterName2,
       url: window.location.href,
       timestamp: (/* @__PURE__ */ new Date()).toISOString(),
       source: "dicecloud",
@@ -570,10 +570,10 @@
     } catch (error) {
       console.error("CarmaClouds: Error extracting character data:", error);
       console.log("CarmaClouds: Trying fallback page extraction...");
-      const characterName = document.querySelector('h1, .character-name, [data-testid="character-name"]')?.textContent?.trim();
-      if (characterName) {
+      const characterName2 = document.querySelector('h1, .character-name, [data-testid="character-name"]')?.textContent?.trim();
+      if (characterName2) {
         return {
-          name: characterName,
+          name: characterName2,
           level: "Unknown",
           class: "Unknown",
           race: "Unknown",
