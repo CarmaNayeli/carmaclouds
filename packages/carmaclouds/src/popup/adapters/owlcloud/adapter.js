@@ -60,153 +60,180 @@ export async function init(containerEl) {
     style.textContent = css;
     containerEl.appendChild(style);
 
-    // Populate character info directly if we have data
-    if (character && character.raw) {
-      // Show character info card
-      const characterInfo = wrapper.querySelector('#characterInfo');
-      const statusSection = wrapper.querySelector('#status');
+    const SUPABASE_URL = 'https://luiesmfjdcmpywavvfqm.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aWVzbWZqZGNtcHl3YXZ2ZnFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4ODYxNDksImV4cCI6MjA4NTQ2MjE0OX0.oqjHFf2HhCLcanh0HVryoQH7iSV7E9dHHZJdYehxZ0U';
 
-      if (characterInfo) {
-        characterInfo.classList.remove('hidden');
+    const loginPrompt = wrapper.querySelector('#loginPrompt');
+    const syncBox = wrapper.querySelector('#syncBox');
+    const pushedCharactersList = wrapper.querySelector('#pushedCharactersList');
+    const noPushedCharacters = wrapper.querySelector('#noPushedCharacters');
 
-        // Populate character fields
-        const nameEl = characterInfo.querySelector('#charName');
-        const levelEl = characterInfo.querySelector('#charLevel');
-        const classEl = characterInfo.querySelector('#charClass');
-        const raceEl = characterInfo.querySelector('#charRace');
+    // Function to fetch and display pushed characters from database
+    async function loadPushedCharacters() {
+      if (!diceCloudUserId || !pushedCharactersList) return;
 
-        if (nameEl) nameEl.textContent = character.name || '-';
-        if (levelEl) levelEl.textContent = character.preview?.level || '-';
-        if (classEl) classEl.textContent = character.preview?.class || '-';
-        if (raceEl) raceEl.textContent = character.preview?.race || 'Unknown';
+      try {
+        const response = await fetch(
+          `${SUPABASE_URL}/rest/v1/clouds_characters?user_id_dicecloud=eq.${diceCloudUserId}&select=dicecloud_character_id,character_name,level,class,race`,
+          {
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            }
+          }
+        );
 
-        // Add push to VTT button handler
-        const pushBtn = characterInfo.querySelector('#pushToVttBtn');
-        if (pushBtn) {
-          pushBtn.addEventListener('click', async () => {
-            const originalText = pushBtn.innerHTML;
-            try {
-              pushBtn.disabled = true;
-              pushBtn.innerHTML = '⏳ Syncing...';
+        if (response.ok) {
+          const pushedChars = await response.json();
+          pushedCharactersList.innerHTML = '';
 
-              if (!diceCloudUserId) {
-                throw new Error('DiceCloud User ID not found. Please log in to DiceCloud first.');
+          if (pushedChars.length > 0) {
+            if (noPushedCharacters) noPushedCharacters.classList.add('hidden');
+
+            pushedChars.forEach(char => {
+              const card = document.createElement('div');
+              card.style.cssText = 'background: #1a1a1a; padding: 12px; border-radius: 8px; border: 1px solid #333;';
+              card.innerHTML = `
+                <h4 style="color: #16a75a; margin: 0 0 6px 0; font-size: 14px;">${char.character_name || 'Unknown'}</h4>
+                <div style="display: flex; gap: 8px; font-size: 12px; color: #888;">
+                  <span>Lvl ${char.level || '?'}</span>
+                  <span>•</span>
+                  <span>${char.class || 'Unknown'}</span>
+                  <span>•</span>
+                  <span>${char.race || 'Unknown'}</span>
+                </div>
+              `;
+              pushedCharactersList.appendChild(card);
+            });
+          } else {
+            if (noPushedCharacters) noPushedCharacters.classList.remove('hidden');
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load pushed characters:', error);
+      }
+    }
+
+    // Check if user is logged in to DiceCloud
+    if (!diceCloudUserId) {
+      // Show login prompt
+      if (loginPrompt) loginPrompt.classList.remove('hidden');
+      if (syncBox) syncBox.classList.add('hidden');
+
+      // Add login button handler
+      const openAuthBtn = wrapper.querySelector('#openAuthModalBtn');
+      if (openAuthBtn) {
+        openAuthBtn.addEventListener('click', () => {
+          // Trigger the main popup's auth modal
+          const authButton = document.querySelector('#dicecloud-auth-button');
+          if (authButton) authButton.click();
+        });
+      }
+    } else if (characters.length > 0 && characters[0]?.raw) {
+      // User is logged in and has character data - show sync box
+      const character = characters[0];
+
+      if (loginPrompt) loginPrompt.classList.add('hidden');
+      if (syncBox) syncBox.classList.remove('hidden');
+
+      // Populate sync box with current character
+      const nameEl = wrapper.querySelector('#syncCharName');
+      const levelEl = wrapper.querySelector('#syncCharLevel');
+      const classEl = wrapper.querySelector('#syncCharClass');
+      const raceEl = wrapper.querySelector('#syncCharRace');
+
+      if (nameEl) nameEl.textContent = character.name || 'Unknown';
+      if (levelEl) levelEl.textContent = `Lvl ${character.preview?.level || '?'}`;
+      if (classEl) classEl.textContent = character.preview?.class || 'Unknown';
+      if (raceEl) raceEl.textContent = character.preview?.race || 'Unknown';
+
+      // Add push to VTT button handler
+      const pushBtn = wrapper.querySelector('#pushToVttBtn');
+      if (pushBtn) {
+        pushBtn.addEventListener('click', async () => {
+          const originalText = pushBtn.innerHTML;
+          try {
+            pushBtn.disabled = true;
+            pushBtn.innerHTML = '⏳ Pushing...';
+
+            // Get Supabase user ID if authenticated
+            const supabase = window.supabaseClient;
+            let supabaseUserId = null;
+            if (supabase) {
+              const { data: { session } } = await supabase.auth.getSession();
+              supabaseUserId = session?.user?.id;
+            }
+
+            // Prepare character data with ALL info including supabase_user_id
+            const characterData = {
+              dicecloud_character_id: character.id,
+              character_name: character.name || 'Unknown',
+              user_id_dicecloud: diceCloudUserId,
+              level: character.preview?.level || null,
+              class: character.preview?.class || null,
+              race: character.preview?.race || null,
+              raw_dicecloud_data: character.raw,
+              is_active: false,
+              updated_at: new Date().toISOString()
+            };
+
+            // Include Supabase user ID for cross-device sync
+            if (supabaseUserId) {
+              characterData.supabase_user_id = supabaseUserId;
+              console.log('✅ Including Supabase user ID:', supabaseUserId);
+            }
+
+            // Push to database
+            const response = await fetch(
+              `${SUPABASE_URL}/rest/v1/clouds_characters?on_conflict=user_id_dicecloud,dicecloud_character_id`,
+              {
+                method: 'POST',
+                headers: {
+                  'apikey': SUPABASE_ANON_KEY,
+                  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                  'Content-Type': 'application/json',
+                  'Prefer': 'resolution=merge-duplicates,return=representation'
+                },
+                body: JSON.stringify(characterData)
               }
+            );
 
-              // Store raw DiceCloud data in database
-              console.log('💾 Storing raw character data to database...');
-              const SUPABASE_URL = 'https://luiesmfjdcmpywavvfqm.supabase.co';
-              const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aWVzbWZqZGNtcHl3YXZ2ZnFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4ODYxNDksImV4cCI6MjA4NTQ2MjE0OX0.oqjHFf2HhCLcanh0HVryoQH7iSV7E9dHHZJdYehxZ0U';
+            if (response.ok) {
+              console.log('✅ Character pushed:', character.name);
+              pushBtn.innerHTML = '✅ Pushed!';
 
-              try {
-                // First, deactivate all other characters for this user
-                console.log('📝 Deactivating other characters...');
-                const deactivateResponse = await fetch(
-                  `${SUPABASE_URL}/rest/v1/clouds_characters?user_id_dicecloud=eq.${diceCloudUserId}`,
-                  {
-                    method: 'PATCH',
-                    headers: {
-                      'apikey': SUPABASE_ANON_KEY,
-                      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                      'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                      is_active: false
-                    })
-                  }
-                );
+              // Reload pushed characters list
+              await loadPushedCharacters();
 
-                if (!deactivateResponse.ok) {
-                  console.warn('⚠️ Failed to deactivate other characters, continuing anyway...');
-                }
-
-                // Then UPSERT the current character as active
-                // Check if user is authenticated with Supabase
-                const supabase = window.supabaseClient;
-                let supabaseUserId = null;
-                if (supabase) {
-                  const { data: { session } } = await supabase.auth.getSession();
-                  supabaseUserId = session?.user?.id;
-                }
-
-                const characterData = {
-                  dicecloud_character_id: character.id,
-                  character_name: character.name || 'Unknown',
-                  user_id_dicecloud: diceCloudUserId,
-                  level: character.preview?.level || null,
-                  class: character.preview?.class || null,
-                  race: character.preview?.race || null,
-                  raw_dicecloud_data: character.raw,
-                  is_active: true,
-                  updated_at: new Date().toISOString()
-                };
-
-                // Add Supabase user ID if authenticated for cross-device sync
-                if (supabaseUserId) {
-                  characterData.supabase_user_id = supabaseUserId;
-                  console.log('✅ Including Supabase user ID for cross-device sync:', supabaseUserId);
-                }
-
-                const updateResponse = await fetch(
-                  `${SUPABASE_URL}/rest/v1/clouds_characters?on_conflict=user_id_dicecloud,dicecloud_character_id`,
-                  {
-                    method: 'POST',
-                    headers: {
-                      'apikey': SUPABASE_ANON_KEY,
-                      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                      'Content-Type': 'application/json',
-                      'Prefer': 'resolution=merge-duplicates,return=representation'
-                    },
-                    body: JSON.stringify(characterData)
-                  }
-                );
-                if (updateResponse.ok) {
-                  console.log('✅ Raw character data stored in database');
-                } else {
-                  const errorText = await updateResponse.text();
-                  console.warn('⚠️ Failed to store character data:', errorText);
-                  throw new Error(`Database sync failed: ${errorText}`);
-                }
-              } catch (dbError) {
-                console.error('⚠️ Database update failed:', dbError);
-                throw dbError;
-              }
-
-              // Show success message
-              pushBtn.innerHTML = '✅ Synced!';
-
-              if (statusSection) {
-                const statusIcon = statusSection.querySelector('#statusIcon');
-                const statusText = statusSection.querySelector('#statusText');
-                if (statusIcon) statusIcon.textContent = '✅';
-                if (statusText) {
-                  statusText.innerHTML = `<div style="color: #fff;">Character synced to database!</div>`;
-                }
-              }
-
-              setTimeout(() => {
-                pushBtn.innerHTML = originalText;
-                pushBtn.disabled = false;
-              }, 3000);
-            } catch (error) {
-              console.error('Error syncing to database:', error);
-              pushBtn.innerHTML = '❌ Failed';
-              alert(`Failed to sync to database: ${error.message}`);
               setTimeout(() => {
                 pushBtn.innerHTML = originalText;
                 pushBtn.disabled = false;
               }, 2000);
+            } else {
+              const errorText = await response.text();
+              throw new Error(`Push failed: ${errorText}`);
             }
-          });
-        }
+          } catch (error) {
+            console.error('Error pushing character:', error);
+            pushBtn.innerHTML = '❌ Failed';
+            alert(`Failed to push: ${error.message}`);
+            setTimeout(() => {
+              pushBtn.innerHTML = originalText;
+              pushBtn.disabled = false;
+            }, 2000);
+          }
+        });
       }
 
-      // Update status to show character loaded
-      if (statusSection) {
-        const statusIcon = statusSection.querySelector('#statusIcon');
-        const statusText = statusSection.querySelector('#statusText');
-        if (statusIcon) statusIcon.textContent = '📋';
-        if (statusText) statusText.textContent = `Ready to sync: ${character.name}`;
+      // Load and display pushed characters
+      await loadPushedCharacters();
+    } else {
+      // Logged in but no character data from DiceCloud
+      if (loginPrompt) loginPrompt.classList.add('hidden');
+      if (syncBox) syncBox.classList.add('hidden');
+      if (noPushedCharacters) {
+        noPushedCharacters.textContent = 'No character data found. Sync a character from DiceCloud first.';
+        noPushedCharacters.classList.remove('hidden');
       }
     }
 
