@@ -894,6 +894,17 @@ function parseForRollCloud(rawData) {
     .map(feature => {
       // Extract uses properly - DiceCloud stores uses/quantity as objects with value/max
       let uses = null;
+
+      // Debug logging for features with "blessed" or "channel" in the name
+      if (feature.name && (feature.name.toLowerCase().includes('blessed') || feature.name.toLowerCase().includes('channel'))) {
+        console.log(`🔍 Feature "${feature.name}" raw data:`, {
+          uses: feature.uses,
+          quantity: feature.quantity,
+          reset: feature.reset,
+          usesUsed: feature.usesUsed
+        });
+      }
+
       if (feature.uses && typeof feature.uses === 'object') {
         uses = {
           value: feature.uses.value || feature.uses.currentValue || 0,
