@@ -76,6 +76,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // Keep channel open for async response
   }
 
+  // Handle openCharacterSheet request from Roll20 content script
+  if (message.action === 'openCharacterSheet') {
+    console.log('📤 Opening character sheet popup with data:', message.data.name);
+    handleOpenCharacterSheet(message.data)
+      .then(result => {
+        console.log('✅ Character sheet opened:', result);
+        sendResponse(result);
+      })
+      .catch(error => {
+        console.error('❌ Failed to open character sheet:', error);
+        sendResponse({ success: false, error: error.message });
+      });
+    return true; // Keep channel open for async response
+  }
+
   // Handle different message types
   switch (message.type) {
     case 'CHARACTER_UPDATED':
@@ -205,6 +220,64 @@ async function handleSetActiveCharacter(characterId) {
     };
   } catch (error) {
     console.error('Error setting active character:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+// Handle opening character sheet popup
+async function handleOpenCharacterSheet(characterData) {
+  try {
+    // Create or update the character sheet popup
+    const popupUrl = chrome.runtime.getURL('src/popup-sheet.html');
+    
+    // Check if popup is already open
+    const tabs = await chrome.tabs.query({ url: popupUrl });
+    
+    if (tabs.length > 0) {
+      // Update existing popup
+      await chrome.tabs.sendMessage(tabs[0].id, {
+        type: 'UPDATE_CHARACTER_DATA',
+        data: characterData
+      });
+      
+      // Focus the existing tab
+      await chrome.tabs.update(tabs[0].id, { active: true });
+      
+      return {
+        success: true,
+        message: 'Character sheet updated',
+        action: 'updated'
+      };
+    } else {
+      // Open new popup
+      const tab = await chrome.tabs.create({
+        url: popupUrl,
+        active: true
+      });
+      
+      // Wait a bit for the popup to load, then send data
+      setTimeout(async () => {
+        try {
+          await chrome.tabs.sendMessage(tab.id, {
+            type: 'UPDATE_CHARACTER_DATA',
+            data: characterData
+          });
+        } catch (error) {
+          console.error('❌ Error sending data to new popup:', error);
+        }
+      }, 500);
+      
+      return {
+        success: true,
+        message: 'Character sheet opened',
+        action: 'opened'
+      };
+    }
+  } catch (error) {
+    console.error('Error opening character sheet:', error);
     return {
       success: false,
       error: error.message

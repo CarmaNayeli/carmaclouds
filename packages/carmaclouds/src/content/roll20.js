@@ -3873,42 +3873,17 @@ ${player.deathSaves ? `Death Saves: ✓${player.deathSaves.successes || 0} / ✗
    */
   async function sendToCharacterSheet(characterData) {
     try {
-      // Create or update the character sheet popup
-      const popupUrl = browserAPI.runtime.getURL('src/popup-sheet.html');
+      // Send message to background script to handle popup opening
+      const response = await browserAPI.runtime.sendMessage({
+        action: 'openCharacterSheet',
+        data: characterData
+      });
       
-      // Check if popup is already open
-      const tabs = await browserAPI.tabs.query({ url: popupUrl });
-      
-      if (tabs.length > 0) {
-        // Update existing popup
-        await browserAPI.tabs.sendMessage(tabs[0].id, {
-          type: 'UPDATE_CHARACTER_DATA',
-          data: characterData
-        });
-        
-        // Focus the existing tab
-        await browserAPI.tabs.update(tabs[0].id, { active: true });
-      } else {
-        // Open new popup
-        const tab = await browserAPI.tabs.create({
-          url: popupUrl,
-          active: true
-        });
-        
-        // Wait a bit for the popup to load, then send data
-        setTimeout(async () => {
-          try {
-            await browserAPI.tabs.sendMessage(tab.id, {
-              type: 'UPDATE_CHARACTER_DATA',
-              data: characterData
-            });
-          } catch (error) {
-            debug.error('❌ Error sending data to new popup:', error);
-          }
-        }, 500);
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to open character sheet');
       }
       
-      debug.log('✅ Character sheet popup opened/updated');
+      debug.log('✅ Character sheet popup opened via background script');
     } catch (error) {
       debug.error('❌ Error opening character sheet popup:', error);
       throw error;
