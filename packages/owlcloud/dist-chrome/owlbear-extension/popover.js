@@ -1125,15 +1125,31 @@
     }
   };
   window.handleUnsyncCharacter = async function() {
-    if (!currentCharacter) {
-      console.warn("No character to unsync");
+    const unsyncBtn = document.getElementById("unsync-character-btn");
+    const statusDiv = document.getElementById("status-text");
+    if (!unsyncBtn) {
+      console.error("Unsync button not found");
       return;
     }
-    const unsyncBtn = document.getElementById("unsync-character-btn");
-    const statusDiv = document.getElementById("fetch-status");
-    if (!unsyncBtn || !statusDiv)
+    if (!statusDiv) {
+      console.error("Status div not found");
       return;
-    if (!confirm(`Unsync ${currentCharacter.name} from this Owlbear session?
+    }
+    const playerId = await OBR.player.getId();
+    const cacheKey = currentUser ? `owlcloud_char_${currentUser.id}` : `owlcloud_char_${playerId}`;
+    const cachedData = localStorage.getItem(cacheKey);
+    if (!currentCharacter && !cachedData) {
+      console.warn("No character to unsync");
+      statusDiv.style.display = "block";
+      statusDiv.style.color = "#EF4444";
+      statusDiv.textContent = "No character data to unsync";
+      setTimeout(() => {
+        statusDiv.style.display = "none";
+      }, 3e3);
+      return;
+    }
+    const characterName = currentCharacter?.name || "this character";
+    if (!confirm(`Unsync ${characterName} from this Owlbear session?
 
 This will disconnect the character from this room. You can sync a different character afterwards.`)) {
       return;
@@ -1144,7 +1160,6 @@ This will disconnect the character from this room. You can sync a different char
     statusDiv.style.color = "#FB923C";
     statusDiv.textContent = "Unsyncing character...";
     try {
-      const playerId = await OBR.player.getId();
       let cloudUnsyncSuccess = false;
       if (currentUser && SUPABASE_HEADERS) {
         try {
@@ -1172,7 +1187,6 @@ This will disconnect the character from this room. You can sync a different char
       } else {
         console.log("\u2139\uFE0F Not authenticated, skipping cloud unsync");
       }
-      const cacheKey = currentUser ? `owlcloud_char_${currentUser.id}` : `owlcloud_char_${playerId}`;
       const versionKey = `${cacheKey}_version`;
       localStorage.removeItem(cacheKey);
       localStorage.removeItem(versionKey);

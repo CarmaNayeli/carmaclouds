@@ -11525,6 +11525,7 @@ ${suffix}`;
   };
 
   // src/popup/adapters/foundcloud/foundcloud-popup.js
+  var browserAPI = typeof browser !== "undefined" && browser.runtime ? browser : chrome;
   var supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   var STORAGE_KEYS = {
     CHARACTERS: "rollcloud_character_cache",
@@ -11540,7 +11541,7 @@ ${suffix}`;
   }
   async function loadCharacters() {
     try {
-      const storage = await chrome.storage.local.get(STORAGE_KEYS.CHARACTERS);
+      const storage = await browserAPI.storage.local.get(STORAGE_KEYS.CHARACTERS) || {};
       const cachedData = storage[STORAGE_KEYS.CHARACTERS];
       if (cachedData && cachedData.characters) {
         characters = cachedData.characters;
@@ -11638,7 +11639,7 @@ ${suffix}`;
       await syncCharacterToSupabase(char);
       char.syncedToFoundCloud = true;
       char.lastSyncTime = (/* @__PURE__ */ new Date()).toISOString();
-      await chrome.storage.local.set({
+      await browserAPI.storage.local.set({
         [STORAGE_KEYS.CHARACTERS]: { characters }
       });
       showSuccess(`${char.name} synced to cloud`);
@@ -11669,7 +11670,7 @@ ${suffix}`;
     }
   }
   function viewCharacter(charId) {
-    chrome.tabs.create({
+    browserAPI.tabs.create({
       url: `https://dicecloud.com/character/${charId}`
     });
   }

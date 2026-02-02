@@ -424,11 +424,12 @@
   }
 
   // src/popup/adapters/rollcloud/adapter.js
+  var browserAPI = typeof browser !== "undefined" && browser.runtime ? browser : chrome;
   async function init(containerEl) {
     console.log("Initializing RollCloud adapter...");
     try {
       containerEl.innerHTML = '<div class="loading">Loading RollCloud...</div>';
-      const result = await chrome.storage.local.get("carmaclouds_characters");
+      const result = await browserAPI.storage.local.get("carmaclouds_characters") || {};
       const characters = result.carmaclouds_characters || [];
       console.log("Found", characters.length, "synced characters");
       const character = characters.length > 0 ? characters[0] : null;
@@ -439,7 +440,7 @@
         parsedData = parseForRollCloud(character.raw);
         console.log("Parsed data:", parsedData);
       }
-      const htmlPath = chrome.runtime.getURL("src/popup/adapters/rollcloud/popup.html");
+      const htmlPath = browserAPI.runtime.getURL("src/popup/adapters/rollcloud/popup.html");
       const response = await fetch(htmlPath);
       const html = await response.text();
       const parser = new DOMParser();
@@ -450,7 +451,7 @@
       wrapper.innerHTML = mainContent ? mainContent.innerHTML : doc.body.innerHTML;
       containerEl.innerHTML = "";
       containerEl.appendChild(wrapper);
-      const cssPath = chrome.runtime.getURL("src/popup/adapters/rollcloud/popup.css");
+      const cssPath = browserAPI.runtime.getURL("src/popup/adapters/rollcloud/popup.css");
       const cssResponse = await fetch(cssPath);
       let css = await cssResponse.text();
       css = css.replace(/(^|\})\s*([^{}@]+)\s*\{/gm, (match, closer, selector) => {
@@ -521,13 +522,13 @@
                     id: character.id,
                     dicecloud_character_id: character.id
                   };
-                  await chrome.runtime.sendMessage({
+                  await browserAPI.runtime.sendMessage({
                     action: "storeCharacterData",
                     data: dataToStore,
                     slotId: character.slotId || "slot-1"
                   });
                   console.log("\u2705 Local storage updated with parsed Roll20 data");
-                  chrome.runtime.sendMessage({
+                  browserAPI.runtime.sendMessage({
                     action: "dataSynced",
                     characterName: dataToStore.name || "Character"
                   }).catch(() => {
@@ -536,11 +537,11 @@
                 } catch (storageError) {
                   console.warn("\u26A0\uFE0F Local storage update failed (non-fatal):", storageError);
                 }
-                const tabs = await chrome.tabs.query({ url: "*://app.roll20.net/*" });
+                const tabs = await browserAPI.tabs.query({ url: "*://app.roll20.net/*" });
                 if (tabs.length === 0) {
                   throw new Error("No Roll20 tab found. Please open Roll20 first.");
                 }
-                await chrome.tabs.sendMessage(tabs[0].id, {
+                await browserAPI.tabs.sendMessage(tabs[0].id, {
                   type: "PUSH_CHARACTER",
                   data: parsedData
                 });
@@ -570,7 +571,7 @@
             statusText.textContent = `Character synced: ${character.name}`;
         }
       }
-      chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.action === "dataSynced") {
           console.log("\u{1F4E5} RollCloud adapter received data sync notification:", message.characterName);
           init(containerEl);

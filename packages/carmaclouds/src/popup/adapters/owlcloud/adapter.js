@@ -4,6 +4,9 @@
  * Loads the full OwlCloud popup UI
  */
 
+// Detect browser API (Firefox uses 'browser', Chrome uses 'chrome')
+const browserAPI = (typeof browser !== 'undefined' && browser.runtime) ? browser : chrome;
+
 export async function init(containerEl) {
   console.log('Initializing OwlCloud adapter...');
 
@@ -12,7 +15,7 @@ export async function init(containerEl) {
     containerEl.innerHTML = '<div class="loading">Loading OwlCloud...</div>';
 
     // Fetch synced characters and DiceCloud user ID from storage
-    const result = await chrome.storage.local.get(['carmaclouds_characters', 'diceCloudUserId']);
+    const result = await browserAPI.storage.local.get(['carmaclouds_characters', 'diceCloudUserId']) || {};
     const characters = result.carmaclouds_characters || [];
     const diceCloudUserId = result.diceCloudUserId;
 
@@ -23,7 +26,7 @@ export async function init(containerEl) {
     const character = characters.length > 0 ? characters[0] : null;
 
     // Fetch the OwlCloud popup HTML
-    const htmlPath = chrome.runtime.getURL('src/popup/adapters/owlcloud/popup.html');
+    const htmlPath = browserAPI.runtime.getURL('src/popup/adapters/owlcloud/popup.html');
     const response = await fetch(htmlPath);
     const html = await response.text();
 
@@ -40,7 +43,7 @@ export async function init(containerEl) {
     containerEl.appendChild(wrapper);
 
     // Load and inject the CSS with scoping
-    const cssPath = chrome.runtime.getURL('src/popup/adapters/owlcloud/popup.css');
+    const cssPath = browserAPI.runtime.getURL('src/popup/adapters/owlcloud/popup.css');
     const cssResponse = await fetch(cssPath);
     let css = await cssResponse.text();
 
@@ -243,7 +246,7 @@ export async function init(containerEl) {
     }
 
     // Listen for data sync notifications to refresh the UI
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message.action === 'dataSynced') {
         console.log('📥 OwlCloud adapter received data sync notification:', message.characterName);
         // Reload the entire adapter to show updated character data

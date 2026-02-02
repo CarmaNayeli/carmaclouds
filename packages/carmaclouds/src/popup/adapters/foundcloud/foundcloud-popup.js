@@ -6,6 +6,9 @@
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@carmaclouds/core/supabase/config.js';
 
+// Detect browser API (Firefox uses 'browser', Chrome uses 'chrome')
+const browserAPI = (typeof browser !== 'undefined' && browser.runtime) ? browser : chrome;
+
 // Initialize Supabase client
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -36,7 +39,7 @@ export default function initFoundCloudPopup() {
  */
 async function loadCharacters() {
   try {
-    const storage = await chrome.storage.local.get(STORAGE_KEYS.CHARACTERS);
+    const storage = await browserAPI.storage.local.get(STORAGE_KEYS.CHARACTERS) || {};
     const cachedData = storage[STORAGE_KEYS.CHARACTERS];
 
     if (cachedData && cachedData.characters) {
@@ -165,7 +168,7 @@ async function syncCharacter(charId) {
     char.lastSyncTime = new Date().toISOString();
 
     // Save to storage
-    await chrome.storage.local.set({
+    await browserAPI.storage.local.set({
       [STORAGE_KEYS.CHARACTERS]: { characters }
     });
 
@@ -208,7 +211,7 @@ async function syncCharacterToSupabase(char) {
  * View character (open DiceCloud sheet)
  */
 function viewCharacter(charId) {
-  chrome.tabs.create({
+  browserAPI.tabs.create({
     url: `https://dicecloud.com/character/${charId}`
   });
 }

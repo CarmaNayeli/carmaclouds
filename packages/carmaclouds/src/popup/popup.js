@@ -420,8 +420,11 @@ async function autoConnect() {
       } else {
         throw new Error('No scripting API available');
       }
-      
-      const authData = results[0]?.result;
+
+      // Firefox returns results directly in array, Chrome wraps in .result property
+      const authData = (typeof chrome !== 'undefined' && browserAPI.scripting)
+        ? results[0]?.result
+        : results[0];
       console.log('Auth data from DiceCloud page:', authData);
 
       // Try to extract a token and user info from the collected data

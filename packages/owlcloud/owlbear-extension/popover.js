@@ -1499,18 +1499,42 @@ window.handleFetchCharacter = async function() {
  * Clears the Owlbear sync for the current character, allowing a new character to be synced
  */
 window.handleUnsyncCharacter = async function() {
-  if (!currentCharacter) {
-    console.warn('No character to unsync');
+  const unsyncBtn = document.getElementById('unsync-character-btn');
+  const statusDiv = document.getElementById('status-text'); // Use the existing status-text element
+
+  if (!unsyncBtn) {
+    console.error('Unsync button not found');
     return;
   }
 
-  const unsyncBtn = document.getElementById('unsync-character-btn');
-  const statusDiv = document.getElementById('fetch-status');
+  if (!statusDiv) {
+    console.error('Status div not found');
+    return;
+  }
 
-  if (!unsyncBtn || !statusDiv) return;
+  // Check if there's a character to unsync (either in memory or in localStorage)
+  const playerId = await OBR.player.getId();
+  const cacheKey = currentUser
+    ? `owlcloud_char_${currentUser.id}`
+    : `owlcloud_char_${playerId}`;
+  const cachedData = localStorage.getItem(cacheKey);
+
+  if (!currentCharacter && !cachedData) {
+    console.warn('No character to unsync');
+    statusDiv.style.display = 'block';
+    statusDiv.style.color = '#EF4444';
+    statusDiv.textContent = 'No character data to unsync';
+    setTimeout(() => {
+      statusDiv.style.display = 'none';
+    }, 3000);
+    return;
+  }
+
+  // Get character name for confirmation dialog
+  const characterName = currentCharacter?.name || 'this character';
 
   // Confirm with user
-  if (!confirm(`Unsync ${currentCharacter.name} from this Owlbear session?\n\nThis will disconnect the character from this room. You can sync a different character afterwards.`)) {
+  if (!confirm(`Unsync ${characterName} from this Owlbear session?\n\nThis will disconnect the character from this room. You can sync a different character afterwards.`)) {
     return;
   }
 
@@ -1522,7 +1546,6 @@ window.handleUnsyncCharacter = async function() {
   statusDiv.textContent = 'Unsyncing character...';
 
   try {
-    const playerId = await OBR.player.getId();
     let cloudUnsyncSuccess = false;
 
     // Try to unsync from cloud if authenticated
@@ -1556,9 +1579,6 @@ window.handleUnsyncCharacter = async function() {
     }
 
     // Always clear local cache regardless of cloud unsync result
-    const cacheKey = currentUser
-      ? `owlcloud_char_${currentUser.id}`
-      : `owlcloud_char_${playerId}`;
     const versionKey = `${cacheKey}_version`;
     localStorage.removeItem(cacheKey);
     localStorage.removeItem(versionKey);

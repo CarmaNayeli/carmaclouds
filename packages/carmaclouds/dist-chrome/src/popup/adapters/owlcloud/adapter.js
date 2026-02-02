@@ -1,16 +1,17 @@
 (() => {
   // src/popup/adapters/owlcloud/adapter.js
+  var browserAPI = typeof browser !== "undefined" && browser.runtime ? browser : chrome;
   async function init(containerEl) {
     console.log("Initializing OwlCloud adapter...");
     try {
       containerEl.innerHTML = '<div class="loading">Loading OwlCloud...</div>';
-      const result = await chrome.storage.local.get(["carmaclouds_characters", "diceCloudUserId"]);
+      const result = await browserAPI.storage.local.get(["carmaclouds_characters", "diceCloudUserId"]) || {};
       const characters = result.carmaclouds_characters || [];
       const diceCloudUserId = result.diceCloudUserId;
       console.log("Found", characters.length, "synced characters");
       console.log("DiceCloud User ID:", diceCloudUserId);
       const character = characters.length > 0 ? characters[0] : null;
-      const htmlPath = chrome.runtime.getURL("src/popup/adapters/owlcloud/popup.html");
+      const htmlPath = browserAPI.runtime.getURL("src/popup/adapters/owlcloud/popup.html");
       const response = await fetch(htmlPath);
       const html = await response.text();
       const parser = new DOMParser();
@@ -21,7 +22,7 @@
       wrapper.innerHTML = mainContent ? mainContent.innerHTML : doc.body.innerHTML;
       containerEl.innerHTML = "";
       containerEl.appendChild(wrapper);
-      const cssPath = chrome.runtime.getURL("src/popup/adapters/owlcloud/popup.css");
+      const cssPath = browserAPI.runtime.getURL("src/popup/adapters/owlcloud/popup.css");
       const cssResponse = await fetch(cssPath);
       let css = await cssResponse.text();
       css = css.replace(/(^|\})\s*([^{}@]+)\s*\{/gm, (match, closer, selector) => {
@@ -197,7 +198,7 @@
           }
         });
       }
-      chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.action === "dataSynced") {
           console.log("\u{1F4E5} OwlCloud adapter received data sync notification:", message.characterName);
           init(containerEl);

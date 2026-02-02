@@ -3,6 +3,9 @@
  * Handles cross-platform character sync and messaging
  */
 
+// Detect browser API (Firefox uses 'browser', Chrome uses 'chrome')
+const browserAPI = (typeof browser !== 'undefined' && browser.runtime) ? browser : chrome;
+
 console.log('CarmaClouds background service worker initialized');
 
 // Supabase configuration for direct API calls
@@ -18,7 +21,7 @@ function keepAlive() {
   }
 
   keepAliveInterval = setInterval(() => {
-    if (chrome.runtime?.id) {
+    if (browserAPI.runtime?.id) {
       console.log('🔄 Keep-alive ping');
     } else {
       clearInterval(keepAliveInterval);
@@ -30,7 +33,7 @@ function keepAlive() {
 keepAlive();
 
 // Listen for messages from content scripts
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Restart keep-alive on every message
   keepAlive();
   console.log('🔔 Background received message:', message.type || message.action);
@@ -98,7 +101,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Handle notifyPopupUpdate - notify open popup sheets of updated character data
   if (message.action === 'notifyPopupUpdate') {
     console.log('🔔 Notifying popup sheets of character data update');
-    chrome.runtime.sendMessage({
+    browserAPI.runtime.sendMessage({
       type: 'UPDATE_CHARACTER_DATA',
       data: message.data
     }).catch(() => {
@@ -153,7 +156,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // Handle get character data request
 async function handleGetCharacterData() {
   try {
-    const result = await chrome.storage.local.get(['carmaclouds_characters', 'activeCharacterId']);
+    const result = await browserAPI.storage.local.get(['carmaclouds_characters', 'activeCharacterId']);
     const characters = result.carmaclouds_characters || [];
     const activeCharacterId = result.activeCharacterId;
 
@@ -201,7 +204,7 @@ async function handleStoreCharacterData(characterData, slotId) {
     console.log('💾 Storing character to slot:', slotId || 'default');
 
     // Get current characters array
-    const result = await chrome.storage.local.get('carmaclouds_characters');
+    const result = await browserAPI.storage.local.get('carmaclouds_characters');
     const characters = result.carmaclouds_characters || [];
 
     // Find character by ID
@@ -234,7 +237,7 @@ async function handleStoreCharacterData(characterData, slotId) {
     }
 
     // Save back to storage
-    await chrome.storage.local.set({ carmaclouds_characters: characters });
+    await browserAPI.storage.local.set({ carmaclouds_characters: characters });
     console.log('✅ Character data stored successfully to carmaclouds_characters');
     console.log('   Total characters in array:', characters.length);
 
@@ -249,7 +252,7 @@ async function handleStoreCharacterData(characterData, slotId) {
 // Converts carmaclouds storage format to old rollcloud format
 async function handleGetAllCharacterProfiles() {
   try {
-    const result = await chrome.storage.local.get('carmaclouds_characters');
+    const result = await browserAPI.storage.local.get('carmaclouds_characters');
     const characters = result.carmaclouds_characters || [];
 
     // Convert carmaclouds array format to rollcloud object format
@@ -288,7 +291,7 @@ async function handleGetAllCharacterProfiles() {
 async function handleSetActiveCharacter(characterId) {
   try {
     // Verify character exists
-    const result = await chrome.storage.local.get('carmaclouds_characters');
+    const result = await browserAPI.storage.local.get('carmaclouds_characters');
     const characters = result.carmaclouds_characters || [];
     const character = characters.find(char => char.id === characterId);
 
@@ -300,7 +303,7 @@ async function handleSetActiveCharacter(characterId) {
     }
 
     // Set active character ID
-    await chrome.storage.local.set({ activeCharacterId: characterId });
+    await browserAPI.storage.local.set({ activeCharacterId: characterId });
 
     return {
       success: true,
@@ -319,7 +322,7 @@ async function handleSetActiveCharacter(characterId) {
 async function handleRequestPreparedData() {
   try {
     // Find Roll20 tab
-    const tabs = await chrome.tabs.query({ url: '*://app.roll20.net/*' });
+    const tabs = await browserAPI.tabs.query({ url: '*://app.roll20.net/*' });
     
     if (tabs.length === 0) {
       return {
@@ -329,7 +332,7 @@ async function handleRequestPreparedData() {
     }
 
     // Request prepared data from Roll20 content script
-    const response = await chrome.tabs.sendMessage(tabs[0].id, {
+    const response = await browserAPI.tabs.sendMessage(tabs[0].id, {
       type: 'REQUEST_PREPARED_DATA'
     });
 
@@ -403,11 +406,11 @@ async function handleSyncToCarmaClouds(characterData) {
   try {
     console.log('💾 Step 1: Starting sync for character:', characterData.name);
 
-    // Store character data in chrome.storage.local
+    // Store character data in browserAPI.storage.local
     const storageKey = `carmaclouds_character_${characterData.name || 'unknown'}`;
     console.log('💾 Step 2: Saving individual character with key:', storageKey);
 
-    await chrome.storage.local.set({
+    await browserAPI.storage.local.set({
       [storageKey]: {
         ...characterData,
         syncedAt: new Date().toISOString(),
@@ -418,7 +421,7 @@ async function handleSyncToCarmaClouds(characterData) {
 
     // Also update the characters list
     console.log('💾 Step 3: Getting characters list...');
-    const result = await chrome.storage.local.get('carmaclouds_characters');
+    const result = await browserAPI.storage.local.get('carmaclouds_characters');
     const characters = result.carmaclouds_characters || [];
     console.log('✅ Step 3: Found', characters.length, 'existing characters');
 
@@ -443,14 +446,14 @@ async function handleSyncToCarmaClouds(characterData) {
     }
 
     console.log('💾 Step 5: Saving updated characters list...');
-    await chrome.storage.local.set({ carmaclouds_characters: characters });
+    await browserAPI.storage.local.set({ carmaclouds_characters: characters });
     console.log('✅ Step 5: Characters list saved');
 
     // Set as active character if none is set
-    const storageCheck = await chrome.storage.local.get('activeCharacterId');
+    const storageCheck = await browserAPI.storage.local.get('activeCharacterId');
     if (!storageCheck.activeCharacterId && characterData.id) {
       console.log('💾 Step 6: Setting as active character:', characterData.id);
-      await chrome.storage.local.set({ activeCharacterId: characterData.id });
+      await browserAPI.storage.local.set({ activeCharacterId: characterData.id });
       console.log('✅ Step 6: Active character ID set');
     }
 
@@ -461,7 +464,7 @@ async function handleSyncToCarmaClouds(characterData) {
       console.log('💾 Step 7: Syncing to Supabase database...');
 
       // Get auth info to include user_id_dicecloud and username
-      const authResult = await chrome.storage.local.get(['diceCloudUserId', 'username']);
+      const authResult = await browserAPI.storage.local.get(['diceCloudUserId', 'username']);
 
       // Prepare character data for Supabase - only raw data at sync time
       // VTT-specific parsed data (roll20_data, owlbear_data, foundry_data) is added when pushing to VTT
@@ -504,9 +507,9 @@ async function handleSyncToCarmaClouds(characterData) {
 
     // Send message to popup to notify about the sync
     try {
-      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      const tabs = await browserAPI.tabs.query({ active: true, currentWindow: true });
       if (tabs.length > 0) {
-        await chrome.tabs.sendMessage(tabs[0].id, {
+        await browserAPI.tabs.sendMessage(tabs[0].id, {
           action: 'dataSynced',
           characterName: characterData.name
         });
@@ -532,7 +535,7 @@ async function handleSyncToCarmaClouds(characterData) {
 }
 
 // Handle extension installation
-chrome.runtime.onInstalled.addListener((details) => {
+browserAPI.runtime.onInstalled.addListener((details) => {
   console.log('CarmaClouds extension installed/updated:', details.reason);
   
   if (details.reason === 'install') {

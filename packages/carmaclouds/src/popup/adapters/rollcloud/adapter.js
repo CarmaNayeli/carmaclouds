@@ -6,6 +6,9 @@
 
 import { parseForRollCloud } from '../../../content/dicecloud-extraction.js';
 
+// Detect browser API (Firefox uses 'browser', Chrome uses 'chrome')
+const browserAPI = (typeof browser !== 'undefined' && browser.runtime) ? browser : chrome;
+
 export async function init(containerEl) {
   console.log('Initializing RollCloud adapter...');
 
@@ -14,7 +17,7 @@ export async function init(containerEl) {
     containerEl.innerHTML = '<div class="loading">Loading RollCloud...</div>';
 
     // Fetch synced characters from storage
-    const result = await chrome.storage.local.get('carmaclouds_characters');
+    const result = await browserAPI.storage.local.get('carmaclouds_characters') || {};
     const characters = result.carmaclouds_characters || [];
 
     console.log('Found', characters.length, 'synced characters');
@@ -33,7 +36,7 @@ export async function init(containerEl) {
     }
 
     // Fetch the RollCloud popup HTML
-    const htmlPath = chrome.runtime.getURL('src/popup/adapters/rollcloud/popup.html');
+    const htmlPath = browserAPI.runtime.getURL('src/popup/adapters/rollcloud/popup.html');
     const response = await fetch(htmlPath);
     const html = await response.text();
 
@@ -50,7 +53,7 @@ export async function init(containerEl) {
     containerEl.appendChild(wrapper);
 
     // Load and inject the CSS with scoping
-    const cssPath = chrome.runtime.getURL('src/popup/adapters/rollcloud/popup.css');
+    const cssPath = browserAPI.runtime.getURL('src/popup/adapters/rollcloud/popup.css');
     const cssResponse = await fetch(cssPath);
     let css = await cssResponse.text();
 
@@ -137,7 +140,7 @@ export async function init(containerEl) {
                   dicecloud_character_id: character.id
                 };
 
-                await chrome.runtime.sendMessage({
+                await browserAPI.runtime.sendMessage({
                   action: 'storeCharacterData',
                   data: dataToStore,
                   slotId: character.slotId || 'slot-1'
@@ -145,7 +148,7 @@ export async function init(containerEl) {
                 console.log('✅ Local storage updated with parsed Roll20 data');
 
                 // Notify any open popup to refresh and show the updated character
-                chrome.runtime.sendMessage({
+                browserAPI.runtime.sendMessage({
                   action: 'dataSynced',
                   characterName: dataToStore.name || 'Character'
                 }).catch(() => {
@@ -156,13 +159,13 @@ export async function init(containerEl) {
               }
 
               // Get the active Roll20 tab
-              const tabs = await chrome.tabs.query({ url: '*://app.roll20.net/*' });
+              const tabs = await browserAPI.tabs.query({ url: '*://app.roll20.net/*' });
               if (tabs.length === 0) {
                 throw new Error('No Roll20 tab found. Please open Roll20 first.');
               }
 
               // Send character data to Roll20 content script
-              await chrome.tabs.sendMessage(tabs[0].id, {
+              await browserAPI.tabs.sendMessage(tabs[0].id, {
                 type: 'PUSH_CHARACTER',
                 data: parsedData
               });
@@ -195,7 +198,7 @@ export async function init(containerEl) {
     }
 
     // Listen for data sync notifications to refresh the UI
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message.action === 'dataSynced') {
         console.log('📥 RollCloud adapter received data sync notification:', message.characterName);
         // Reload the entire adapter to show updated character data

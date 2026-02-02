@@ -53,13 +53,13 @@
     console.log("Initializing OwlCloud adapter...");
     try {
       containerEl.innerHTML = '<div class="loading">Loading OwlCloud...</div>';
-      const result = await chrome.storage.local.get(["carmaclouds_characters", "diceCloudUserId"]);
+      const result = await browserAPI.storage.local.get(["carmaclouds_characters", "diceCloudUserId"]) || {};
       const characters = result.carmaclouds_characters || [];
       const diceCloudUserId = result.diceCloudUserId;
       console.log("Found", characters.length, "synced characters");
       console.log("DiceCloud User ID:", diceCloudUserId);
       const character = characters.length > 0 ? characters[0] : null;
-      const htmlPath = chrome.runtime.getURL("src/popup/adapters/owlcloud/popup.html");
+      const htmlPath = browserAPI.runtime.getURL("src/popup/adapters/owlcloud/popup.html");
       const response = await fetch(htmlPath);
       const html = await response.text();
       const parser = new DOMParser();
@@ -70,7 +70,7 @@
       wrapper.innerHTML = mainContent ? mainContent.innerHTML : doc.body.innerHTML;
       containerEl.innerHTML = "";
       containerEl.appendChild(wrapper);
-      const cssPath = chrome.runtime.getURL("src/popup/adapters/owlcloud/popup.css");
+      const cssPath = browserAPI.runtime.getURL("src/popup/adapters/owlcloud/popup.css");
       const cssResponse = await fetch(cssPath);
       let css = await cssResponse.text();
       css = css.replace(/(^|\})\s*([^{}@]+)\s*\{/gm, (match, closer, selector) => {
@@ -246,7 +246,7 @@
           }
         });
       }
-      chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.action === "dataSynced") {
           console.log("\u{1F4E5} OwlCloud adapter received data sync notification:", message.characterName);
           init2(containerEl);
@@ -262,8 +262,10 @@
     `;
     }
   }
+  var browserAPI;
   var init_adapter2 = __esm({
     "src/popup/adapters/owlcloud/adapter.js"() {
+      browserAPI = typeof browser !== "undefined" && browser.runtime ? browser : chrome;
     }
   });
 
@@ -705,7 +707,7 @@
     console.log("Initializing RollCloud adapter...");
     try {
       containerEl.innerHTML = '<div class="loading">Loading RollCloud...</div>';
-      const result = await chrome.storage.local.get("carmaclouds_characters");
+      const result = await browserAPI2.storage.local.get("carmaclouds_characters") || {};
       const characters = result.carmaclouds_characters || [];
       console.log("Found", characters.length, "synced characters");
       const character = characters.length > 0 ? characters[0] : null;
@@ -716,7 +718,7 @@
         parsedData = parseForRollCloud(character.raw);
         console.log("Parsed data:", parsedData);
       }
-      const htmlPath = chrome.runtime.getURL("src/popup/adapters/rollcloud/popup.html");
+      const htmlPath = browserAPI2.runtime.getURL("src/popup/adapters/rollcloud/popup.html");
       const response = await fetch(htmlPath);
       const html = await response.text();
       const parser = new DOMParser();
@@ -727,7 +729,7 @@
       wrapper.innerHTML = mainContent ? mainContent.innerHTML : doc.body.innerHTML;
       containerEl.innerHTML = "";
       containerEl.appendChild(wrapper);
-      const cssPath = chrome.runtime.getURL("src/popup/adapters/rollcloud/popup.css");
+      const cssPath = browserAPI2.runtime.getURL("src/popup/adapters/rollcloud/popup.css");
       const cssResponse = await fetch(cssPath);
       let css = await cssResponse.text();
       css = css.replace(/(^|\})\s*([^{}@]+)\s*\{/gm, (match, closer, selector) => {
@@ -798,13 +800,13 @@
                     id: character.id,
                     dicecloud_character_id: character.id
                   };
-                  await chrome.runtime.sendMessage({
+                  await browserAPI2.runtime.sendMessage({
                     action: "storeCharacterData",
                     data: dataToStore,
                     slotId: character.slotId || "slot-1"
                   });
                   console.log("\u2705 Local storage updated with parsed Roll20 data");
-                  chrome.runtime.sendMessage({
+                  browserAPI2.runtime.sendMessage({
                     action: "dataSynced",
                     characterName: dataToStore.name || "Character"
                   }).catch(() => {
@@ -813,11 +815,11 @@
                 } catch (storageError) {
                   console.warn("\u26A0\uFE0F Local storage update failed (non-fatal):", storageError);
                 }
-                const tabs = await chrome.tabs.query({ url: "*://app.roll20.net/*" });
+                const tabs = await browserAPI2.tabs.query({ url: "*://app.roll20.net/*" });
                 if (tabs.length === 0) {
                   throw new Error("No Roll20 tab found. Please open Roll20 first.");
                 }
-                await chrome.tabs.sendMessage(tabs[0].id, {
+                await browserAPI2.tabs.sendMessage(tabs[0].id, {
                   type: "PUSH_CHARACTER",
                   data: parsedData
                 });
@@ -847,7 +849,7 @@
             statusText.textContent = `Character synced: ${character.name}`;
         }
       }
-      chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      browserAPI2.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.action === "dataSynced") {
           console.log("\u{1F4E5} RollCloud adapter received data sync notification:", message.characterName);
           init3(containerEl);
@@ -863,9 +865,11 @@
     `;
     }
   }
+  var browserAPI2;
   var init_adapter3 = __esm({
     "src/popup/adapters/rollcloud/adapter.js"() {
       init_dicecloud_extraction();
+      browserAPI2 = typeof browser !== "undefined" && browser.runtime ? browser : chrome;
     }
   });
 
@@ -877,20 +881,21 @@
   });
 
   // src/popup/popup.js
+  var browserAPI3 = typeof browser !== "undefined" && browser.runtime ? browser : chrome;
   var loadedAdapters = {
     rollcloud: null,
     owlcloud: null,
     foundcloud: null
   };
   async function getSettings() {
-    const result = await chrome.storage.local.get("carmaclouds_settings") || {};
+    const result = await browserAPI3.storage.local.get("carmaclouds_settings") || {};
     return result.carmaclouds_settings || {
       lastActiveTab: "rollcloud",
       enabledVTTs: ["rollcloud", "owlcloud", "foundcloud"]
     };
   }
   async function saveSettings(settings) {
-    await chrome.storage.local.set({ carmaclouds_settings: settings });
+    await browserAPI3.storage.local.set({ carmaclouds_settings: settings });
   }
   function showLoginRequired(contentEl, tabName) {
     const tabNames = {
@@ -983,7 +988,7 @@
     modal.classList.remove("active");
   }
   async function getAuthToken() {
-    const result = await chrome.storage.local.get("dicecloud_auth_token");
+    const result = await browserAPI3.storage.local.get("dicecloud_auth_token");
     return result?.dicecloud_auth_token || null;
   }
   async function saveAuthToken(token, userId = null, username = null) {
@@ -995,13 +1000,13 @@
     if (username) {
       storageData.username = username;
     }
-    await chrome.storage.local.set(storageData);
+    await browserAPI3.storage.local.set(storageData);
     await updateAuthStatus();
     await updateAuthView();
     try {
       if (typeof SupabaseTokenManager !== "undefined") {
         const supabaseManager = new SupabaseTokenManager();
-        const result = await chrome.storage.local.get(["username", "diceCloudUserId"]);
+        const result = await browserAPI3.storage.local.get(["username", "diceCloudUserId"]);
         console.log("\u{1F4E4} Syncing to database with data:", {
           hasToken: !!token,
           userId: userId || result.diceCloudUserId || "none",
@@ -1026,7 +1031,7 @@
     await reloadCurrentTab();
   }
   async function clearAuthToken() {
-    await chrome.storage.local.remove("dicecloud_auth_token");
+    await browserAPI3.storage.local.remove("dicecloud_auth_token");
     updateAuthStatus();
     updateAuthView();
     await reloadCurrentTab();
@@ -1069,7 +1074,7 @@
       btn.disabled = true;
       btn.textContent = "\u23F3 Checking...";
       errorDiv.classList.add("hidden");
-      const tabs = await chrome.tabs.query({ url: "*://*.dicecloud.com/*" });
+      const tabs = await browserAPI3.tabs.query({ url: "*://*.dicecloud.com/*" });
       if (!tabs || tabs.length === 0) {
         errorDiv.innerHTML = '<div style="background: #0d4a30; color: #16a75a; padding: 12px; border-radius: 6px; border: 1px solid #16a75a;"><strong>Navigate to DiceCloud First</strong><br>Open <a href="https://dicecloud.com" target="_blank" style="color: #1bc76b; text-decoration: underline;">dicecloud.com</a> in a tab, log in, then click this button to connect.</div>';
         errorDiv.classList.remove("hidden");
@@ -1079,8 +1084,8 @@
       }
       try {
         let results;
-        if (typeof chrome !== "undefined" && chrome.scripting) {
-          results = await chrome.scripting.executeScript({
+        if (typeof chrome !== "undefined" && browserAPI3.scripting) {
+          results = await browserAPI3.scripting.executeScript({
             target: { tabId: tabs[0].id },
             func: () => {
               const authData2 = {
@@ -1128,72 +1133,74 @@
         } else if (typeof browser !== "undefined" && browser.tabs) {
           results = await browser.tabs.executeScript(tabs[0].id, {
             code: `
-            // Try to get auth data from localStorage, sessionStorage, or window object
-            const authData = {
-              localStorage: {},
-              sessionStorage: {},
-              meteor: null,
-              authToken: null
-            };
-            
-            // Check localStorage
-            for (let i = 0; i < localStorage.length; i++) {
-              const key = localStorage.key(i);
-              if (key && (key.includes('auth') || key.includes('token') || key.includes('meteor') || key.includes('login'))) {
-                authData.localStorage[key] = localStorage.getItem(key);
-              }
-            }
-            
-            // Check sessionStorage
-            for (let i = 0; i < sessionStorage.length; i++) {
-              const key = sessionStorage.key(i);
-              if (key && (key.includes('auth') || key.includes('token') || key.includes('meteor') || key.includes('login'))) {
-                authData.sessionStorage[key] = sessionStorage.getItem(key);
-              }
-            }
-            
-            // Check for Meteor/MongoDB auth (common in DiceCloud)
-            // Meteor stores auth data in localStorage with specific keys
-            const meteorUserId = localStorage.getItem('Meteor.userId');
-            const meteorLoginToken = localStorage.getItem('Meteor.loginToken');
-
-            if (meteorUserId || meteorLoginToken) {
-              authData.meteor = {
-                userId: meteorUserId,
-                loginToken: meteorLoginToken
+            (() => {
+              // Try to get auth data from localStorage, sessionStorage, or window object
+              const authData = {
+                localStorage: {},
+                sessionStorage: {},
+                meteor: null,
+                authToken: null
               };
 
-              // TODO: Fix username extraction - currently still returns 'DiceCloud User' as fallback
-              // Need to investigate why Meteor.user() doesn't return username properly
-              // May need to check localStorage for serialized user data or use different approach
-              // Try to get username from Meteor.user() if available
-              if (window.Meteor && window.Meteor.user) {
-                try {
-                  const user = window.Meteor.user();
-                  if (user) {
-                    authData.meteor.username = user.username ||
-                                               user.emails?.[0]?.address ||
-                                               user.profile?.username ||
-                                               user.profile?.name ||
-                                               null;
-                  }
-                } catch (e) {
-                  // Meteor.user() might not be available, that's okay
+              // Check localStorage
+              for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && (key.includes('auth') || key.includes('token') || key.includes('meteor') || key.includes('login'))) {
+                  authData.localStorage[key] = localStorage.getItem(key);
                 }
               }
-            }
-            
-            // Check for any global auth variables
-            if (window.authToken) authData.authToken = window.authToken;
-            if (window.token) authData.authToken = window.token;
-            
-            authData;
+
+              // Check sessionStorage
+              for (let i = 0; i < sessionStorage.length; i++) {
+                const key = sessionStorage.key(i);
+                if (key && (key.includes('auth') || key.includes('token') || key.includes('meteor') || key.includes('login'))) {
+                  authData.sessionStorage[key] = sessionStorage.getItem(key);
+                }
+              }
+
+              // Check for Meteor/MongoDB auth (common in DiceCloud)
+              // Meteor stores auth data in localStorage with specific keys
+              const meteorUserId = localStorage.getItem('Meteor.userId');
+              const meteorLoginToken = localStorage.getItem('Meteor.loginToken');
+
+              if (meteorUserId || meteorLoginToken) {
+                authData.meteor = {
+                  userId: meteorUserId,
+                  loginToken: meteorLoginToken
+                };
+
+                // TODO: Fix username extraction - currently still returns 'DiceCloud User' as fallback
+                // Need to investigate why Meteor.user() doesn't return username properly
+                // May need to check localStorage for serialized user data or use different approach
+                // Try to get username from Meteor.user() if available
+                if (window.Meteor && window.Meteor.user) {
+                  try {
+                    const user = window.Meteor.user();
+                    if (user) {
+                      authData.meteor.username = user.username ||
+                                                 user.emails?.[0]?.address ||
+                                                 user.profile?.username ||
+                                                 user.profile?.name ||
+                                                 null;
+                    }
+                  } catch (e) {
+                    // Meteor.user() might not be available, that's okay
+                  }
+                }
+              }
+
+              // Check for any global auth variables
+              if (window.authToken) authData.authToken = window.authToken;
+              if (window.token) authData.authToken = window.token;
+
+              return authData;
+            })();
           `
           });
         } else {
           throw new Error("No scripting API available");
         }
-        const authData = results[0]?.result;
+        const authData = typeof chrome !== "undefined" && browserAPI3.scripting ? results[0]?.result : results[0];
         console.log("Auth data from DiceCloud page:", authData);
         let token = null;
         let userId = null;
@@ -1226,10 +1233,11 @@
       } catch (scriptError) {
         console.warn("Could not inject script:", scriptError);
       }
-      const cookies = await chrome.cookies.getAll({ domain: ".dicecloud.com" });
+      const cookies = await browserAPI3.cookies.getAll({ domain: ".dicecloud.com" });
       console.log("Available DiceCloud cookies:", cookies.map((c) => ({ name: c.name, domain: c.domain, value: c.value ? "***" : "empty" })));
       const authCookie = cookies.find(
-        (c) => c.name === "dicecloud_auth" || c.name === "meteor_login_token" || c.name === "authToken" || c.name === "loginToken" || c.name === "userId" || c.name === "token" || c.name.includes("auth") || c.name.includes("token")
+        (c) => c.name === "dicecloud_auth" || c.name === "meteor_login_token" || c.name === "authToken" || c.name === "loginToken" || c.name === "userId" || c.name === "token" || c.name === "x_mtok" || // Meteor token cookie used by DiceCloud
+        c.name.includes("auth") || c.name.includes("token")
       );
       if (authCookie && authCookie.value) {
         await saveAuthToken(authCookie.value);
@@ -1320,7 +1328,7 @@
         return;
       }
       const supabaseManager = new SupabaseTokenManager();
-      const result = await chrome.storage.local.get(["diceCloudToken", "dicecloud_auth_token", "username", "tokenExpires", "diceCloudUserId", "authId"]);
+      const result = await browserAPI3.storage.local.get(["diceCloudToken", "dicecloud_auth_token", "username", "tokenExpires", "diceCloudUserId", "authId"]);
       console.log("\u{1F50D} Storage contents:", {
         diceCloudToken: result.diceCloudToken ? "***found***" : "NOT FOUND",
         dicecloud_auth_token: result.dicecloud_auth_token ? "***found***" : "NOT FOUND",
@@ -1355,7 +1363,7 @@
         const refreshResult = await supabaseManager.refreshToken();
         if (refreshResult.success) {
           console.log("\u2705 Auth token refreshed successfully");
-          await chrome.storage.local.set({
+          await browserAPI3.storage.local.set({
             diceCloudToken: refreshResult.token,
             tokenExpires: refreshResult.expires,
             diceCloudUserId: refreshResult.userId
@@ -1434,19 +1442,19 @@
     await updateAuthStatus();
     document.getElementById("open-website").addEventListener("click", (e) => {
       e.preventDefault();
-      chrome.tabs.create({ url: "https://carmaclouds.vercel.app" });
+      browserAPI3.tabs.create({ url: "https://carmaclouds.vercel.app" });
     });
     document.getElementById("open-github").addEventListener("click", (e) => {
       e.preventDefault();
-      chrome.tabs.create({ url: "https://github.com/CarmaNayeli/carmaclouds" });
+      browserAPI3.tabs.create({ url: "https://github.com/CarmaNayeli/carmaclouds" });
     });
     document.getElementById("open-issues").addEventListener("click", (e) => {
       e.preventDefault();
-      chrome.tabs.create({ url: "https://github.com/CarmaNayeli/carmaclouds/issues" });
+      browserAPI3.tabs.create({ url: "https://github.com/CarmaNayeli/carmaclouds/issues" });
     });
     document.getElementById("open-sponsor").addEventListener("click", (e) => {
       e.preventDefault();
-      chrome.tabs.create({ url: "https://github.com/sponsors/CarmaNayeli/" });
+      browserAPI3.tabs.create({ url: "https://github.com/sponsors/CarmaNayeli/" });
     });
     const syncBtn = document.getElementById("syncToCarmaCloudsBtn");
     if (syncBtn) {
@@ -1465,14 +1473,14 @@
       btn.innerHTML = "\u23F3 Syncing...";
       statusDiv.textContent = "Fetching character data from DiceCloud...";
       statusDiv.style.color = "#b0b0b0";
-      const response = await chrome.runtime.sendMessage({ action: "getCharacterData" });
+      const response = await browserAPI3.runtime.sendMessage({ action: "getCharacterData" });
       if (!response || !response.success || !response.data) {
         throw new Error("No character data available. Please sync from DiceCloud first.");
       }
       const characterData = response.data;
       console.log("\u{1F4E6} Character data received:", characterData);
       statusDiv.textContent = "Storing character locally...";
-      const existingData = await chrome.storage.local.get("carmaclouds_characters");
+      const existingData = await browserAPI3.storage.local.get("carmaclouds_characters");
       const characters = existingData.carmaclouds_characters || [];
       const existingIndex = characters.findIndex((c) => c.id === characterData.id);
       if (existingIndex >= 0) {
@@ -1480,12 +1488,12 @@
       } else {
         characters.unshift(characterData);
       }
-      await chrome.storage.local.set({ carmaclouds_characters: characters });
+      await browserAPI3.storage.local.set({ carmaclouds_characters: characters });
       console.log("\u2705 Character stored in local storage");
       statusDiv.textContent = "Syncing to database...";
       if (typeof SupabaseTokenManager !== "undefined") {
         const supabaseManager = new SupabaseTokenManager();
-        const authResult = await chrome.storage.local.get(["diceCloudUserId", "username"]);
+        const authResult = await browserAPI3.storage.local.get(["diceCloudUserId", "username"]);
         const dbResult = await supabaseManager.storeCharacter({
           ...characterData,
           user_id_dicecloud: authResult.diceCloudUserId,
