@@ -64,6 +64,24 @@
                 const SUPABASE_URL = "https://luiesmfjdcmpywavvfqm.supabase.co";
                 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aWVzbWZqZGNtcHl3YXZ2ZnFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4ODYxNDksImV4cCI6MjA4NTQ2MjE0OX0.oqjHFf2HhCLcanh0HVryoQH7iSV7E9dHHZJdYehxZ0U";
                 try {
+                  console.log("\u{1F4DD} Deactivating other characters...");
+                  const deactivateResponse = await fetch(
+                    `${SUPABASE_URL}/rest/v1/clouds_characters?user_id_dicecloud=eq.${diceCloudUserId}`,
+                    {
+                      method: "PATCH",
+                      headers: {
+                        "apikey": SUPABASE_ANON_KEY,
+                        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+                        "Content-Type": "application/json"
+                      },
+                      body: JSON.stringify({
+                        is_active: false
+                      })
+                    }
+                  );
+                  if (!deactivateResponse.ok) {
+                    console.warn("\u26A0\uFE0F Failed to deactivate other characters, continuing anyway...");
+                  }
                   const updateResponse = await fetch(
                     `${SUPABASE_URL}/rest/v1/clouds_characters?on_conflict=user_id_dicecloud,dicecloud_character_id`,
                     {
@@ -82,6 +100,7 @@
                         class: character.preview?.class || null,
                         race: character.preview?.race || null,
                         raw_dicecloud_data: character.raw,
+                        is_active: true,
                         updated_at: (/* @__PURE__ */ new Date()).toISOString()
                       })
                     }
