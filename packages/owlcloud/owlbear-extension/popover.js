@@ -1649,6 +1649,12 @@ async function checkForActiveCharacter() {
       let characterData;
       if (data.character.raw_dicecloud_data) {
         console.log('🔄 Parsing raw DiceCloud data...');
+        console.log('📦 Raw data structure:', {
+          hasCreatures: !!data.character.raw_dicecloud_data.creatures,
+          hasCreatureVariables: !!data.character.raw_dicecloud_data.creatureVariables,
+          hasCreatureProperties: !!data.character.raw_dicecloud_data.creatureProperties,
+          keys: Object.keys(data.character.raw_dicecloud_data)
+        });
         try {
           // The raw_dicecloud_data contains the API response with creatures, variables, properties
           characterData = parseCharacterData(data.character.raw_dicecloud_data, data.character.dicecloud_character_id);

@@ -1218,6 +1218,12 @@ This will disconnect the character from this room. You can sync a different char
         let characterData;
         if (data.character.raw_dicecloud_data) {
           console.log("\u{1F504} Parsing raw DiceCloud data...");
+          console.log("\u{1F4E6} Raw data structure:", {
+            hasCreatures: !!data.character.raw_dicecloud_data.creatures,
+            hasCreatureVariables: !!data.character.raw_dicecloud_data.creatureVariables,
+            hasCreatureProperties: !!data.character.raw_dicecloud_data.creatureProperties,
+            keys: Object.keys(data.character.raw_dicecloud_data)
+          });
           try {
             characterData = parseCharacterData(data.character.raw_dicecloud_data, data.character.dicecloud_character_id);
             console.log("\u2705 Parsed character data:", characterData);
