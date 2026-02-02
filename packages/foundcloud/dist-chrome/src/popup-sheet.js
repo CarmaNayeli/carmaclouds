@@ -222,6 +222,12 @@
       }
       if (typeof window !== "undefined") {
         window.createThemeManager = createThemeManager;
+        if (!window.ThemeManager) {
+          window.ThemeManager = createThemeManager({
+            storageKey: "carmaclouds-theme",
+            eventName: "carmaclouds-theme-changed"
+          });
+        }
       }
     }
   });

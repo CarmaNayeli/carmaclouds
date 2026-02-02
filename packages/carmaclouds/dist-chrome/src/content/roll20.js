@@ -2917,6 +2917,50 @@
               window.carmacloudsPendingTimestamp = Date.now();
               debug.log("\u2705 Character data stored and ready for sheet request");
             }
+            try {
+              if (typeof SupabaseTokenManager !== "undefined") {
+                const supabaseManager = new SupabaseTokenManager();
+                let existingCharacter = null;
+                try {
+                  const existingResult = await supabaseManager.getCharacter(characterData.id || formattedData.id);
+                  if (existingResult.success && existingResult.character) {
+                    existingCharacter = existingResult.character;
+                    debug.log("\u{1F50D} Found existing character in database, preserving notification color");
+                  }
+                } catch (getError) {
+                  debug.log("\u26A0\uFE0F Could not check for existing character:", getError);
+                }
+                const characterForDB = {
+                  ...formattedData,
+                  id: characterData.id || formattedData.id,
+                  name: formattedData.name || characterData.name,
+                  source: "rollcloud",
+                  lastUpdated: (/* @__PURE__ */ new Date()).toISOString(),
+                  rawData: characterData
+                  // Keep raw data for backup
+                };
+                if (existingCharacter && existingCharacter.notificationColor) {
+                  characterForDB.notificationColor = existingCharacter.notificationColor;
+                  debug.log("\u{1F3A8} Preserved notification color from database:", existingCharacter.notificationColor);
+                } else if (formattedData.notificationColor) {
+                  characterForDB.notificationColor = formattedData.notificationColor;
+                  debug.log("\u{1F3A8} Using notification color from formatted data:", formattedData.notificationColor);
+                } else {
+                  characterForDB.notificationColor = "#3498db";
+                  debug.log("\u{1F3A8} Using default notification color");
+                }
+                const dbResult = await supabaseManager.storeCharacter(characterForDB);
+                if (dbResult.success) {
+                  debug.log("\u2705 Character synced to database:", formattedData.name);
+                } else {
+                  debug.log("\u26A0\uFE0F Failed to sync character to database:", dbResult.error);
+                }
+              } else {
+                debug.log("\u26A0\uFE0F SupabaseTokenManager not available, skipping database sync");
+              }
+            } catch (dbError) {
+              debug.log("\u26A0\uFE0F Database sync error:", dbError);
+            }
             debug.log("\u2705 Character data prepared - waiting for sheet to request it");
             sendResponse({ success: true, message: "Character data prepared and waiting for sheet" });
           } catch (error) {

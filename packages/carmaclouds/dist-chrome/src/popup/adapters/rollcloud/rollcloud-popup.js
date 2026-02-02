@@ -514,7 +514,8 @@
         if (message.action === "dataSynced") {
           debug.log("\u{1F4E5} Received data sync notification:", message);
           loadCharacterData();
-          showSuccess(`${message.characterName} synced successfully!`);
+          const characterName = message.characterName || "Character";
+          showSuccess(`${characterName} synced successfully!`);
         }
       });
       let lastCharacterCount = 0;

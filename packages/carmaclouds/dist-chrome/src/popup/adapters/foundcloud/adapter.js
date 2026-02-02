@@ -31,6 +31,7 @@
       throw new Error("Invalid raw data format");
     }
     const { creature, variables, properties } = rawData;
+    const characterName2 = creature.name || "";
     let race = "Unknown";
     let characterClass = "";
     let level = 0;
@@ -241,7 +242,7 @@
       return finalAC;
     };
     return {
-      name: characterName,
+      name: characterName2,
       race,
       class: characterClass || "Unknown",
       level,

@@ -286,6 +286,18 @@
         console.log("\u2705 Step 6: Active character ID set");
       }
       console.log("\u{1F389} Character successfully synced to CarmaClouds storage");
+      try {
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (tabs.length > 0) {
+          await chrome.tabs.sendMessage(tabs[0].id, {
+            action: "dataSynced",
+            characterName: characterData.name
+          });
+          console.log("\u{1F4E4} Sent dataSynced message to popup");
+        }
+      } catch (tabError) {
+        console.log("\u26A0\uFE0F Could not send sync notification to popup:", tabError);
+      }
       return {
         success: true,
         message: "Character synced successfully",

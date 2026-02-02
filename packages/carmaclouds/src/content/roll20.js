@@ -1277,6 +1277,18 @@ window.browserAPI = browserAPI;
           if (typeof SupabaseTokenManager !== 'undefined') {
             const supabaseManager = new SupabaseTokenManager();
             
+            // First, check if character exists in database to preserve notification color
+            let existingCharacter = null;
+            try {
+              const existingResult = await supabaseManager.getCharacter(characterData.id || formattedData.id);
+              if (existingResult.success && existingResult.character) {
+                existingCharacter = existingResult.character;
+                debug.log('🔍 Found existing character in database, preserving notification color');
+              }
+            } catch (getError) {
+              debug.log('⚠️ Could not check for existing character:', getError);
+            }
+            
             // Prepare character data for database storage
             const characterForDB = {
               ...formattedData,
@@ -1286,6 +1298,18 @@ window.browserAPI = browserAPI;
               lastUpdated: new Date().toISOString(),
               rawData: characterData // Keep raw data for backup
             };
+            
+            // Preserve notification color from database if it exists, otherwise use current
+            if (existingCharacter && existingCharacter.notificationColor) {
+              characterForDB.notificationColor = existingCharacter.notificationColor;
+              debug.log('🎨 Preserved notification color from database:', existingCharacter.notificationColor);
+            } else if (formattedData.notificationColor) {
+              characterForDB.notificationColor = formattedData.notificationColor;
+              debug.log('🎨 Using notification color from formatted data:', formattedData.notificationColor);
+            } else {
+              characterForDB.notificationColor = '#3498db'; // Default color
+              debug.log('🎨 Using default notification color');
+            }
             
             // Store character in database
             const dbResult = await supabaseManager.storeCharacter(characterForDB);

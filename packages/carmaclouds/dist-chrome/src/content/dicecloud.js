@@ -109,7 +109,6 @@
       }
     });
     console.log("CarmaClouds: Property types in character:", propertyTypes);
-    let characterName2 = creature.name || "";
     if (creature.race) {
       console.log("CarmaClouds: Found race on creature:", creature.race);
       characterRace = creature.race;
@@ -260,11 +259,11 @@
         console.log("CarmaClouds: No race variables found");
       }
     }
-    console.log("CarmaClouds: Character preview:", characterName2, characterLevel, characterRace, characterClass);
+    console.log("CarmaClouds: Character preview:", characterName, characterLevel, characterRace, characterClass);
     const characterData = {
       // Metadata
       id: creature._id || characterId,
-      name: characterName2,
+      name: characterName,
       url: window.location.href,
       timestamp: (/* @__PURE__ */ new Date()).toISOString(),
       source: "dicecloud",

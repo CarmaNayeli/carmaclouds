@@ -420,6 +420,12 @@
       }
       if (typeof window !== "undefined") {
         window.createThemeManager = createThemeManager;
+        if (!window.ThemeManager) {
+          window.ThemeManager = createThemeManager({
+            storageKey: "carmaclouds-theme",
+            eventName: "carmaclouds-theme-changed"
+          });
+        }
       }
     }
   });
@@ -6828,7 +6834,7 @@
       const options = [];
       if (action.attackRoll) {
         let formula = action.attackRoll;
-        if (typeof formula === "number" || !formula.includes("d20")) {
+        if (typeof formula === "number" || typeof formula === "string" && !formula.includes("d20")) {
           const bonus = parseInt(formula);
           formula = bonus >= 0 ? `1d20+${bonus}` : `1d20${bonus}`;
         }
