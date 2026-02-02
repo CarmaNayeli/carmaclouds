@@ -1356,8 +1356,15 @@ This will disconnect the character from this room. You can sync a different char
   async function fetchAllCharacters() {
     try {
       const playerId = await OBR.player.getId();
+      let queryParams = "fields=list";
+      if (currentUser) {
+        queryParams += `&supabase_user_id=${encodeURIComponent(currentUser.id)}`;
+      } else {
+        queryParams += `&owlbear_player_id=${encodeURIComponent(playerId)}`;
+      }
+      console.log("\u{1F50D} Fetching all characters with query:", queryParams);
       const response = await fetch(
-        `${SUPABASE_URL}/functions/v1/characters?owlbear_player_id=${encodeURIComponent(playerId)}&fields=list`,
+        `${SUPABASE_URL}/functions/v1/characters?${queryParams}`,
         { headers: SUPABASE_HEADERS }
       );
       if (!response.ok) {
@@ -1365,9 +1372,17 @@ This will disconnect the character from this room. You can sync a different char
         return;
       }
       const data = await response.json();
+      console.log("\u{1F4CB} Received characters:", data.characters?.length || 0);
       if (data.success && data.characters && data.characters.length > 0) {
         allCharacters = data.characters;
         displayCharacterList();
+      } else {
+        console.log("\u2139\uFE0F No characters found, hiding character list");
+        allCharacters = [];
+        const characterListSection = document.getElementById("character-list-section");
+        if (characterListSection) {
+          characterListSection.style.display = "none";
+        }
       }
     } catch (error) {
       console.error("Error fetching all characters:", error);
@@ -2252,6 +2267,21 @@ This will disconnect the character from this room. You can sync a different char
     if (unsyncBtn) {
       unsyncBtn.style.display = "none";
     }
+    const statsContent = document.getElementById("stats-content");
+    const actionsContent = document.getElementById("actions-content");
+    const spellsContent = document.getElementById("spells-content");
+    const featuresContent = document.getElementById("features-content");
+    const inventoryContent = document.getElementById("inventory-content");
+    if (statsContent)
+      statsContent.innerHTML = "";
+    if (actionsContent)
+      actionsContent.innerHTML = "";
+    if (spellsContent)
+      spellsContent.innerHTML = "";
+    if (featuresContent)
+      featuresContent.innerHTML = "";
+    if (inventoryContent)
+      inventoryContent.innerHTML = "";
   }
   syncCharacterBtn.addEventListener("click", () => {
     localStorage.removeItem("owlcloud_manual_unsync");

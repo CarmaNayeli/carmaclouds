@@ -1465,6 +1465,9 @@ window.handleFetchCharacter = async function() {
 
   if (!fetchBtn || !statusDiv) return;
 
+  // Clear manual unsync flag to allow syncing again
+  localStorage.removeItem('owlcloud_manual_unsync');
+
   // Show loading state
   fetchBtn.disabled = true;
   fetchBtn.textContent = '⏳ Fetching...';
@@ -1823,10 +1826,20 @@ async function fetchAllCharacters() {
   try {
     const playerId = await OBR.player.getId();
 
-    // Call unified characters edge function to get all characters
-    // Note: Getting all characters by owlbear_player_id may require backend enhancement
+    // Build query parameters - prefer user ID if authenticated for cross-device sync
+    let queryParams = 'fields=list';
+    if (currentUser) {
+      // If authenticated, fetch by Supabase user ID to get all synced characters
+      queryParams += `&supabase_user_id=${encodeURIComponent(currentUser.id)}`;
+    } else {
+      // Fall back to Owlbear player ID if not authenticated
+      queryParams += `&owlbear_player_id=${encodeURIComponent(playerId)}`;
+    }
+
+    console.log('🔍 Fetching all characters with query:', queryParams);
+
     const response = await fetch(
-      `${SUPABASE_URL}/functions/v1/characters?owlbear_player_id=${encodeURIComponent(playerId)}&fields=list`,
+      `${SUPABASE_URL}/functions/v1/characters?${queryParams}`,
       { headers: SUPABASE_HEADERS }
     );
 
@@ -1836,10 +1849,18 @@ async function fetchAllCharacters() {
     }
 
     const data = await response.json();
+    console.log('📋 Received characters:', data.characters?.length || 0);
 
     if (data.success && data.characters && data.characters.length > 0) {
       allCharacters = data.characters;
       displayCharacterList();
+    } else {
+      console.log('ℹ️ No characters found, hiding character list');
+      allCharacters = [];
+      const characterListSection = document.getElementById('character-list-section');
+      if (characterListSection) {
+        characterListSection.style.display = 'none';
+      }
     }
   } catch (error) {
     console.error('Error fetching all characters:', error);
@@ -2993,6 +3014,19 @@ function showNoCharacter() {
   if (unsyncBtn) {
     unsyncBtn.style.display = 'none';
   }
+
+  // Clear all tab content
+  const statsContent = document.getElementById('stats-content');
+  const actionsContent = document.getElementById('actions-content');
+  const spellsContent = document.getElementById('spells-content');
+  const featuresContent = document.getElementById('features-content');
+  const inventoryContent = document.getElementById('inventory-content');
+
+  if (statsContent) statsContent.innerHTML = '';
+  if (actionsContent) actionsContent.innerHTML = '';
+  if (spellsContent) spellsContent.innerHTML = '';
+  if (featuresContent) featuresContent.innerHTML = '';
+  if (inventoryContent) inventoryContent.innerHTML = '';
 }
 
 // ============== Event Handlers ==============
