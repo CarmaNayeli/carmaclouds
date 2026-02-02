@@ -1229,13 +1229,24 @@ This will disconnect the character from this room. You can sync a different char
             }
           } else if (rawData.creature && rawData.variables && rawData.properties) {
             console.log("\u2705 Using pre-extracted character data");
-            const portraitUrl = rawData.creature.picture || rawData.creature.avatarPicture;
+            console.log("\u{1F50D} Creature object keys:", Object.keys(rawData.creature));
+            console.log("\u{1F50D} Creature picture fields:", {
+              picture: rawData.creature.picture,
+              avatarPicture: rawData.creature.avatarPicture,
+              avatar: rawData.creature.avatar,
+              image: rawData.creature.image,
+              pictureUrl: rawData.creature.pictureUrl
+            });
+            const portraitUrl = rawData.creature.picture || rawData.creature.avatarPicture || rawData.creature.avatar || rawData.creature.image;
+            const propertyTypes = new Set(rawData.properties.map((p) => p.type));
+            console.log("\u{1F50D} Property types in character data:", Array.from(propertyTypes).sort());
             try {
               characterData = window.parseForRollCloud ? window.parseForRollCloud(rawData) : parseForRollCloud(rawData);
               if (portraitUrl) {
                 characterData.picture = portraitUrl;
               }
               console.log("\u2705 Parsed extracted data:", characterData);
+              console.log("\u{1F50D} Features count:", characterData.features?.length || 0);
             } catch (parseError) {
               console.error("\u274C Failed to parse extracted data:", parseError);
               const vars = rawData.variables;

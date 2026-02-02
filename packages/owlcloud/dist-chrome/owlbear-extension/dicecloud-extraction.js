@@ -858,6 +858,37 @@ function parseForRollCloud(rawData) {
       requiresAttunement: item.requiresAttunement || false
     }));
 
+  // Parse features from properties (features, traits, proficiencies, exclude inactive)
+  // List of D&D 5e skills to exclude from features
+  const skillNames = ['acrobatics', 'animal handling', 'arcana', 'athletics', 'deception',
+                      'history', 'insight', 'intimidation', 'investigation', 'medicine',
+                      'nature', 'perception', 'performance', 'persuasion', 'religion',
+                      'sleight of hand', 'stealth', 'survival'];
+
+  const features = properties
+    .filter(p => {
+      if (p.inactive || p.disabled) return false;
+      if (p.type === 'feature' || p.type === 'trait' || p.type === 'buff') return true;
+
+      // For proficiencies, exclude skill proficiencies
+      if (p.type === 'proficiency') {
+        const name = (p.name || '').toLowerCase().trim();
+        return !skillNames.includes(name);
+      }
+
+      return false;
+    })
+    .map(feature => ({
+      id: feature._id,
+      name: feature.name || 'Unnamed Feature',
+      description: extractText(feature.description),
+      summary: extractText(feature.summary),
+      uses: feature.uses || 0,
+      usesUsed: feature.usesUsed || 0,
+      reset: feature.reset || '',
+      tags: feature.tags || []
+    }));
+
   return {
     name: characterName,
     race,
@@ -882,7 +913,8 @@ function parseForRollCloud(rawData) {
     resources,
     inventory,
     spells,
-    actions
+    actions,
+    features
   };
 }
 
