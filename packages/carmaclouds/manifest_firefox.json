@@ -40,7 +40,8 @@
         "https://app.roll20.net/*"
       ],
       "js": [
-        "src/content/roll20.js"
+        "src/content/roll20.js",
+        "src/content/character-sheet-overlay.js"
       ],
       "run_at": "document_idle"
     },
@@ -71,6 +72,11 @@
     "128": "icons/icon128.png"
   },
   "web_accessible_resources": [
-    "owlbear-extension/*"
+    "owlbear-extension/*",
+    "common/*",
+    "modules/*",
+    "src/popup-sheet.html",
+    "src/popup-sheet.js",
+    "src/content/dicecloud-extraction.js"
   ]
 }
