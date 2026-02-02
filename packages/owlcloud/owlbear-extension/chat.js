@@ -335,7 +335,7 @@ async function checkForActiveCharacter() {
 
     if (data.success && data.character) {
       currentCharacter = data.character;
-      characterNameEl.textContent = currentCharacter.name || 'Unknown Character';
+      characterNameEl.textContent = currentCharacter.character_name || 'Unknown Character';
     }
   } catch (error) {
     console.error('Error checking for active character:', error);
