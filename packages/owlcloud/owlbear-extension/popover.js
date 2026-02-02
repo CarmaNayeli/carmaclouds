@@ -15,6 +15,7 @@ let currentCharacter = null;
 let allCharacters = [];
 let isOwlbearReady = false;
 let rollMode = 'normal'; // 'advantage', 'normal', or 'disadvantage'
+let concentratingSpell = null; // Track which spell is currently being concentrated on
 
 // Dice+ integration
 const OWLCLOUD_EXTENSION_ID = 'com.owlcloud.extension';
@@ -1290,14 +1291,6 @@ function updateAuthUI() {
             style="width: 100%; padding: 8px; background: var(--theme-gradient); border: none; border-radius: 6px; color: white; font-weight: 600; cursor: pointer; transition: all 0.2s;">
             🔄 Fetch Character
           </button>
-          ${currentCharacter ? `
-          <button
-            onclick="handleUnsyncCharacter()"
-            id="unsync-character-btn"
-            style="width: 100%; padding: 8px; background: rgba(251, 146, 60, 0.2); border: 1px solid #FB923C; border-radius: 6px; color: #FB923C; font-weight: 600; cursor: pointer; transition: all 0.2s;">
-            🔓 Unsync from Owlbear
-          </button>
-          ` : ''}
           <button
             onclick="signOut()"
             style="width: 100%; padding: 8px; background: rgba(239, 68, 68, 0.2); border: 1px solid #EF4444; border-radius: 6px; color: #EF4444; font-weight: 600; cursor: pointer; transition: all 0.2s;">
@@ -1511,6 +1504,9 @@ window.handleUnsyncCharacter = async function() {
     localStorage.removeItem(cacheKey);
     localStorage.removeItem(versionKey);
 
+    // Set flag to prevent automatic re-syncing until manual sync
+    localStorage.setItem('owlcloud_manual_unsync', 'true');
+
     // Clear current character state
     currentCharacter = null;
     allCharacters = [];
@@ -1532,9 +1528,6 @@ window.handleUnsyncCharacter = async function() {
 
     // Update UI to show no character
     showNoCharacter();
-
-    // Update auth UI to remove the unsync button
-    updateAuthUI();
 
     // Hide status after 5 seconds
     setTimeout(() => {
@@ -1878,6 +1871,12 @@ function displayCharacter(character) {
   // Update UI
   characterSection.style.display = 'block';
   noCharacterSection.style.display = 'none';
+
+  // Show unsync button when character is loaded
+  const unsyncBtn = document.getElementById('unsync-character-btn');
+  if (unsyncBtn) {
+    unsyncBtn.style.display = 'block';
+  }
 
   // Get portrait URL for use in multiple places
   // Portrait data can be at top level or inside creature object
@@ -2514,6 +2513,9 @@ function populateActionsTab(character) {
       const attackRoll = action.attackRoll || '';
       const uses = action.uses;
 
+      // Diagnostic logging for uses
+      console.log(`[OwlCloud] Action "${action.name}" uses:`, uses);
+
       // Parse attack bonus from attackRoll string (like "+5" or "1d20+5")
       let attackBonus = 0;
       if (attackRoll) {
@@ -2730,8 +2732,18 @@ function populateSpellsTab(character) {
       // Create spell buttons - always include Cast, plus Attack/Damage/Healing as needed
       let spellButtonsHtml = '<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">';
 
-      // Cast button (always present)
-      spellButtonsHtml += `<button class="rest-btn" style="flex: 1; min-width: 100px;" onclick="event.stopPropagation(); castSpell('${(spell.name || 'Unknown Spell').replace(/'/g, "\\'")}', ${spellLevel})">✨ Cast</button>`;
+      // Cast button (always present) - for leveled spells, prompt for level choice
+      if (spellLevel > 0) {
+        spellButtonsHtml += `<button class="rest-btn" style="flex: 1; min-width: 100px;" onclick="event.stopPropagation(); promptCastSpell('${(spell.name || 'Unknown Spell').replace(/'/g, "\\'")}', ${spellLevel})">✨ Cast</button>`;
+      } else {
+        // Cantrips cast directly
+        spellButtonsHtml += `<button class="rest-btn" style="flex: 1; min-width: 100px;" onclick="event.stopPropagation(); castSpell('${(spell.name || 'Unknown Spell').replace(/'/g, "\\'")}', 0)">✨ Cast</button>`;
+      }
+
+      // Ritual cast button (for ritual spells, smaller)
+      if (isRitual) {
+        spellButtonsHtml += `<button class="rest-btn" style="padding: 8px 12px; font-size: 12px;" onclick="event.stopPropagation(); castSpellAsRitual('${(spell.name || 'Unknown Spell').replace(/'/g, "\\'")}')">📿 Ritual</button>`;
+      }
 
       // Attack button (if spell has attack roll)
       if (attackRoll && attackRoll.trim()) {
@@ -2781,7 +2793,7 @@ function populateSpellsTab(character) {
           <div class="spell-card-header" onclick="toggleFeatureCard('${spellCardId}')" style="cursor: pointer;">
             <span class="spell-name">${spell.name || 'Unknown Spell'}</span>
             <div class="spell-badges">
-              ${isConcentration ? '<span class="spell-concentration-badge">C</span>' : ''}
+              ${isConcentration ? `<span class="spell-concentration-badge ${concentratingSpell === spell.name ? 'active' : ''}" onclick="event.stopPropagation(); toggleConcentration('${(spell.name || '').replace(/'/g, "\\'")}')">C</span>` : ''}
               ${isRitual ? '<span class="spell-ritual-badge">R</span>' : ''}
               <span class="expand-icon">▼</span>
             </div>
@@ -2885,6 +2897,12 @@ function showNoCharacter() {
   characterSection.style.display = 'none';
   noCharacterSection.style.display = 'block';
   statusText.textContent = 'No character selected';
+
+  // Hide unsync button when no character is loaded
+  const unsyncBtn = document.getElementById('unsync-character-btn');
+  if (unsyncBtn) {
+    unsyncBtn.style.display = 'none';
+  }
 }
 
 // ============== Event Handlers ==============
@@ -2893,6 +2911,9 @@ function showNoCharacter() {
  * Sync character from DiceCloud
  */
 syncCharacterBtn.addEventListener('click', () => {
+  // Clear manual unsync flag to allow auto-syncing again
+  localStorage.removeItem('owlcloud_manual_unsync');
+
   // Send message to browser extension to sync character
   const message = {
     type: 'OWLCLOUD_SYNC_CHARACTER',
@@ -2946,7 +2967,7 @@ openChatWindowBtn.addEventListener('click', async () => {
     openChatWindowBtn.textContent = '💬 Open Chat Window';
   } else {
     // Set chat height to match CSS chat-container height
-    const chatHeight = 240;
+    const chatHeight = 300;
 
     // Open chat as a persistent popover at bottom-left
     await OBR.popover.open({
@@ -3040,18 +3061,29 @@ window.addEventListener('message', (event) => {
 
   switch (type) {
     case 'OWLCLOUD_ACTIVE_CHARACTER_RESPONSE':
+      // Check if user manually unsynced - don't auto-sync if they did
+      if (localStorage.getItem('owlcloud_manual_unsync') === 'true') {
+        console.log('ℹ️ Character auto-sync prevented - user manually unsynced. Use Sync button to re-sync.');
+        showNoCharacter();
+        break;
+      }
+
       if (data && data.character) {
         displayCharacter(data.character);
-        updateAuthUI(); // Update auth UI to show unsync button
       } else {
         showNoCharacter();
       }
       break;
 
     case 'OWLCLOUD_CHARACTER_UPDATED':
+      // Check if user manually unsynced - don't auto-update if they did
+      if (localStorage.getItem('owlcloud_manual_unsync') === 'true') {
+        console.log('ℹ️ Character auto-update prevented - user manually unsynced. Use Sync button to re-sync.');
+        break;
+      }
+
       if (data && data.character) {
         displayCharacter(data.character);
-        updateAuthUI(); // Update auth UI to show unsync button
         if (isOwlbearReady) {
           OBR.notification.show(`Character updated: ${data.character.name}`, 'SUCCESS');
         }
@@ -3650,19 +3682,102 @@ window.rollAttack = async function(actionName, attackBonus, damageFormula) {
 // ============== Spell Casting ==============
 
 /**
+ * Prompt for spell level and cast
+ */
+window.promptCastSpell = async function(spellName, baseLevel) {
+  if (!currentCharacter || !currentCharacter.spellSlots) return;
+
+  // Build list of available spell slots (baseLevel and higher)
+  const availableSlots = [];
+  for (let level = baseLevel; level <= 9; level++) {
+    const slotKey = `level${level}SpellSlots`;
+    const current = currentCharacter.spellSlots[slotKey] || 0;
+    if (current > 0) {
+      availableSlots.push({
+        level: level,
+        remaining: current
+      });
+    }
+  }
+
+  if (availableSlots.length === 0) {
+    if (isOwlbearReady) {
+      OBR.notification.show(`No spell slots available to cast ${spellName}!`, 'ERROR');
+    }
+    return;
+  }
+
+  // If only one option, cast directly
+  if (availableSlots.length === 1) {
+    await castSpell(spellName, availableSlots[0].level);
+    return;
+  }
+
+  // Otherwise, show modal for level selection
+  showSpellLevelModal(spellName, availableSlots);
+};
+
+/**
+ * Show the spell level selection modal
+ */
+function showSpellLevelModal(spellName, availableSlots) {
+  const modal = document.getElementById('spell-level-modal');
+  const modalSpellName = document.getElementById('modal-spell-name');
+  const optionsContainer = document.getElementById('spell-level-options');
+
+  // Set spell name
+  modalSpellName.textContent = `Cast ${spellName}`;
+
+  // Build options
+  optionsContainer.innerHTML = '';
+  availableSlots.forEach(slot => {
+    const option = document.createElement('div');
+    option.className = 'spell-level-option';
+    option.onclick = async () => {
+      closeSpellLevelModal();
+      await castSpell(spellName, slot.level);
+    };
+
+    option.innerHTML = `
+      <span class="spell-level-label">Level ${slot.level}</span>
+      <span class="spell-level-slots">${slot.remaining} slot${slot.remaining !== 1 ? 's' : ''} remaining</span>
+    `;
+
+    optionsContainer.appendChild(option);
+  });
+
+  // Show modal
+  modal.style.display = 'flex';
+}
+
+/**
+ * Close the spell level selection modal
+ */
+window.closeSpellLevelModal = function() {
+  const modal = document.getElementById('spell-level-modal');
+  modal.style.display = 'none';
+};
+
+/**
  * Cast a spell
  */
 window.castSpell = async function(spellName, level) {
   if (!currentCharacter) return;
 
+  // Find the spell object to get all details
+  const spell = currentCharacter.spells?.find(s => s.name === spellName);
+  const spellBaseLevel = spell ? parseInt(spell.level) || 0 : level;
+  const isUpcast = level > spellBaseLevel;
+
   // Cantrips don't use spell slots
+  let slotKey = null;
   if (level > 0) {
     if (!currentCharacter.spellSlots) {
       console.warn('No spell slots available on character');
       return;
     }
 
-    const slotKey = `level${level}SpellSlots`;
+    slotKey = `level${level}SpellSlots`;
     const current = currentCharacter.spellSlots[slotKey] || 0;
 
     if (current === 0) {
@@ -3680,11 +3795,30 @@ window.castSpell = async function(spellName, level) {
   const levelText = level === 0 ? 'Cantrip' : `Level ${level} Spell`;
   const message = `✨ Casts <strong>${spellName}</strong> (${levelText})`;
 
-  // Create expandable details
-  let details = `<strong>${spellName}</strong><br>${levelText}`;
+  // Create expandable details with ALL spell information
+  let details = `<strong>${spellName}</strong><br><strong>Level:</strong> ${levelText}`;
+
+  if (isUpcast && spellBaseLevel > 0) {
+    details += ` (Upcast from Level ${spellBaseLevel})`;
+  }
+
+  if (spell) {
+    if (spell.castingTime) details += `<br><strong>Casting Time:</strong> ${spell.castingTime}`;
+    if (spell.range) details += `<br><strong>Range:</strong> ${spell.range}`;
+    if (spell.components) details += `<br><strong>Components:</strong> ${spell.components}`;
+    if (spell.duration) details += `<br><strong>Duration:</strong> ${spell.duration}`;
+    if (spell.concentration) details += `<br><strong>Concentration:</strong> Yes`;
+    if (spell.ritual) details += `<br><strong>Ritual:</strong> Yes`;
+    if (spell.attackRoll) details += `<br><strong>Attack:</strong> ${spell.attackRoll}`;
+    if (spell.damage) details += `<br><strong>Damage:</strong> ${spell.damage}`;
+    if (spell.healing) details += `<br><strong>Healing:</strong> ${spell.healing}`;
+    if (spell.summary) details += `<br><br>${spell.summary}`;
+    if (spell.description) details += `<br><br>${spell.description}`;
+  }
+
   if (level > 0 && slotKey) {
     const remaining = currentCharacter.spellSlots[slotKey] || 0;
-    details += `<br>Spell Slot Used: Level ${level}<br>Remaining Slots: ${remaining}`;
+    details += `<br><br><strong>Spell Slot Used:</strong> Level ${level}<br><strong>Remaining Slots:</strong> ${remaining}`;
   }
 
   if (isOwlbearReady) {
@@ -3694,6 +3828,81 @@ window.castSpell = async function(spellName, level) {
 
   // Send to persistent chat with details
   await addChatMessage(message, 'spell', currentCharacter?.name, details);
+};
+
+/**
+ * Cast a spell as a ritual (doesn't consume spell slot)
+ */
+window.castSpellAsRitual = async function(spellName) {
+  if (!currentCharacter) return;
+
+  // Find the spell object to get all details
+  const spell = currentCharacter.spells?.find(s => s.name === spellName);
+
+  const message = `📿 Casts <strong>${spellName}</strong> as a ritual`;
+
+  // Create expandable details with ALL spell information
+  let details = `<strong>${spellName}</strong><br><strong>Cast as Ritual</strong> (no spell slot consumed)`;
+
+  if (spell) {
+    const spellLevel = parseInt(spell.level) || 0;
+    const levelText = spellLevel === 0 ? 'Cantrip' : `Level ${spellLevel} Spell`;
+    details += `<br><strong>Level:</strong> ${levelText}`;
+
+    if (spell.castingTime) {
+      // Ritual casting adds 10 minutes
+      details += `<br><strong>Casting Time:</strong> ${spell.castingTime} + 10 minutes (ritual)`;
+    }
+    if (spell.range) details += `<br><strong>Range:</strong> ${spell.range}`;
+    if (spell.components) details += `<br><strong>Components:</strong> ${spell.components}`;
+    if (spell.duration) details += `<br><strong>Duration:</strong> ${spell.duration}`;
+    if (spell.concentration) details += `<br><strong>Concentration:</strong> Yes`;
+    if (spell.attackRoll) details += `<br><strong>Attack:</strong> ${spell.attackRoll}`;
+    if (spell.damage) details += `<br><strong>Damage:</strong> ${spell.damage}`;
+    if (spell.healing) details += `<br><strong>Healing:</strong> ${spell.healing}`;
+    if (spell.summary) details += `<br><br>${spell.summary}`;
+    if (spell.description) details += `<br><br>${spell.description}`;
+  }
+
+  if (isOwlbearReady) {
+    OBR.notification.show(`${currentCharacter?.name || 'Character'} casts ${spellName} as a ritual`, 'INFO');
+  }
+  console.log('📿', message);
+
+  // Send to persistent chat with details
+  await addChatMessage(message, 'spell', currentCharacter?.name, details);
+};
+
+/**
+ * Toggle concentration on a spell
+ */
+window.toggleConcentration = function(spellName) {
+  if (!currentCharacter) return;
+
+  // Toggle concentration
+  if (concentratingSpell === spellName) {
+    // Already concentrating on this spell - stop concentration
+    concentratingSpell = null;
+    console.log(`[OwlCloud] Stopped concentrating on ${spellName}`);
+    if (isOwlbearReady) {
+      OBR.notification.show(`Concentration on ${spellName} ended`, 'INFO');
+    }
+  } else {
+    // Start concentrating on this spell (ends previous concentration)
+    const previousSpell = concentratingSpell;
+    concentratingSpell = spellName;
+    console.log(`[OwlCloud] Now concentrating on ${spellName}`);
+    if (isOwlbearReady) {
+      if (previousSpell) {
+        OBR.notification.show(`Concentration switched from ${previousSpell} to ${spellName}`, 'WARNING');
+      } else {
+        OBR.notification.show(`Concentrating on ${spellName}`, 'INFO');
+      }
+    }
+  }
+
+  // Re-render spells tab to update UI
+  populateSpellsTab(currentCharacter);
 };
 
 // ============== HP & Resource Management ==============
@@ -3832,9 +4041,28 @@ window.useFeature = async function(featureName, resourceName = null) {
     }
   }
 
-  // Announce in chat
+  // Find the feature to get full details
+  const feature = currentCharacter.features?.find(f => f.name === featureName);
+
+  // Announce in chat with full details
   const message = `✨ Uses <strong>${featureName}</strong>${resourceName ? ` (${resourceName})` : ''}`;
-  await addChatMessage(message, 'action', currentCharacter.name);
+
+  // Create expandable details with ALL feature information
+  let details = `<strong>${featureName}</strong>`;
+
+  if (feature) {
+    if (resourceName) {
+      const resource = currentCharacter.resources?.find(r => r.name === resourceName);
+      if (resource) {
+        details += `<br><strong>Resource:</strong> ${resourceName} (${resource.current}/${resource.max} remaining)`;
+      }
+    }
+    if (feature.summary) details += `<br><br>${feature.summary}`;
+    if (feature.description) details += `<br><br>${feature.description}`;
+    if (feature.reset) details += `<br><br><strong>Resets:</strong> ${feature.reset}`;
+  }
+
+  await addChatMessage(message, 'action', currentCharacter.name, details);
 
   if (isOwlbearReady) {
     OBR.notification.show(`${currentCharacter.name} uses ${featureName}`, 'INFO');
@@ -3874,9 +4102,21 @@ window.useFeatureWithUses = async function(featureName) {
   // Refresh the features tab to show updated uses
   populateFeaturesTab(currentCharacter);
 
-  // Announce in chat
+  // Announce in chat with full details
   const message = `✨ Uses <strong>${featureName}</strong> (${feature.uses.value}/${feature.uses.max || feature.uses.value + 1} remaining)`;
-  await addChatMessage(message, 'action', currentCharacter.name);
+
+  // Create expandable details with ALL feature information
+  let details = `<strong>${featureName}</strong>`;
+
+  if (feature.uses) {
+    details += `<br><strong>Uses Remaining:</strong> ${feature.uses.value}/${feature.uses.max || feature.uses.value + 1}`;
+    if (feature.reset) details += `<br><strong>Resets:</strong> ${feature.reset}`;
+  }
+
+  if (feature.summary) details += `<br><br>${feature.summary}`;
+  if (feature.description) details += `<br><br>${feature.description}`;
+
+  await addChatMessage(message, 'action', currentCharacter.name, details);
 
   if (isOwlbearReady) {
     OBR.notification.show(`${currentCharacter.name} uses ${featureName}`, 'INFO');
@@ -3916,9 +4156,24 @@ window.useAction = async function(actionName) {
   // Refresh the actions tab to show updated uses
   populateActionsTab(currentCharacter);
 
-  // Announce in chat
+  // Announce in chat with full details
   const message = `✨ Uses <strong>${actionName}</strong> (${action.uses.value}/${action.uses.max || action.uses.value + 1} remaining)`;
-  await addChatMessage(message, 'action', currentCharacter.name);
+
+  // Create expandable details with ALL action information
+  let details = `<strong>${actionName}</strong><br><strong>Type:</strong> ${action.actionType || 'Action'}`;
+
+  if (action.uses) {
+    details += `<br><strong>Uses Remaining:</strong> ${action.uses.value}/${action.uses.max || action.uses.value + 1}`;
+    if (action.reset) details += `<br><strong>Resets:</strong> ${action.reset}`;
+  }
+
+  if (action.attackRoll) details += `<br><strong>Attack:</strong> ${action.attackRoll}`;
+  if (action.damage) details += `<br><strong>Damage:</strong> ${action.damage}`;
+  if (action.damageType) details += ` (${action.damageType})`;
+  if (action.summary) details += `<br><br>${action.summary}`;
+  if (action.description) details += `<br><br>${action.description}`;
+
+  await addChatMessage(message, 'action', currentCharacter.name, details);
 
   if (isOwlbearReady) {
     OBR.notification.show(`${currentCharacter.name} uses ${actionName}`, 'INFO');
