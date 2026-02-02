@@ -718,8 +718,24 @@
     }
 
     .feature-card.expanded .feature-details {
-      max-height: 1000px;
+      max-height: 300px;
+      overflow-y: auto;
       margin-top: 8px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--theme-border) transparent;
+    }
+
+    .feature-card.expanded .feature-details::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .feature-card.expanded .feature-details::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .feature-card.expanded .feature-details::-webkit-scrollbar-thumb {
+      background: var(--theme-border);
+      border-radius: 3px;
     }
 
     .feature-description {
