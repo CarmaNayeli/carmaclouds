@@ -778,7 +778,7 @@ window.browserAPI = browserAPI;
    * Listen for messages from other parts of the extension
    * Wrapped in try-catch to prevent one error from breaking subsequent message handling
    */
-  browserAPI.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  browserAPI.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     try {
       debug.log('📨 Roll20 content script received message:', request.action, request);
 
@@ -1250,8 +1250,30 @@ window.browserAPI = browserAPI;
       }
     } else if (request.type === 'PUSH_CHARACTER') {
       // Handle character push from RollCloud adapter
-      debug.log('📤 Received PUSH_CHARACTER - feature not yet implemented');
-      sendResponse({ success: true, message: 'Character push not yet implemented' });
+      debug.log('📤 Received PUSH_CHARACTER - processing character data');
+      
+      try {
+        // 1. Refresh character data from storage
+        const characterData = await refreshCharacterData();
+        if (!characterData) {
+          throw new Error('No character data available. Please sync a character first.');
+        }
+        
+        debug.log('✅ Character data refreshed:', characterData.name);
+        
+        // 2. Format the data for Roll20 (already formatted in the adapter)
+        const formattedData = request.data;
+        debug.log('📋 Formatted character data received:', formattedData);
+        
+        // 3. Send data to character sheet popup
+        await sendToCharacterSheet(formattedData);
+        
+        debug.log('✅ Character data sent to sheet popup');
+        sendResponse({ success: true, message: 'Character pushed to sheet successfully' });
+      } catch (error) {
+        debug.error('❌ Error in PUSH_CHARACTER:', error);
+        sendResponse({ success: false, error: error.message });
+      }
       return true;
     }
     } catch (outerError) {
@@ -3825,4 +3847,71 @@ ${player.deathSaves ? `Death Saves: ✓${player.deathSaves.successes || 0} / ✗
   }
 
   debug.log(' Roll20 script ready - listening for roll announcements and GM mode');
+
+  /**
+   * Refresh character data from storage
+   */
+  async function refreshCharacterData() {
+    try {
+      const result = await browserAPI.storage.local.get('carmaclouds_characters');
+      const characters = result.carmaclouds_characters || [];
+      
+      if (characters.length === 0) {
+        return null;
+      }
+      
+      // Return the most recent character
+      return characters[0];
+    } catch (error) {
+      debug.error('❌ Error refreshing character data:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Send character data to the character sheet popup
+   */
+  async function sendToCharacterSheet(characterData) {
+    try {
+      // Create or update the character sheet popup
+      const popupUrl = browserAPI.runtime.getURL('src/popup-sheet.html');
+      
+      // Check if popup is already open
+      const tabs = await browserAPI.tabs.query({ url: popupUrl });
+      
+      if (tabs.length > 0) {
+        // Update existing popup
+        await browserAPI.tabs.sendMessage(tabs[0].id, {
+          type: 'UPDATE_CHARACTER_DATA',
+          data: characterData
+        });
+        
+        // Focus the existing tab
+        await browserAPI.tabs.update(tabs[0].id, { active: true });
+      } else {
+        // Open new popup
+        const tab = await browserAPI.tabs.create({
+          url: popupUrl,
+          active: true
+        });
+        
+        // Wait a bit for the popup to load, then send data
+        setTimeout(async () => {
+          try {
+            await browserAPI.tabs.sendMessage(tab.id, {
+              type: 'UPDATE_CHARACTER_DATA',
+              data: characterData
+            });
+          } catch (error) {
+            debug.error('❌ Error sending data to new popup:', error);
+          }
+        }, 500);
+      }
+      
+      debug.log('✅ Character sheet popup opened/updated');
+    } catch (error) {
+      debug.error('❌ Error opening character sheet popup:', error);
+      throw error;
+    }
+  }
 })();

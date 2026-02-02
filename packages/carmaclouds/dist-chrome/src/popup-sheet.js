@@ -249,6 +249,79 @@ window.addEventListener('message', async (event) => {
     // Status bar is requesting current character status
     debug.log('📊 Status bar requesting data');
     sendStatusUpdate(event.source);
+  } else if (event.data && event.data.type === 'UPDATE_CHARACTER_DATA') {
+    // Handle character data update from Roll20 content script
+    debug.log('📤 Received UPDATE_CHARACTER_DATA:', event.data.data.name);
+    
+    // Update the global character data
+    characterData = event.data.data;
+    
+    // Validate that character data has required arrays (spells and actions)
+    const hasSpells = Array.isArray(characterData.spells);
+    const hasActions = Array.isArray(characterData.actions);
+
+    if (!hasSpells || !hasActions) {
+      debug.warn('⚠️ Updated character data is incomplete');
+      debug.warn(`Missing data: spells=${!hasSpells}, actions=${!hasActions}`);
+      showNotification('⚠️ Character data incomplete. Please resync from DiceCloud.', 'error');
+      return;
+    }
+
+    // Function to reinitialize the sheet with new data
+    const reinitSheet = async () => {
+      // Clear existing content
+      const mainContent = document.querySelector('main');
+      if (mainContent) {
+        mainContent.innerHTML = '';
+      }
+
+      // Build the sheet with updated character data
+      buildSheet(characterData);
+
+      // Initialize racial traits based on updated character data
+      initRacialTraits();
+
+      // Initialize feat traits based on updated character data
+      initFeatTraits();
+
+      // Initialize class features based on updated character data
+      initClassFeatures();
+
+      // Initialize companions based on updated character data
+      initCompanions();
+
+      // Initialize resources based on updated character data
+      initResources();
+
+      // Initialize spells based on updated character data
+      initSpells();
+
+      // Initialize actions based on updated character data
+      initActions();
+
+      // Initialize inventory based on updated character data
+      initInventory();
+
+      // Initialize health based on updated character data
+      initHealth();
+
+      // Initialize concentration based on updated character data
+      initConcentration();
+
+      // Initialize status effects based on updated character data
+      initStatusEffects();
+
+      debug.log('✅ Sheet reinitialized with updated character data');
+      showNotification(`✅ Character data updated: ${characterData.name}`, 'success');
+    };
+
+    // Only initialize if DOM is ready, otherwise queue it
+    if (domReady) {
+      await reinitSheet();
+    } else {
+      debug.log('⏳ DOM not ready yet, queuing sheet reinitialization...');
+      pendingOperations.push(reinitSheet);
+    }
   }
 });
 

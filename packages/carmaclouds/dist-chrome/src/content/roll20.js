@@ -2530,7 +2530,7 @@
         }, 200);
       }
     }
-    browserAPI2.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    browserAPI2.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
       try {
         debug.log("\u{1F4E8} Roll20 content script received message:", request.action, request);
         if (request.action === "postRollToChat") {
@@ -2903,8 +2903,22 @@
             sendResponse({ success: false, error: endTurnError.message });
           }
         } else if (request.type === "PUSH_CHARACTER") {
-          debug.log("\u{1F4E4} Received PUSH_CHARACTER - feature not yet implemented");
-          sendResponse({ success: true, message: "Character push not yet implemented" });
+          debug.log("\u{1F4E4} Received PUSH_CHARACTER - processing character data");
+          try {
+            const characterData = await refreshCharacterData();
+            if (!characterData) {
+              throw new Error("No character data available. Please sync a character first.");
+            }
+            debug.log("\u2705 Character data refreshed:", characterData.name);
+            const formattedData = request.data;
+            debug.log("\u{1F4CB} Formatted character data received:", formattedData);
+            await sendToCharacterSheet(formattedData);
+            debug.log("\u2705 Character data sent to sheet popup");
+            sendResponse({ success: true, message: "Character pushed to sheet successfully" });
+          } catch (error) {
+            debug.error("\u274C Error in PUSH_CHARACTER:", error);
+            sendResponse({ success: false, error: error.message });
+          }
           return true;
         }
       } catch (outerError) {
@@ -4794,6 +4808,51 @@ ${player.deathSaves ? `Death Saves: \u2713${player.deathSaves.successes || 0} / 
       debug.log("\u274C browserAPI.runtime not available");
     }
     debug.log(" Roll20 script ready - listening for roll announcements and GM mode");
+    async function refreshCharacterData() {
+      try {
+        const result = await browserAPI2.storage.local.get("carmaclouds_characters");
+        const characters = result.carmaclouds_characters || [];
+        if (characters.length === 0) {
+          return null;
+        }
+        return characters[0];
+      } catch (error) {
+        debug.error("\u274C Error refreshing character data:", error);
+        return null;
+      }
+    }
+    async function sendToCharacterSheet(characterData) {
+      try {
+        const popupUrl = browserAPI2.runtime.getURL("src/popup-sheet.html");
+        const tabs = await browserAPI2.tabs.query({ url: popupUrl });
+        if (tabs.length > 0) {
+          await browserAPI2.tabs.sendMessage(tabs[0].id, {
+            type: "UPDATE_CHARACTER_DATA",
+            data: characterData
+          });
+          await browserAPI2.tabs.update(tabs[0].id, { active: true });
+        } else {
+          const tab = await browserAPI2.tabs.create({
+            url: popupUrl,
+            active: true
+          });
+          setTimeout(async () => {
+            try {
+              await browserAPI2.tabs.sendMessage(tab.id, {
+                type: "UPDATE_CHARACTER_DATA",
+                data: characterData
+              });
+            } catch (error) {
+              debug.error("\u274C Error sending data to new popup:", error);
+            }
+          }, 500);
+        }
+        debug.log("\u2705 Character sheet popup opened/updated");
+      } catch (error) {
+        debug.error("\u274C Error opening character sheet popup:", error);
+        throw error;
+      }
+    }
   })();
 })();
 //# sourceMappingURL=roll20.js.map
