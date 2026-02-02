@@ -96,9 +96,9 @@ export async function init(containerEl) {
               const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aWVzbWZqZGNtcHl3YXZ2ZnFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4ODYxNDksImV4cCI6MjA4NTQ2MjE0OX0.oqjHFf2HhCLcanh0HVryoQH7iSV7E9dHHZJdYehxZ0U';
 
               try {
-                // Use UPSERT (POST with Prefer: resolution=merge-duplicates) to insert or update
+                // Use UPSERT (POST with on_conflict to specify unique constraint columns)
                 const updateResponse = await fetch(
-                  `${SUPABASE_URL}/rest/v1/clouds_characters`,
+                  `${SUPABASE_URL}/rest/v1/clouds_characters?on_conflict=user_id_dicecloud,dicecloud_character_id`,
                   {
                     method: 'POST',
                     headers: {
