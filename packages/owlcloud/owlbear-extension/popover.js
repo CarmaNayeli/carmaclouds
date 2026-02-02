@@ -1160,7 +1160,7 @@ async function linkExistingCharacterToUser() {
     // No character found by supabase_user_id, check by owlbear_player_id to link existing character
     console.log('🔍 Checking for character by owlbear_player_id...');
     const playerCharResponse = await fetch(
-      `${SUPABASE_URL}/functions/v1/characters?owlbear_player_id=${encodeURIComponent(playerId)}&active_only=true&fields=full`,
+      `${SUPABASE_URL}/functions/v1/characters?owlbear_player_id=${encodeURIComponent(playerId)}&fields=full`,
       { headers: SUPABASE_HEADERS }
     );
 

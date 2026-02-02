@@ -847,7 +847,7 @@
       }
       console.log("\u{1F50D} Checking for character by owlbear_player_id...");
       const playerCharResponse = await fetch(
-        `${SUPABASE_URL}/functions/v1/characters?owlbear_player_id=${encodeURIComponent(playerId)}&active_only=true&fields=full`,
+        `${SUPABASE_URL}/functions/v1/characters?owlbear_player_id=${encodeURIComponent(playerId)}&fields=full`,
         { headers: SUPABASE_HEADERS }
       );
       console.log("\u{1F4E1} Player character check response:", playerCharResponse.status);
