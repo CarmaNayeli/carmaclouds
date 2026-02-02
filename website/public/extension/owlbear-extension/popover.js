@@ -2196,7 +2196,7 @@ This will disconnect the character from this room. You can sync a different char
       isChatOpen = false;
       openChatWindowBtn.textContent = "\u{1F4AC} Open Chat Window";
     } else {
-      const chatHeight = 450;
+      const chatHeight = 300;
       await OBR.popover.open({
         id: "com.owlcloud.chat",
         url: "/extension/owlbear-extension/chat.html",
