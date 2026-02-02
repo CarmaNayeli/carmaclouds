@@ -350,68 +350,71 @@ async function autoConnect() {
         });
       } else if (typeof browser !== 'undefined' && browser.tabs) {
         // Firefox (Manifest V2) - use browser.tabs.executeScript
+        // Wrap in IIFE to prevent "redeclaration of const" errors on repeated clicks
         results = await browser.tabs.executeScript(tabs[0].id, {
           code: `
-            // Try to get auth data from localStorage, sessionStorage, or window object
-            const authData = {
-              localStorage: {},
-              sessionStorage: {},
-              meteor: null,
-              authToken: null
-            };
-            
-            // Check localStorage
-            for (let i = 0; i < localStorage.length; i++) {
-              const key = localStorage.key(i);
-              if (key && (key.includes('auth') || key.includes('token') || key.includes('meteor') || key.includes('login'))) {
-                authData.localStorage[key] = localStorage.getItem(key);
-              }
-            }
-            
-            // Check sessionStorage
-            for (let i = 0; i < sessionStorage.length; i++) {
-              const key = sessionStorage.key(i);
-              if (key && (key.includes('auth') || key.includes('token') || key.includes('meteor') || key.includes('login'))) {
-                authData.sessionStorage[key] = sessionStorage.getItem(key);
-              }
-            }
-            
-            // Check for Meteor/MongoDB auth (common in DiceCloud)
-            // Meteor stores auth data in localStorage with specific keys
-            const meteorUserId = localStorage.getItem('Meteor.userId');
-            const meteorLoginToken = localStorage.getItem('Meteor.loginToken');
-
-            if (meteorUserId || meteorLoginToken) {
-              authData.meteor = {
-                userId: meteorUserId,
-                loginToken: meteorLoginToken
+            (() => {
+              // Try to get auth data from localStorage, sessionStorage, or window object
+              const authData = {
+                localStorage: {},
+                sessionStorage: {},
+                meteor: null,
+                authToken: null
               };
 
-              // TODO: Fix username extraction - currently still returns 'DiceCloud User' as fallback
-              // Need to investigate why Meteor.user() doesn't return username properly
-              // May need to check localStorage for serialized user data or use different approach
-              // Try to get username from Meteor.user() if available
-              if (window.Meteor && window.Meteor.user) {
-                try {
-                  const user = window.Meteor.user();
-                  if (user) {
-                    authData.meteor.username = user.username ||
-                                               user.emails?.[0]?.address ||
-                                               user.profile?.username ||
-                                               user.profile?.name ||
-                                               null;
-                  }
-                } catch (e) {
-                  // Meteor.user() might not be available, that's okay
+              // Check localStorage
+              for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && (key.includes('auth') || key.includes('token') || key.includes('meteor') || key.includes('login'))) {
+                  authData.localStorage[key] = localStorage.getItem(key);
                 }
               }
-            }
-            
-            // Check for any global auth variables
-            if (window.authToken) authData.authToken = window.authToken;
-            if (window.token) authData.authToken = window.token;
-            
-            authData;
+
+              // Check sessionStorage
+              for (let i = 0; i < sessionStorage.length; i++) {
+                const key = sessionStorage.key(i);
+                if (key && (key.includes('auth') || key.includes('token') || key.includes('meteor') || key.includes('login'))) {
+                  authData.sessionStorage[key] = sessionStorage.getItem(key);
+                }
+              }
+
+              // Check for Meteor/MongoDB auth (common in DiceCloud)
+              // Meteor stores auth data in localStorage with specific keys
+              const meteorUserId = localStorage.getItem('Meteor.userId');
+              const meteorLoginToken = localStorage.getItem('Meteor.loginToken');
+
+              if (meteorUserId || meteorLoginToken) {
+                authData.meteor = {
+                  userId: meteorUserId,
+                  loginToken: meteorLoginToken
+                };
+
+                // TODO: Fix username extraction - currently still returns 'DiceCloud User' as fallback
+                // Need to investigate why Meteor.user() doesn't return username properly
+                // May need to check localStorage for serialized user data or use different approach
+                // Try to get username from Meteor.user() if available
+                if (window.Meteor && window.Meteor.user) {
+                  try {
+                    const user = window.Meteor.user();
+                    if (user) {
+                      authData.meteor.username = user.username ||
+                                                 user.emails?.[0]?.address ||
+                                                 user.profile?.username ||
+                                                 user.profile?.name ||
+                                                 null;
+                    }
+                  } catch (e) {
+                    // Meteor.user() might not be available, that's okay
+                  }
+                }
+              }
+
+              // Check for any global auth variables
+              if (window.authToken) authData.authToken = window.authToken;
+              if (window.token) authData.authToken = window.token;
+
+              return authData;
+            })();
           `
         });
       } else {
@@ -463,13 +466,14 @@ async function autoConnect() {
     const cookies = await browserAPI.cookies.getAll({ domain: '.dicecloud.com' });
     console.log('Available DiceCloud cookies:', cookies.map(c => ({ name: c.name, domain: c.domain, value: c.value ? '***' : 'empty' })));
     
-    const authCookie = cookies.find(c => 
-      c.name === 'dicecloud_auth' || 
+    const authCookie = cookies.find(c =>
+      c.name === 'dicecloud_auth' ||
       c.name === 'meteor_login_token' ||
       c.name === 'authToken' ||
       c.name === 'loginToken' ||
       c.name === 'userId' ||
       c.name === 'token' ||
+      c.name === 'x_mtok' ||  // Meteor token cookie used by DiceCloud
       c.name.includes('auth') ||
       c.name.includes('token')
     );
