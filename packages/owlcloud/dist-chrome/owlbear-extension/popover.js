@@ -898,14 +898,14 @@
       }
       console.log("\u{1F4E1} Checking if user already has a character...");
       const userCharResponse = await fetch(
-        `${SUPABASE_URL}/functions/v1/characters?supabase_user_id=${encodeURIComponent(currentUser.id)}&active_only=true&fields=essential`,
+        `${SUPABASE_URL}/functions/v1/characters?supabase_user_id=${encodeURIComponent(currentUser.id)}&fields=essential`,
         { headers: authHeaders }
       );
       console.log("\u{1F4E1} User character check response:", userCharResponse.status);
       if (userCharResponse.ok) {
         const userData = await userCharResponse.json();
         console.log("\u{1F4E6} User character data:", userData);
-        if (userData.success && userData.character) {
+        if (userData.success && (userData.character || userData.characters && userData.characters.length > 0)) {
           console.log("\u2705 User already has a linked character");
           return;
         }
@@ -922,67 +922,48 @@
       }
       const playerData = await playerCharResponse.json();
       console.log("\u{1F4E6} Player character data:", playerData);
-      if (playerData.success && playerData.character) {
-        console.log("\u{1F517} Linking existing OBR character to user account...");
-        const char = playerData.character;
-        const character = char.raw_dicecloud_data ? {
-          ...char.raw_dicecloud_data,
-          userId: char.user_id_dicecloud,
-          id: char.dicecloud_character_id,
-          name: char.character_name
-        } : {
-          userId: char.user_id_dicecloud,
-          id: char.dicecloud_character_id,
-          name: char.character_name,
-          class: char.class,
-          race: char.race,
-          level: char.level
-        };
-        const linkResponse = await fetch(
-          `${SUPABASE_URL}/functions/v1/characters`,
-          {
-            method: "POST",
-            headers: authHeaders,
-            body: JSON.stringify({
-              owlbearPlayerId: playerId,
-              supabaseUserId: currentUser.id,
-              character
-            })
-          }
-        );
-        if (linkResponse.ok) {
-          const linkData = await linkResponse.json();
-          console.log("\u2705 Character successfully linked to account!", linkData);
-          if (isOwlbearReady) {
-            OBR.notification.show("Character linked to your account!", "SUCCESS");
-          }
-          if (linkData.success && linkData.character) {
-            let characterData;
-            if (linkData.character.raw_dicecloud_data) {
-              try {
-                characterData = parseCharacterData(linkData.character.raw_dicecloud_data, linkData.character.dicecloud_character_id);
-              } catch (e) {
-                console.error("Failed to parse character data:", e);
-                characterData = linkData.character.raw_dicecloud_data;
-              }
-            } else {
-              characterData = linkData.character;
+      const charactersToLink = playerData.success && playerData.characters && playerData.characters.length > 0 ? playerData.characters : playerData.success && playerData.character ? [playerData.character] : [];
+      if (charactersToLink.length > 0) {
+        console.log(`\u{1F517} Linking ${charactersToLink.length} existing character(s) to user account...`);
+        for (const char of charactersToLink) {
+          const character = char.raw_dicecloud_data ? {
+            ...char.raw_dicecloud_data,
+            userId: char.user_id_dicecloud,
+            id: char.dicecloud_character_id,
+            name: char.character_name
+          } : {
+            userId: char.user_id_dicecloud,
+            id: char.dicecloud_character_id,
+            name: char.character_name,
+            class: char.class,
+            race: char.race,
+            level: char.level
+          };
+          const linkResponse = await fetch(
+            `${SUPABASE_URL}/functions/v1/characters`,
+            {
+              method: "POST",
+              headers: authHeaders,
+              body: JSON.stringify({
+                owlbearPlayerId: playerId,
+                supabaseUserId: currentUser.id,
+                character
+              })
             }
-            const cacheKey = `owlcloud_char_${currentUser.id}`;
-            localStorage.setItem(cacheKey, JSON.stringify(characterData));
-            displayCharacter(characterData);
-            await fetchAllCharacters();
+          );
+          if (linkResponse.ok) {
+            const linkData = await linkResponse.json();
+            console.log(`\u2705 Character "${char.character_name}" successfully linked!`);
           } else {
-            await checkForActiveCharacter();
-          }
-          updateAuthUI();
-        } else {
-          const errorText = await linkResponse.text();
-          console.error("\u274C Failed to link character:", errorText);
-          if (isOwlbearReady) {
-            OBR.notification.show("Failed to link character to account", "ERROR");
+            const errorText = await linkResponse.text();
+            console.error(`\u274C Failed to link character "${char.character_name}":`, errorText);
           }
         }
+        if (isOwlbearReady) {
+          OBR.notification.show(`${charactersToLink.length} character(s) linked to your account!`, "SUCCESS");
+        }
+        await checkForActiveCharacter();
+        updateAuthUI();
       }
     } catch (error) {
       console.error("Error linking character to user:", error);
@@ -1423,9 +1404,10 @@ This will disconnect the character from this room. You can sync a different char
     let html = "";
     allCharacters.forEach((character) => {
       const isActive = currentCharacter && character.id === currentCharacter.id;
+      const characterName = character.name || character.character_name || character.creature?.name || "Unknown Character";
       html += `
       <div class="character-list-item ${isActive ? "active" : ""}" onclick="switchToCharacter('${character.id}')">
-        <div class="character-list-item-name">${character.name || "Unknown Character"}</div>
+        <div class="character-list-item-name">${characterName}</div>
         <div class="character-list-item-details">
           Level ${character.level || "?"} ${character.race || ""} ${character.class || ""}
           ${isActive ? "\u2022 Active" : ""}

@@ -1212,7 +1212,7 @@ async function linkExistingCharacterToUser() {
     // First check if user already has a character linked by supabase_user_id
     console.log('📡 Checking if user already has a character...');
     const userCharResponse = await fetch(
-      `${SUPABASE_URL}/functions/v1/characters?supabase_user_id=${encodeURIComponent(currentUser.id)}&active_only=true&fields=essential`,
+      `${SUPABASE_URL}/functions/v1/characters?supabase_user_id=${encodeURIComponent(currentUser.id)}&fields=essential`,
       { headers: authHeaders }
     );
 
@@ -1220,7 +1220,7 @@ async function linkExistingCharacterToUser() {
     if (userCharResponse.ok) {
       const userData = await userCharResponse.json();
       console.log('📦 User character data:', userData);
-      if (userData.success && userData.character) {
+      if (userData.success && (userData.character || (userData.characters && userData.characters.length > 0))) {
         console.log('✅ User already has a linked character');
         return; // User already has a character, no need to link
       }
@@ -1242,83 +1242,63 @@ async function linkExistingCharacterToUser() {
     const playerData = await playerCharResponse.json();
     console.log('📦 Player character data:', playerData);
 
-    if (playerData.success && playerData.character) {
-      console.log('🔗 Linking existing OBR character to user account...');
+    // Handle both single character and array responses
+    const charactersToLink = playerData.success && playerData.characters && playerData.characters.length > 0
+      ? playerData.characters
+      : (playerData.success && playerData.character ? [playerData.character] : []);
 
-      // Construct character object with required fields
-      const char = playerData.character;
-      const character = char.raw_dicecloud_data ? {
-        ...char.raw_dicecloud_data,
-        userId: char.user_id_dicecloud,
-        id: char.dicecloud_character_id,
-        name: char.character_name
-      } : {
-        userId: char.user_id_dicecloud,
-        id: char.dicecloud_character_id,
-        name: char.character_name,
-        class: char.class,
-        race: char.race,
-        level: char.level
-      };
+    if (charactersToLink.length > 0) {
+      console.log(`🔗 Linking ${charactersToLink.length} existing character(s) to user account...`);
 
-      const linkResponse = await fetch(
-        `${SUPABASE_URL}/functions/v1/characters`,
-        {
-          method: 'POST',
-          headers: authHeaders,
-          body: JSON.stringify({
-            owlbearPlayerId: playerId,
-            supabaseUserId: currentUser.id,
-            character: character
-          })
-        }
-      );
+      // Link all characters
+      for (const char of charactersToLink) {
+        // Construct character object with required fields
+        const character = char.raw_dicecloud_data ? {
+          ...char.raw_dicecloud_data,
+          userId: char.user_id_dicecloud,
+          id: char.dicecloud_character_id,
+          name: char.character_name
+        } : {
+          userId: char.user_id_dicecloud,
+          id: char.dicecloud_character_id,
+          name: char.character_name,
+          class: char.class,
+          race: char.race,
+          level: char.level
+        };
 
-      if (linkResponse.ok) {
-        const linkData = await linkResponse.json();
-        console.log('✅ Character successfully linked to account!', linkData);
-
-        if (isOwlbearReady) {
-          OBR.notification.show('Character linked to your account!', 'SUCCESS');
-        }
-
-        // Use the character data from the link response
-        if (linkData.success && linkData.character) {
-          let characterData;
-          if (linkData.character.raw_dicecloud_data) {
-            try {
-              characterData = parseCharacterData(linkData.character.raw_dicecloud_data, linkData.character.dicecloud_character_id);
-            } catch (e) {
-              console.error('Failed to parse character data:', e);
-              characterData = linkData.character.raw_dicecloud_data;
-            }
-          } else {
-            characterData = linkData.character;
+        const linkResponse = await fetch(
+          `${SUPABASE_URL}/functions/v1/characters`,
+          {
+            method: 'POST',
+            headers: authHeaders,
+            body: JSON.stringify({
+              owlbearPlayerId: playerId,
+              supabaseUserId: currentUser.id,
+              character: character
+            })
           }
+        );
 
-          // Cache under the new Supabase user ID key
-          const cacheKey = `owlcloud_char_${currentUser.id}`;
-          localStorage.setItem(cacheKey, JSON.stringify(characterData));
-
-          // Display the character immediately
-          displayCharacter(characterData);
-
-          // Fetch all characters to update the list
-          await fetchAllCharacters();
+        if (linkResponse.ok) {
+          const linkData = await linkResponse.json();
+          console.log(`✅ Character "${char.character_name}" successfully linked!`);
         } else {
-          // Fallback: fetch character if link response doesn't include it
-          await checkForActiveCharacter();
-        }
-
-        // Update auth UI to show unsync button
-        updateAuthUI();
-      } else {
-        const errorText = await linkResponse.text();
-        console.error('❌ Failed to link character:', errorText);
-        if (isOwlbearReady) {
-          OBR.notification.show('Failed to link character to account', 'ERROR');
+          const errorText = await linkResponse.text();
+          console.error(`❌ Failed to link character "${char.character_name}":`, errorText);
         }
       }
+
+      // After linking all characters, show notification and refresh
+      if (isOwlbearReady) {
+        OBR.notification.show(`${charactersToLink.length} character(s) linked to your account!`, 'SUCCESS');
+      }
+
+      // Refresh character data
+      await checkForActiveCharacter();
+
+      // Update auth UI to show unsync button
+      updateAuthUI();
     }
   } catch (error) {
     console.error('Error linking character to user:', error);
@@ -1914,9 +1894,11 @@ function displayCharacterList() {
   let html = '';
   allCharacters.forEach((character) => {
     const isActive = currentCharacter && character.id === currentCharacter.id;
+    // Try multiple possible name fields
+    const characterName = character.name || character.character_name || character.creature?.name || 'Unknown Character';
     html += `
       <div class="character-list-item ${isActive ? 'active' : ''}" onclick="switchToCharacter('${character.id}')">
-        <div class="character-list-item-name">${character.name || 'Unknown Character'}</div>
+        <div class="character-list-item-name">${characterName}</div>
         <div class="character-list-item-details">
           Level ${character.level || '?'} ${character.race || ''} ${character.class || ''}
           ${isActive ? '• Active' : ''}
