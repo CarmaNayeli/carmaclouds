@@ -4,8 +4,6 @@
  * Loads the full OwlCloud popup UI
  */
 
-import { parseForOwlCloud } from '../../../content/dicecloud-extraction.js';
-
 export async function init(containerEl) {
   console.log('Initializing OwlCloud adapter...');
 
@@ -13,24 +11,16 @@ export async function init(containerEl) {
     // Show loading state
     containerEl.innerHTML = '<div class="loading">Loading OwlCloud...</div>';
 
-    // Fetch synced characters from storage
-    const result = await chrome.storage.local.get('carmaclouds_characters');
+    // Fetch synced characters and DiceCloud user ID from storage
+    const result = await chrome.storage.local.get(['carmaclouds_characters', 'diceCloudUserId']);
     const characters = result.carmaclouds_characters || [];
+    const diceCloudUserId = result.diceCloudUserId;
 
     console.log('Found', characters.length, 'synced characters');
+    console.log('DiceCloud User ID:', diceCloudUserId);
 
     // Get the most recent character (for now - later we'll add character selection)
     const character = characters.length > 0 ? characters[0] : null;
-
-    let parsedData = null;
-    if (character && character.raw) {
-      // Parse raw DiceCloud data for Owlbear Rodeo
-      containerEl.innerHTML = '<div class="loading">Parsing character data...</div>';
-
-      console.log('Parsing character for Owlbear Rodeo:', character.name);
-      parsedData = parseForOwlCloud(character.raw);
-      console.log('Parsed data:', parsedData);
-    }
 
     // Fetch the OwlCloud popup HTML
     const htmlPath = chrome.runtime.getURL('src/popup/adapters/owlcloud/popup.html');
@@ -68,7 +58,7 @@ export async function init(containerEl) {
     containerEl.appendChild(style);
 
     // Populate character info directly if we have data
-    if (parsedData && character) {
+    if (character && character.raw) {
       // Show character info card
       const characterInfo = wrapper.querySelector('#characterInfo');
       const statusSection = wrapper.querySelector('#status');
@@ -94,10 +84,14 @@ export async function init(containerEl) {
             const originalText = pushBtn.innerHTML;
             try {
               pushBtn.disabled = true;
-              pushBtn.innerHTML = '⏳ Pushing...';
+              pushBtn.innerHTML = '⏳ Syncing...';
 
-              // Store Owlbear-specific parsed data in database
-              console.log('💾 Storing Owlbear parsed data to database...');
+              if (!diceCloudUserId) {
+                throw new Error('DiceCloud User ID not found. Please log in to DiceCloud first.');
+              }
+
+              // Store raw DiceCloud data in database
+              console.log('💾 Storing raw character data to database...');
               const SUPABASE_URL = 'https://luiesmfjdcmpywavvfqm.supabase.co';
               const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aWVzbWZqZGNtcHl3YXZ2ZnFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4ODYxNDksImV4cCI6MjA4NTQ2MjE0OX0.oqjHFf2HhCLcanh0HVryoQH7iSV7E9dHHZJdYehxZ0U';
 
@@ -113,69 +107,71 @@ export async function init(containerEl) {
                       'Prefer': 'return=representation'
                     },
                     body: JSON.stringify({
-                      owlbear_data: parsedData,
+                      raw_dicecloud_data: character.raw,
+                      user_id_dicecloud: diceCloudUserId,
                       updated_at: new Date().toISOString()
                     })
                   }
                 );
                 if (updateResponse.ok) {
-                  console.log('✅ Owlbear data stored in database');
+                  console.log('✅ Raw character data stored in database');
                 } else {
-                  console.warn('⚠️ Failed to store Owlbear data:', await updateResponse.text());
+                  const errorText = await updateResponse.text();
+                  console.warn('⚠️ Failed to store character data:', errorText);
+                  throw new Error(`Database sync failed: ${errorText}`);
                 }
               } catch (dbError) {
-                console.warn('⚠️ Database update failed (non-fatal):', dbError);
+                console.error('⚠️ Database update failed:', dbError);
+                throw dbError;
               }
 
-              // Also update local storage with parsed data so popup can use it
-              console.log('💾 Updating local storage with parsed data...');
-              try {
-                // Add the character ID to parsed data so storage can find it
-                const dataToStore = {
-                  ...parsedData,
-                  id: character.id,
-                  dicecloud_character_id: character.id
-                };
+              // Show success with the DiceCloud User ID
+              pushBtn.innerHTML = '✅ Synced!';
 
-                await chrome.runtime.sendMessage({
-                  action: 'storeCharacterData',
-                  data: dataToStore,
-                  slotId: character.slotId || 'slot-1'
-                });
-                console.log('✅ Local storage updated with parsed Owlbear data');
+              // Display the DiceCloud User ID for copy/paste
+              if (statusSection) {
+                const statusIcon = statusSection.querySelector('#statusIcon');
+                const statusText = statusSection.querySelector('#statusText');
+                if (statusIcon) statusIcon.textContent = '✅';
+                if (statusText) {
+                  statusText.innerHTML = `
+                    <div style="margin-bottom: 10px;">Character synced to database!</div>
+                    <div style="background: var(--bg-secondary, #f5f5f5); padding: 10px; border-radius: 4px; font-family: monospace;">
+                      <div style="margin-bottom: 5px; font-size: 12px; opacity: 0.8;">Your DiceCloud User ID:</div>
+                      <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="text" value="${diceCloudUserId}" readonly style="flex: 1; padding: 8px; border: 1px solid var(--border-color, #ddd); border-radius: 4px; font-family: monospace; font-size: 14px; background: white;">
+                        <button id="copyUserIdBtn" style="padding: 8px 12px; background: #16a75a; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">Copy</button>
+                      </div>
+                      <div style="margin-top: 8px; font-size: 11px; opacity: 0.7;">Paste this into the Owlbear extension to link your character.</div>
+                    </div>
+                  `;
 
-                // Notify any open popup to refresh and show the updated character
-                chrome.runtime.sendMessage({
-                  action: 'dataSynced',
-                  characterName: dataToStore.name || 'Character'
-                }).catch(() => {
-                  console.log('ℹ️ No popup open to notify (normal)');
-                });
-              } catch (storageError) {
-                console.warn('⚠️ Local storage update failed (non-fatal):', storageError);
+                  // Add copy button handler
+                  const copyBtn = statusSection.querySelector('#copyUserIdBtn');
+                  if (copyBtn) {
+                    copyBtn.addEventListener('click', async () => {
+                      try {
+                        await navigator.clipboard.writeText(diceCloudUserId);
+                        copyBtn.textContent = '✓ Copied!';
+                        setTimeout(() => {
+                          copyBtn.textContent = 'Copy';
+                        }, 2000);
+                      } catch (err) {
+                        console.error('Failed to copy:', err);
+                      }
+                    });
+                  }
+                }
               }
 
-              // Get the active Owlbear Rodeo tab
-              const tabs = await chrome.tabs.query({ url: '*://*.owlbear.rodeo/*' });
-              if (tabs.length === 0) {
-                throw new Error('No Owlbear Rodeo tab found. Please open Owlbear Rodeo first.');
-              }
-
-              // Send character data to Owlbear Rodeo content script
-              await chrome.tabs.sendMessage(tabs[0].id, {
-                type: 'PUSH_CHARACTER',
-                data: parsedData
-              });
-
-              pushBtn.innerHTML = '✅ Pushed!';
               setTimeout(() => {
                 pushBtn.innerHTML = originalText;
                 pushBtn.disabled = false;
-              }, 2000);
+              }, 3000);
             } catch (error) {
-              console.error('Error pushing to Owlbear Rodeo:', error);
+              console.error('Error syncing to database:', error);
               pushBtn.innerHTML = '❌ Failed';
-              alert(`Failed to push to Owlbear Rodeo: ${error.message}`);
+              alert(`Failed to sync to database: ${error.message}`);
               setTimeout(() => {
                 pushBtn.innerHTML = originalText;
                 pushBtn.disabled = false;
@@ -185,12 +181,12 @@ export async function init(containerEl) {
         }
       }
 
-      // Update status to show success
+      // Update status to show character loaded
       if (statusSection) {
         const statusIcon = statusSection.querySelector('#statusIcon');
         const statusText = statusSection.querySelector('#statusText');
-        if (statusIcon) statusIcon.textContent = '✅';
-        if (statusText) statusText.textContent = `Character synced: ${character.name}`;
+        if (statusIcon) statusIcon.textContent = '📋';
+        if (statusText) statusText.textContent = `Ready to sync: ${character.name}`;
       }
     }
 
