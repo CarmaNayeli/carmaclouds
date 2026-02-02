@@ -3,6 +3,9 @@
  * Tab-based interface with lazy loading for VTT adapters
  */
 
+// Detect browser API (Firefox uses 'browser', Chrome uses 'chrome')
+const browserAPI = (typeof browser !== 'undefined' && browser.runtime) ? browser : chrome;
+
 // Track loaded adapters
 const loadedAdapters = {
   rollcloud: null,
@@ -12,7 +15,7 @@ const loadedAdapters = {
 
 // Get saved settings
 async function getSettings() {
-  const result = await chrome.storage.local.get('carmaclouds_settings') || {};
+  const result = await browserAPI.storage.local.get('carmaclouds_settings') || {};
   return result.carmaclouds_settings || {
     lastActiveTab: 'rollcloud',
     enabledVTTs: ['rollcloud', 'owlcloud', 'foundcloud']
@@ -21,7 +24,7 @@ async function getSettings() {
 
 // Save settings
 async function saveSettings(settings) {
-  await chrome.storage.local.set({ carmaclouds_settings: settings });
+  await browserAPI.storage.local.set({ carmaclouds_settings: settings });
 }
 
 // Show login required message
@@ -143,7 +146,7 @@ function closeAuthModal() {
 
 // Get auth token from storage
 async function getAuthToken() {
-  const result = await chrome.storage.local.get('dicecloud_auth_token');
+  const result = await browserAPI.storage.local.get('dicecloud_auth_token');
   return result?.dicecloud_auth_token || null;
 }
 
@@ -160,7 +163,7 @@ async function saveAuthToken(token, userId = null, username = null) {
     storageData.username = username;
   }
 
-  await chrome.storage.local.set(storageData);
+  await browserAPI.storage.local.set(storageData);
   await updateAuthStatus();
   await updateAuthView();
 
@@ -170,7 +173,7 @@ async function saveAuthToken(token, userId = null, username = null) {
       const supabaseManager = new SupabaseTokenManager();
 
       // Get user info for the token
-      const result = await chrome.storage.local.get(['username', 'diceCloudUserId']);
+      const result = await browserAPI.storage.local.get(['username', 'diceCloudUserId']);
 
       console.log('📤 Syncing to database with data:', {
         hasToken: !!token,
@@ -203,7 +206,7 @@ async function saveAuthToken(token, userId = null, username = null) {
 
 // Clear auth token
 async function clearAuthToken() {
-  await chrome.storage.local.remove('dicecloud_auth_token');
+  await browserAPI.storage.local.remove('dicecloud_auth_token');
   updateAuthStatus();
   updateAuthView();
   // Reload current tab to show login message
@@ -262,7 +265,7 @@ async function autoConnect() {
     errorDiv.classList.add('hidden');
 
     // Check if user has a DiceCloud tab open
-    const tabs = await chrome.tabs.query({ url: '*://*.dicecloud.com/*' });
+    const tabs = await browserAPI.tabs.query({ url: '*://*.dicecloud.com/*' });
 
     if (!tabs || tabs.length === 0) {
       // No DiceCloud tab found
@@ -278,9 +281,9 @@ async function autoConnect() {
       // Use different APIs for Chrome vs Firefox
       let results;
       
-      if (typeof chrome !== 'undefined' && chrome.scripting) {
-        // Chrome (Manifest V3) - use chrome.scripting
-        results = await chrome.scripting.executeScript({
+      if (typeof chrome !== 'undefined' && browserAPI.scripting) {
+        // Chrome (Manifest V3) - use browserAPI.scripting
+        results = await browserAPI.scripting.executeScript({
           target: { tabId: tabs[0].id },
           func: () => {
             // Try to get auth data from localStorage, sessionStorage, or window object
@@ -457,7 +460,7 @@ async function autoConnect() {
     }
 
     // Fallback to cookie method if script injection fails
-    const cookies = await chrome.cookies.getAll({ domain: '.dicecloud.com' });
+    const cookies = await browserAPI.cookies.getAll({ domain: '.dicecloud.com' });
     console.log('Available DiceCloud cookies:', cookies.map(c => ({ name: c.name, domain: c.domain, value: c.value ? '***' : 'empty' })));
     
     const authCookie = cookies.find(c => 
@@ -585,7 +588,7 @@ async function checkAndUpdateAuthToken() {
     const supabaseManager = new SupabaseTokenManager();
 
     // Get current token from storage (check both old and new key names)
-    const result = await chrome.storage.local.get(['diceCloudToken', 'dicecloud_auth_token', 'username', 'tokenExpires', 'diceCloudUserId', 'authId']);
+    const result = await browserAPI.storage.local.get(['diceCloudToken', 'dicecloud_auth_token', 'username', 'tokenExpires', 'diceCloudUserId', 'authId']);
 
     console.log('🔍 Storage contents:', {
       diceCloudToken: result.diceCloudToken ? '***found***' : 'NOT FOUND',
@@ -635,7 +638,7 @@ async function checkAndUpdateAuthToken() {
         console.log('✅ Auth token refreshed successfully');
         
         // Update local storage with new token
-        await chrome.storage.local.set({
+        await browserAPI.storage.local.set({
           diceCloudToken: refreshResult.token,
           tokenExpires: refreshResult.expires,
           diceCloudUserId: refreshResult.userId
@@ -751,22 +754,22 @@ async function init() {
   // Set up external links
   document.getElementById('open-website').addEventListener('click', (e) => {
     e.preventDefault();
-    chrome.tabs.create({ url: 'https://carmaclouds.vercel.app' });
+    browserAPI.tabs.create({ url: 'https://carmaclouds.vercel.app' });
   });
 
   document.getElementById('open-github').addEventListener('click', (e) => {
     e.preventDefault();
-    chrome.tabs.create({ url: 'https://github.com/CarmaNayeli/carmaclouds' });
+    browserAPI.tabs.create({ url: 'https://github.com/CarmaNayeli/carmaclouds' });
   });
 
   document.getElementById('open-issues').addEventListener('click', (e) => {
     e.preventDefault();
-    chrome.tabs.create({ url: 'https://github.com/CarmaNayeli/carmaclouds/issues' });
+    browserAPI.tabs.create({ url: 'https://github.com/CarmaNayeli/carmaclouds/issues' });
   });
 
   document.getElementById('open-sponsor').addEventListener('click', (e) => {
     e.preventDefault();
-    chrome.tabs.create({ url: 'https://github.com/sponsors/CarmaNayeli/' });
+    browserAPI.tabs.create({ url: 'https://github.com/sponsors/CarmaNayeli/' });
   });
 
   // Set up sync to CarmaClouds button
@@ -795,7 +798,7 @@ async function handleSyncToCarmaClouds() {
     statusDiv.style.color = '#b0b0b0';
 
     // Get character data from background script
-    const response = await chrome.runtime.sendMessage({ action: 'getCharacterData' });
+    const response = await browserAPI.runtime.sendMessage({ action: 'getCharacterData' });
 
     if (!response || !response.success || !response.data) {
       throw new Error('No character data available. Please sync from DiceCloud first.');
@@ -807,7 +810,7 @@ async function handleSyncToCarmaClouds() {
     // Store in local storage first
     statusDiv.textContent = 'Storing character locally...';
 
-    const existingData = await chrome.storage.local.get('carmaclouds_characters');
+    const existingData = await browserAPI.storage.local.get('carmaclouds_characters');
     const characters = existingData.carmaclouds_characters || [];
 
     // Update or add character (remove old version if exists)
@@ -818,7 +821,7 @@ async function handleSyncToCarmaClouds() {
       characters.unshift(characterData); // Add to beginning
     }
 
-    await chrome.storage.local.set({ carmaclouds_characters: characters });
+    await browserAPI.storage.local.set({ carmaclouds_characters: characters });
     console.log('✅ Character stored in local storage');
 
     // Store character in Supabase database
@@ -828,7 +831,7 @@ async function handleSyncToCarmaClouds() {
       const supabaseManager = new SupabaseTokenManager();
 
       // Get auth info
-      const authResult = await chrome.storage.local.get(['diceCloudUserId', 'username']);
+      const authResult = await browserAPI.storage.local.get(['diceCloudUserId', 'username']);
 
       const dbResult = await supabaseManager.storeCharacter({
         ...characterData,
