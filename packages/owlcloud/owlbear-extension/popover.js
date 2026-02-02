@@ -1813,6 +1813,10 @@ async function checkForActiveCharacter() {
       localStorage.removeItem(cacheKey);
       localStorage.removeItem(versionKey);
       showNoCharacter();
+
+      // Still fetch all characters to show the character list
+      // This handles cases where multiple characters exist but no single "active" one
+      await fetchAllCharacters();
     }
   } catch (error) {
     console.error('❌ Error checking for active character:', error);
@@ -3158,15 +3162,23 @@ linkExtensionBtn.addEventListener('click', async () => {
     linkExtensionBtn.disabled = true;
 
     // Call Supabase edge function to link
+    const requestBody = {
+      owlbearPlayerId: playerId,
+      dicecloudUserId: dicecloudUserId.trim()
+    };
+
+    // Include supabase_user_id if authenticated for cross-device sync
+    if (currentUser) {
+      requestBody.supabaseUserId = currentUser.id;
+      console.log('🔗 Including supabaseUserId for cross-device sync:', currentUser.id);
+    }
+
     const response = await fetch(
       `${SUPABASE_URL}/functions/v1/link-owlbear-player`,
       {
         method: 'POST',
         headers: SUPABASE_HEADERS,
-        body: JSON.stringify({
-          owlbearPlayerId: playerId,
-          dicecloudUserId: dicecloudUserId.trim()
-        })
+        body: JSON.stringify(requestBody)
       }
     );
 
@@ -3175,8 +3187,9 @@ linkExtensionBtn.addEventListener('click', async () => {
     if (response.ok && result.success) {
       alert(`✅ Successfully linked! ${result.linkedCharacters} character(s) are now connected to Owlbear.`);
 
-      // Refresh character data
-      checkForActiveCharacter();
+      // Refresh character data - fetch all characters first to show the list
+      await fetchAllCharacters();
+      await checkForActiveCharacter();
     } else {
       alert(`❌ Linking failed: ${result.error || 'Unknown error'}`);
     }

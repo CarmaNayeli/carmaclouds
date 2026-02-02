@@ -1339,6 +1339,7 @@ This will disconnect the character from this room. You can sync a different char
         localStorage.removeItem(cacheKey);
         localStorage.removeItem(versionKey);
         showNoCharacter();
+        await fetchAllCharacters();
       }
     } catch (error) {
       console.error("\u274C Error checking for active character:", error);
@@ -2354,21 +2355,27 @@ This will disconnect the character from this room. You can sync a different char
       }
       linkExtensionBtn.textContent = "\u23F3 Linking...";
       linkExtensionBtn.disabled = true;
+      const requestBody = {
+        owlbearPlayerId: playerId,
+        dicecloudUserId: dicecloudUserId.trim()
+      };
+      if (currentUser) {
+        requestBody.supabaseUserId = currentUser.id;
+        console.log("\u{1F517} Including supabaseUserId for cross-device sync:", currentUser.id);
+      }
       const response = await fetch(
         `${SUPABASE_URL}/functions/v1/link-owlbear-player`,
         {
           method: "POST",
           headers: SUPABASE_HEADERS,
-          body: JSON.stringify({
-            owlbearPlayerId: playerId,
-            dicecloudUserId: dicecloudUserId.trim()
-          })
+          body: JSON.stringify(requestBody)
         }
       );
       const result = await response.json();
       if (response.ok && result.success) {
         alert(`\u2705 Successfully linked! ${result.linkedCharacters} character(s) are now connected to Owlbear.`);
-        checkForActiveCharacter();
+        await fetchAllCharacters();
+        await checkForActiveCharacter();
       } else {
         alert(`\u274C Linking failed: ${result.error || "Unknown error"}`);
       }
