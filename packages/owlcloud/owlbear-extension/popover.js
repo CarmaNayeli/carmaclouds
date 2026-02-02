@@ -1662,19 +1662,12 @@ async function checkForActiveCharacter() {
             characterData = rawData;
           }
         } else if (rawData.creature && rawData.variables && rawData.properties) {
-          // This is already extracted by CarmaClouds - convert to API format and parse
+          // This is already extracted by CarmaClouds - use parseForRollCloud
           console.log('✅ Using pre-extracted character data');
 
-          // Convert extracted format to raw API format that parseCharacterData expects
-          const apiFormat = {
-            creatures: [rawData.creature],
-            creatureVariables: [rawData.variables],
-            creatureProperties: rawData.properties
-          };
-
-          // Parse it with the comprehensive parser
+          // Parse it with the comprehensive Roll20 parser (works for OBR too)
           try {
-            characterData = parseCharacterData(apiFormat, data.character.dicecloud_character_id);
+            characterData = window.parseForRollCloud ? window.parseForRollCloud(rawData) : parseForRollCloud(rawData);
             console.log('✅ Parsed extracted data:', characterData);
           } catch (parseError) {
             console.error('❌ Failed to parse extracted data:', parseError);

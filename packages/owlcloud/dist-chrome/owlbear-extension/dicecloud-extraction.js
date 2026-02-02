@@ -905,7 +905,8 @@ function parseForFoundCloud(rawData) {
   return parseForRollCloud(rawData);
 }
 
-// Expose parseCharacterData to global scope for use in popover.js
+// Expose functions to global scope for use in popover.js
 if (typeof window !== 'undefined') {
   window.parseCharacterData = parseCharacterData;
+  window.parseForRollCloud = parseForRollCloud;
 }

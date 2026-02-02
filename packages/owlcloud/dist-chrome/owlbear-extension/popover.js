@@ -1229,13 +1229,8 @@ This will disconnect the character from this room. You can sync a different char
             }
           } else if (rawData.creature && rawData.variables && rawData.properties) {
             console.log("\u2705 Using pre-extracted character data");
-            const apiFormat = {
-              creatures: [rawData.creature],
-              creatureVariables: [rawData.variables],
-              creatureProperties: rawData.properties
-            };
             try {
-              characterData = parseCharacterData(apiFormat, data.character.dicecloud_character_id);
+              characterData = window.parseForRollCloud ? window.parseForRollCloud(rawData) : parseForRollCloud(rawData);
               console.log("\u2705 Parsed extracted data:", characterData);
             } catch (parseError) {
               console.error("\u274C Failed to parse extracted data:", parseError);
