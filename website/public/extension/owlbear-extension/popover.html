@@ -900,12 +900,29 @@
     }
 
     .spell-concentration-badge {
-      background: rgba(245, 158, 11, 0.2);
-      color: #FCD34D;
+      background: rgba(107, 114, 128, 0.2);
+      color: #9CA3AF;
       font-size: 10px;
       padding: 2px 6px;
       border-radius: 4px;
       font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .spell-concentration-badge:hover {
+      background: rgba(107, 114, 128, 0.3);
+      transform: scale(1.1);
+    }
+
+    .spell-concentration-badge.active {
+      background: rgba(245, 158, 11, 0.4);
+      color: #FDE047;
+      box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+    }
+
+    .spell-concentration-badge.active:hover {
+      background: rgba(245, 158, 11, 0.5);
     }
 
     .spell-ritual-badge {

@@ -4,6 +4,7 @@
   var allCharacters = [];
   var isOwlbearReady = false;
   var rollMode = "normal";
+  var concentratingSpell = null;
   var OWLCLOUD_EXTENSION_ID = "com.owlcloud.extension";
   var dicePlusReady = false;
   var pendingRolls = /* @__PURE__ */ new Map();
@@ -2036,6 +2037,9 @@ This will disconnect the character from this room. You can sync a different char
         }
         let spellButtonsHtml = '<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">';
         spellButtonsHtml += `<button class="rest-btn" style="flex: 1; min-width: 100px;" onclick="event.stopPropagation(); castSpell('${(spell.name || "Unknown Spell").replace(/'/g, "\\'")}', ${spellLevel})">\u2728 Cast</button>`;
+        if (isRitual) {
+          spellButtonsHtml += `<button class="rest-btn" style="padding: 8px 12px; font-size: 12px;" onclick="event.stopPropagation(); castSpellAsRitual('${(spell.name || "Unknown Spell").replace(/'/g, "\\'")}')">\u{1F4FF} Ritual</button>`;
+        }
         if (attackRoll && attackRoll.trim()) {
           spellButtonsHtml += `<button class="rest-btn" style="flex: 1; min-width: 100px;" onclick="event.stopPropagation(); rollAttackOnly('${(spell.name || "Unknown Spell").replace(/'/g, "\\'")}', ${attackBonus})">\u{1F3AF} Attack</button>`;
         }
@@ -2065,7 +2069,7 @@ This will disconnect the character from this room. You can sync a different char
           <div class="spell-card-header" onclick="toggleFeatureCard('${spellCardId}')" style="cursor: pointer;">
             <span class="spell-name">${spell.name || "Unknown Spell"}</span>
             <div class="spell-badges">
-              ${isConcentration ? '<span class="spell-concentration-badge">C</span>' : ""}
+              ${isConcentration ? `<span class="spell-concentration-badge ${concentratingSpell === spell.name ? "active" : ""}" onclick="event.stopPropagation(); toggleConcentration('${(spell.name || "").replace(/'/g, "\\'")}')">C</span>` : ""}
               ${isRitual ? '<span class="spell-ritual-badge">R</span>' : ""}
               <span class="expand-icon">\u25BC</span>
             </div>
@@ -2689,6 +2693,40 @@ This will disconnect the character from this room. You can sync a different char
     }
     console.log("\u2728", message);
     await addChatMessage(message, "spell", currentCharacter?.name, details);
+  };
+  window.castSpellAsRitual = async function(spellName) {
+    if (!currentCharacter)
+      return;
+    const message = `\u{1F4FF} Casts <strong>${spellName}</strong> as a ritual`;
+    const details = `<strong>${spellName}</strong><br>Cast as Ritual (no spell slot consumed)`;
+    if (isOwlbearReady) {
+      OBR.notification.show(`${currentCharacter?.name || "Character"} casts ${spellName} as a ritual`, "INFO");
+    }
+    console.log("\u{1F4FF}", message);
+    await addChatMessage(message, "spell", currentCharacter?.name, details);
+  };
+  window.toggleConcentration = function(spellName) {
+    if (!currentCharacter)
+      return;
+    if (concentratingSpell === spellName) {
+      concentratingSpell = null;
+      console.log(`[OwlCloud] Stopped concentrating on ${spellName}`);
+      if (isOwlbearReady) {
+        OBR.notification.show(`Concentration on ${spellName} ended`, "INFO");
+      }
+    } else {
+      const previousSpell = concentratingSpell;
+      concentratingSpell = spellName;
+      console.log(`[OwlCloud] Now concentrating on ${spellName}`);
+      if (isOwlbearReady) {
+        if (previousSpell) {
+          OBR.notification.show(`Concentration switched from ${previousSpell} to ${spellName}`, "WARNING");
+        } else {
+          OBR.notification.show(`Concentrating on ${spellName}`, "INFO");
+        }
+      }
+    }
+    populateSpellsTab(currentCharacter);
   };
   window.adjustHP = async function() {
     if (!currentCharacter)
