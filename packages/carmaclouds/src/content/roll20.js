@@ -3635,6 +3635,14 @@ ${player.deathSaves ? `Death Saves: ✓${player.deathSaves.successes || 0} / ✗
     if (event.data && event.data.action === 'toggleGMMode') {
       debug.log('👑 Processing toggleGMMode message:', event.data.enabled);
       toggleGMMode(event.data.enabled);
+    } else if (event.data && event.data.action === 'shareCharacterWithGM') {
+      debug.log('👑 Processing shareCharacterWithGM message');
+      try {
+        postChatMessage(event.data.message);
+        debug.log('✅ Character broadcast posted to chat');
+      } catch (error) {
+        debug.error('❌ Error posting character broadcast:', error);
+      }
     } else if (event.data && event.data.action === 'registerPopup') {
       // Register popup window for turn notifications
       if (event.data.characterName && event.source) {

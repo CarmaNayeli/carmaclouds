@@ -1046,7 +1046,73 @@ document.addEventListener('DOMContentLoaded', () => {
   if (disadvantageBtn) {
     disadvantageBtn.addEventListener('click', () => setAdvantageState('disadvantage'));
   }
+
+  // Share character with GM button
+  const showToGMBtn = document.getElementById('show-to-gm-btn');
+  if (showToGMBtn) {
+    showToGMBtn.addEventListener('click', shareCharacterWithGM);
+  }
 });
+
+/**
+ * Share character data with GM via Roll20 chat
+ */
+function shareCharacterWithGM() {
+  if (!characterData) {
+    showNotification('⚠️ No character data available to share', 'error');
+    return;
+  }
+
+  try {
+    // Prepare character data for broadcast
+    const broadcastData = {
+      character: {
+        name: characterData.name,
+        race: characterData.race,
+        class: characterData.class,
+        level: characterData.level,
+        hitPoints: characterData.hitPoints,
+        temporaryHP: characterData.temporaryHP,
+        armorClass: characterData.armorClass,
+        speed: characterData.speed,
+        initiative: characterData.initiative,
+        proficiencyBonus: characterData.proficiencyBonus
+      },
+      fullSheet: characterData // Include complete character sheet
+    };
+
+    // Encode the data
+    const encodedData = btoa(JSON.stringify(broadcastData));
+    
+    // Create the broadcast message
+    const broadcastMessage = `👑[ROLLCLOUD:CHARACTER:${encodedData}]👑`;
+    
+    // Send message to parent window (Roll20 content script)
+    if (window.opener) {
+      window.opener.postMessage({
+        action: 'shareCharacterWithGM',
+        message: broadcastMessage
+      }, '*');
+      debug.log('✅ Character data sent to Roll20 for GM sharing');
+      showNotification(`✅ Sharing ${characterData.name} with GM...`, 'success');
+    } else {
+      // Fallback: try to send via runtime message
+      browserAPI.runtime.sendMessage({
+        action: 'shareCharacterWithGM',
+        message: broadcastMessage
+      }).then(() => {
+        debug.log('✅ Character data sent via runtime for GM sharing');
+        showNotification(`✅ Sharing ${characterData.name} with GM...`, 'success');
+      }).catch(error => {
+        debug.error('❌ Failed to share character with GM:', error);
+        showNotification('❌ Failed to share character with GM', 'error');
+      });
+    }
+  } catch (error) {
+    debug.error('❌ Error preparing character data for GM sharing:', error);
+    showNotification('❌ Failed to prepare character data for sharing', 'error');
+  }
+}
 
 // Helper function for setting active character (backup if runtime message fails)
 async function setActiveCharacter(characterId) {

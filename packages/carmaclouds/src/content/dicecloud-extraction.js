@@ -653,6 +653,7 @@ export function parseForRollCloud(rawData) {
   };
 
   return {
+    name: characterName,
     race,
     class: characterClass || 'Unknown',
     level,
