@@ -4,10 +4,34 @@
  * Loads the full RollCloud popup UI
  */
 
+import { parseForRollCloud } from '../../../content/dicecloud-extraction.js';
+
 export async function init(containerEl) {
   console.log('Initializing RollCloud adapter...');
 
   try {
+    // Show loading state
+    containerEl.innerHTML = '<div class="loading">Loading RollCloud...</div>';
+
+    // Fetch synced characters from storage
+    const result = await chrome.storage.local.get('carmaclouds_characters');
+    const characters = result.carmaclouds_characters || [];
+
+    console.log('Found', characters.length, 'synced characters');
+
+    // Get the most recent character (for now - later we'll add character selection)
+    const character = characters.length > 0 ? characters[0] : null;
+
+    let parsedData = null;
+    if (character && character.raw) {
+      // Parse raw DiceCloud data for Roll20
+      containerEl.innerHTML = '<div class="loading">Parsing character data...</div>';
+
+      console.log('Parsing character for Roll20:', character.name);
+      parsedData = parseForRollCloud(character.raw);
+      console.log('Parsed data:', parsedData);
+    }
+
     // Fetch the RollCloud popup HTML
     const htmlPath = chrome.runtime.getURL('src/popup/adapters/rollcloud/popup.html');
     const response = await fetch(htmlPath);
@@ -43,10 +67,72 @@ export async function init(containerEl) {
     style.textContent = css;
     containerEl.appendChild(style);
 
-    // Import and initialize the RollCloud popup logic
-    const { default: initRollCloud } = await import('./rollcloud-popup.js');
-    if (typeof initRollCloud === 'function') {
-      initRollCloud();
+    // Populate character info directly if we have data
+    if (parsedData && character) {
+      // Show character info card
+      const characterInfo = wrapper.querySelector('#characterInfo');
+      const statusSection = wrapper.querySelector('#status');
+
+      if (characterInfo) {
+        characterInfo.classList.remove('hidden');
+
+        // Populate character fields
+        const nameEl = characterInfo.querySelector('#charName');
+        const levelEl = characterInfo.querySelector('#charLevel');
+        const classEl = characterInfo.querySelector('#charClass');
+        const raceEl = characterInfo.querySelector('#charRace');
+
+        if (nameEl) nameEl.textContent = character.name || '-';
+        if (levelEl) levelEl.textContent = character.preview?.level || '-';
+        if (classEl) classEl.textContent = character.preview?.class || '-';
+        if (raceEl) raceEl.textContent = character.preview?.race || 'Unknown';
+
+        // Add push to VTT button handler
+        const pushBtn = characterInfo.querySelector('#pushToVttBtn');
+        if (pushBtn) {
+          pushBtn.addEventListener('click', async () => {
+            const originalText = pushBtn.innerHTML;
+            try {
+              pushBtn.disabled = true;
+              pushBtn.innerHTML = '⏳ Pushing...';
+
+              // Get the active Roll20 tab
+              const tabs = await chrome.tabs.query({ url: '*://app.roll20.net/*' });
+              if (tabs.length === 0) {
+                throw new Error('No Roll20 tab found. Please open Roll20 first.');
+              }
+
+              // Send character data to Roll20 content script
+              await chrome.tabs.sendMessage(tabs[0].id, {
+                type: 'PUSH_CHARACTER',
+                data: parsedData
+              });
+
+              pushBtn.innerHTML = '✅ Pushed!';
+              setTimeout(() => {
+                pushBtn.innerHTML = originalText;
+                pushBtn.disabled = false;
+              }, 2000);
+            } catch (error) {
+              console.error('Error pushing to Roll20:', error);
+              pushBtn.innerHTML = '❌ Failed';
+              alert(`Failed to push to Roll20: ${error.message}`);
+              setTimeout(() => {
+                pushBtn.innerHTML = originalText;
+                pushBtn.disabled = false;
+              }, 2000);
+            }
+          });
+        }
+      }
+
+      // Update status to show success
+      if (statusSection) {
+        const statusIcon = statusSection.querySelector('#statusIcon');
+        const statusText = statusSection.querySelector('#statusText');
+        if (statusIcon) statusIcon.textContent = '✅';
+        if (statusText) statusText.textContent = `Character synced: ${character.name}`;
+      }
     }
 
   } catch (error) {

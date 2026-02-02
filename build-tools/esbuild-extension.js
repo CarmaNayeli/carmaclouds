@@ -82,9 +82,10 @@ export async function buildExtension(config) {
     },
     // Only add banner for non-service-worker files
     // Service workers will define their own debug and config
-    ...(entryPoints['src/background-chrome'] ? {} : {
+    // Check if any entry point is a background script (service worker)
+    ...(Object.keys(entryPoints).some(key => key.includes('background')) ? {} : {
       banner: {
-        js: '// Initialize debug globally\nif (typeof window !== "undefined" && !window.debug) { window.debug = { log: console.log, warn: console.warn, error: console.error, info: console.info, group: console.group, groupEnd: console.groupEnd, table: console.table, time: console.time, timeEnd: console.timeEnd, isEnabled: () => true }; }\nconst debug = window.debug;\n// Supabase config will be set by browser.js\nconst SUPABASE_URL = typeof window !== "undefined" ? window.SUPABASE_URL : undefined;\nconst SUPABASE_ANON_KEY = typeof window !== "undefined" ? window.SUPABASE_ANON_KEY : undefined;\n// SupabaseTokenManager will be set by browser.js\nconst SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseTokenManager : undefined;'
+        js: '// Initialize debug globally\nif (typeof window !== "undefined" && !window.debug) { window.debug = { log: console.log, warn: console.warn, error: console.error, info: console.info, group: console.group, groupEnd: console.groupEnd, table: console.table, time: console.time, timeEnd: console.timeEnd, isEnabled: () => true }; }\nconst debug = window.debug;\n// Cross-browser API wrapper\nconst browserAPI = typeof chrome !== "undefined" ? chrome : (typeof browser !== "undefined" ? browser : {});\n// Supabase config will be set by browser.js\nconst SUPABASE_URL = typeof window !== "undefined" ? window.SUPABASE_URL : undefined;\nconst SUPABASE_ANON_KEY = typeof window !== "undefined" ? window.SUPABASE_ANON_KEY : undefined;\n// SupabaseTokenManager will be set by browser.js\nconst SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseTokenManager : undefined;'
       }
     })
   };
@@ -103,14 +104,27 @@ export async function buildExtension(config) {
   // Copy static files
   console.log('📋 Copying static files...');
   for (const file of copyFiles) {
-    const srcPath = path.join(packageDir, file);
-    const destPath = path.join(outPath, file);
+    // Support both string paths and {from, to} objects
+    let srcPath, destPath, displayName;
+
+    if (typeof file === 'string') {
+      srcPath = path.join(packageDir, file);
+      destPath = path.join(outPath, file);
+      displayName = file;
+    } else if (file.from && file.to) {
+      srcPath = path.join(packageDir, file.from);
+      destPath = path.join(outPath, file.to);
+      displayName = `${file.from} → ${file.to}`;
+    } else {
+      console.warn(`   ⚠ Invalid copyFiles entry:`, file);
+      continue;
+    }
 
     if (fs.existsSync(srcPath)) {
       copyRecursive(srcPath, destPath);
-      console.log(`   ✓ ${file}`);
+      console.log(`   ✓ ${displayName}`);
     } else {
-      console.warn(`   ⚠ Not found: ${file}`);
+      console.warn(`   ⚠ Not found: ${displayName}`);
     }
   }
 

@@ -492,6 +492,18 @@ async function init() {
     closeSettingsModal();
   });
 
+  // Set up refresh button
+  document.getElementById('refresh-button').addEventListener('click', async () => {
+    // Get current active tab
+    const activeTab = document.querySelector('.tab-button.active')?.dataset.tab;
+    if (activeTab) {
+      // Clear the loaded adapter
+      loadedAdapters[activeTab] = null;
+      // Reload the current tab
+      await switchTab(activeTab);
+    }
+  });
+
   // Close modal when clicking outside
   document.getElementById('settings-modal').addEventListener('click', (e) => {
     if (e.target.id === 'settings-modal') {

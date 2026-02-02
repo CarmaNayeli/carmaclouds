@@ -63,43 +63,33 @@
           </p>
         </div>
 
-        <div id="status" class="status-section">
-          <div class="status-indicator">
-            <span id="statusIcon">⏳</span>
-            <span id="statusText">No character data synced</span>
+        <div id="status" class="status-section" style="background: transparent; padding: 12px; margin: 12px; text-align: left;">
+          <div class="status-indicator" style="display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 8px; background: rgba(22, 167, 90, 0.15); border: 1px solid rgba(22, 167, 90, 0.3);">
+            <span id="statusIcon" style="font-size: 20px;">⏳</span>
+            <span id="statusText" style="color: #16a75a; font-weight: 500;">No character data synced</span>
           </div>
         </div>
 
-        <div id="characterInfo" class="character-info hidden">
-          <h3>Synced Character</h3>
-          <div class="info-row">
-            <span class="label">Name:</span>
+        <div id="characterInfo" class="character-info hidden" style="background: #2a2a2a; padding: 16px; margin: 12px; border-radius: 8px; border: 1px solid #16a75a;">
+          <h3 style="color: #16a75a; margin-top: 0;">Synced Character</h3>
+          <div class="info-row" style="display: flex; justify-content: space-between; margin: 8px 0;">
+            <span class="label" style="color: #888;">Name:</span>
             <span id="charName">-</span>
           </div>
-          <div class="info-row">
-            <span class="label">Level:</span>
+          <div class="info-row" style="display: flex; justify-content: space-between; margin: 8px 0;">
+            <span class="label" style="color: #888;">Level:</span>
             <span id="charLevel">-</span>
           </div>
-          <div class="info-row">
-            <span class="label">Class:</span>
+          <div class="info-row" style="display: flex; justify-content: space-between; margin: 8px 0;">
+            <span class="label" style="color: #888;">Class:</span>
             <span id="charClass">-</span>
           </div>
-          <div class="info-row">
-            <span class="label">Race:</span>
+          <div class="info-row" style="display: flex; justify-content: space-between; margin: 8px 0;">
+            <span class="label" style="color: #888;">Race:</span>
             <span id="charRace">-</span>
           </div>
-          <div class="info-row" id="userIdRow" style="display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(138, 92, 246, 0.3);">
-            <span class="label" style="font-size: 0.85em;">Your User ID:</span>
-            <span id="userIdDisplay" style="font-family: monospace; font-size: 0.75em; word-break: break-all;"></span>
-          </div>
-        </div>
-
-        <div class="actions">
-          <button id="syncBtn" class="btn btn-primary">
-            🔄 Sync Character
-          </button>
-          <button id="showSheetBtn" class="btn btn-secondary">
-            📋 Show Character Sheet
+          <button id="pushToVttBtn" class="btn btn-primary" style="margin-top: 12px; width: 100%;">
+            🦉 Push to Owlbear Rodeo
           </button>
         </div>
 

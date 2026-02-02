@@ -21,7 +21,10 @@ await buildExtension({
     'src/popup/popup': './src/popup/popup.js',
     'src/content/dicecloud': './src/content/dicecloud.js',
     'src/content/roll20': './src/content/roll20.js',
+    'src/content/character-sheet-overlay': './src/content/character-sheet-overlay.js',
     'src/content/owlbear': './src/content/owlbear.js',
+    // Shared modules (for dynamic imports)
+    'src/content/dicecloud-extraction': './src/content/dicecloud-extraction.js',
     // Adapters (lazy loaded, but need to be bundled)
     'src/popup/adapters/rollcloud/adapter': './src/popup/adapters/rollcloud/adapter.js',
     'src/popup/adapters/rollcloud/rollcloud-popup': './src/popup/adapters/rollcloud/rollcloud-popup.js',
@@ -36,6 +39,8 @@ await buildExtension({
     'images',
     'src/popup/popup.html',
     'src/popup/popup.css',
+    'src/popup-sheet.html',
+    'src/popup-sheet.js',
     'src/popup/adapters/rollcloud/popup.html',
     'src/popup/adapters/rollcloud/popup.css',
     'src/popup/adapters/owlcloud/popup.html',
@@ -43,6 +48,9 @@ await buildExtension({
     'src/popup/adapters/foundcloud/popup.html',
     'src/popup/adapters/foundcloud/popup.css',
     'owlbear-extension',
+    // Copy popup-sheet dependencies from core package
+    { from: '../core/src/common', to: 'common' },
+    { from: '../core/src/modules', to: 'modules' },
   ],
   watch,
   minify
@@ -69,7 +77,10 @@ await buildExtension({
     'src/popup/popup': './src/popup/popup.js',
     'src/content/dicecloud': './src/content/dicecloud.js',
     'src/content/roll20': './src/content/roll20.js',
+    'src/content/character-sheet-overlay': './src/content/character-sheet-overlay.js',
     'src/content/owlbear': './src/content/owlbear.js',
+    // Shared modules (for dynamic imports)
+    'src/content/dicecloud-extraction': './src/content/dicecloud-extraction.js',
     // Adapters (lazy loaded, but need to be bundled)
     'src/popup/adapters/rollcloud/adapter': './src/popup/adapters/rollcloud/adapter.js',
     'src/popup/adapters/rollcloud/rollcloud-popup': './src/popup/adapters/rollcloud/rollcloud-popup.js',
@@ -84,6 +95,8 @@ await buildExtension({
     'images',
     'src/popup/popup.html',
     'src/popup/popup.css',
+    'src/popup-sheet.html',
+    'src/popup-sheet.js',
     'src/popup/adapters/rollcloud/popup.html',
     'src/popup/adapters/rollcloud/popup.css',
     'src/popup/adapters/owlcloud/popup.html',
@@ -91,6 +104,9 @@ await buildExtension({
     'src/popup/adapters/foundcloud/popup.html',
     'src/popup/adapters/foundcloud/popup.css',
     'owlbear-extension',
+    // Copy popup-sheet dependencies from core package
+    { from: '../core/src/common', to: 'common' },
+    { from: '../core/src/modules', to: 'modules' },
   ],
   watch,
   minify

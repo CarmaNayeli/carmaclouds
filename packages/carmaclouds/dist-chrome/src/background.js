@@ -1,41 +1,206 @@
-// Initialize debug globally
-if (typeof window !== "undefined" && !window.debug) { window.debug = { log: console.log, warn: console.warn, error: console.error, info: console.info, group: console.group, groupEnd: console.groupEnd, table: console.table, time: console.time, timeEnd: console.timeEnd, isEnabled: () => true }; }
-const debug = window.debug;
-// Supabase config will be set by browser.js
-const SUPABASE_URL = typeof window !== "undefined" ? window.SUPABASE_URL : undefined;
-const SUPABASE_ANON_KEY = typeof window !== "undefined" ? window.SUPABASE_ANON_KEY : undefined;
-// SupabaseTokenManager will be set by browser.js
-const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseTokenManager : undefined;
 (() => {
   // src/background.js
   console.log("CarmaClouds background service worker initialized");
+  var keepAliveInterval;
+  function keepAlive() {
+    if (keepAliveInterval) {
+      clearInterval(keepAliveInterval);
+    }
+    keepAliveInterval = setInterval(() => {
+      if (chrome.runtime?.id) {
+        console.log("\u{1F504} Keep-alive ping");
+      } else {
+        clearInterval(keepAliveInterval);
+      }
+    }, 2e4);
+  }
+  keepAlive();
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log("Background received message:", message);
+    keepAlive();
+    console.log("\u{1F514} Background received message:", message.type || message.action);
+    if (message.action === "getCharacterData") {
+      console.log("\u{1F4CB} Getting character data for Roll20...");
+      handleGetCharacterData().then((result) => {
+        console.log("\u2705 Character data retrieved:", result);
+        sendResponse(result);
+      }).catch((error) => {
+        console.error("\u274C Failed to get character data:", error);
+        sendResponse({ success: false, error: error.message });
+      });
+      return true;
+    }
+    if (message.action === "getAllCharacterProfiles") {
+      console.log("\u{1F4CB} Getting all character profiles...");
+      handleGetAllCharacterProfiles().then((result) => {
+        console.log("\u2705 Character profiles retrieved:", result);
+        sendResponse(result);
+      }).catch((error) => {
+        console.error("\u274C Failed to get character profiles:", error);
+        sendResponse({ success: false, error: error.message });
+      });
+      return true;
+    }
+    if (message.action === "setActiveCharacter") {
+      console.log("\u{1F4CB} Setting active character:", message.characterId);
+      handleSetActiveCharacter(message.characterId).then((result) => {
+        console.log("\u2705 Active character set:", result);
+        sendResponse(result);
+      }).catch((error) => {
+        console.error("\u274C Failed to set active character:", error);
+        sendResponse({ success: false, error: error.message });
+      });
+      return true;
+    }
     switch (message.type) {
       case "CHARACTER_UPDATED":
         handleCharacterUpdate(message.data);
-        break;
+        return false;
       case "SYNC_REQUEST":
         handleSyncRequest(message.data);
-        break;
+        return false;
       case "SYNC_CHARACTER_TO_CARMACLOUDS":
-        handleSyncToCarmaClouds(message.data, sendResponse);
+        console.log("\u{1F504} Starting SYNC_CHARACTER_TO_CARMACLOUDS handler...");
+        handleSyncToCarmaClouds(message.data).then((result) => {
+          console.log("\u2705 Sync completed, sending response:", result);
+          sendResponse(result);
+        }).catch((error) => {
+          console.error("\u274C Sync failed:", error);
+          sendResponse({ success: false, error: error.message });
+        });
         return true;
       default:
         console.warn("Unknown message type:", message.type);
+        return false;
     }
-    return true;
   });
+  async function handleGetCharacterData() {
+    try {
+      const result = await chrome.storage.local.get(["carmaclouds_characters", "activeCharacterId"]);
+      const characters = result.carmaclouds_characters || [];
+      const activeCharacterId = result.activeCharacterId;
+      let activeCharacter = null;
+      if (activeCharacterId) {
+        activeCharacter = characters.find((char) => char.id === activeCharacterId);
+      }
+      if (!activeCharacter && characters.length > 0) {
+        activeCharacter = characters[0];
+      }
+      if (activeCharacter) {
+        return {
+          success: true,
+          data: activeCharacter
+        };
+      } else {
+        return {
+          success: false,
+          error: "No character data found"
+        };
+      }
+    } catch (error) {
+      console.error("Error getting character data:", error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+  async function handleGetAllCharacterProfiles() {
+    try {
+      const result = await chrome.storage.local.get("carmaclouds_characters");
+      const characters = result.carmaclouds_characters || [];
+      const profiles = {};
+      characters.forEach((char) => {
+        if (char.id && char.raw) {
+          profiles[char.id] = {
+            id: char.id,
+            name: char.name || char.raw.name || "Unknown",
+            character_name: char.name || char.raw.name || "Unknown",
+            class: extractClass(char.raw),
+            level: extractLevel(char.raw),
+            race: extractRace(char.raw),
+            ...char.raw
+            // Include all raw data for compatibility
+          };
+        }
+      });
+      return {
+        success: true,
+        profiles
+      };
+    } catch (error) {
+      console.error("Error getting character profiles:", error);
+      return {
+        success: false,
+        error: error.message,
+        profiles: {}
+      };
+    }
+  }
+  async function handleSetActiveCharacter(characterId) {
+    try {
+      const result = await chrome.storage.local.get("carmaclouds_characters");
+      const characters = result.carmaclouds_characters || [];
+      const character = characters.find((char) => char.id === characterId);
+      if (!character) {
+        return {
+          success: false,
+          error: "Character not found"
+        };
+      }
+      await chrome.storage.local.set({ activeCharacterId: characterId });
+      return {
+        success: true,
+        characterId
+      };
+    } catch (error) {
+      console.error("Error setting active character:", error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+  function extractClass(rawData) {
+    if (!rawData || !rawData.variables)
+      return "Unknown";
+    for (const variable of rawData.variables) {
+      if (variable.variableName === "class") {
+        return variable.value || "Unknown";
+      }
+    }
+    return "Unknown";
+  }
+  function extractLevel(rawData) {
+    if (!rawData || !rawData.variables)
+      return 1;
+    for (const variable of rawData.variables) {
+      if (variable.variableName === "level") {
+        return variable.value || 1;
+      }
+    }
+    return 1;
+  }
+  function extractRace(rawData) {
+    if (!rawData || !rawData.variables)
+      return "Unknown";
+    for (const variable of rawData.variables) {
+      if (variable.variableName === "race") {
+        return variable.value || "Unknown";
+      }
+    }
+    return "Unknown";
+  }
   async function handleCharacterUpdate(data) {
     console.log("Character updated:", data);
   }
   async function handleSyncRequest(data) {
     console.log("Sync requested:", data);
   }
-  async function handleSyncToCarmaClouds(characterData, sendResponse) {
+  async function handleSyncToCarmaClouds(characterData) {
     try {
-      console.log("Syncing character to CarmaClouds:", characterData);
+      console.log("\u{1F4BE} Step 1: Starting sync for character:", characterData.name);
       const storageKey = `carmaclouds_character_${characterData.name || "unknown"}`;
+      console.log("\u{1F4BE} Step 2: Saving individual character with key:", storageKey);
       await chrome.storage.local.set({
         [storageKey]: {
           ...characterData,
@@ -44,10 +209,15 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
           // Mark as available from DiceCloud
         }
       });
+      console.log("\u2705 Step 2: Individual character saved");
+      console.log("\u{1F4BE} Step 3: Getting characters list...");
       const result = await chrome.storage.local.get("carmaclouds_characters");
       const characters = result.carmaclouds_characters || [];
+      console.log("\u2705 Step 3: Found", characters.length, "existing characters");
+      console.log("\u{1F4BE} Step 4: Updating characters list...");
       const existingIndex = characters.findIndex((c) => c.name === characterData.name);
       if (existingIndex >= 0) {
+        console.log("\u{1F4DD} Updating existing character at index", existingIndex);
         characters[existingIndex] = {
           ...characters[existingIndex],
           ...characterData,
@@ -55,25 +225,34 @@ const SupabaseTokenManager = typeof window !== "undefined" ? window.SupabaseToke
           platforms: [...characters[existingIndex].platforms || [], "dicecloud"]
         };
       } else {
+        console.log("\u2795 Adding new character to list");
         characters.push({
           ...characterData,
           syncedAt: (/* @__PURE__ */ new Date()).toISOString(),
           platforms: ["dicecloud"]
         });
       }
+      console.log("\u{1F4BE} Step 5: Saving updated characters list...");
       await chrome.storage.local.set({ carmaclouds_characters: characters });
-      console.log("Character successfully synced to CarmaClouds storage");
-      sendResponse({
+      console.log("\u2705 Step 5: Characters list saved");
+      const storageCheck = await chrome.storage.local.get("activeCharacterId");
+      if (!storageCheck.activeCharacterId && characterData.id) {
+        console.log("\u{1F4BE} Step 6: Setting as active character:", characterData.id);
+        await chrome.storage.local.set({ activeCharacterId: characterData.id });
+        console.log("\u2705 Step 6: Active character ID set");
+      }
+      console.log("\u{1F389} Character successfully synced to CarmaClouds storage");
+      return {
         success: true,
         message: "Character synced successfully",
         characterCount: characters.length
-      });
+      };
     } catch (error) {
-      console.error("Error syncing character to CarmaClouds:", error);
-      sendResponse({
+      console.error("\u274C Error syncing character to CarmaClouds:", error);
+      return {
         success: false,
         error: error.message
-      });
+      };
     }
   }
   chrome.runtime.onInstalled.addListener((details) => {

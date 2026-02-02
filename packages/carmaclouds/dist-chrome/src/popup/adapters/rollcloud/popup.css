@@ -119,6 +119,22 @@ main {
   color: #16a75a;
 }
 
+.info-row span:not(.label) {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #e0e0e0;
+  padding: 0;
+  border: none;
+}
+
+#charName, #charLevel, #charClass, #charRace {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #e0e0e0 !important;
+  padding: 0 !important;
+  border: none !important;
+}
+
 .hidden {
   display: none !important;
 }

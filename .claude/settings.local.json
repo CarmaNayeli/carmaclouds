@@ -23,7 +23,8 @@
     ],
     "additionalDirectories": [
       "c:\\Users\\c_dow\\carmaclouds\\packages\\core\\src",
-      "c:\\Users\\c_dow\\carmaclouds\\packages\\carmaclouds\\src\\{popup\\adapters"
+      "c:\\Users\\c_dow\\carmaclouds\\packages\\carmaclouds\\src\\{popup\\adapters",
+      "c:\\Users\\c_dow\\carmaclouds\\packages\\rollcloud\\src\\lib"
     ]
   }
 }

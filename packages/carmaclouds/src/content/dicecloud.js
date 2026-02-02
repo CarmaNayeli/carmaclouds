@@ -224,10 +224,24 @@ async function handleSyncToCarmaClouds() {
     console.log('CarmaClouds: Extracted character data:', characterData);
 
     // Send data to extension background script
-    const response = await chrome.runtime.sendMessage({
-      type: 'SYNC_CHARACTER_TO_CARMACLOUDS',
-      data: characterData
-    });
+    console.log('CarmaClouds: 📤 Sending message to background script...');
+
+    let response;
+    try {
+      response = await chrome.runtime.sendMessage({
+        type: 'SYNC_CHARACTER_TO_CARMACLOUDS',
+        data: characterData
+      });
+      console.log('CarmaClouds: 📥 Received response from background:', response);
+    } catch (error) {
+      console.error('CarmaClouds: ❌ Error sending message to background:', error);
+      throw new Error(`Failed to communicate with extension: ${error.message}`);
+    }
+
+    if (!response) {
+      console.error('CarmaClouds: ❌ No response from background script (service worker may be inactive)');
+      throw new Error('No response from extension background script');
+    }
 
     if (response && response.success) {
       // Show success state
