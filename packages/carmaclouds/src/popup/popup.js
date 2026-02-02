@@ -152,6 +152,34 @@ async function saveAuthToken(token) {
   await chrome.storage.local.set({ dicecloud_auth_token: token });
   await updateAuthStatus();
   await updateAuthView();
+  
+  // Also sync to database if SupabaseTokenManager is available
+  try {
+    if (typeof SupabaseTokenManager !== 'undefined') {
+      const supabaseManager = new SupabaseTokenManager();
+      
+      // Get user info for the token
+      const result = await chrome.storage.local.get(['username', 'diceCloudUserId']);
+      
+      // Store token in database
+      const dbResult = await supabaseManager.storeToken({
+        token: token,
+        userId: result.diceCloudUserId || result.username,
+        expires: new Date(Date.now() + (24 * 60 * 60 * 1000)).toISOString(), // 24 hours from now
+        lastChecked: new Date().toISOString()
+      });
+      
+      if (dbResult.success) {
+        console.log('✅ Auth token synced to database');
+      } else {
+        console.log('⚠️ Failed to sync auth token to database:', dbResult.error);
+      }
+    }
+  } catch (dbError) {
+    console.log('⚠️ Database sync not available:', dbError);
+    // Don't show error to user as this is non-critical
+  }
+  
   // Reload current tab to show adapter content
   await reloadCurrentTab();
 }
@@ -493,6 +521,24 @@ async function checkAndUpdateAuthToken() {
 
     console.log('🔍 Checking auth token validity...');
     
+    // Always try to sync the current token to database to ensure it's up to date
+    try {
+      const syncResult = await supabaseManager.storeToken({
+        token: result.diceCloudToken,
+        userId: result.diceCloudUserId || result.username,
+        expires: result.tokenExpires || new Date(Date.now() + (24 * 60 * 60 * 1000)).toISOString(),
+        lastChecked: new Date().toISOString()
+      });
+      
+      if (syncResult.success) {
+        console.log('✅ Auth token synced to database');
+      } else {
+        console.log('⚠️ Failed to sync auth token to database:', syncResult.error);
+      }
+    } catch (syncError) {
+      console.log('⚠️ Database sync failed:', syncError);
+    }
+    
     // Check session validity
     const sessionCheck = await supabaseManager.checkSessionValidity();
     
@@ -512,6 +558,19 @@ async function checkAndUpdateAuthToken() {
           diceCloudUserId: refreshResult.userId
         });
         
+        // Sync the refreshed token to database
+        try {
+          await supabaseManager.storeToken({
+            token: refreshResult.token,
+            userId: refreshResult.userId,
+            expires: refreshResult.expires,
+            lastChecked: new Date().toISOString()
+          });
+          console.log('✅ Refreshed token synced to database');
+        } catch (refreshSyncError) {
+          console.log('⚠️ Failed to sync refreshed token:', refreshSyncError);
+        }
+        
         // Update auth status display
         await updateAuthStatus();
         
@@ -521,20 +580,7 @@ async function checkAndUpdateAuthToken() {
         showNotification('❌ Authentication expired. Please log in again.', 'error');
       }
     } else {
-      console.log('✅ Auth token is valid');
-      
-      // Optionally, update the auth_tokens table with latest session info
-      try {
-        await supabaseManager.updateAuthTokenRecord({
-          token: result.diceCloudToken,
-          userId: result.diceCloudUserId,
-          lastChecked: new Date().toISOString()
-        });
-        console.log('✅ Auth tokens table updated');
-      } catch (updateError) {
-        console.log('⚠️ Failed to update auth_tokens table:', updateError);
-        // Don't show error to user as this is non-critical
-      }
+      console.log('✅ Auth token is valid and synced');
     }
   } catch (error) {
     console.error('❌ Error checking auth token:', error);
