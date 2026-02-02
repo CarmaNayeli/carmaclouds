@@ -15,6 +15,7 @@
     }
 
     html, body {
+      height: 100%;
       overflow: hidden;
     }
 
@@ -45,7 +46,9 @@
       background: var(--theme-bg-primary);
       color: var(--theme-text-primary);
       padding: 8px;
-      min-height: 450px;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
     }
 
     .container {
@@ -56,6 +59,10 @@
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
       backdrop-filter: blur(10px);
       border: 1px solid var(--theme-border);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
     }
 
     h1 {
@@ -271,6 +278,11 @@
     /* Tabs Styling */
     .tabs-container {
       margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      flex: 1;
+      overflow: hidden;
     }
 
     .tabs-nav {
@@ -364,7 +376,8 @@
     .tab-content {
       display: none;
       animation: fadeIn 0.2s ease;
-      max-height: 500px;
+      flex: 1;
+      min-height: 0;
       overflow-y: auto;
       overflow-x: hidden;
       padding: 0 4px;
