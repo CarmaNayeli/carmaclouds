@@ -116,10 +116,15 @@ serve(async (req) => {
 
       // Get by Owlbear player ID (for Owlbear extension - fallback for non-authenticated)
       if (owlbearPlayerId) {
-        const { data, error } = await query
-          .eq('owlbear_player_id', owlbearPlayerId)
-          .eq('is_active', true)
-          .single()
+        const activeOnly = url.searchParams.get('active_only') === 'true'
+
+        let playerQuery = query.eq('owlbear_player_id', owlbearPlayerId)
+
+        if (activeOnly) {
+          playerQuery = playerQuery.eq('is_active', true)
+        }
+
+        const { data, error } = await playerQuery.single()
 
         if (error && error.code !== 'PGRST116') {
           return new Response(
