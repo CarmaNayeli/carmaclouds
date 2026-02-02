@@ -1261,15 +1261,24 @@ window.browserAPI = browserAPI;
         
         debug.log('✅ Character data refreshed:', characterData.name);
         
-        // 2. Format the data for Roll20 (already formatted in the adapter)
+        // 2. Use the formatted data from the adapter
         const formattedData = request.data;
         debug.log('📋 Formatted character data received:', formattedData);
         
-        // 3. Send data to character sheet popup
-        await sendToCharacterSheet(formattedData);
+        // 3. Store the character data for use in Roll20
+        // This makes it available for the character sheet overlay and other features
+        if (typeof window !== 'undefined') {
+          window.currentCharacterData = formattedData;
+          debug.log('✅ Character data stored in window.currentCharacterData');
+        }
         
-        debug.log('✅ Character data sent to sheet popup');
-        sendResponse({ success: true, message: 'Character pushed to sheet successfully' });
+        // Update any existing character sheet overlays
+        if (typeof updateCharacterSheet === 'function') {
+          updateCharacterSheet(formattedData);
+        }
+        
+        debug.log('✅ Character data integrated into Roll20');
+        sendResponse({ success: true, message: 'Character data pushed to Roll20 successfully' });
       } catch (error) {
         debug.error('❌ Error in PUSH_CHARACTER:', error);
         sendResponse({ success: false, error: error.message });
@@ -3868,25 +3877,4 @@ ${player.deathSaves ? `Death Saves: ✓${player.deathSaves.successes || 0} / ✗
     }
   }
 
-  /**
-   * Send character data to the character sheet popup
-   */
-  async function sendToCharacterSheet(characterData) {
-    try {
-      // Send message to background script to handle popup opening
-      const response = await browserAPI.runtime.sendMessage({
-        action: 'openCharacterSheet',
-        data: characterData
-      });
-      
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to open character sheet');
-      }
-      
-      debug.log('✅ Character sheet popup opened via background script');
-    } catch (error) {
-      debug.error('❌ Error opening character sheet popup:', error);
-      throw error;
-    }
-  }
 })();
