@@ -3884,6 +3884,29 @@ window.castSpell = async function(spellName, level) {
     details += `<br><br><strong>Spell Slot Used:</strong> Level ${level}<br><strong>Remaining Slots:</strong> ${remaining}`;
   }
 
+  // Auto-enable concentration if the spell requires it
+  if (spell && spell.concentration) {
+    const characterId = currentCharacter._id || currentCharacter.id || currentCharacter.name;
+    const previousSpell = concentratingSpell;
+
+    // Set concentration
+    concentratingSpell = spellName;
+    concentrationByCharacter.set(characterId, spellName);
+
+    // Notify if switching concentration
+    if (previousSpell && previousSpell !== spellName) {
+      console.log(`[OwlCloud] Concentration switched from ${previousSpell} to ${spellName}`);
+      if (isOwlbearReady) {
+        OBR.notification.show(`Concentration switched from ${previousSpell} to ${spellName}`, 'WARNING');
+      }
+    } else {
+      console.log(`[OwlCloud] Now concentrating on ${spellName}`);
+    }
+
+    // Update spells tab to show concentration badge as active
+    populateSpellsTab(currentCharacter);
+  }
+
   if (isOwlbearReady) {
     OBR.notification.show(`${currentCharacter?.name || 'Character'} casts ${spellName}`, 'INFO');
   }
@@ -3925,6 +3948,29 @@ window.castSpellAsRitual = async function(spellName) {
     if (spell.healing) details += `<br><strong>Healing:</strong> ${spell.healing}`;
     if (spell.summary) details += `<br><br>${spell.summary}`;
     if (spell.description) details += `<br><br>${spell.description}`;
+  }
+
+  // Auto-enable concentration if the spell requires it
+  if (spell && spell.concentration) {
+    const characterId = currentCharacter._id || currentCharacter.id || currentCharacter.name;
+    const previousSpell = concentratingSpell;
+
+    // Set concentration
+    concentratingSpell = spellName;
+    concentrationByCharacter.set(characterId, spellName);
+
+    // Notify if switching concentration
+    if (previousSpell && previousSpell !== spellName) {
+      console.log(`[OwlCloud] Concentration switched from ${previousSpell} to ${spellName}`);
+      if (isOwlbearReady) {
+        OBR.notification.show(`Concentration switched from ${previousSpell} to ${spellName}`, 'WARNING');
+      }
+    } else {
+      console.log(`[OwlCloud] Now concentrating on ${spellName}`);
+    }
+
+    // Update spells tab to show concentration badge as active
+    populateSpellsTab(currentCharacter);
   }
 
   if (isOwlbearReady) {

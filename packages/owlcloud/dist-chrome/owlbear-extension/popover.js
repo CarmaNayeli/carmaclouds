@@ -2858,6 +2858,21 @@ This will disconnect the character from this room. You can sync a different char
       const remaining = currentCharacter.spellSlots[slotKey] || 0;
       details += `<br><br><strong>Spell Slot Used:</strong> Level ${level}<br><strong>Remaining Slots:</strong> ${remaining}`;
     }
+    if (spell && spell.concentration) {
+      const characterId = currentCharacter._id || currentCharacter.id || currentCharacter.name;
+      const previousSpell = concentratingSpell;
+      concentratingSpell = spellName;
+      concentrationByCharacter.set(characterId, spellName);
+      if (previousSpell && previousSpell !== spellName) {
+        console.log(`[OwlCloud] Concentration switched from ${previousSpell} to ${spellName}`);
+        if (isOwlbearReady) {
+          OBR.notification.show(`Concentration switched from ${previousSpell} to ${spellName}`, "WARNING");
+        }
+      } else {
+        console.log(`[OwlCloud] Now concentrating on ${spellName}`);
+      }
+      populateSpellsTab(currentCharacter);
+    }
     if (isOwlbearReady) {
       OBR.notification.show(`${currentCharacter?.name || "Character"} casts ${spellName}`, "INFO");
     }
@@ -2895,6 +2910,21 @@ This will disconnect the character from this room. You can sync a different char
         details += `<br><br>${spell.summary}`;
       if (spell.description)
         details += `<br><br>${spell.description}`;
+    }
+    if (spell && spell.concentration) {
+      const characterId = currentCharacter._id || currentCharacter.id || currentCharacter.name;
+      const previousSpell = concentratingSpell;
+      concentratingSpell = spellName;
+      concentrationByCharacter.set(characterId, spellName);
+      if (previousSpell && previousSpell !== spellName) {
+        console.log(`[OwlCloud] Concentration switched from ${previousSpell} to ${spellName}`);
+        if (isOwlbearReady) {
+          OBR.notification.show(`Concentration switched from ${previousSpell} to ${spellName}`, "WARNING");
+        }
+      } else {
+        console.log(`[OwlCloud] Now concentrating on ${spellName}`);
+      }
+      populateSpellsTab(currentCharacter);
     }
     if (isOwlbearReady) {
       OBR.notification.show(`${currentCharacter?.name || "Character"} casts ${spellName} as a ritual`, "INFO");
