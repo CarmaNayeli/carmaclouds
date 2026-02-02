@@ -3490,12 +3490,17 @@ window.browserAPI = browserAPI;
     }
   });
 
-  // Periodic refresh of status bar data (fallback)
+  // Periodic refresh of status bar data (fallback) - with debouncing
+  let lastRefreshTime = 0;
   setInterval(() => {
     if (statusBarVisible && statusBarElement) {
-      loadStatusBarData();
+      const now = Date.now();
+      if (now - lastRefreshTime > 10000) { // Only refresh every 10 seconds minimum
+        lastRefreshTime = now;
+        loadStatusBarData();
+      }
     }
-  }, 5000);
+  }, 15000); // Check every 15 seconds
 
   // Listen for storage changes to update status bar immediately
   browserAPI.storage.onChanged.addListener((changes, areaName) => {
