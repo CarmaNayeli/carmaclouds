@@ -101,6 +101,7 @@ serve(async (req) => {
     const owlbearPlayerId = url.searchParams.get('owlbear_player_id')
     const discordUserId = url.searchParams.get('discord_user_id')
     const diceCloudUserId = url.searchParams.get('dicecloud_user_id')
+    const supabaseUserId = url.searchParams.get('supabase_user_id')
     const characterId = url.searchParams.get('character_id')
     const fields = url.searchParams.get('fields') || 'full'
 
@@ -181,6 +182,43 @@ serve(async (req) => {
         return jsonResponse({ success: true, characters: data }, 200, req)
       }
 
+      // Get by Supabase user ID (for authenticated cross-device sync)
+      if (supabaseUserId) {
+        const activeOnly = url.searchParams.get('active_only') === 'true'
+
+        if (activeOnly) {
+          // Get active character only
+          const { data, error } = await query
+            .eq('supabase_user_id', supabaseUserId)
+            .eq('is_active', true)
+            .single()
+
+          if (error && error.code !== 'PGRST116') {
+            return new Response(
+              JSON.stringify({ error: error.message }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          }
+
+          return jsonResponse({ success: true, character: data }, 200, req)
+        } else {
+          // Get all characters for user
+          const { data, error } = await query
+            .eq('supabase_user_id', supabaseUserId)
+            .order('is_active', { ascending: false })
+            .order('character_name', { ascending: true })
+
+          if (error) {
+            return new Response(
+              JSON.stringify({ error: error.message }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          }
+
+          return jsonResponse({ success: true, characters: data }, 200, req)
+        }
+      }
+
       // Get by character ID
       if (characterId) {
         const { data, error } = await query
@@ -198,7 +236,7 @@ serve(async (req) => {
       }
 
       return new Response(
-        JSON.stringify({ error: 'Missing required parameter: owlbear_player_id, discord_user_id, dicecloud_user_id, or character_id' }),
+        JSON.stringify({ error: 'Missing required parameter: owlbear_player_id, discord_user_id, dicecloud_user_id, supabase_user_id, or character_id' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -206,10 +244,11 @@ serve(async (req) => {
     // POST/PATCH: Set active character
     if (req.method === 'POST' || req.method === 'PATCH') {
       const body = await req.json()
-      const { owlbearPlayerId: bodyOwlbearId, character, characterName, discordUserId: bodyDiscordId } = body
+      const { owlbearPlayerId: bodyOwlbearId, character, characterName, discordUserId: bodyDiscordId, supabaseUserId: bodySupabaseId } = body
 
       const playerIdToUse = bodyOwlbearId || owlbearPlayerId
       const discordIdToUse = bodyDiscordId || discordUserId
+      const supabaseIdToUse = bodySupabaseId || supabaseUserId
 
       if (!playerIdToUse && !discordIdToUse) {
         return new Response(
@@ -271,6 +310,10 @@ serve(async (req) => {
 
         if (playerIdToUse) {
           upsertData.owlbear_player_id = playerIdToUse
+        }
+
+        if (supabaseIdToUse) {
+          upsertData.supabase_user_id = supabaseIdToUse
         }
 
         // Then insert or update the active character

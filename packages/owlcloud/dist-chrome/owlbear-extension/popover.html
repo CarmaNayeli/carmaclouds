@@ -1104,10 +1104,17 @@
     window.buildImage = buildImage;
     window.createSupabaseClient = createClient;
 
-    // Load popover.js after SDKs are ready
-    const script = document.createElement('script');
-    script.src = './popover.js';
-    document.body.appendChild(script);
+    // Load dicecloud-extraction.js first
+    const extractionScript = document.createElement('script');
+    extractionScript.src = './dicecloud-extraction.js';
+    document.body.appendChild(extractionScript);
+
+    // Load popover.js after extraction script and SDKs are ready
+    extractionScript.onload = () => {
+      const script = document.createElement('script');
+      script.src = './popover.js';
+      document.body.appendChild(script);
+    };
   </script>
 </body>
 </html>

@@ -1135,7 +1135,7 @@ async function linkExistingCharacterToUser() {
 
     console.log('🔗 Checking for existing character to link...');
 
-    // First check if user already has a character linked
+    // First check if user already has a character linked by supabase_user_id
     const userCharResponse = await fetch(
       `${SUPABASE_URL}/functions/v1/characters?supabase_user_id=${encodeURIComponent(currentUser.id)}&active_only=true&fields=essential`,
       { headers: SUPABASE_HEADERS }
@@ -1149,7 +1149,7 @@ async function linkExistingCharacterToUser() {
       }
     }
 
-    // No character found by supabase_user_id, check by owlbear_player_id
+    // No character found by supabase_user_id, check by owlbear_player_id to link existing character
     const playerCharResponse = await fetch(
       `${SUPABASE_URL}/functions/v1/characters?owlbear_player_id=${encodeURIComponent(playerId)}&active_only=true&fields=full`,
       { headers: SUPABASE_HEADERS }
@@ -1163,7 +1163,7 @@ async function linkExistingCharacterToUser() {
     const playerData = await playerCharResponse.json();
 
     if (playerData.success && playerData.character) {
-      console.log('🔗 Linking existing character to user account...');
+      console.log('🔗 Linking existing OBR character to user account...');
 
       // Update the character to include supabase_user_id
       const character = playerData.character.raw_dicecloud_data || playerData.character;
@@ -1188,9 +1188,19 @@ async function linkExistingCharacterToUser() {
           OBR.notification.show('Character linked to your account!', 'SUCCESS');
         }
 
-        // Use the character data from the link response instead of fetching again
+        // Use the character data from the link response
         if (linkData.success && linkData.character) {
-          const characterData = linkData.character.raw_dicecloud_data || linkData.character;
+          let characterData;
+          if (linkData.character.raw_dicecloud_data) {
+            try {
+              characterData = parseCharacterData(linkData.character.raw_dicecloud_data, linkData.character.dicecloud_character_id);
+            } catch (e) {
+              console.error('Failed to parse character data:', e);
+              characterData = linkData.character.raw_dicecloud_data;
+            }
+          } else {
+            characterData = linkData.character;
+          }
 
           // Cache under the new Supabase user ID key
           const cacheKey = `owlcloud_char_${currentUser.id}`;
@@ -1526,12 +1536,12 @@ async function checkForActiveCharacter() {
     let cacheKey;
 
     if (currentUser) {
-      // User is authenticated - query by supabase_user_id
+      // User is authenticated - query by supabase_user_id for cross-device sync
       queryParam = `supabase_user_id=${encodeURIComponent(currentUser.id)}&active_only=true`;
       cacheKey = `owlcloud_char_${currentUser.id}`;
       console.log('🎭 Checking for character with user ID:', currentUser.id);
     } else {
-      // User not authenticated - query by owlbear_player_id
+      // User not authenticated - query by owlbear_player_id (local to this OBR session)
       queryParam = `owlbear_player_id=${encodeURIComponent(playerId)}`;
       cacheKey = `owlcloud_char_${playerId}`;
       console.log('🎭 Checking for character with player ID:', playerId);
@@ -1593,40 +1603,22 @@ async function checkForActiveCharacter() {
       console.log('  - Has raw_dicecloud_data:', !!data.character.raw_dicecloud_data);
       console.log('  - Has character_name:', !!data.character.character_name);
 
-      // Use raw_dicecloud_data if available (has proper field names)
-      let characterData = data.character.raw_dicecloud_data || data.character;
-
-      // If raw_dicecloud_data exists, extract top-level fields from creature for easy access
-      if (data.character.raw_dicecloud_data && characterData.creature) {
-        console.log('🔄 Extracting fields from creature object');
-        characterData = {
-          ...characterData,
-          id: data.character.dicecloud_character_id || characterData.creature._id,
-          name: characterData.creature.name,
-          picture: characterData.creature.picture,
-          avatarPicture: characterData.creature.avatarPicture,
-          class: data.character.class,
-          race: data.character.race,
-          level: data.character.level
-        };
-      }
-      // If no raw_dicecloud_data, transform database fields to expected format
-      else if (!data.character.raw_dicecloud_data && data.character.character_name) {
-        console.log('🔄 Transforming database fields to UI format');
-        characterData = {
-          ...characterData,
-          id: characterData.dicecloud_character_id,
-          name: characterData.character_name,
-          class: characterData.class,
-          race: characterData.race,
-          level: characterData.level,
-          hitPoints: {
-            current: characterData.hp_current || 0,
-            max: characterData.hp_max || 0
-          },
-          armorClass: characterData.armor_class,
-          proficiencyBonus: characterData.proficiency_bonus
-        };
+      // Parse raw_dicecloud_data if available
+      let characterData;
+      if (data.character.raw_dicecloud_data) {
+        console.log('🔄 Parsing raw DiceCloud data...');
+        try {
+          // The raw_dicecloud_data contains the API response with creatures, variables, properties
+          characterData = parseCharacterData(data.character.raw_dicecloud_data, data.character.dicecloud_character_id);
+          console.log('✅ Parsed character data:', characterData);
+        } catch (parseError) {
+          console.error('❌ Failed to parse character data:', parseError);
+          // Fall back to using the data as-is
+          characterData = data.character.raw_dicecloud_data;
+        }
+      } else {
+        // No raw data, use the database fields directly
+        characterData = data.character;
       }
 
       console.log('✅ Final character data for display:', characterData);

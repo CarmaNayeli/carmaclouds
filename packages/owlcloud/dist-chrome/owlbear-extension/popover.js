@@ -849,7 +849,7 @@
       }
       const playerData = await playerCharResponse.json();
       if (playerData.success && playerData.character) {
-        console.log("\u{1F517} Linking existing character to user account...");
+        console.log("\u{1F517} Linking existing OBR character to user account...");
         const character = playerData.character.raw_dicecloud_data || playerData.character;
         const linkResponse = await fetch(
           `${SUPABASE_URL}/functions/v1/characters`,
@@ -870,7 +870,17 @@
             OBR.notification.show("Character linked to your account!", "SUCCESS");
           }
           if (linkData.success && linkData.character) {
-            const characterData = linkData.character.raw_dicecloud_data || linkData.character;
+            let characterData;
+            if (linkData.character.raw_dicecloud_data) {
+              try {
+                characterData = parseCharacterData(linkData.character.raw_dicecloud_data, linkData.character.dicecloud_character_id);
+              } catch (e) {
+                console.error("Failed to parse character data:", e);
+                characterData = linkData.character.raw_dicecloud_data;
+              }
+            } else {
+              characterData = linkData.character;
+            }
             const cacheKey = `owlcloud_char_${currentUser.id}`;
             localStorage.setItem(cacheKey, JSON.stringify(characterData));
             displayCharacter(characterData);
@@ -1170,35 +1180,18 @@ This will disconnect the character from this room. You can sync a different char
         console.log("\u{1F4E6} Character data received:", data.character);
         console.log("  - Has raw_dicecloud_data:", !!data.character.raw_dicecloud_data);
         console.log("  - Has character_name:", !!data.character.character_name);
-        let characterData = data.character.raw_dicecloud_data || data.character;
-        if (data.character.raw_dicecloud_data && characterData.creature) {
-          console.log("\u{1F504} Extracting fields from creature object");
-          characterData = {
-            ...characterData,
-            id: data.character.dicecloud_character_id || characterData.creature._id,
-            name: characterData.creature.name,
-            picture: characterData.creature.picture,
-            avatarPicture: characterData.creature.avatarPicture,
-            class: data.character.class,
-            race: data.character.race,
-            level: data.character.level
-          };
-        } else if (!data.character.raw_dicecloud_data && data.character.character_name) {
-          console.log("\u{1F504} Transforming database fields to UI format");
-          characterData = {
-            ...characterData,
-            id: characterData.dicecloud_character_id,
-            name: characterData.character_name,
-            class: characterData.class,
-            race: characterData.race,
-            level: characterData.level,
-            hitPoints: {
-              current: characterData.hp_current || 0,
-              max: characterData.hp_max || 0
-            },
-            armorClass: characterData.armor_class,
-            proficiencyBonus: characterData.proficiency_bonus
-          };
+        let characterData;
+        if (data.character.raw_dicecloud_data) {
+          console.log("\u{1F504} Parsing raw DiceCloud data...");
+          try {
+            characterData = parseCharacterData(data.character.raw_dicecloud_data, data.character.dicecloud_character_id);
+            console.log("\u2705 Parsed character data:", characterData);
+          } catch (parseError) {
+            console.error("\u274C Failed to parse character data:", parseError);
+            characterData = data.character.raw_dicecloud_data;
+          }
+        } else {
+          characterData = data.character;
         }
         console.log("\u2705 Final character data for display:", characterData);
         localStorage.setItem(cacheKey, JSON.stringify(characterData));
