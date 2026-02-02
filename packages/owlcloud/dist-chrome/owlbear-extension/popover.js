@@ -1373,9 +1373,14 @@ This will disconnect the character from this room. You can sync a different char
         return;
       }
       const data = await response.json();
-      console.log("\u{1F4CB} Received characters:", data.characters?.length || 0);
+      console.log("\u{1F4CB} Received characters response:", data);
+      console.log("\u{1F4CB} Number of characters:", data.characters?.length || 0);
+      if (data.characters && data.characters.length > 0) {
+        console.log("\u{1F4CB} Character names:", data.characters.map((c) => c.name || c.character_name).join(", "));
+      }
       if (data.success && data.characters && data.characters.length > 0) {
         allCharacters = data.characters;
+        console.log("\u{1F4CB} Set allCharacters array with", allCharacters.length, "characters");
         displayCharacterList();
       } else {
         console.log("\u2139\uFE0F No characters found, hiding character list");
@@ -1392,10 +1397,16 @@ This will disconnect the character from this room. You can sync a different char
   function displayCharacterList() {
     const characterListSection = document.getElementById("character-list-section");
     const characterList = document.getElementById("character-list");
+    if (!characterListSection || !characterList) {
+      console.error("Character list elements not found");
+      return;
+    }
     if (!allCharacters || allCharacters.length <= 1) {
+      console.log("Hiding character list - only", allCharacters?.length || 0, "characters");
       characterListSection.style.display = "none";
       return;
     }
+    console.log("Showing character list with", allCharacters.length, "characters");
     characterListSection.style.display = "block";
     let html = "";
     allCharacters.forEach((character) => {
