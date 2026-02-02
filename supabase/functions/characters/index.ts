@@ -13,9 +13,9 @@ const corsHeaders = {
 
 // Optimized field selections (reduces egress!)
 const FIELDS = {
-  essential: 'dicecloud_character_id,character_name,class,level,race,alignment,discord_user_id,user_id_dicecloud,supabase_user_id,is_active',
-  full: 'dicecloud_character_id,character_name,class,level,race,alignment,hit_points,hit_dice,temporary_hp,death_saves,armor_class,speed,initiative,proficiency_bonus,attributes,attribute_mods,saves,skills,spell_slots,resources,conditions,discord_user_id,user_id_dicecloud,supabase_user_id,owlbear_player_id,is_active,updated_at,raw_dicecloud_data',
-  list: 'dicecloud_character_id,character_name,class,level,race,hit_points,armor_class,is_active,discord_user_id,supabase_user_id'
+  essential: 'dicecloud_character_id,character_name,class,level,race,discord_user_id,user_id_dicecloud,is_active',
+  full: 'dicecloud_character_id,character_name,class,level,race,discord_user_id,user_id_dicecloud,owlbear_player_id,is_active,updated_at,raw_dicecloud_data',
+  list: 'dicecloud_character_id,character_name,class,level,race,is_active,discord_user_id'
 }
 
 // Helper: Generate ETag from data
@@ -99,7 +99,6 @@ serve(async (req) => {
 
     const url = new URL(req.url)
     const owlbearPlayerId = url.searchParams.get('owlbear_player_id')
-    const supabaseUserId = url.searchParams.get('supabase_user_id')
     const discordUserId = url.searchParams.get('discord_user_id')
     const diceCloudUserId = url.searchParams.get('dicecloud_user_id')
     const characterId = url.searchParams.get('character_id')
@@ -113,43 +112,6 @@ serve(async (req) => {
       let query = supabaseClient
         .from('clouds_characters')
         .select(selectFields)
-
-      // Get by Supabase user ID (for authenticated cross-device sync)
-      if (supabaseUserId) {
-        const activeOnly = url.searchParams.get('active_only') === 'true'
-
-        if (activeOnly) {
-          // Get active character only
-          const { data, error } = await query
-            .eq('supabase_user_id', supabaseUserId)
-            .eq('is_active', true)
-            .single()
-
-          if (error && error.code !== 'PGRST116') {
-            return new Response(
-              JSON.stringify({ error: error.message }),
-              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            )
-          }
-
-          return jsonResponse({ success: true, character: data }, 200, req)
-        } else {
-          // Get all characters for user
-          const { data, error } = await query
-            .eq('supabase_user_id', supabaseUserId)
-            .order('is_active', { ascending: false })
-            .order('character_name', { ascending: true })
-
-          if (error) {
-            return new Response(
-              JSON.stringify({ error: error.message }),
-              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            )
-          }
-
-          return jsonResponse({ success: true, characters: data }, 200, req)
-        }
-      }
 
       // Get by Owlbear player ID (for Owlbear extension - fallback for non-authenticated)
       if (owlbearPlayerId) {
@@ -236,7 +198,7 @@ serve(async (req) => {
       }
 
       return new Response(
-        JSON.stringify({ error: 'Missing required parameter: supabase_user_id, owlbear_player_id, discord_user_id, dicecloud_user_id, or character_id' }),
+        JSON.stringify({ error: 'Missing required parameter: owlbear_player_id, discord_user_id, dicecloud_user_id, or character_id' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -244,15 +206,14 @@ serve(async (req) => {
     // POST/PATCH: Set active character
     if (req.method === 'POST' || req.method === 'PATCH') {
       const body = await req.json()
-      const { owlbearPlayerId: bodyOwlbearId, supabaseUserId: bodySupabaseId, character, characterName, discordUserId: bodyDiscordId } = body
+      const { owlbearPlayerId: bodyOwlbearId, character, characterName, discordUserId: bodyDiscordId } = body
 
       const playerIdToUse = bodyOwlbearId || owlbearPlayerId
-      const supabaseIdToUse = bodySupabaseId || supabaseUserId
       const discordIdToUse = bodyDiscordId || discordUserId
 
-      if (!playerIdToUse && !discordIdToUse && !supabaseIdToUse) {
+      if (!playerIdToUse && !discordIdToUse) {
         return new Response(
-          JSON.stringify({ error: 'owlbearPlayerId, supabaseUserId, or discordUserId required' }),
+          JSON.stringify({ error: 'owlbearPlayerId or discordUserId required' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
@@ -288,20 +249,12 @@ serve(async (req) => {
       }
 
       // Set active character for Owlbear player
-      if (character && (playerIdToUse || supabaseIdToUse)) {
+      if (character && playerIdToUse) {
         // First, mark all characters for this user as inactive
-        // Prioritize supabase_user_id for authenticated users
-        if (supabaseIdToUse) {
-          await supabaseClient
-            .from('clouds_characters')
-            .update({ is_active: false })
-            .eq('supabase_user_id', supabaseIdToUse)
-        } else if (playerIdToUse) {
-          await supabaseClient
-            .from('clouds_characters')
-            .update({ is_active: false })
-            .eq('owlbear_player_id', playerIdToUse)
-        }
+        await supabaseClient
+          .from('clouds_characters')
+          .update({ is_active: false })
+          .eq('owlbear_player_id', playerIdToUse)
 
         // Build upsert data - include both IDs if available
         const upsertData: any = {
@@ -311,9 +264,6 @@ serve(async (req) => {
           class: character.class,
           race: character.race,
           level: character.level,
-          hit_points: character.hitPoints || { current: 0, max: 0 },
-          armor_class: character.armorClass || 10,
-          proficiency_bonus: character.proficiency_bonus || character.proficiencyBonus || 2,
           raw_dicecloud_data: character,
           is_active: true,
           updated_at: new Date().toISOString()
@@ -321,10 +271,6 @@ serve(async (req) => {
 
         if (playerIdToUse) {
           upsertData.owlbear_player_id = playerIdToUse
-        }
-
-        if (supabaseIdToUse) {
-          upsertData.supabase_user_id = supabaseIdToUse
         }
 
         // Then insert or update the active character
