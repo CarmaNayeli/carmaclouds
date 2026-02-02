@@ -989,6 +989,122 @@
       }
     }
 
+    /* Modal Styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .modal-dialog {
+      background: var(--theme-bg-secondary);
+      border: 1px solid var(--theme-border);
+      border-radius: 12px;
+      padding: 20px;
+      max-width: 320px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+      animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .modal-header h3 {
+      background: var(--theme-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-size: 18px;
+      margin: 0;
+    }
+
+    .modal-close-btn {
+      background: none;
+      border: none;
+      color: var(--theme-text-primary);
+      font-size: 28px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    .modal-close-btn:hover {
+      color: var(--theme-primary);
+      transform: scale(1.2);
+    }
+
+    .modal-body {
+      color: var(--theme-text-primary);
+    }
+
+    .spell-level-options {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .spell-level-option {
+      background: var(--theme-bg-card);
+      border: 2px solid var(--theme-border);
+      border-radius: 8px;
+      padding: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .spell-level-option:hover {
+      background: var(--theme-bg-hover);
+      border-color: var(--theme-primary);
+      transform: translateX(4px);
+    }
+
+    .spell-level-option:active {
+      transform: scale(0.98);
+    }
+
+    .spell-level-label {
+      font-weight: 600;
+      color: var(--theme-primary-light);
+    }
+
+    .spell-level-slots {
+      color: var(--theme-text-muted);
+      font-size: 12px;
+    }
+
   </style>
 </head>
 <body>
@@ -1153,6 +1269,20 @@
         </div>
       </div>
 
+    </div>
+  </div>
+
+  <!-- Spell Level Selection Modal -->
+  <div id="spell-level-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="modal-spell-name">Cast Spell</h3>
+        <button class="modal-close-btn" onclick="closeSpellLevelModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 12px; color: var(--theme-text-secondary);">Choose a spell slot level:</p>
+        <div id="spell-level-options" class="spell-level-options"></div>
+      </div>
     </div>
   </div>
 

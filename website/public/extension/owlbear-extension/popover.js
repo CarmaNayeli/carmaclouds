@@ -2690,25 +2690,32 @@ This will disconnect the character from this room. You can sync a different char
       await castSpell(spellName, availableSlots[0].level);
       return;
     }
-    const optionsText = availableSlots.map((slot, i) => `${i + 1}. Level ${slot.level} (${slot.remaining} slots remaining)`).join("\n");
-    const promptText = `Cast ${spellName} at which level?
-
-${optionsText}
-
-Enter 1-${availableSlots.length}:`;
-    const choice = window.prompt(promptText);
-    if (choice === null) {
-      return;
-    }
-    const choiceNum = parseInt(choice);
-    if (isNaN(choiceNum) || choiceNum < 1 || choiceNum > availableSlots.length) {
-      if (isOwlbearReady) {
-        OBR.notification.show("Invalid choice", "ERROR");
-      }
-      return;
-    }
-    const selectedSlot = availableSlots[choiceNum - 1];
-    await castSpell(spellName, selectedSlot.level);
+    showSpellLevelModal(spellName, availableSlots);
+  };
+  function showSpellLevelModal(spellName, availableSlots) {
+    const modal = document.getElementById("spell-level-modal");
+    const modalSpellName = document.getElementById("modal-spell-name");
+    const optionsContainer = document.getElementById("spell-level-options");
+    modalSpellName.textContent = `Cast ${spellName}`;
+    optionsContainer.innerHTML = "";
+    availableSlots.forEach((slot) => {
+      const option = document.createElement("div");
+      option.className = "spell-level-option";
+      option.onclick = async () => {
+        closeSpellLevelModal();
+        await castSpell(spellName, slot.level);
+      };
+      option.innerHTML = `
+      <span class="spell-level-label">Level ${slot.level}</span>
+      <span class="spell-level-slots">${slot.remaining} slot${slot.remaining !== 1 ? "s" : ""} remaining</span>
+    `;
+      optionsContainer.appendChild(option);
+    });
+    modal.style.display = "flex";
+  }
+  window.closeSpellLevelModal = function() {
+    const modal = document.getElementById("spell-level-modal");
+    modal.style.display = "none";
   };
   window.castSpell = async function(spellName, level) {
     if (!currentCharacter)
