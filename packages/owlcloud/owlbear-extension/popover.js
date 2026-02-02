@@ -839,13 +839,71 @@ function setupDicePlusListeners() {
 }
 
 /**
+ * Simplify DiceCloud formula to standard dice notation for Dice+
+ * Evaluates variables and expressions like (floor((~target.level+1)/6)+1)d8 → 2d8
+ */
+function simplifyDiceFormula(formula) {
+  if (!formula || !currentCharacter) return formula;
+
+  let simplified = formula;
+
+  // Replace ~target.level with actual character level
+  if (simplified.includes('~target.level')) {
+    const level = currentCharacter.level || 1;
+    simplified = simplified.replace(/~target\.level/g, level.toString());
+  }
+
+  // Try to evaluate mathematical expressions before "d"
+  // Match patterns like (expression)d8 or expressiond8
+  const diceMatch = simplified.match(/^(.+?)d(\d+)([+-]\d+)?$/i);
+  if (diceMatch) {
+    const countExpression = diceMatch[1];
+    const sides = diceMatch[2];
+    const modifier = diceMatch[3] || '';
+
+    try {
+      // Safely evaluate the count expression
+      // Support floor, ceil, round, max, min functions
+      let safeExpression = countExpression
+        .replace(/floor\(/g, 'Math.floor(')
+        .replace(/ceil\(/g, 'Math.ceil(')
+        .replace(/round\(/g, 'Math.round(')
+        .replace(/max\(/g, 'Math.max(')
+        .replace(/min\(/g, 'Math.min(');
+
+      // Only evaluate if it looks safe (numbers, operators, Math functions)
+      if (/^[\d+\-*/().,\s\w]+$/.test(safeExpression) && safeExpression.includes('Math.')) {
+        const count = Math.floor(eval(safeExpression));
+        if (count > 0 && count < 100) { // Sanity check
+          simplified = `${count}d${sides}${modifier}`;
+          console.log(`📐 Simplified formula: ${formula} → ${simplified}`);
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to simplify formula:', formula, error);
+      // Return original if evaluation fails
+    }
+  }
+
+  return simplified;
+}
+
+/**
  * Send a roll request to Dice+
  * @param {string} diceNotation - Standard dice notation (e.g., "1d20+5", "2d20kh1+3")
  * @param {object} rollContext - Context about the roll (name, modifier, etc.)
  * @returns {Promise<string>} - Roll ID
  */
 async function sendToDicePlus(diceNotation, rollContext) {
-  console.log('🎲 sendToDicePlus called:', { diceNotation, isOwlbearReady, dicePlusReady });
+  // Simplify complex DiceCloud formulas before sending to Dice+
+  const simplifiedNotation = simplifyDiceFormula(diceNotation);
+
+  console.log('🎲 sendToDicePlus called:', {
+    original: diceNotation,
+    simplified: simplifiedNotation,
+    isOwlbearReady,
+    dicePlusReady
+  });
 
   if (!isOwlbearReady || !dicePlusReady) {
     // Fall back to local rolling
@@ -861,7 +919,7 @@ async function sendToDicePlus(diceNotation, rollContext) {
     // Store pending roll
     pendingRolls.set(rollId, rollContext);
 
-    console.log('📡 Sending roll request to Dice+:', { rollId, diceNotation });
+    console.log('📡 Sending roll request to Dice+:', { rollId, diceNotation: simplifiedNotation });
 
     // Send roll request to Dice+
     await OBR.broadcast.sendMessage('dice-plus/roll-request', {
@@ -869,7 +927,7 @@ async function sendToDicePlus(diceNotation, rollContext) {
       playerId,
       playerName,
       rollTarget: 'everyone', // Show to all players
-      diceNotation,
+      diceNotation: simplifiedNotation,
       showResults: false, // Hide Dice+ popup (OwlCloud chat shows results instead)
       timestamp: Date.now(),
       source: OWLCLOUD_EXTENSION_ID

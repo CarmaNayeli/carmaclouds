@@ -24,6 +24,28 @@
   var openExtensionBtn = document.getElementById("open-extension-btn");
   var linkExtensionBtn = document.getElementById("link-extension-btn");
   var openChatWindowBtn = document.getElementById("open-chat-window-btn");
+  function generateComplementaryBackgrounds(primaryColor) {
+    const hex = primaryColor.replace("#", "");
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    const backgrounds = {
+      // Dark gradient background (complementary to primary)
+      bgPrimary: `linear-gradient(135deg, 
+      rgba(${Math.max(0, r - 80)}, ${Math.max(0, g - 80)}, ${Math.max(0, b - 80)}, 1) 0%, 
+      rgba(${Math.max(0, r - 60)}, ${Math.max(0, g - 60)}, ${Math.max(0, b - 60)}, 1) 50%, 
+      rgba(${Math.max(0, r - 40)}, ${Math.max(0, g - 40)}, ${Math.max(0, b - 40)}, 1) 100%)`,
+      // Semi-transparent secondary background
+      bgSecondary: `rgba(${Math.max(0, r - 100)}, ${Math.max(0, g - 100)}, ${Math.max(0, b - 100)}, 0.8)`,
+      // Light accent background
+      bgAccent: `rgba(${r}, ${g}, ${b}, 0.15)`,
+      // Card background
+      bgCard: `rgba(${r}, ${g}, ${b}, 0.1)`,
+      // Hover state
+      bgHover: `rgba(${r}, ${g}, ${b}, 0.2)`
+    };
+    return backgrounds;
+  }
   var ThemeManager = {
     // Predefined themes
     themes: {
@@ -620,8 +642,42 @@
       handleDicePlusResult(pendingRoll, totalValue, rollSummary, groups);
     });
   }
+  function simplifyDiceFormula(formula) {
+    if (!formula || !currentCharacter)
+      return formula;
+    let simplified = formula;
+    if (simplified.includes("~target.level")) {
+      const level = currentCharacter.level || 1;
+      simplified = simplified.replace(/~target\.level/g, level.toString());
+    }
+    const diceMatch = simplified.match(/^(.+?)d(\d+)([+-]\d+)?$/i);
+    if (diceMatch) {
+      const countExpression = diceMatch[1];
+      const sides = diceMatch[2];
+      const modifier = diceMatch[3] || "";
+      try {
+        let safeExpression = countExpression.replace(/floor\(/g, "Math.floor(").replace(/ceil\(/g, "Math.ceil(").replace(/round\(/g, "Math.round(").replace(/max\(/g, "Math.max(").replace(/min\(/g, "Math.min(");
+        if (/^[\d+\-*/().,\s\w]+$/.test(safeExpression) && safeExpression.includes("Math.")) {
+          const count = Math.floor(eval(safeExpression));
+          if (count > 0 && count < 100) {
+            simplified = `${count}d${sides}${modifier}`;
+            console.log(`\u{1F4D0} Simplified formula: ${formula} \u2192 ${simplified}`);
+          }
+        }
+      } catch (error) {
+        console.warn("Failed to simplify formula:", formula, error);
+      }
+    }
+    return simplified;
+  }
   async function sendToDicePlus(diceNotation, rollContext) {
-    console.log("\u{1F3B2} sendToDicePlus called:", { diceNotation, isOwlbearReady, dicePlusReady });
+    const simplifiedNotation = simplifyDiceFormula(diceNotation);
+    console.log("\u{1F3B2} sendToDicePlus called:", {
+      original: diceNotation,
+      simplified: simplifiedNotation,
+      isOwlbearReady,
+      dicePlusReady
+    });
     if (!isOwlbearReady || !dicePlusReady) {
       console.log("\u26A0\uFE0F Falling back to local roll - OBR ready:", isOwlbearReady, "Dice+ ready:", dicePlusReady);
       return null;
@@ -631,14 +687,14 @@
       const playerId = await OBR.player.getId();
       const playerName = await OBR.player.getName();
       pendingRolls.set(rollId, rollContext);
-      console.log("\u{1F4E1} Sending roll request to Dice+:", { rollId, diceNotation });
+      console.log("\u{1F4E1} Sending roll request to Dice+:", { rollId, diceNotation: simplifiedNotation });
       await OBR.broadcast.sendMessage("dice-plus/roll-request", {
         rollId,
         playerId,
         playerName,
         rollTarget: "everyone",
         // Show to all players
-        diceNotation,
+        diceNotation: simplifiedNotation,
         showResults: false,
         // Hide Dice+ popup (OwlCloud chat shows results instead)
         timestamp: Date.now(),
@@ -651,16 +707,16 @@
     }
   }
   async function handleDicePlusResult(rollContext, totalValue, rollSummary, groups) {
-    const { name, modifier, type, isDeathSave, isDamageRoll, actionName, damageFormula } = rollContext;
+    const { name, modifier: modifier2, type, isDeathSave, isDamageRoll, actionName, damageFormula } = rollContext;
     console.log("\u{1F3B2} Dice+ result received:", {
       totalValue,
       totalValueType: typeof totalValue,
       rollSummary,
-      modifier,
+      modifier: modifier2,
       rollContext
     });
     const numericTotal = typeof totalValue === "number" ? totalValue : parseInt(totalValue) || 0;
-    console.log("\u{1F3B2} After parsing:", { numericTotal, modifier, willSubtract: modifier || 0 });
+    console.log("\u{1F3B2} After parsing:", { numericTotal, modifier: modifier2, willSubtract: modifier2 || 0 });
     if (isDeathSave && currentCharacter) {
       const roll = numericTotal;
       let message = "";
@@ -691,12 +747,12 @@
       const message = `${actionName} Damage: <strong>${numericTotal}</strong>`;
       let detailsHtml = `<strong>Formula:</strong> ${damageFormula}<br>
                        <strong>Rolls:</strong> ${rolls.join(", ")}`;
-      if (modifier) {
-        detailsHtml += `<br>Modifier: ${modifier >= 0 ? "+" : ""}${modifier}`;
+      if (modifier2) {
+        detailsHtml += `<br>Modifier: ${modifier2 >= 0 ? "+" : ""}${modifier2}`;
       }
       detailsHtml += `<br>Calculation: ${rolls.join(" + ")}`;
-      if (modifier) {
-        detailsHtml += ` ${modifier >= 0 ? "+" : ""}${modifier}`;
+      if (modifier2) {
+        detailsHtml += ` ${modifier2 >= 0 ? "+" : ""}${modifier2}`;
       }
       detailsHtml += ` = ${numericTotal}`;
       if (isOwlbearReady) {
@@ -717,7 +773,7 @@
     finalTotal = numericTotal;
     console.log("\u{1F50D} Dice+ calculation debug:", {
       numericTotal,
-      modifier,
+      modifier: modifier2,
       rollContext,
       rollSummary,
       parsedRawRoll: rawRoll,
@@ -727,7 +783,7 @@
     const result = {
       total: rawRoll,
       rolls: groups && groups[0] ? groups[0].dice.filter((d) => d.kept).map((d) => d.value) : [rawRoll],
-      modifier: modifier || 0,
+      modifier: modifier2 || 0,
       formula: rollSummary,
       mode: rollContext.mode || "normal",
       // Override the final calculation in showRollResult
@@ -736,15 +792,15 @@
     await showRollResult(name, result);
   }
   async function executeLocalRoll(rollContext) {
-    const { name, modifier, type, mode } = rollContext;
+    const { name, modifier: modifier2, type, mode } = rollContext;
     let result;
     if (type === "d20") {
       result = rollD20Local();
     } else {
       result = rollDiceLocal(rollContext.formula);
     }
-    result.total += modifier || 0;
-    result.modifier = modifier || 0;
+    result.total += modifier2 || 0;
+    result.modifier = modifier2 || 0;
     await showRollResult(name, result);
   }
   async function initializeSupabaseAuth() {
@@ -1702,9 +1758,9 @@ This will disconnect the character from this room. You can sync a different char
     html += '<div class="ability-grid">';
     abilityNames.forEach((abilityName) => {
       const score = character.attributes?.[abilityName] || 10;
-      const modifier = character.attributeMods?.[abilityName] || Math.floor((score - 10) / 2);
-      const saveMod = character.savingThrows?.[abilityName] || modifier;
-      const isProficient = saveMod !== modifier;
+      const modifier2 = character.attributeMods?.[abilityName] || Math.floor((score - 10) / 2);
+      const saveMod = character.savingThrows?.[abilityName] || modifier2;
+      const isProficient = saveMod !== modifier2;
       const abilityLabel = abilityShortNames[abilityName];
       html += `
       <div class="ability-box ${isProficient ? "save-proficient" : ""}">
@@ -1713,9 +1769,9 @@ This will disconnect the character from this room. You can sync a different char
           <div class="ability-score" style="font-size: 18px; font-weight: bold;">${score}</div>
         </div>
         <div style="display: flex; border-top: 1px solid var(--theme-border);">
-          <div style="flex: 1; padding: 6px; cursor: pointer; text-align: center; border-right: 1px solid var(--theme-border);" onclick="event.stopPropagation(); event.preventDefault(); rollAbilityCheck('${abilityLabel}', ${modifier})" title="Roll ${abilityLabel} check">
+          <div style="flex: 1; padding: 6px; cursor: pointer; text-align: center; border-right: 1px solid var(--theme-border);" onclick="event.stopPropagation(); event.preventDefault(); rollAbilityCheck('${abilityLabel}', ${modifier2})" title="Roll ${abilityLabel} check">
             <div style="font-size: 11px; color: var(--theme-primary-light); pointer-events: none;">Check</div>
-            <div style="font-weight: bold; pointer-events: none;">${modifier >= 0 ? "+" : ""}${modifier}</div>
+            <div style="font-weight: bold; pointer-events: none;">${modifier2 >= 0 ? "+" : ""}${modifier2}</div>
           </div>
           <div style="flex: 1; padding: 6px; cursor: pointer; text-align: center;" onclick="event.stopPropagation(); event.preventDefault(); rollSavingThrow('${abilityLabel}', ${saveMod})" title="Roll ${abilityLabel} save">
             <div style="font-size: 11px; color: ${isProficient ? "#10B981" : "var(--theme-primary-light)"}; pointer-events: none;">Save</div>
@@ -2331,6 +2387,23 @@ This will disconnect the character from this room. You can sync a different char
       postRollToOwlbear(event.data.data);
     }
   });
+  async function sendToChatWindow(type, data) {
+    if (!isOwlbearReady || !currentCharacter)
+      return;
+    try {
+      const message = {
+        type,
+        data,
+        character: {
+          name: currentCharacter.name,
+          id: currentCharacter.id
+        },
+        timestamp: Date.now()
+      };
+    } catch (error) {
+      console.error("Error sending to chat:", error);
+    }
+  }
   async function addChatMessage(text, type = "system", author = null, details = null) {
     if (!isOwlbearReady)
       return;
@@ -2386,7 +2459,7 @@ This will disconnect the character from this room. You can sync a different char
       }
     }
   };
-  async function rollD20(name, modifier = 0) {
+  async function rollD20(name, modifier2 = 0) {
     let diceNotation;
     if (rollMode === "advantage") {
       diceNotation = "2d20kh1";
@@ -2395,12 +2468,12 @@ This will disconnect the character from this room. You can sync a different char
     } else {
       diceNotation = "1d20";
     }
-    if (modifier !== 0) {
-      diceNotation += (modifier >= 0 ? "+" : "") + modifier;
+    if (modifier2 !== 0) {
+      diceNotation += (modifier2 >= 0 ? "+" : "") + modifier2;
     }
     const rollContext = {
       name,
-      modifier,
+      modifier: modifier2,
       type: "d20",
       mode: rollMode
     };
@@ -2426,36 +2499,36 @@ This will disconnect the character from this room. You can sync a different char
       return { total: roll, rolls: [roll], modifier: 0, formula: "1d20", count: 1, sides: 20, mode: "normal" };
     }
   }
-  async function rollDice(formula, name, modifier = 0) {
+  async function rollDice(formula2, name, modifier2 = 0) {
     const rollContext = {
       name,
-      modifier,
-      formula,
+      modifier: modifier2,
+      formula: formula2,
       type: "custom"
     };
-    const rollId = await sendToDicePlus(formula, rollContext);
+    const rollId = await sendToDicePlus(formula2, rollContext);
     if (rollId) {
       return { pending: true, rollId };
     }
-    return rollDiceLocal(formula);
+    return rollDiceLocal(formula2);
   }
-  function rollDiceLocal(formula) {
-    const match = formula.match(/(\d+)?d(\d+)([+-]\d+)?/i);
+  function rollDiceLocal(formula2) {
+    const match = formula2.match(/(\d+)?d(\d+)([+-]\d+)?/i);
     if (!match) {
-      console.error("Invalid dice formula:", formula);
-      return { total: 0, rolls: [], formula };
+      console.error("Invalid dice formula:", formula2);
+      return { total: 0, rolls: [], formula: formula2 };
     }
-    const count = parseInt(match[1] || "1");
-    const sides = parseInt(match[2]);
-    const modifier = parseInt(match[3] || "0");
+    const count2 = parseInt(match[1] || "1");
+    const sides2 = parseInt(match[2]);
+    const modifier2 = parseInt(match[3] || "0");
     const rolls = [];
-    let total = modifier;
-    for (let i = 0; i < count; i++) {
-      const roll = Math.floor(Math.random() * sides) + 1;
+    let total = modifier2;
+    for (let i = 0; i < count2; i++) {
+      const roll = Math.floor(Math.random() * sides2) + 1;
       rolls.push(roll);
       total += roll;
     }
-    return { total, rolls, modifier, formula, count, sides };
+    return { total, rolls, modifier: modifier2, formula: formula2, count: count2, sides: sides2 };
   }
   async function showRollResult(name, result) {
     let detailsHtml = "";
@@ -2512,23 +2585,23 @@ This will disconnect the character from this room. You can sync a different char
     console.log("\u{1F3B2}", message);
     await addChatMessage(message, "roll", currentCharacter?.name, detailsHtml);
   }
-  window.rollAbilityCheck = async function(abilityName, modifier) {
-    console.log("\u{1F3B2} rollAbilityCheck called:", abilityName, modifier);
-    const name = `${abilityName} Check (${modifier >= 0 ? "+" : ""}${modifier})`;
-    const result = await rollD20(name, modifier);
+  window.rollAbilityCheck = async function(abilityName, modifier2) {
+    console.log("\u{1F3B2} rollAbilityCheck called:", abilityName, modifier2);
+    const name = `${abilityName} Check (${modifier2 >= 0 ? "+" : ""}${modifier2})`;
+    const result = await rollD20(name, modifier2);
     if (result.pending)
       return;
-    const total = result.total + modifier;
-    await showRollResult(name, { ...result, total, modifier });
+    const total = result.total + modifier2;
+    await showRollResult(name, { ...result, total, modifier: modifier2 });
   };
-  window.rollSavingThrow = async function(abilityName, modifier) {
-    console.log("\u{1F3B2} rollSavingThrow called:", abilityName, modifier);
-    const name = `${abilityName} Save (${modifier >= 0 ? "+" : ""}${modifier})`;
-    const result = await rollD20(name, modifier);
+  window.rollSavingThrow = async function(abilityName, modifier2) {
+    console.log("\u{1F3B2} rollSavingThrow called:", abilityName, modifier2);
+    const name = `${abilityName} Save (${modifier2 >= 0 ? "+" : ""}${modifier2})`;
+    const result = await rollD20(name, modifier2);
     if (result.pending)
       return;
-    const total = result.total + modifier;
-    await showRollResult(name, { ...result, total, modifier });
+    const total = result.total + modifier2;
+    await showRollResult(name, { ...result, total, modifier: modifier2 });
   };
   window.rollSkillCheck = async function(skillName, bonus) {
     const name = `${skillName} (${bonus >= 0 ? "+" : ""}${bonus})`;
@@ -3058,10 +3131,10 @@ Enter adjustment (negative to use, positive to restore):`);
 
 How many do you want to spend?`);
       if (spend) {
-        const count = Math.min(parseInt(spend) || 0, hitDice.current);
-        if (count > 0) {
+        const count2 = Math.min(parseInt(spend) || 0, hitDice.current);
+        if (count2 > 0) {
           let totalHealing = 0;
-          for (let i = 0; i < count; i++) {
+          for (let i = 0; i < count2; i++) {
             const roll = Math.floor(Math.random() * hitDice.type) + 1;
             const conMod = currentCharacter.attributeMods?.constitution || 0;
             totalHealing += roll + conMod;
@@ -3070,9 +3143,9 @@ How many do you want to spend?`);
           const maxHP = currentCharacter.hitPoints?.max || 0;
           const newHP = Math.min(maxHP, currentHP + totalHealing);
           currentCharacter.hitPoints.current = newHP;
-          currentCharacter.hitDice.current -= count;
+          currentCharacter.hitDice.current -= count2;
           if (isOwlbearReady) {
-            OBR.notification.show(`Short Rest: Spent ${count} Hit Dice, recovered ${totalHealing} HP`, "SUCCESS");
+            OBR.notification.show(`Short Rest: Spent ${count2} Hit Dice, recovered ${totalHealing} HP`, "SUCCESS");
           }
         }
       }
