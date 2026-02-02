@@ -533,21 +533,6 @@
         } catch (error) {
         }
       }, 5e3);
-      setInterval(async () => {
-        try {
-          if (typeof SupabaseTokenManager !== "undefined") {
-            const supabaseManager = new SupabaseTokenManager();
-            const sessionCheck = await supabaseManager.checkSessionValidity();
-            if (!sessionCheck.valid) {
-              debug.log("\u26A0\uFE0F Session conflict detected via polling, logging out:", sessionCheck.reason);
-              await handleSessionConflict(sessionCheck);
-              showLoginSection();
-            }
-          }
-        } catch (error) {
-          debug.error("\u274C Error in periodic session check:", error);
-        }
-      }, 1e4);
       autoConnectBtn.addEventListener("click", handleAutoConnect);
       usernameLoginForm.addEventListener("submit", handleUsernameLogin);
       const debugSkipLoginBtn = document.getElementById("debugSkipLoginBtn");

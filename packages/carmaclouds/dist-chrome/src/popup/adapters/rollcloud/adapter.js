@@ -31,7 +31,7 @@
       throw new Error("Invalid raw data format");
     }
     const { creature, variables, properties } = rawData;
-    const characterName2 = creature.name || "";
+    const characterName = creature.name || "";
     let race = "Unknown";
     let characterClass = "";
     let level = 0;
@@ -241,8 +241,146 @@
       acBonuses.forEach((bonus) => finalAC += bonus.amount);
       return finalAC;
     };
+    const extractText = (field) => {
+      if (!field)
+        return "";
+      if (typeof field === "string")
+        return field;
+      if (typeof field === "object" && field.text)
+        return field.text;
+      return "";
+    };
+    const spells = properties.filter((p) => p.type === "spell").map((spell) => {
+      const spellChildren = properties.filter((p) => {
+        if (p.type !== "roll" && p.type !== "damage" && p.type !== "attack")
+          return false;
+        if (p.ancestors && Array.isArray(p.ancestors)) {
+          return p.ancestors.some((ancestor) => {
+            const ancestorId = typeof ancestor === "object" ? ancestor.id : ancestor;
+            return ancestorId === spell._id;
+          });
+        }
+        return false;
+      });
+      let attackRoll = "";
+      const attackChild = spellChildren.find((c) => c.type === "attack" || c.type === "roll" && c.name && c.name.toLowerCase().includes("attack"));
+      if (attackChild && attackChild.roll) {
+        if (typeof attackChild.roll === "string") {
+          attackRoll = attackChild.roll;
+        } else if (typeof attackChild.roll === "object") {
+          attackRoll = attackChild.roll.calculation || attackChild.roll.value || "use_spell_attack_bonus";
+        }
+      }
+      const damageRolls = [];
+      spellChildren.filter((c) => c.type === "damage" || c.type === "roll" && c.name && c.name.toLowerCase().includes("damage")).forEach((damageChild) => {
+        let formula = "";
+        if (damageChild.amount) {
+          if (typeof damageChild.amount === "string") {
+            formula = damageChild.amount;
+          } else if (typeof damageChild.amount === "object") {
+            formula = damageChild.amount.calculation || String(damageChild.amount.value || "");
+          }
+        }
+        if (formula) {
+          damageRolls.push({
+            formula,
+            type: damageChild.damageType || "",
+            name: damageChild.name || ""
+          });
+        }
+      });
+      const damage = damageRolls.length > 0 ? damageRolls[0].formula : "";
+      const damageType = damageRolls.length > 0 ? damageRolls[0].type : "";
+      let spellType = "utility";
+      if (damageRolls.length > 0) {
+        const hasHealing = damageRolls.some(
+          (roll) => roll.name.toLowerCase().includes("heal") || roll.type.toLowerCase().includes("heal")
+        );
+        spellType = hasHealing ? "healing" : "damage";
+      }
+      return {
+        id: spell._id,
+        name: spell.name || "Unnamed Spell",
+        level: spell.level || 0,
+        school: spell.school || "",
+        spellType,
+        castingTime: spell.castingTime || "",
+        range: spell.range || "",
+        components: spell.components || "",
+        duration: spell.duration || "",
+        description: extractText(spell.description),
+        summary: extractText(spell.summary),
+        ritual: spell.ritual || false,
+        concentration: spell.concentration || false,
+        prepared: spell.prepared !== false,
+        alwaysPrepared: spell.alwaysPrepared || false,
+        attackRoll,
+        damage,
+        damageType,
+        damageRolls
+      };
+    });
+    const actions = properties.filter((p) => p.type === "action" && p.name && !p.inactive && !p.disabled).map((action) => {
+      let attackRoll = "";
+      if (action.attackRoll) {
+        attackRoll = typeof action.attackRoll === "string" ? action.attackRoll : String(action.attackRoll.value || action.attackRoll.calculation || "");
+      }
+      let damage = "";
+      let damageType = "";
+      if (action.damage) {
+        damage = typeof action.damage === "string" ? action.damage : String(action.damage.value || action.damage.calculation || "");
+      }
+      if (action.damageType) {
+        damageType = action.damageType;
+      }
+      return {
+        id: action._id,
+        name: action.name,
+        actionType: action.actionType || "action",
+        description: extractText(action.description),
+        summary: extractText(action.summary),
+        attackRoll,
+        damage,
+        damageType,
+        uses: action.uses || 0,
+        usesUsed: action.usesUsed || 0,
+        reset: action.reset || "",
+        resources: action.resources || {},
+        tags: action.tags || []
+      };
+    });
+    const spellSlots = {};
+    for (let level2 = 1; level2 <= 9; level2++) {
+      const slotVar = variables[`slotLevel${level2}`];
+      if (slotVar) {
+        const current = slotVar.value || 0;
+        const max = slotVar.total || slotVar.max || slotVar.value || 0;
+        spellSlots[`level${level2}SpellSlots`] = current;
+        spellSlots[`level${level2}SpellSlotsMax`] = max;
+      }
+    }
+    const resources = properties.filter((p) => p.type === "resource" || p.type === "attribute" && p.attributeType === "resource").map((resource) => ({
+      id: resource._id,
+      name: resource.name || "Unnamed Resource",
+      current: resource.value || resource.currentValue || 0,
+      max: resource.total || resource.max || 0,
+      reset: resource.reset || "",
+      variableName: resource.variableName || resource.varName || ""
+    }));
+    const inventory = properties.filter((p) => (p.type === "item" || p.type === "equipment" || p.type === "container") && !p.inactive).map((item) => ({
+      id: item._id,
+      name: item.name || "Unnamed Item",
+      quantity: item.quantity || 1,
+      weight: item.weight || 0,
+      value: item.value || 0,
+      description: extractText(item.description),
+      summary: extractText(item.summary),
+      equipped: item.equipped || false,
+      attuned: item.attuned || false,
+      requiresAttunement: item.requiresAttunement || false
+    }));
     return {
-      name: characterName2,
+      name: characterName,
       race,
       class: characterClass || "Unknown",
       level,
@@ -260,7 +398,12 @@
       armorClass: calculateAC(),
       speed: variables.speed?.total || variables.speed?.value || 30,
       initiative: variables.initiative?.total || variables.initiative?.value || 0,
-      proficiencyBonus: variables.proficiencyBonus?.total || variables.proficiencyBonus?.value || 0
+      proficiencyBonus: variables.proficiencyBonus?.total || variables.proficiencyBonus?.value || 0,
+      spellSlots,
+      resources,
+      inventory,
+      spells,
+      actions
     };
   }
 
@@ -327,6 +470,56 @@
               try {
                 pushBtn.disabled = true;
                 pushBtn.innerHTML = "\u23F3 Pushing...";
+                console.log("\u{1F4BE} Storing Roll20 parsed data to database...");
+                const SUPABASE_URL = "https://luiesmfjdcmpywavvfqm.supabase.co";
+                const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aWVzbWZqZGNtcHl3YXZ2ZnFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4ODYxNDksImV4cCI6MjA4NTQ2MjE0OX0.oqjHFf2HhCLcanh0HVryoQH7iSV7E9dHHZJdYehxZ0U";
+                try {
+                  const updateResponse = await fetch(
+                    `${SUPABASE_URL}/rest/v1/clouds_characters?dicecloud_character_id=eq.${character.id}`,
+                    {
+                      method: "PATCH",
+                      headers: {
+                        "apikey": SUPABASE_ANON_KEY,
+                        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+                        "Content-Type": "application/json",
+                        "Prefer": "return=representation"
+                      },
+                      body: JSON.stringify({
+                        roll20_data: parsedData,
+                        updated_at: (/* @__PURE__ */ new Date()).toISOString()
+                      })
+                    }
+                  );
+                  if (updateResponse.ok) {
+                    console.log("\u2705 Roll20 data stored in database");
+                  } else {
+                    console.warn("\u26A0\uFE0F Failed to store Roll20 data:", await updateResponse.text());
+                  }
+                } catch (dbError) {
+                  console.warn("\u26A0\uFE0F Database update failed (non-fatal):", dbError);
+                }
+                console.log("\u{1F4BE} Updating local storage with parsed data...");
+                try {
+                  const dataToStore = {
+                    ...parsedData,
+                    id: character.id,
+                    dicecloud_character_id: character.id
+                  };
+                  await chrome.runtime.sendMessage({
+                    action: "storeCharacterData",
+                    data: dataToStore,
+                    slotId: character.slotId || "slot-1"
+                  });
+                  console.log("\u2705 Local storage updated with parsed Roll20 data");
+                  chrome.runtime.sendMessage({
+                    action: "dataSynced",
+                    characterName: dataToStore.name || "Character"
+                  }).catch(() => {
+                    console.log("\u2139\uFE0F No popup open to notify (normal)");
+                  });
+                } catch (storageError) {
+                  console.warn("\u26A0\uFE0F Local storage update failed (non-fatal):", storageError);
+                }
                 const tabs = await chrome.tabs.query({ url: "*://app.roll20.net/*" });
                 if (tabs.length === 0) {
                   throw new Error("No Roll20 tab found. Please open Roll20 first.");
@@ -361,6 +554,12 @@
             statusText.textContent = `Character synced: ${character.name}`;
         }
       }
+      chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.action === "dataSynced") {
+          console.log("\u{1F4E5} RollCloud adapter received data sync notification:", message.characterName);
+          init(containerEl);
+        }
+      });
     } catch (error) {
       console.error("Failed to load RollCloud UI:", error);
       containerEl.innerHTML = `

@@ -1,6 +1,8 @@
 (() => {
   // src/background.js
   console.log("CarmaClouds background service worker initialized");
+  var SUPABASE_URL = "https://luiesmfjdcmpywavvfqm.supabase.co";
+  var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aWVzbWZqZGNtcHl3YXZ2ZnFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4ODYxNDksImV4cCI6MjA4NTQ2MjE0OX0.oqjHFf2HhCLcanh0HVryoQH7iSV7E9dHHZJdYehxZ0U";
   var keepAliveInterval;
   function keepAlive() {
     if (keepAliveInterval) {
@@ -62,6 +64,28 @@
       });
       return true;
     }
+    if (message.action === "notifyPopupUpdate") {
+      console.log("\u{1F514} Notifying popup sheets of character data update");
+      chrome.runtime.sendMessage({
+        type: "UPDATE_CHARACTER_DATA",
+        data: message.data
+      }).catch(() => {
+        console.log("\u2139\uFE0F No popup open to notify");
+      });
+      sendResponse({ success: true });
+      return false;
+    }
+    if (message.action === "storeCharacterData") {
+      console.log("\u{1F4BE} Storing character data to local storage:", message.data?.name);
+      handleStoreCharacterData(message.data, message.slotId).then((result) => {
+        console.log("\u2705 Character data stored successfully");
+        sendResponse(result);
+      }).catch((error) => {
+        console.error("\u274C Failed to store character data:", error);
+        sendResponse({ success: false, error: error.message });
+      });
+      return true;
+    }
     switch (message.type) {
       case "CHARACTER_UPDATED":
         handleCharacterUpdate(message.data);
@@ -97,11 +121,17 @@
         activeCharacter = characters[0];
       }
       if (activeCharacter) {
+        console.log("\u{1F4E4} Returning character data:", activeCharacter.name);
+        console.log("   Has hitPoints:", !!activeCharacter.hitPoints);
+        console.log("   Has raw:", !!activeCharacter.raw);
         return {
           success: true,
           data: activeCharacter
         };
       } else {
+        console.log("\u274C No character data found in storage");
+        console.log("   Characters array length:", characters.length);
+        console.log("   Active character ID:", activeCharacterId);
         return {
           success: false,
           error: "No character data found"
@@ -113,6 +143,35 @@
         success: false,
         error: error.message
       };
+    }
+  }
+  async function handleStoreCharacterData(characterData, slotId) {
+    try {
+      console.log("\u{1F4BE} Storing character to slot:", slotId || "default");
+      const result = await chrome.storage.local.get("carmaclouds_characters");
+      const characters = result.carmaclouds_characters || [];
+      const characterId = characterData.id || characterData.dicecloud_character_id;
+      if (!characterId) {
+        throw new Error("Character data missing ID");
+      }
+      const existingIndex = characters.findIndex((char) => char.id === characterId);
+      if (existingIndex >= 0) {
+        console.log("\u2705 Updating existing character:", characterData.name);
+        console.log("   Has hitPoints:", !!characterData.hitPoints);
+        console.log("   Has spells:", Array.isArray(characterData.spells));
+        console.log("   Has actions:", Array.isArray(characterData.actions));
+        characters[existingIndex] = characterData;
+      } else {
+        console.log("\u2705 Adding new character:", characterData.name);
+        characters.push(characterData);
+      }
+      await chrome.storage.local.set({ carmaclouds_characters: characters });
+      console.log("\u2705 Character data stored successfully to carmaclouds_characters");
+      console.log("   Total characters in array:", characters.length);
+      return { success: true };
+    } catch (error) {
+      console.error("\u274C Error storing character data:", error);
+      return { success: false, error: error.message };
     }
   }
   async function handleGetAllCharacterProfiles() {
@@ -286,6 +345,41 @@
         console.log("\u2705 Step 6: Active character ID set");
       }
       console.log("\u{1F389} Character successfully synced to CarmaClouds storage");
+      try {
+        console.log("\u{1F4BE} Step 7: Syncing to Supabase database...");
+        const authResult = await chrome.storage.local.get(["diceCloudUserId", "username"]);
+        const payload = {
+          user_id_dicecloud: authResult.diceCloudUserId || null,
+          dicecloud_character_id: characterData.id,
+          character_name: characterData.name || "Unknown",
+          raw_dicecloud_data: characterData,
+          // Store the full character object with raw DiceCloud data
+          updated_at: (/* @__PURE__ */ new Date()).toISOString()
+        };
+        console.log("\u{1F4E4} Sending character to Supabase:", payload.character_name);
+        const response = await fetch(
+          `${SUPABASE_URL}/rest/v1/clouds_characters?dicecloud_character_id=eq.${characterData.id}`,
+          {
+            method: "POST",
+            headers: {
+              "apikey": SUPABASE_ANON_KEY,
+              "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+              "Content-Type": "application/json",
+              "Prefer": "resolution=merge-duplicates,return=representation"
+            },
+            body: JSON.stringify(payload)
+          }
+        );
+        if (response.ok) {
+          const result2 = await response.json();
+          console.log("\u2705 Step 7: Character synced to Supabase:", result2);
+        } else {
+          const errorText = await response.text();
+          console.error("\u274C Supabase sync failed:", response.status, errorText);
+        }
+      } catch (supabaseError) {
+        console.error("\u274C Failed to sync to Supabase (non-fatal):", supabaseError);
+      }
       try {
         const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
         if (tabs.length > 0) {

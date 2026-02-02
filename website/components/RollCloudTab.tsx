@@ -16,83 +16,100 @@ export default function RollCloudTab() {
             RollCloud
           </h2>
           <p className="text-gray-400 text-lg leading-relaxed">
-            Browser extension that connects your DiceCloud character sheets to Roll20 and Pip2,
-            enabling seamless character management and dice rolling across platforms.
+            The Roll20 tab in CarmaClouds extension. Sync your DiceCloud V2 characters to Roll20 with one click.
           </p>
         </div>
       </section>
 
       <section className="bg-black border border-[#e91e8c] rounded-lg p-6">
-        <h3 className="text-2xl font-semibold mb-4 text-[#e91e8c]">Download</h3>
+        <h3 className="text-2xl font-semibold mb-4 text-[#e91e8c]">Download CarmaClouds</h3>
         <div className="space-y-4">
-          <a
-            href="https://github.com/CarmaNayeli/carmaclouds/tree/master/rollcloud"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block bg-[#e91e8c] hover:bg-[#ff2ea0] text-white font-medium px-6 py-3 rounded-lg transition-colors"
-          >
-            Download from GitHub
-          </a>
-          <p className="text-gray-500 text-sm">
-            Install the extension in your browser to get started with RollCloud
+          <p className="text-gray-400 mb-4">
+            RollCloud is included in the unified CarmaClouds extension. Install once, use everywhere.
           </p>
+          <div className="flex gap-4">
+            <a
+              href="https://github.com/CarmaNayeli/carmaclouds/releases"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block bg-[#e91e8c] hover:bg-[#ff2ea0] text-white font-medium px-6 py-3 rounded-lg transition-colors"
+            >
+              Download for Chrome/Edge
+            </a>
+            <a
+              href="https://github.com/CarmaNayeli/carmaclouds/releases"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block bg-gray-700 hover:bg-gray-600 text-white font-medium px-6 py-3 rounded-lg transition-colors"
+            >
+              Download for Firefox
+            </a>
+          </div>
         </div>
+      </section>
+
+      <section>
+        <h3 className="text-2xl font-semibold mb-4 text-white">How to Use RollCloud</h3>
+        <ol className="space-y-4 text-gray-400">
+          <li className="flex items-start">
+            <span className="text-[#e91e8c] font-semibold mr-3 text-xl">1.</span>
+            <div>
+              <strong className="text-white">Sync from DiceCloud</strong>
+              <p className="mt-1">Go to dicecloud.com, open your character, and click "Sync to CarmaClouds"</p>
+            </div>
+          </li>
+          <li className="flex items-start">
+            <span className="text-[#e91e8c] font-semibold mr-3 text-xl">2.</span>
+            <div>
+              <strong className="text-white">Open Roll20</strong>
+              <p className="mt-1">Navigate to app.roll20.net and open your game</p>
+            </div>
+          </li>
+          <li className="flex items-start">
+            <span className="text-[#e91e8c] font-semibold mr-3 text-xl">3.</span>
+            <div>
+              <strong className="text-white">Push to Roll20</strong>
+              <p className="mt-1">Click the CarmaClouds extension icon → RollCloud tab → "Push to Roll20"</p>
+            </div>
+          </li>
+          <li className="flex items-start">
+            <span className="text-[#e91e8c] font-semibold mr-3 text-xl">4.</span>
+            <div>
+              <strong className="text-white">Done!</strong>
+              <p className="mt-1">Your character is now in Roll20 with all stats, skills, spells, and abilities</p>
+            </div>
+          </li>
+        </ol>
       </section>
 
       <section>
         <h3 className="text-2xl font-semibold mb-4 text-white">Features</h3>
         <div className="grid md:grid-cols-2 gap-4">
           <div className="bg-black border border-gray-800 rounded-lg p-4 hover:border-[#e91e8c] transition-colors">
-            <h4 className="font-semibold text-[#e91e8c] mb-2">DiceCloud Integration</h4>
+            <h4 className="font-semibold text-[#e91e8c] mb-2">One-Click Push</h4>
             <p className="text-gray-400 text-sm">
-              Access your DiceCloud character sheets directly from Roll20
+              Send your entire character sheet to Roll20 instantly
             </p>
           </div>
           <div className="bg-black border border-gray-800 rounded-lg p-4 hover:border-[#e91e8c] transition-colors">
-            <h4 className="font-semibold text-[#e91e8c] mb-2">Roll20 Streaming</h4>
+            <h4 className="font-semibold text-[#e91e8c] mb-2">Full Character Data</h4>
             <p className="text-gray-400 text-sm">
-              Stream dice rolls and results to Roll20 in real-time
+              Attributes, skills, saves, spells, inventory - everything syncs
             </p>
           </div>
           <div className="bg-black border border-gray-800 rounded-lg p-4 hover:border-[#e91e8c] transition-colors">
-            <h4 className="font-semibold text-[#e91e8c] mb-2">Pip2 Dashboard</h4>
+            <h4 className="font-semibold text-[#e91e8c] mb-2">Cloud Storage</h4>
             <p className="text-gray-400 text-sm">
-              View and manage character stats with the Pip2 interface
+              Characters stored in Supabase for access anywhere
             </p>
           </div>
           <div className="bg-black border border-gray-800 rounded-lg p-4 hover:border-[#e91e8c] transition-colors">
-            <h4 className="font-semibold text-[#e91e8c] mb-2">Character Sync</h4>
+            <h4 className="font-semibold text-[#e91e8c] mb-2">Auto-Login</h4>
             <p className="text-gray-400 text-sm">
-              Keep your character data synchronized across platforms
+              Works with Google Sign-In or username/password
             </p>
           </div>
         </div>
-      </section>
-
-      <section>
-        <h3 className="text-2xl font-semibold mb-4 text-white">Installation</h3>
-        <ol className="space-y-3 text-gray-400">
-          <li className="flex items-start">
-            <span className="text-[#e91e8c] font-semibold mr-3">1.</span>
-            <span>Download the extension from GitHub</span>
-          </li>
-          <li className="flex items-start">
-            <span className="text-[#e91e8c] font-semibold mr-3">2.</span>
-            <span>Open your browser's extension management page</span>
-          </li>
-          <li className="flex items-start">
-            <span className="text-[#e91e8c] font-semibold mr-3">3.</span>
-            <span>Enable "Developer mode"</span>
-          </li>
-          <li className="flex items-start">
-            <span className="text-[#e91e8c] font-semibold mr-3">4.</span>
-            <span>Click "Load unpacked" and select the RollCloud directory</span>
-          </li>
-          <li className="flex items-start">
-            <span className="text-[#e91e8c] font-semibold mr-3">5.</span>
-            <span>Navigate to DiceCloud or Roll20 to start using RollCloud</span>
-          </li>
-        </ol>
       </section>
     </div>
   )

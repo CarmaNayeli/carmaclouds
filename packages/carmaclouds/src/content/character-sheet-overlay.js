@@ -2085,9 +2085,22 @@ window.browserAPI = browserAPI;
       if (response && response.data) {
         debug.log('✅ Character data loaded for popup:', response.data.name);
 
-        // Parse the raw data for the character sheet
-        const parsedData = parseForRollCloud(response.data.raw);
-        debug.log('✅ Parsed character data for sheet:', parsedData);
+        // Check if data is already parsed (has hitPoints) or needs parsing
+        let parsedData;
+        if (response.data.hitPoints) {
+          // Already parsed - use directly
+          debug.log('✅ Using pre-parsed character data');
+          parsedData = response.data;
+        } else if (response.data.raw) {
+          // Raw data - needs parsing
+          debug.log('📋 Parsing raw character data for sheet');
+          parsedData = parseForRollCloud(response.data.raw);
+        } else {
+          debug.error('❌ Character data missing both hitPoints and raw fields');
+          showNotification('Character data format error. Please re-sync from DiceCloud.', 'error');
+          return;
+        }
+        debug.log('✅ Character data ready for sheet:', parsedData.name);
 
         // Get the popup HTML file URL
         const popupURL = browserAPI.runtime.getURL('src/popup-sheet.html');
@@ -2243,7 +2256,7 @@ window.browserAPI = browserAPI;
   /**
    * Makes a button draggable and adds hide/show functionality
    */
-  function makeButtonDraggable(button, storageKey) {
+  function makeButtonDraggable(button, storageKey, dragHandle = null) {
     let isDragging = false;
     let startX, startY, initialLeft, initialTop;
 
@@ -2286,7 +2299,10 @@ window.browserAPI = browserAPI;
       button.style.display = 'none';
     }
 
-    button.addEventListener('mousedown', (e) => {
+    // Use drag handle if provided, otherwise use button itself
+    const draggableElement = dragHandle || button;
+
+    draggableElement.addEventListener('mousedown', (e) => {
       // Only start dragging on left click
       if (e.button === 0) {
         isDragging = true;
@@ -2300,7 +2316,11 @@ window.browserAPI = browserAPI;
 
         // Defer style writes to next frame
         requestAnimationFrame(() => {
-          button.style.cursor = 'grabbing';
+          if (dragHandle) {
+            dragHandle.style.cursor = 'grabbing';
+          } else {
+            button.style.cursor = 'grabbing';
+          }
           button.style.transform = 'none'; // Remove any transform during drag
         });
 
@@ -2327,7 +2347,11 @@ window.browserAPI = browserAPI;
     document.addEventListener('mouseup', () => {
       if (isDragging) {
         isDragging = false;
-        button.style.cursor = 'pointer';
+        if (dragHandle) {
+          dragHandle.style.cursor = 'move';
+        } else {
+          button.style.cursor = 'pointer';
+        }
 
         // Validate and save position only if it's within viewport
         if (isPositionValid(button.style.left, button.style.top)) {
@@ -2435,46 +2459,80 @@ window.browserAPI = browserAPI;
    */
   function createToggleButton() {
     // Check if button already exists
-    if (document.getElementById('rollcloud-sheet-toggle')) {
+    if (document.getElementById('rollcloud-sheet-toggle-container')) {
       debug.log('⚠️ Character sheet button already exists');
       return;
     }
 
-    const button = document.createElement('button');
-    button.id = 'rollcloud-sheet-toggle';
-    button.innerHTML = '📋 Character Sheet';
-    button.style.cssText = `
+    // Create container for button and drag handle
+    const container = document.createElement('div');
+    container.id = 'rollcloud-sheet-toggle-container';
+    container.style.cssText = `
       position: fixed;
       top: 20px;
       left: 50%;
       transform: translateX(-50%);
+      z-index: 999998;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    `;
+
+    // Create draggable handle
+    const dragHandle = document.createElement('div');
+    dragHandle.innerHTML = '⋮⋮';
+    dragHandle.style.cssText = `
+      background: rgba(0, 0, 0, 0.85);
+      color: #fff;
+      padding: 2px 0;
+      border-radius: 8px 8px 0 0;
+      cursor: move;
+      font-size: 10px;
+      text-align: center;
+      user-select: none;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-bottom: none;
+      letter-spacing: 2px;
+      line-height: 1;
+    `;
+
+    dragHandle.addEventListener('mouseenter', () => {
+      dragHandle.style.background = 'rgba(30, 30, 30, 0.95)';
+    });
+
+    dragHandle.addEventListener('mouseleave', () => {
+      dragHandle.style.background = 'rgba(0, 0, 0, 0.85)';
+    });
+
+    // Create button
+    const button = document.createElement('button');
+    button.id = 'rollcloud-sheet-toggle';
+    button.innerHTML = '📋 Character Sheet';
+    button.style.cssText = `
       background: linear-gradient(135deg, #FC57F9 0%, #8E0682 100%);
       color: white;
       border: none;
       padding: 12px 20px;
-      border-radius: 8px;
+      border-radius: 0 0 8px 8px;
       cursor: pointer;
       font-size: 14px;
       font-weight: bold;
       box-shadow: 0 4px 15px rgba(252, 87, 249, 0.3);
-      z-index: 999998;
-      transition: transform 0.2s, box-shadow 0.2s;
+      transition: all 0.2s;
       user-select: none;
+      display: block;
+      width: 100%;
+      border: 1px solid rgba(252, 87, 249, 0.3);
+      border-top: none;
     `;
 
     // Hover effects
     button.addEventListener('mouseenter', () => {
-      if (!button.style.left || button.style.left === '50%') {
-        button.style.transform = 'translateX(-50%) translateY(-2px)';
-      }
       button.style.boxShadow = '0 6px 20px rgba(252, 87, 249, 0.5)';
+      button.style.background = 'linear-gradient(135deg, #FD6FFB 0%, #9F0793 100%)';
     });
 
     button.addEventListener('mouseleave', () => {
-      if (!button.style.left || button.style.left === '50%') {
-        button.style.transform = 'translateX(-50%) translateY(0)';
-      }
       button.style.boxShadow = '0 4px 15px rgba(252, 87, 249, 0.3)';
+      button.style.background = 'linear-gradient(135deg, #FC57F9 0%, #8E0682 100%)';
     });
 
     // Click to open popup
@@ -2482,12 +2540,15 @@ window.browserAPI = browserAPI;
       showOverlay();
     });
 
-    document.body.appendChild(button);
+    // Assemble container
+    container.appendChild(dragHandle);
+    container.appendChild(button);
+    document.body.appendChild(container);
 
-    // Make it draggable and add hide/show functionality
-    makeButtonDraggable(button, 'rollcloud-sheet-toggle');
+    // Make it draggable using the handle only
+    makeButtonDraggable(container, 'rollcloud-sheet-toggle', dragHandle);
 
-    debug.log('✅ Character sheet button created');
+    debug.log('✅ Character sheet button created with drag handle');
   }
 
   // Listen for messages from background script
@@ -2514,10 +2575,10 @@ window.browserAPI = browserAPI;
       }
       sendResponse({ success: true });
     } else if (request.action === 'showCharacterSheetButton') {
-      // Show the character sheet button
-      const button = document.getElementById('rollcloud-sheet-toggle');
-      if (button) {
-        button.style.display = '';
+      // Show the character sheet button container
+      const container = document.getElementById('rollcloud-sheet-toggle-container');
+      if (container) {
+        container.style.display = '';
         localStorage.removeItem('rollcloud-sheet-toggle_hidden');
         showNotification('Character Sheet button shown', 'success');
       }

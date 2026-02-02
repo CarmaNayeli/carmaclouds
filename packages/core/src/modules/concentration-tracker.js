@@ -94,9 +94,17 @@
 
   /**
    * Set concentration on a spell
+   * Automatically drops concentration on any previous spell
    * @param {string} spellName - Name of the spell to concentrate on
    */
   function setConcentration(spellName) {
+    // If already concentrating on a different spell, notify that it's being dropped
+    if (concentratingSpell && concentratingSpell !== spellName) {
+      const previousSpell = concentratingSpell;
+      showNotification(`⚠️ Dropped concentration on ${previousSpell} to concentrate on ${spellName}`);
+      debug.log(`🔄 Replacing concentration: ${previousSpell} → ${spellName}`);
+    }
+
     concentratingSpell = spellName;
     if (characterData) {
       characterData.concentrationSpell = spellName;
@@ -109,7 +117,10 @@
       sendStatusUpdate();
     }
 
-    showNotification(`🧠 Concentrating on: ${spellName}`);
+    // Only show "Concentrating on" notification if this is a new concentration (not replacement)
+    if (!concentratingSpell || concentratingSpell === spellName) {
+      showNotification(`🧠 Concentrating on: ${spellName}`);
+    }
     debug.log(`🧠 Concentration set: ${spellName}`);
   }
 

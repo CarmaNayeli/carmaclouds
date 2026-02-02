@@ -1271,62 +1271,10 @@ window.browserAPI = browserAPI;
           window.carmacloudsPendingTimestamp = Date.now();
           debug.log('✅ Character data stored and ready for sheet request');
         }
-        
-        // 4. Sync character to database if SupabaseTokenManager is available
-        try {
-          if (typeof SupabaseTokenManager !== 'undefined') {
-            const supabaseManager = new SupabaseTokenManager();
-            
-            // First, check if character exists in database to preserve notification color
-            let existingCharacter = null;
-            try {
-              const existingResult = await supabaseManager.getCharacter(characterData.id || formattedData.id);
-              if (existingResult.success && existingResult.character) {
-                existingCharacter = existingResult.character;
-                debug.log('🔍 Found existing character in database, preserving notification color');
-              }
-            } catch (getError) {
-              debug.log('⚠️ Could not check for existing character:', getError);
-            }
-            
-            // Prepare character data for database storage
-            const characterForDB = {
-              ...formattedData,
-              id: characterData.id || formattedData.id,
-              name: formattedData.name || characterData.name,
-              source: 'rollcloud',
-              lastUpdated: new Date().toISOString(),
-              rawData: characterData // Keep raw data for backup
-            };
-            
-            // Preserve notification color from database if it exists, otherwise use current
-            if (existingCharacter && existingCharacter.notificationColor) {
-              characterForDB.notificationColor = existingCharacter.notificationColor;
-              debug.log('🎨 Preserved notification color from database:', existingCharacter.notificationColor);
-            } else if (formattedData.notificationColor) {
-              characterForDB.notificationColor = formattedData.notificationColor;
-              debug.log('🎨 Using notification color from formatted data:', formattedData.notificationColor);
-            } else {
-              characterForDB.notificationColor = '#3498db'; // Default color
-              debug.log('🎨 Using default notification color');
-            }
-            
-            // Store character in database
-            const dbResult = await supabaseManager.storeCharacter(characterForDB);
-            
-            if (dbResult.success) {
-              debug.log('✅ Character synced to database:', formattedData.name);
-            } else {
-              debug.log('⚠️ Failed to sync character to database:', dbResult.error);
-            }
-          } else {
-            debug.log('⚠️ SupabaseTokenManager not available, skipping database sync');
-          }
-        } catch (dbError) {
-          debug.log('⚠️ Database sync error:', dbError);
-          // Don't fail the push operation for database errors
-        }
-        
+
+        // Note: Database sync is handled by the popup adapter before sending PUSH_CHARACTER message
+        // No need to sync again here in the content script
+
         debug.log('✅ Character data prepared - waiting for sheet to request it');
         sendResponse({ success: true, message: 'Character data prepared and waiting for sheet' });
       } catch (error) {

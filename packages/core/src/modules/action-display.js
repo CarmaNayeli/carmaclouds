@@ -1423,8 +1423,9 @@ function buildActionsDisplay(container, actions) {
       buttonsDiv.appendChild(useBtn);
     }
 
-    // Add Details button if there's a description
-    if (action.description) {
+    // Add Details button if there's any useful information to show
+    const hasDetails = action.description || action.summary || action.damageType || action.attackRoll || action.damage || action.source || action.range;
+    if (hasDetails) {
       const detailsBtn = document.createElement('button');
       detailsBtn.className = 'details-btn';
       detailsBtn.textContent = '📋 Details';
@@ -1441,7 +1442,7 @@ function buildActionsDisplay(container, actions) {
         margin-bottom: 4px;
       `;
       detailsBtn.addEventListener('click', () => {
-        const descDiv = actionCard.querySelector('.action-description');
+        const descDiv = actionCard.querySelector('.action-details');
         if (descDiv) {
           descDiv.style.display = descDiv.style.display === 'none' ? 'block' : 'none';
           detailsBtn.textContent = descDiv.style.display === 'none' ? '📋 Details' : '📋 Hide';
@@ -1457,18 +1458,43 @@ function buildActionsDisplay(container, actions) {
     // Append actionHeader to actionCard
     actionCard.appendChild(actionHeader);
 
-    // Add description if available (hidden by default, toggled by Details button)
-    if (action.description) {
-      const descDiv = document.createElement('div');
-      descDiv.className = 'action-description';
-      descDiv.style.display = 'none'; // Hidden by default
-      // Resolve any variables in the description (like {bardicInspirationDie})
-      const resolvedDescription = resolveVariablesInFormula(action.description);
-      descDiv.innerHTML = `
-        <div style="margin-top: 10px; padding: 10px; background: var(--bg-secondary, #f5f5f5); border-radius: 4px; font-size: 0.9em;">${resolvedDescription}</div>
-      `;
+    // Add details section if any useful information exists (hidden by default, toggled by Details button)
+    const hasDetails = action.description || action.summary || action.damageType || action.attackRoll || action.damage || action.source || action.range;
+    if (hasDetails) {
+      const detailsDiv = document.createElement('div');
+      detailsDiv.className = 'action-details';
+      detailsDiv.style.display = 'none'; // Hidden by default
 
-      actionCard.appendChild(descDiv);
+      let detailsHTML = '<div style="margin-top: 10px; padding: 10px; background: var(--bg-secondary, #f5f5f5); border-radius: 4px; font-size: 0.9em;">';
+
+      // Add summary if available
+      if (action.summary) {
+        const resolvedSummary = resolveVariablesInFormula(action.summary);
+        detailsHTML += `<div style="margin-bottom: 8px;"><strong>Summary:</strong> ${resolvedSummary}</div>`;
+      }
+
+      // Add description if available
+      if (action.description) {
+        const resolvedDescription = resolveVariablesInFormula(action.description);
+        detailsHTML += `<div style="margin-bottom: 8px;">${resolvedDescription}</div>`;
+      }
+
+      // Add action details
+      const details = [];
+      if (action.attackRoll) details.push(`<strong>Attack:</strong> ${action.attackRoll}`);
+      if (action.damage) details.push(`<strong>Damage:</strong> ${action.damage}`);
+      if (action.damageType) details.push(`<strong>Type:</strong> ${action.damageType}`);
+      if (action.range) details.push(`<strong>Range:</strong> ${action.range}`);
+      if (action.source) details.push(`<strong>Source:</strong> ${action.source}`);
+
+      if (details.length > 0) {
+        detailsHTML += `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd; font-size: 0.85em;">${details.join(' • ')}</div>`;
+      }
+
+      detailsHTML += '</div>';
+      detailsDiv.innerHTML = detailsHTML;
+
+      actionCard.appendChild(detailsDiv);
     }
 
     container.appendChild(actionCard);

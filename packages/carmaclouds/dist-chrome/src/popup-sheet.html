@@ -1081,10 +1081,10 @@
     <!-- Loading Message -->
     <div style="text-align: center; color: var(--text-primary);">
       <div style="font-size: 1.2em; font-weight: bold; margin-bottom: 10px;">
-        Loading Characters...
+        Loading Character Sheet...
       </div>
-      <div style="font-size: 0.9em; color: var(--text-secondary); max-width: 300px; line-height: 1.4;">
-        If characters don't appear, try using the <strong>Refresh Characters</strong> button in the extension popup
+      <div style="font-size: 0.9em; color: var(--text-secondary); max-width: 350px; line-height: 1.4;">
+        If the sheet doesn't load, click <strong>Push to Roll20</strong> or <strong>Push to Owlbear</strong> in the extension popup to format your character data
       </div>
     </div>
   </div>
@@ -1267,18 +1267,11 @@
       </div>
     </div>
 
-    <!-- Abilities, Saves, Skills -->
+    <!-- Ability Scores & Saving Throws (Bundled) -->
     <div class="section">
-      <h3>⚡ Abilities</h3>
+      <h3>⚡ Ability Scores & Saving Throws</h3>
       <div class="section-content">
-        <div class="grid" id="abilities-grid"></div>
-      </div>
-    </div>
-
-    <div class="section">
-      <h3>🛡️ Saving Throws</h3>
-      <div class="section-content">
-        <div class="grid" id="saves-grid"></div>
+        <div class="grid" id="abilities-saves-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));"></div>
       </div>
     </div>
 

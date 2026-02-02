@@ -194,6 +194,10 @@
     </div>
   </div>
 
+  <!-- Load dependencies in order: browser-polyfill -> debug -> supabase-client -> popup.js -->
+  <script src="../../common/browser-polyfill.js"></script>
+  <script src="../../common/debug.js"></script>
+  <script src="../../common/supabase-client.js"></script>
   <script src="popup.js" type="module"></script>
 </body>
 </html>

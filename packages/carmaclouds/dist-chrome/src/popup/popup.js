@@ -15,13 +15,42 @@
       __defProp(target, name, { get: all[name], enumerable: true });
   };
 
+  // src/popup/adapters/foundcloud/adapter.js
+  var adapter_exports = {};
+  __export(adapter_exports, {
+    init: () => init
+  });
+  async function init(containerEl) {
+    console.log("FoundCloud adapter - not yet implemented");
+    containerEl.innerHTML = `
+    <div style="padding: 40px 20px; text-align: center; color: #b0b0b0;">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#16a75a" stroke-width="2" style="margin-bottom: 20px; opacity: 0.5;">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="16" x2="12" y2="12"></line>
+        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+      </svg>
+      <h2 style="color: #e0e0e0; margin-bottom: 12px;">FoundCloud - Coming Soon</h2>
+      <p style="margin-bottom: 20px; font-size: 14px; line-height: 1.6;">
+        Foundry VTT integration is currently under development.
+      </p>
+      <p style="font-size: 13px; opacity: 0.7;">
+        For now, use RollCloud or OwlCloud to sync your characters.
+      </p>
+    </div>
+  `;
+  }
+  var init_adapter = __esm({
+    "src/popup/adapters/foundcloud/adapter.js"() {
+    }
+  });
+
   // src/content/dicecloud-extraction.js
   function parseForRollCloud(rawData) {
     if (!rawData || !rawData.creature || !rawData.variables || !rawData.properties) {
       throw new Error("Invalid raw data format");
     }
     const { creature, variables, properties } = rawData;
-    const characterName2 = creature.name || "";
+    const characterName = creature.name || "";
     let race = "Unknown";
     let characterClass = "";
     let level = 0;
@@ -231,8 +260,146 @@
       acBonuses.forEach((bonus) => finalAC += bonus.amount);
       return finalAC;
     };
+    const extractText = (field) => {
+      if (!field)
+        return "";
+      if (typeof field === "string")
+        return field;
+      if (typeof field === "object" && field.text)
+        return field.text;
+      return "";
+    };
+    const spells = properties.filter((p) => p.type === "spell").map((spell) => {
+      const spellChildren = properties.filter((p) => {
+        if (p.type !== "roll" && p.type !== "damage" && p.type !== "attack")
+          return false;
+        if (p.ancestors && Array.isArray(p.ancestors)) {
+          return p.ancestors.some((ancestor) => {
+            const ancestorId = typeof ancestor === "object" ? ancestor.id : ancestor;
+            return ancestorId === spell._id;
+          });
+        }
+        return false;
+      });
+      let attackRoll = "";
+      const attackChild = spellChildren.find((c) => c.type === "attack" || c.type === "roll" && c.name && c.name.toLowerCase().includes("attack"));
+      if (attackChild && attackChild.roll) {
+        if (typeof attackChild.roll === "string") {
+          attackRoll = attackChild.roll;
+        } else if (typeof attackChild.roll === "object") {
+          attackRoll = attackChild.roll.calculation || attackChild.roll.value || "use_spell_attack_bonus";
+        }
+      }
+      const damageRolls = [];
+      spellChildren.filter((c) => c.type === "damage" || c.type === "roll" && c.name && c.name.toLowerCase().includes("damage")).forEach((damageChild) => {
+        let formula = "";
+        if (damageChild.amount) {
+          if (typeof damageChild.amount === "string") {
+            formula = damageChild.amount;
+          } else if (typeof damageChild.amount === "object") {
+            formula = damageChild.amount.calculation || String(damageChild.amount.value || "");
+          }
+        }
+        if (formula) {
+          damageRolls.push({
+            formula,
+            type: damageChild.damageType || "",
+            name: damageChild.name || ""
+          });
+        }
+      });
+      const damage = damageRolls.length > 0 ? damageRolls[0].formula : "";
+      const damageType = damageRolls.length > 0 ? damageRolls[0].type : "";
+      let spellType = "utility";
+      if (damageRolls.length > 0) {
+        const hasHealing = damageRolls.some(
+          (roll) => roll.name.toLowerCase().includes("heal") || roll.type.toLowerCase().includes("heal")
+        );
+        spellType = hasHealing ? "healing" : "damage";
+      }
+      return {
+        id: spell._id,
+        name: spell.name || "Unnamed Spell",
+        level: spell.level || 0,
+        school: spell.school || "",
+        spellType,
+        castingTime: spell.castingTime || "",
+        range: spell.range || "",
+        components: spell.components || "",
+        duration: spell.duration || "",
+        description: extractText(spell.description),
+        summary: extractText(spell.summary),
+        ritual: spell.ritual || false,
+        concentration: spell.concentration || false,
+        prepared: spell.prepared !== false,
+        alwaysPrepared: spell.alwaysPrepared || false,
+        attackRoll,
+        damage,
+        damageType,
+        damageRolls
+      };
+    });
+    const actions = properties.filter((p) => p.type === "action" && p.name && !p.inactive && !p.disabled).map((action) => {
+      let attackRoll = "";
+      if (action.attackRoll) {
+        attackRoll = typeof action.attackRoll === "string" ? action.attackRoll : String(action.attackRoll.value || action.attackRoll.calculation || "");
+      }
+      let damage = "";
+      let damageType = "";
+      if (action.damage) {
+        damage = typeof action.damage === "string" ? action.damage : String(action.damage.value || action.damage.calculation || "");
+      }
+      if (action.damageType) {
+        damageType = action.damageType;
+      }
+      return {
+        id: action._id,
+        name: action.name,
+        actionType: action.actionType || "action",
+        description: extractText(action.description),
+        summary: extractText(action.summary),
+        attackRoll,
+        damage,
+        damageType,
+        uses: action.uses || 0,
+        usesUsed: action.usesUsed || 0,
+        reset: action.reset || "",
+        resources: action.resources || {},
+        tags: action.tags || []
+      };
+    });
+    const spellSlots = {};
+    for (let level2 = 1; level2 <= 9; level2++) {
+      const slotVar = variables[`slotLevel${level2}`];
+      if (slotVar) {
+        const current = slotVar.value || 0;
+        const max = slotVar.total || slotVar.max || slotVar.value || 0;
+        spellSlots[`level${level2}SpellSlots`] = current;
+        spellSlots[`level${level2}SpellSlotsMax`] = max;
+      }
+    }
+    const resources = properties.filter((p) => p.type === "resource" || p.type === "attribute" && p.attributeType === "resource").map((resource) => ({
+      id: resource._id,
+      name: resource.name || "Unnamed Resource",
+      current: resource.value || resource.currentValue || 0,
+      max: resource.total || resource.max || 0,
+      reset: resource.reset || "",
+      variableName: resource.variableName || resource.varName || ""
+    }));
+    const inventory = properties.filter((p) => (p.type === "item" || p.type === "equipment" || p.type === "container") && !p.inactive).map((item) => ({
+      id: item._id,
+      name: item.name || "Unnamed Item",
+      quantity: item.quantity || 1,
+      weight: item.weight || 0,
+      value: item.value || 0,
+      description: extractText(item.description),
+      summary: extractText(item.summary),
+      equipped: item.equipped || false,
+      attuned: item.attuned || false,
+      requiresAttunement: item.requiresAttunement || false
+    }));
     return {
-      name: characterName2,
+      name: characterName,
       race,
       class: characterClass || "Unknown",
       level,
@@ -250,13 +417,15 @@
       armorClass: calculateAC(),
       speed: variables.speed?.total || variables.speed?.value || 30,
       initiative: variables.initiative?.total || variables.initiative?.value || 0,
-      proficiencyBonus: variables.proficiencyBonus?.total || variables.proficiencyBonus?.value || 0
+      proficiencyBonus: variables.proficiencyBonus?.total || variables.proficiencyBonus?.value || 0,
+      spellSlots,
+      resources,
+      inventory,
+      spells,
+      actions
     };
   }
   function parseForOwlCloud(rawData) {
-    return parseForRollCloud(rawData);
-  }
-  function parseForFoundCloud(rawData) {
     return parseForRollCloud(rawData);
   }
   var STANDARD_VARS;
@@ -288,136 +457,6 @@
         ],
         combat: ["armorClass", "hitPoints", "speed", "initiative", "proficiencyBonus"]
       };
-    }
-  });
-
-  // src/popup/adapters/foundcloud/adapter.js
-  var adapter_exports = {};
-  __export(adapter_exports, {
-    init: () => init
-  });
-  async function init(containerEl) {
-    console.log("Initializing FoundCloud adapter...");
-    try {
-      containerEl.innerHTML = '<div class="loading">Loading FoundCloud...</div>';
-      const result = await chrome.storage.local.get("carmaclouds_characters");
-      const characters = result.carmaclouds_characters || [];
-      console.log("Found", characters.length, "synced characters");
-      const character = characters.length > 0 ? characters[0] : null;
-      let parsedData = null;
-      if (character && character.raw) {
-        containerEl.innerHTML = '<div class="loading">Parsing character data...</div>';
-        console.log("Parsing character for Foundry VTT:", character.name);
-        parsedData = parseForFoundCloud(character.raw);
-        console.log("Parsed data:", parsedData);
-      }
-      const htmlPath = chrome.runtime.getURL("src/popup/adapters/foundcloud/popup.html");
-      const response = await fetch(htmlPath);
-      const html = await response.text();
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, "text/html");
-      const container = doc.querySelector(".foundcloud-container");
-      const sections = container ? Array.from(container.children).filter((el) => !el.matches("header, .header, footer")).map((el) => el.outerHTML).join("") : doc.body.innerHTML;
-      const wrapper = document.createElement("div");
-      wrapper.className = "foundcloud-adapter-scope";
-      wrapper.innerHTML = sections;
-      containerEl.innerHTML = "";
-      containerEl.appendChild(wrapper);
-      const cssPath = chrome.runtime.getURL("src/popup/adapters/foundcloud/popup.css");
-      const cssResponse = await fetch(cssPath);
-      let css = await cssResponse.text();
-      css = css.replace(/(^|\})\s*([^{}@]+)\s*\{/gm, (match, closer, selector) => {
-        if (selector.trim().startsWith("@"))
-          return match;
-        const scopedSelector = selector.split(",").map((s) => `.foundcloud-adapter-scope ${s.trim()}`).join(", ");
-        return `${closer} ${scopedSelector} {`;
-      });
-      const style = document.createElement("style");
-      style.textContent = css;
-      containerEl.appendChild(style);
-      if (parsedData && character) {
-        const characterInfo = wrapper.querySelector("#characterInfo");
-        const statusSection = wrapper.querySelector("#status");
-        if (characterInfo) {
-          characterInfo.classList.remove("hidden");
-          const nameEl = characterInfo.querySelector("#charName");
-          const levelEl = characterInfo.querySelector("#charLevel");
-          const classEl = characterInfo.querySelector("#charClass");
-          const raceEl = characterInfo.querySelector("#charRace");
-          if (nameEl)
-            nameEl.textContent = character.name || "-";
-          if (levelEl)
-            levelEl.textContent = character.preview?.level || "-";
-          if (classEl)
-            classEl.textContent = character.preview?.class || "-";
-          if (raceEl)
-            raceEl.textContent = character.preview?.race || "Unknown";
-          const pushBtn = characterInfo.querySelector("#pushToVttBtn");
-          if (pushBtn) {
-            pushBtn.addEventListener("click", async () => {
-              const originalText = pushBtn.innerHTML;
-              try {
-                pushBtn.disabled = true;
-                pushBtn.innerHTML = "\u23F3 Pushing...";
-                alert("Foundry VTT cloud sync not yet implemented. Coming soon!");
-                pushBtn.innerHTML = originalText;
-                pushBtn.disabled = false;
-              } catch (error) {
-                console.error("Error pushing to Foundry VTT:", error);
-                pushBtn.innerHTML = "\u274C Failed";
-                alert(`Failed to push to Foundry VTT: ${error.message}`);
-                setTimeout(() => {
-                  pushBtn.innerHTML = originalText;
-                  pushBtn.disabled = false;
-                }, 2e3);
-              }
-            });
-          }
-        }
-        if (statusSection) {
-          const statusIcon = statusSection.querySelector("#statusIcon");
-          const statusText = statusSection.querySelector("#statusText");
-          if (statusIcon)
-            statusIcon.textContent = "\u2705";
-          if (statusText)
-            statusText.textContent = `Character synced: ${character.name}`;
-        }
-      }
-      const copyBtn = wrapper.querySelector("#copyUrlBtn");
-      if (copyBtn) {
-        copyBtn.addEventListener("click", async () => {
-          const urlInput = wrapper.querySelector("#moduleUrl");
-          if (urlInput) {
-            try {
-              await navigator.clipboard.writeText(urlInput.value);
-              const originalText = copyBtn.textContent;
-              copyBtn.textContent = "\u2713 Copied!";
-              setTimeout(() => {
-                copyBtn.textContent = originalText;
-              }, 2e3);
-            } catch (err) {
-              console.error("Failed to copy:", err);
-              copyBtn.textContent = "\u2717 Failed";
-              setTimeout(() => {
-                copyBtn.textContent = "Copy";
-              }, 2e3);
-            }
-          }
-        });
-      }
-    } catch (error) {
-      console.error("Failed to load FoundCloud UI:", error);
-      containerEl.innerHTML = `
-      <div class="error">
-        <strong>Failed to load FoundCloud</strong>
-        <p>${error.message}</p>
-      </div>
-    `;
-    }
-  }
-  var init_adapter = __esm({
-    "src/popup/adapters/foundcloud/adapter.js"() {
-      init_dicecloud_extraction();
     }
   });
 
@@ -488,6 +527,56 @@
               try {
                 pushBtn.disabled = true;
                 pushBtn.innerHTML = "\u23F3 Pushing...";
+                console.log("\u{1F4BE} Storing Owlbear parsed data to database...");
+                const SUPABASE_URL = "https://luiesmfjdcmpywavvfqm.supabase.co";
+                const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aWVzbWZqZGNtcHl3YXZ2ZnFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4ODYxNDksImV4cCI6MjA4NTQ2MjE0OX0.oqjHFf2HhCLcanh0HVryoQH7iSV7E9dHHZJdYehxZ0U";
+                try {
+                  const updateResponse = await fetch(
+                    `${SUPABASE_URL}/rest/v1/clouds_characters?dicecloud_character_id=eq.${character.id}`,
+                    {
+                      method: "PATCH",
+                      headers: {
+                        "apikey": SUPABASE_ANON_KEY,
+                        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+                        "Content-Type": "application/json",
+                        "Prefer": "return=representation"
+                      },
+                      body: JSON.stringify({
+                        owlbear_data: parsedData,
+                        updated_at: (/* @__PURE__ */ new Date()).toISOString()
+                      })
+                    }
+                  );
+                  if (updateResponse.ok) {
+                    console.log("\u2705 Owlbear data stored in database");
+                  } else {
+                    console.warn("\u26A0\uFE0F Failed to store Owlbear data:", await updateResponse.text());
+                  }
+                } catch (dbError) {
+                  console.warn("\u26A0\uFE0F Database update failed (non-fatal):", dbError);
+                }
+                console.log("\u{1F4BE} Updating local storage with parsed data...");
+                try {
+                  const dataToStore = {
+                    ...parsedData,
+                    id: character.id,
+                    dicecloud_character_id: character.id
+                  };
+                  await chrome.runtime.sendMessage({
+                    action: "storeCharacterData",
+                    data: dataToStore,
+                    slotId: character.slotId || "slot-1"
+                  });
+                  console.log("\u2705 Local storage updated with parsed Owlbear data");
+                  chrome.runtime.sendMessage({
+                    action: "dataSynced",
+                    characterName: dataToStore.name || "Character"
+                  }).catch(() => {
+                    console.log("\u2139\uFE0F No popup open to notify (normal)");
+                  });
+                } catch (storageError) {
+                  console.warn("\u26A0\uFE0F Local storage update failed (non-fatal):", storageError);
+                }
                 const tabs = await chrome.tabs.query({ url: "*://*.owlbear.rodeo/*" });
                 if (tabs.length === 0) {
                   throw new Error("No Owlbear Rodeo tab found. Please open Owlbear Rodeo first.");
@@ -544,6 +633,12 @@
           }
         });
       }
+      chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.action === "dataSynced") {
+          console.log("\u{1F4E5} OwlCloud adapter received data sync notification:", message.characterName);
+          init2(containerEl);
+        }
+      });
     } catch (error) {
       console.error("Failed to load OwlCloud UI:", error);
       containerEl.innerHTML = `
@@ -627,6 +722,56 @@
               try {
                 pushBtn.disabled = true;
                 pushBtn.innerHTML = "\u23F3 Pushing...";
+                console.log("\u{1F4BE} Storing Roll20 parsed data to database...");
+                const SUPABASE_URL = "https://luiesmfjdcmpywavvfqm.supabase.co";
+                const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aWVzbWZqZGNtcHl3YXZ2ZnFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4ODYxNDksImV4cCI6MjA4NTQ2MjE0OX0.oqjHFf2HhCLcanh0HVryoQH7iSV7E9dHHZJdYehxZ0U";
+                try {
+                  const updateResponse = await fetch(
+                    `${SUPABASE_URL}/rest/v1/clouds_characters?dicecloud_character_id=eq.${character.id}`,
+                    {
+                      method: "PATCH",
+                      headers: {
+                        "apikey": SUPABASE_ANON_KEY,
+                        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+                        "Content-Type": "application/json",
+                        "Prefer": "return=representation"
+                      },
+                      body: JSON.stringify({
+                        roll20_data: parsedData,
+                        updated_at: (/* @__PURE__ */ new Date()).toISOString()
+                      })
+                    }
+                  );
+                  if (updateResponse.ok) {
+                    console.log("\u2705 Roll20 data stored in database");
+                  } else {
+                    console.warn("\u26A0\uFE0F Failed to store Roll20 data:", await updateResponse.text());
+                  }
+                } catch (dbError) {
+                  console.warn("\u26A0\uFE0F Database update failed (non-fatal):", dbError);
+                }
+                console.log("\u{1F4BE} Updating local storage with parsed data...");
+                try {
+                  const dataToStore = {
+                    ...parsedData,
+                    id: character.id,
+                    dicecloud_character_id: character.id
+                  };
+                  await chrome.runtime.sendMessage({
+                    action: "storeCharacterData",
+                    data: dataToStore,
+                    slotId: character.slotId || "slot-1"
+                  });
+                  console.log("\u2705 Local storage updated with parsed Roll20 data");
+                  chrome.runtime.sendMessage({
+                    action: "dataSynced",
+                    characterName: dataToStore.name || "Character"
+                  }).catch(() => {
+                    console.log("\u2139\uFE0F No popup open to notify (normal)");
+                  });
+                } catch (storageError) {
+                  console.warn("\u26A0\uFE0F Local storage update failed (non-fatal):", storageError);
+                }
                 const tabs = await chrome.tabs.query({ url: "*://app.roll20.net/*" });
                 if (tabs.length === 0) {
                   throw new Error("No Roll20 tab found. Please open Roll20 first.");
@@ -661,6 +806,12 @@
             statusText.textContent = `Character synced: ${character.name}`;
         }
       }
+      chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.action === "dataSynced") {
+          console.log("\u{1F4E5} RollCloud adapter received data sync notification:", message.characterName);
+          init3(containerEl);
+        }
+      });
     } catch (error) {
       console.error("Failed to load RollCloud UI:", error);
       containerEl.innerHTML = `
@@ -794,20 +945,33 @@
     const result = await chrome.storage.local.get("dicecloud_auth_token");
     return result?.dicecloud_auth_token || null;
   }
-  async function saveAuthToken(token) {
-    await chrome.storage.local.set({ dicecloud_auth_token: token });
+  async function saveAuthToken(token, userId = null, username = null) {
+    console.log("\u{1F4BE} Saving auth token with userId:", userId || "not provided", "username:", username || "not provided");
+    const storageData = { dicecloud_auth_token: token };
+    if (userId) {
+      storageData.diceCloudUserId = userId;
+    }
+    if (username) {
+      storageData.username = username;
+    }
+    await chrome.storage.local.set(storageData);
     await updateAuthStatus();
     await updateAuthView();
     try {
       if (typeof SupabaseTokenManager !== "undefined") {
         const supabaseManager = new SupabaseTokenManager();
         const result = await chrome.storage.local.get(["username", "diceCloudUserId"]);
+        console.log("\u{1F4E4} Syncing to database with data:", {
+          hasToken: !!token,
+          userId: userId || result.diceCloudUserId || "none",
+          username: username || result.username || "none"
+        });
         const dbResult = await supabaseManager.storeToken({
           token,
-          userId: result.diceCloudUserId || result.username,
-          expires: new Date(Date.now() + 24 * 60 * 60 * 1e3).toISOString(),
+          userId: userId || result.diceCloudUserId,
+          tokenExpires: new Date(Date.now() + 24 * 60 * 60 * 1e3).toISOString(),
           // 24 hours from now
-          lastChecked: (/* @__PURE__ */ new Date()).toISOString()
+          username: username || result.username || "DiceCloud User"
         });
         if (dbResult.success) {
           console.log("\u2705 Auth token synced to database");
@@ -896,11 +1060,22 @@
                   authData2.sessionStorage[key] = sessionStorage.getItem(key);
                 }
               }
-              if (window.Meteor && window.Meteor.userId) {
+              const meteorUserId = localStorage.getItem("Meteor.userId");
+              const meteorLoginToken = localStorage.getItem("Meteor.loginToken");
+              if (meteorUserId || meteorLoginToken) {
                 authData2.meteor = {
-                  userId: window.Meteor.userId(),
-                  loginToken: window.Meteor._localStorage && window.Meteor._localStorage.getItem("Meteor.loginToken")
+                  userId: meteorUserId,
+                  loginToken: meteorLoginToken
                 };
+                if (window.Meteor && window.Meteor.user) {
+                  try {
+                    const user = window.Meteor.user();
+                    if (user) {
+                      authData2.meteor.username = user.username || user.emails?.[0]?.address || user.profile?.username || user.profile?.name || null;
+                    }
+                  } catch (e) {
+                  }
+                }
               }
               if (window.authToken)
                 authData2.authToken = window.authToken;
@@ -937,11 +1112,34 @@
             }
             
             // Check for Meteor/MongoDB auth (common in DiceCloud)
-            if (window.Meteor && window.Meteor.userId) {
+            // Meteor stores auth data in localStorage with specific keys
+            const meteorUserId = localStorage.getItem('Meteor.userId');
+            const meteorLoginToken = localStorage.getItem('Meteor.loginToken');
+
+            if (meteorUserId || meteorLoginToken) {
               authData.meteor = {
-                userId: window.Meteor.userId(),
-                loginToken: window.Meteor._localStorage && window.Meteor._localStorage.getItem('Meteor.loginToken')
+                userId: meteorUserId,
+                loginToken: meteorLoginToken
               };
+
+              // TODO: Fix username extraction - currently still returns 'DiceCloud User' as fallback
+              // Need to investigate why Meteor.user() doesn't return username properly
+              // May need to check localStorage for serialized user data or use different approach
+              // Try to get username from Meteor.user() if available
+              if (window.Meteor && window.Meteor.user) {
+                try {
+                  const user = window.Meteor.user();
+                  if (user) {
+                    authData.meteor.username = user.username ||
+                                               user.emails?.[0]?.address ||
+                                               user.profile?.username ||
+                                               user.profile?.name ||
+                                               null;
+                  }
+                } catch (e) {
+                  // Meteor.user() might not be available, that's okay
+                }
+              }
             }
             
             // Check for any global auth variables
@@ -957,8 +1155,12 @@
         const authData = results[0]?.result;
         console.log("Auth data from DiceCloud page:", authData);
         let token = null;
+        let userId = null;
+        let username = null;
         if (authData?.meteor?.loginToken) {
           token = authData.meteor.loginToken;
+          userId = authData.meteor.userId;
+          username = authData.meteor.username;
         } else if (authData?.authToken) {
           token = authData.authToken;
         } else {
@@ -969,8 +1171,13 @@
             }
           }
         }
+        console.log("\u{1F511} Extracted from DiceCloud:", {
+          hasToken: !!token,
+          userId: userId || "not found",
+          username: username || "not found"
+        });
         if (token) {
-          await saveAuthToken(token);
+          await saveAuthToken(token, userId, username);
           errorDiv.classList.add("hidden");
           closeAuthModal();
           return;
@@ -1072,18 +1279,26 @@
         return;
       }
       const supabaseManager = new SupabaseTokenManager();
-      const result = await chrome.storage.local.get(["diceCloudToken", "username", "tokenExpires", "diceCloudUserId", "authId"]);
-      if (!result.diceCloudToken) {
+      const result = await chrome.storage.local.get(["diceCloudToken", "dicecloud_auth_token", "username", "tokenExpires", "diceCloudUserId", "authId"]);
+      console.log("\u{1F50D} Storage contents:", {
+        diceCloudToken: result.diceCloudToken ? "***found***" : "NOT FOUND",
+        dicecloud_auth_token: result.dicecloud_auth_token ? "***found***" : "NOT FOUND",
+        username: result.username,
+        diceCloudUserId: result.diceCloudUserId
+      });
+      const token = result.diceCloudToken || result.dicecloud_auth_token;
+      if (!token) {
         console.log("\u26A0\uFE0F No auth token found, skipping auth token check");
         return;
       }
       console.log("\u{1F50D} Checking auth token validity...");
+      console.log("\u{1F511} Using token:", token ? "***found***" : "NOT FOUND");
       try {
         const syncResult = await supabaseManager.storeToken({
-          token: result.diceCloudToken,
+          token,
           userId: result.diceCloudUserId || result.username,
-          expires: result.tokenExpires || new Date(Date.now() + 24 * 60 * 60 * 1e3).toISOString(),
-          lastChecked: (/* @__PURE__ */ new Date()).toISOString()
+          tokenExpires: result.tokenExpires || new Date(Date.now() + 24 * 60 * 60 * 1e3).toISOString(),
+          username: result.username || "DiceCloud User"
         });
         if (syncResult.success) {
           console.log("\u2705 Auth token synced to database");
@@ -1192,7 +1407,78 @@
       e.preventDefault();
       chrome.tabs.create({ url: "https://github.com/sponsors/CarmaNayeli/" });
     });
+    const syncBtn = document.getElementById("syncToCarmaCloudsBtn");
+    if (syncBtn) {
+      syncBtn.addEventListener("click", handleSyncToCarmaClouds);
+    }
     await switchTab(lastTab);
+  }
+  async function handleSyncToCarmaClouds() {
+    const btn = document.getElementById("syncToCarmaCloudsBtn");
+    const statusDiv = document.getElementById("syncStatus");
+    if (!btn || !statusDiv)
+      return;
+    const originalText = btn.innerHTML;
+    try {
+      btn.disabled = true;
+      btn.innerHTML = "\u23F3 Syncing...";
+      statusDiv.textContent = "Fetching character data from DiceCloud...";
+      statusDiv.style.color = "#b0b0b0";
+      const response = await chrome.runtime.sendMessage({ action: "getCharacterData" });
+      if (!response || !response.success || !response.data) {
+        throw new Error("No character data available. Please sync from DiceCloud first.");
+      }
+      const characterData = response.data;
+      console.log("\u{1F4E6} Character data received:", characterData);
+      statusDiv.textContent = "Storing character locally...";
+      const existingData = await chrome.storage.local.get("carmaclouds_characters");
+      const characters = existingData.carmaclouds_characters || [];
+      const existingIndex = characters.findIndex((c) => c.id === characterData.id);
+      if (existingIndex >= 0) {
+        characters[existingIndex] = characterData;
+      } else {
+        characters.unshift(characterData);
+      }
+      await chrome.storage.local.set({ carmaclouds_characters: characters });
+      console.log("\u2705 Character stored in local storage");
+      statusDiv.textContent = "Syncing to database...";
+      if (typeof SupabaseTokenManager !== "undefined") {
+        const supabaseManager = new SupabaseTokenManager();
+        const authResult = await chrome.storage.local.get(["diceCloudUserId", "username"]);
+        const dbResult = await supabaseManager.storeCharacter({
+          ...characterData,
+          user_id_dicecloud: authResult.diceCloudUserId,
+          username: authResult.username
+        });
+        if (dbResult.success) {
+          console.log("\u2705 Character synced to database");
+          statusDiv.textContent = "\u2705 Character synced successfully!";
+          statusDiv.style.color = "#16a75a";
+          btn.innerHTML = "\u2705 Synced!";
+          const activeTab = document.querySelector(".tab-button.active");
+          if (activeTab) {
+            await switchTab(activeTab.dataset.tab);
+          }
+        } else {
+          throw new Error(dbResult.error || "Failed to store character");
+        }
+      } else {
+        throw new Error("SupabaseTokenManager not available");
+      }
+      setTimeout(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }, 2e3);
+    } catch (error) {
+      console.error("\u274C Sync error:", error);
+      statusDiv.textContent = `\u274C Error: ${error.message}`;
+      statusDiv.style.color = "#ff6b6b";
+      btn.innerHTML = "\u274C Failed";
+      setTimeout(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }, 3e3);
+    }
   }
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init4);

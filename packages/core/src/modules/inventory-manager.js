@@ -13,11 +13,14 @@
 (function() {
   'use strict';
 
-  // Inventory filter state
-  const inventoryFilters = {
-    filter: 'all',  // 'all', 'equipped', 'attuned', 'container'
-    search: ''
-  };
+  // Inventory filter state (global so popup-sheet.js can update it)
+  if (!globalThis.inventoryFilters) {
+    globalThis.inventoryFilters = {
+      filter: 'equipped',  // 'all', 'equipped', 'attuned', 'container'
+      search: ''
+    };
+  }
+  const inventoryFilters = globalThis.inventoryFilters;
 
   /**
    * Rebuild inventory display with current character data

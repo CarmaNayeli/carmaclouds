@@ -30,7 +30,7 @@
 
       options.push({
         type: 'attack',
-        label: '🎯 Attack',
+        label: '🎯 Attack Roll',
         formula: formula,
         icon: '🎯',
         color: '#e74c3c'
@@ -59,7 +59,7 @@
       } else if (action.actionType === 'feature' || !action.attackRoll) {
         btnText = '🎲 Roll';
       } else {
-        btnText = '💥 Damage';
+        btnText = '💥 Damage Roll';
       }
 
       options.push({

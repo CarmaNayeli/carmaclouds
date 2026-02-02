@@ -148,27 +148,44 @@ async function getAuthToken() {
 }
 
 // Save auth token to storage
-async function saveAuthToken(token) {
-  await chrome.storage.local.set({ dicecloud_auth_token: token });
+async function saveAuthToken(token, userId = null, username = null) {
+  console.log('💾 Saving auth token with userId:', userId || 'not provided', 'username:', username || 'not provided');
+
+  // Store token, user ID, and username
+  const storageData = { dicecloud_auth_token: token };
+  if (userId) {
+    storageData.diceCloudUserId = userId;
+  }
+  if (username) {
+    storageData.username = username;
+  }
+
+  await chrome.storage.local.set(storageData);
   await updateAuthStatus();
   await updateAuthView();
-  
+
   // Also sync to database if SupabaseTokenManager is available
   try {
     if (typeof SupabaseTokenManager !== 'undefined') {
       const supabaseManager = new SupabaseTokenManager();
-      
+
       // Get user info for the token
       const result = await chrome.storage.local.get(['username', 'diceCloudUserId']);
-      
+
+      console.log('📤 Syncing to database with data:', {
+        hasToken: !!token,
+        userId: userId || result.diceCloudUserId || 'none',
+        username: username || result.username || 'none'
+      });
+
       // Store token in database
       const dbResult = await supabaseManager.storeToken({
         token: token,
-        userId: result.diceCloudUserId || result.username,
-        expires: new Date(Date.now() + (24 * 60 * 60 * 1000)).toISOString(), // 24 hours from now
-        lastChecked: new Date().toISOString()
+        userId: userId || result.diceCloudUserId,
+        tokenExpires: new Date(Date.now() + (24 * 60 * 60 * 1000)).toISOString(), // 24 hours from now
+        username: username || result.username || 'DiceCloud User'
       });
-      
+
       if (dbResult.success) {
         console.log('✅ Auth token synced to database');
       } else {
@@ -179,7 +196,7 @@ async function saveAuthToken(token) {
     console.log('⚠️ Database sync not available:', dbError);
     // Don't show error to user as this is non-critical
   }
-  
+
   // Reload current tab to show adapter content
   await reloadCurrentTab();
 }
@@ -291,11 +308,34 @@ async function autoConnect() {
             }
             
             // Check for Meteor/MongoDB auth (common in DiceCloud)
-            if (window.Meteor && window.Meteor.userId) {
+            // Meteor stores auth data in localStorage with specific keys
+            const meteorUserId = localStorage.getItem('Meteor.userId');
+            const meteorLoginToken = localStorage.getItem('Meteor.loginToken');
+
+            if (meteorUserId || meteorLoginToken) {
               authData.meteor = {
-                userId: window.Meteor.userId(),
-                loginToken: window.Meteor._localStorage && window.Meteor._localStorage.getItem('Meteor.loginToken')
+                userId: meteorUserId,
+                loginToken: meteorLoginToken
               };
+
+              // TODO: Fix username extraction - currently still returns 'DiceCloud User' as fallback
+              // Need to investigate why Meteor.user() doesn't return username properly
+              // May need to check localStorage for serialized user data or use different approach
+              // Try to get username from Meteor.user() if available
+              if (window.Meteor && window.Meteor.user) {
+                try {
+                  const user = window.Meteor.user();
+                  if (user) {
+                    authData.meteor.username = user.username ||
+                                               user.emails?.[0]?.address ||
+                                               user.profile?.username ||
+                                               user.profile?.name ||
+                                               null;
+                  }
+                } catch (e) {
+                  // Meteor.user() might not be available, that's okay
+                }
+              }
             }
             
             // Check for any global auth variables
@@ -334,11 +374,34 @@ async function autoConnect() {
             }
             
             // Check for Meteor/MongoDB auth (common in DiceCloud)
-            if (window.Meteor && window.Meteor.userId) {
+            // Meteor stores auth data in localStorage with specific keys
+            const meteorUserId = localStorage.getItem('Meteor.userId');
+            const meteorLoginToken = localStorage.getItem('Meteor.loginToken');
+
+            if (meteorUserId || meteorLoginToken) {
               authData.meteor = {
-                userId: window.Meteor.userId(),
-                loginToken: window.Meteor._localStorage && window.Meteor._localStorage.getItem('Meteor.loginToken')
+                userId: meteorUserId,
+                loginToken: meteorLoginToken
               };
+
+              // TODO: Fix username extraction - currently still returns 'DiceCloud User' as fallback
+              // Need to investigate why Meteor.user() doesn't return username properly
+              // May need to check localStorage for serialized user data or use different approach
+              // Try to get username from Meteor.user() if available
+              if (window.Meteor && window.Meteor.user) {
+                try {
+                  const user = window.Meteor.user();
+                  if (user) {
+                    authData.meteor.username = user.username ||
+                                               user.emails?.[0]?.address ||
+                                               user.profile?.username ||
+                                               user.profile?.name ||
+                                               null;
+                  }
+                } catch (e) {
+                  // Meteor.user() might not be available, that's okay
+                }
+              }
             }
             
             // Check for any global auth variables
@@ -354,12 +417,16 @@ async function autoConnect() {
       
       const authData = results[0]?.result;
       console.log('Auth data from DiceCloud page:', authData);
-      
-      // Try to extract a token from the collected data
+
+      // Try to extract a token and user info from the collected data
       let token = null;
-      
+      let userId = null;
+      let username = null;
+
       if (authData?.meteor?.loginToken) {
         token = authData.meteor.loginToken;
+        userId = authData.meteor.userId;
+        username = authData.meteor.username;
       } else if (authData?.authToken) {
         token = authData.authToken;
       } else {
@@ -371,9 +438,15 @@ async function autoConnect() {
           }
         }
       }
-      
+
+      console.log('🔑 Extracted from DiceCloud:', {
+        hasToken: !!token,
+        userId: userId || 'not found',
+        username: username || 'not found'
+      });
+
       if (token) {
-        await saveAuthToken(token);
+        await saveAuthToken(token, userId, username);
         errorDiv.classList.add('hidden');
         closeAuthModal();
         return;
@@ -510,24 +583,34 @@ async function checkAndUpdateAuthToken() {
     }
 
     const supabaseManager = new SupabaseTokenManager();
-    
-    // Get current token from storage
-    const result = await chrome.storage.local.get(['diceCloudToken', 'username', 'tokenExpires', 'diceCloudUserId', 'authId']);
-    
-    if (!result.diceCloudToken) {
+
+    // Get current token from storage (check both old and new key names)
+    const result = await chrome.storage.local.get(['diceCloudToken', 'dicecloud_auth_token', 'username', 'tokenExpires', 'diceCloudUserId', 'authId']);
+
+    console.log('🔍 Storage contents:', {
+      diceCloudToken: result.diceCloudToken ? '***found***' : 'NOT FOUND',
+      dicecloud_auth_token: result.dicecloud_auth_token ? '***found***' : 'NOT FOUND',
+      username: result.username,
+      diceCloudUserId: result.diceCloudUserId
+    });
+
+    const token = result.diceCloudToken || result.dicecloud_auth_token;
+
+    if (!token) {
       console.log('⚠️ No auth token found, skipping auth token check');
       return;
     }
 
     console.log('🔍 Checking auth token validity...');
-    
+    console.log('🔑 Using token:', token ? '***found***' : 'NOT FOUND');
+
     // Always try to sync the current token to database to ensure it's up to date
     try {
       const syncResult = await supabaseManager.storeToken({
-        token: result.diceCloudToken,
+        token: token,
         userId: result.diceCloudUserId || result.username,
-        expires: result.tokenExpires || new Date(Date.now() + (24 * 60 * 60 * 1000)).toISOString(),
-        lastChecked: new Date().toISOString()
+        tokenExpires: result.tokenExpires || new Date(Date.now() + (24 * 60 * 60 * 1000)).toISOString(),
+        username: result.username || 'DiceCloud User'
       });
       
       if (syncResult.success) {
@@ -686,8 +769,107 @@ async function init() {
     chrome.tabs.create({ url: 'https://github.com/sponsors/CarmaNayeli/' });
   });
 
+  // Set up sync to CarmaClouds button
+  const syncBtn = document.getElementById('syncToCarmaCloudsBtn');
+  if (syncBtn) {
+    syncBtn.addEventListener('click', handleSyncToCarmaClouds);
+  }
+
   // Load the last active tab
   await switchTab(lastTab);
+}
+
+// Handle sync to CarmaClouds button click
+async function handleSyncToCarmaClouds() {
+  const btn = document.getElementById('syncToCarmaCloudsBtn');
+  const statusDiv = document.getElementById('syncStatus');
+
+  if (!btn || !statusDiv) return;
+
+  const originalText = btn.innerHTML;
+
+  try {
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Syncing...';
+    statusDiv.textContent = 'Fetching character data from DiceCloud...';
+    statusDiv.style.color = '#b0b0b0';
+
+    // Get character data from background script
+    const response = await chrome.runtime.sendMessage({ action: 'getCharacterData' });
+
+    if (!response || !response.success || !response.data) {
+      throw new Error('No character data available. Please sync from DiceCloud first.');
+    }
+
+    const characterData = response.data;
+    console.log('📦 Character data received:', characterData);
+
+    // Store in local storage first
+    statusDiv.textContent = 'Storing character locally...';
+
+    const existingData = await chrome.storage.local.get('carmaclouds_characters');
+    const characters = existingData.carmaclouds_characters || [];
+
+    // Update or add character (remove old version if exists)
+    const existingIndex = characters.findIndex(c => c.id === characterData.id);
+    if (existingIndex >= 0) {
+      characters[existingIndex] = characterData;
+    } else {
+      characters.unshift(characterData); // Add to beginning
+    }
+
+    await chrome.storage.local.set({ carmaclouds_characters: characters });
+    console.log('✅ Character stored in local storage');
+
+    // Store character in Supabase database
+    statusDiv.textContent = 'Syncing to database...';
+
+    if (typeof SupabaseTokenManager !== 'undefined') {
+      const supabaseManager = new SupabaseTokenManager();
+
+      // Get auth info
+      const authResult = await chrome.storage.local.get(['diceCloudUserId', 'username']);
+
+      const dbResult = await supabaseManager.storeCharacter({
+        ...characterData,
+        user_id_dicecloud: authResult.diceCloudUserId,
+        username: authResult.username
+      });
+
+      if (dbResult.success) {
+        console.log('✅ Character synced to database');
+        statusDiv.textContent = '✅ Character synced successfully!';
+        statusDiv.style.color = '#16a75a';
+        btn.innerHTML = '✅ Synced!';
+
+        // Reload the current adapter to show updated character
+        const activeTab = document.querySelector('.tab-button.active');
+        if (activeTab) {
+          await switchTab(activeTab.dataset.tab);
+        }
+      } else {
+        throw new Error(dbResult.error || 'Failed to store character');
+      }
+    } else {
+      throw new Error('SupabaseTokenManager not available');
+    }
+
+    setTimeout(() => {
+      btn.innerHTML = originalText;
+      btn.disabled = false;
+    }, 2000);
+
+  } catch (error) {
+    console.error('❌ Sync error:', error);
+    statusDiv.textContent = `❌ Error: ${error.message}`;
+    statusDiv.style.color = '#ff6b6b';
+    btn.innerHTML = '❌ Failed';
+
+    setTimeout(() => {
+      btn.innerHTML = originalText;
+      btn.disabled = false;
+    }, 3000);
+  }
 }
 
 // Start when DOM is ready

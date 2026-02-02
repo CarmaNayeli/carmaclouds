@@ -1820,8 +1820,19 @@ ${spellDescription || "No description available"}`;
         }
         if (response && response.data) {
           debug.log("\u2705 Character data loaded for popup:", response.data.name);
-          const parsedData = parseForRollCloud(response.data.raw);
-          debug.log("\u2705 Parsed character data for sheet:", parsedData);
+          let parsedData;
+          if (response.data.hitPoints) {
+            debug.log("\u2705 Using pre-parsed character data");
+            parsedData = response.data;
+          } else if (response.data.raw) {
+            debug.log("\u{1F4CB} Parsing raw character data for sheet");
+            parsedData = parseForRollCloud(response.data.raw);
+          } else {
+            debug.error("\u274C Character data missing both hitPoints and raw fields");
+            showNotification("Character data format error. Please re-sync from DiceCloud.", "error");
+            return;
+          }
+          debug.log("\u2705 Character data ready for sheet:", parsedData.name);
           const popupURL = browserAPI.runtime.getURL("src/popup-sheet.html");
           let messageSent = false;
           let popupWindow = null;
@@ -2073,49 +2084,76 @@ ${spellDescription || "No description available"}`;
       });
     }
     function createToggleButton() {
-      if (document.getElementById("rollcloud-sheet-toggle")) {
+      if (document.getElementById("rollcloud-sheet-toggle-container")) {
         debug.log("\u26A0\uFE0F Character sheet button already exists");
         return;
       }
-      const button = document.createElement("button");
-      button.id = "rollcloud-sheet-toggle";
-      button.innerHTML = "\u{1F4CB} Character Sheet";
-      button.style.cssText = `
+      const container = document.createElement("div");
+      container.id = "rollcloud-sheet-toggle-container";
+      container.style.cssText = `
       position: fixed;
       top: 20px;
       left: 50%;
       transform: translateX(-50%);
+      z-index: 999998;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    `;
+      const dragHandle = document.createElement("div");
+      dragHandle.innerHTML = "\u22EE\u22EE";
+      dragHandle.style.cssText = `
+      background: rgba(142, 6, 130, 0.9);
+      color: #fff;
+      padding: 4px 8px;
+      border-radius: 8px 8px 0 0;
+      cursor: move;
+      font-size: 12px;
+      text-align: center;
+      user-select: none;
+      border: 1px solid rgba(252, 87, 249, 0.3);
+      border-bottom: none;
+    `;
+      dragHandle.addEventListener("mouseenter", () => {
+        dragHandle.style.background = "rgba(252, 87, 249, 0.9)";
+      });
+      dragHandle.addEventListener("mouseleave", () => {
+        dragHandle.style.background = "rgba(142, 6, 130, 0.9)";
+      });
+      const button = document.createElement("button");
+      button.id = "rollcloud-sheet-toggle";
+      button.innerHTML = "\u{1F4CB} Character Sheet";
+      button.style.cssText = `
       background: linear-gradient(135deg, #FC57F9 0%, #8E0682 100%);
       color: white;
       border: none;
       padding: 12px 20px;
-      border-radius: 8px;
+      border-radius: 0 0 8px 8px;
       cursor: pointer;
       font-size: 14px;
       font-weight: bold;
       box-shadow: 0 4px 15px rgba(252, 87, 249, 0.3);
-      z-index: 999998;
-      transition: transform 0.2s, box-shadow 0.2s;
+      transition: all 0.2s;
       user-select: none;
+      display: block;
+      width: 100%;
+      border: 1px solid rgba(252, 87, 249, 0.3);
+      border-top: none;
     `;
       button.addEventListener("mouseenter", () => {
-        if (!button.style.left || button.style.left === "50%") {
-          button.style.transform = "translateX(-50%) translateY(-2px)";
-        }
         button.style.boxShadow = "0 6px 20px rgba(252, 87, 249, 0.5)";
+        button.style.background = "linear-gradient(135deg, #FD6FFB 0%, #9F0793 100%)";
       });
       button.addEventListener("mouseleave", () => {
-        if (!button.style.left || button.style.left === "50%") {
-          button.style.transform = "translateX(-50%) translateY(0)";
-        }
         button.style.boxShadow = "0 4px 15px rgba(252, 87, 249, 0.3)";
+        button.style.background = "linear-gradient(135deg, #FC57F9 0%, #8E0682 100%)";
       });
       button.addEventListener("click", () => {
         showOverlay();
       });
-      document.body.appendChild(button);
-      makeButtonDraggable(button, "rollcloud-sheet-toggle");
-      debug.log("\u2705 Character sheet button created");
+      container.appendChild(dragHandle);
+      container.appendChild(button);
+      document.body.appendChild(container);
+      makeButtonDraggable(container, "rollcloud-sheet-toggle");
+      debug.log("\u2705 Character sheet button created with drag handle");
     }
     browserAPI.runtime.onMessage.addListener((request, sender, sendResponse) => {
       if (request.action === "postRollToChat") {
@@ -2132,9 +2170,9 @@ ${spellDescription || "No description available"}`;
         }
         sendResponse({ success: true });
       } else if (request.action === "showCharacterSheetButton") {
-        const button = document.getElementById("rollcloud-sheet-toggle");
-        if (button) {
-          button.style.display = "";
+        const container = document.getElementById("rollcloud-sheet-toggle-container");
+        if (container) {
+          container.style.display = "";
           localStorage.removeItem("rollcloud-sheet-toggle_hidden");
           showNotification("Character Sheet button shown", "success");
         }

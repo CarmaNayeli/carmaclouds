@@ -1,55 +1,98 @@
 # CarmaClouds
 
-**Cloud services for tabletop gaming**
+**Unified DiceCloud integration for your favorite VTT platforms**
 
-Bring your DiceCloud characters to Discord, Owlbear Rodeo, and Foundry VTT with seamless integrations.
+One extension. Multiple VTT platforms. Seamless character sync from DiceCloud V2 to Roll20, Owlbear Rodeo, and Foundry VTT (coming soon).
 
-## [Visit the Dashboard →](https://carmaclouds.vercel.app)
+## [Visit the Website →](https://carmaclouds.vercel.app)
 
-Get started with downloads, installation guides, and documentation for all CarmaClouds projects.
+Get started with downloads, installation guides, and documentation.
 
 ---
 
-## Projects
+## What is CarmaClouds?
 
-### OwlCloud
-**Browser extension + Owlbear Rodeo integration**
+CarmaClouds is a browser extension that syncs your DiceCloud V2 characters to virtual tabletop platforms with a single click.
 
-View and manage your DiceCloud characters directly in Owlbear Rodeo. Real-time HP tracking, dice rolling, and character sheet integration.
+### Features
 
-- [Chrome Extension](#) | [Firefox Add-on](#)
-- [Documentation](./packages/owlcloud/README.md)
+- **One Extension, Three Platforms** - RollCloud (Roll20), OwlCloud (Owlbear Rodeo), FoundCloud (Foundry VTT - coming soon)
+- **Seamless Sync** - Click "Sync to CarmaClouds" on any DiceCloud character page
+- **Push to VTT** - Send your character data directly to your active VTT tab
+- **Cloud Storage** - Characters stored in Supabase for access across devices
+- **Auto-Login** - Works with Google Sign-In, username/password, or any DiceCloud login method
+- **Real-time Updates** - Changes on DiceCloud instantly available in the extension
 
-### RollCloud
-**Browser extension for character sheet management**
+---
 
-Manage your DiceCloud characters with enhanced features and Discord integration. Track HP, roll dice, and manage resources across platforms.
+## Installation
 
-- [Chrome Extension](#) | [Firefox Add-on](#)
-- [Documentation](./packages/rollcloud/README.md)
+### Chrome/Edge
 
-### FoundCloud
-**Foundry VTT module** *(Coming Soon)*
+1. Visit [carmaclouds.vercel.app](https://carmaclouds.vercel.app)
+2. Download the latest CarmaClouds Chrome extension
+3. Extract the ZIP file
+4. Open Chrome → Extensions → Enable "Developer mode"
+5. Click "Load unpacked" → Select the extracted folder
+6. Done! The extension is now active
 
-Import and sync DiceCloud characters into Foundry VTT with automated updates.
+### Firefox
 
-- [Documentation](./packages/foundcloud/README.md)
+1. Visit [carmaclouds.vercel.app](https://carmaclouds.vercel.app)
+2. Download the latest CarmaClouds Firefox add-on
+3. Open Firefox → Add-ons → Install from file
+4. Select the downloaded `.xpi` file
+5. Done! The extension is now active
 
-### Pip2
-**Discord integration bot for CarmaClouds**
+---
 
-Brings all CarmaClouds features to Discord. Roll dice, manage characters, track initiative, and more with simple slash commands.
+## Quick Start
+
+### 1. Sync Your Character
+
+1. Go to [dicecloud.com](https://dicecloud.com) and open any character
+2. Log in to DiceCloud (if not already)
+3. Click the **"Sync to CarmaClouds"** button that appears on the character page
+4. Your character is now synced and ready to use!
+
+### 2. Push to Your VTT
+
+#### Roll20 (RollCloud)
+
+1. Open [app.roll20.net](https://app.roll20.net) in another tab
+2. Click the CarmaClouds extension icon
+3. Go to the **RollCloud** tab
+4. Click **"Push to Roll20"**
+5. Your character appears in Roll20!
+
+#### Owlbear Rodeo (OwlCloud)
+
+1. Open [owlbear.rodeo](https://owlbear.rodeo) in another tab
+2. Click the CarmaClouds extension icon
+3. Go to the **OwlCloud** tab
+4. Click **"Push to Owlbear"**
+5. Your character appears in Owlbear Rodeo!
+
+#### Foundry VTT (FoundCloud)
+
+*Coming soon! Check the FoundCloud tab for updates.*
+
+---
+
+## Additional Projects
+
+### Pip2 Discord Bot
+
+Brings CarmaClouds features to Discord. Roll dice, manage characters, track initiative, and more with slash commands.
 
 - [Add to Discord](https://discord.com/oauth2/authorize?client_id=1144752568716591286)
 - [Documentation](./packages/pip/README.md)
 
 ---
 
-## Installation
+## For Developers
 
-### For Users
-
-Visit [carmaclouds.vercel.app](https://carmaclouds.vercel.app) for installation instructions and downloads.
+### Development Setup
 
 ### For Developers
 

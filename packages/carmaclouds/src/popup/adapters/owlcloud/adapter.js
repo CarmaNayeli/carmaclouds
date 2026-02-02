@@ -96,6 +96,65 @@ export async function init(containerEl) {
               pushBtn.disabled = true;
               pushBtn.innerHTML = '⏳ Pushing...';
 
+              // Store Owlbear-specific parsed data in database
+              console.log('💾 Storing Owlbear parsed data to database...');
+              const SUPABASE_URL = 'https://luiesmfjdcmpywavvfqm.supabase.co';
+              const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aWVzbWZqZGNtcHl3YXZ2ZnFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4ODYxNDksImV4cCI6MjA4NTQ2MjE0OX0.oqjHFf2HhCLcanh0HVryoQH7iSV7E9dHHZJdYehxZ0U';
+
+              try {
+                const updateResponse = await fetch(
+                  `${SUPABASE_URL}/rest/v1/clouds_characters?dicecloud_character_id=eq.${character.id}`,
+                  {
+                    method: 'PATCH',
+                    headers: {
+                      'apikey': SUPABASE_ANON_KEY,
+                      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                      'Content-Type': 'application/json',
+                      'Prefer': 'return=representation'
+                    },
+                    body: JSON.stringify({
+                      owlbear_data: parsedData,
+                      updated_at: new Date().toISOString()
+                    })
+                  }
+                );
+                if (updateResponse.ok) {
+                  console.log('✅ Owlbear data stored in database');
+                } else {
+                  console.warn('⚠️ Failed to store Owlbear data:', await updateResponse.text());
+                }
+              } catch (dbError) {
+                console.warn('⚠️ Database update failed (non-fatal):', dbError);
+              }
+
+              // Also update local storage with parsed data so popup can use it
+              console.log('💾 Updating local storage with parsed data...');
+              try {
+                // Add the character ID to parsed data so storage can find it
+                const dataToStore = {
+                  ...parsedData,
+                  id: character.id,
+                  dicecloud_character_id: character.id
+                };
+
+                await chrome.runtime.sendMessage({
+                  action: 'storeCharacterData',
+                  data: dataToStore,
+                  slotId: character.slotId || 'slot-1'
+                });
+                console.log('✅ Local storage updated with parsed Owlbear data');
+
+                // Notify any open popup to refresh and show the updated character
+                chrome.runtime.sendMessage({
+                  action: 'dataSynced',
+                  characterName: dataToStore.name || 'Character'
+                }).catch(() => {
+                  console.log('ℹ️ No popup open to notify (normal)');
+                });
+              } catch (storageError) {
+                console.warn('⚠️ Local storage update failed (non-fatal):', storageError);
+              }
+
               // Get the active Owlbear Rodeo tab
               const tabs = await chrome.tabs.query({ url: '*://*.owlbear.rodeo/*' });
               if (tabs.length === 0) {
@@ -158,6 +217,15 @@ export async function init(containerEl) {
         }
       });
     }
+
+    // Listen for data sync notifications to refresh the UI
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      if (message.action === 'dataSynced') {
+        console.log('📥 OwlCloud adapter received data sync notification:', message.characterName);
+        // Reload the entire adapter to show updated character data
+        init(containerEl);
+      }
+    });
 
   } catch (error) {
     console.error('Failed to load OwlCloud UI:', error);

@@ -12,6 +12,7 @@
     console.log("CarmaClouds: Creature:", creature.name);
     console.log("CarmaClouds: Variables count:", Object.keys(variables).length);
     console.log("CarmaClouds: Properties count:", properties.length);
+    const characterName = creature.name || "";
     const calculateArmorClass = () => {
       const extractNumeric = (val) => {
         if (val === null || val === void 0)
@@ -343,29 +344,29 @@
   `;
     syncButton.style.cssText = `
     background: linear-gradient(135deg, #16a75a 0%, #0d8045 100%);
-    color: #000000;
+    color: #ffffff;
     border: none;
-    padding: 8px 16px;
-    border-radius: 0 0 6px 6px;
+    padding: 10px 18px;
+    border-radius: 0 0 12px 12px;
     font-weight: 600;
     font-size: 14px;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     transition: all 0.2s ease;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    border: 1px solid #333;
+    box-shadow: 0 4px 12px rgba(22, 167, 90, 0.4), 0 2px 4px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-top: none;
   `;
     syncButton.addEventListener("mouseenter", () => {
       syncButton.style.background = "linear-gradient(135deg, #1bc76b 0%, #0f9055 100%)";
       syncButton.style.transform = "translateY(-1px)";
-      syncButton.style.boxShadow = "0 4px 8px rgba(0,0,0,0.2)";
+      syncButton.style.boxShadow = "0 6px 16px rgba(27, 199, 107, 0.5), 0 2px 4px rgba(0, 0, 0, 0.2)";
     });
     syncButton.addEventListener("mouseleave", () => {
       syncButton.style.background = "linear-gradient(135deg, #16a75a 0%, #0d8045 100%)";
       syncButton.style.transform = "translateY(0)";
-      syncButton.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
+      syncButton.style.boxShadow = "0 4px 12px rgba(22, 167, 90, 0.4), 0 2px 4px rgba(0, 0, 0, 0.2)";
     });
     syncButton.addEventListener("click", handleSyncToCarmaClouds);
     let isDragging = false;
@@ -439,7 +440,7 @@
     try {
       button.innerHTML = `
       <div style="display: flex; align-items: center; gap: 8px;">
-        <div style="width: 16px; height: 16px; border: 2px solid #000; border-top: 2px solid transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        <div style="width: 16px; height: 16px; border: 2px solid #ffffff; border-top: 2px solid transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
         <span>Syncing...</span>
       </div>
     `;
@@ -569,10 +570,10 @@
     } catch (error) {
       console.error("CarmaClouds: Error extracting character data:", error);
       console.log("CarmaClouds: Trying fallback page extraction...");
-      const characterName2 = document.querySelector('h1, .character-name, [data-testid="character-name"]')?.textContent?.trim();
-      if (characterName2) {
+      const characterName = document.querySelector('h1, .character-name, [data-testid="character-name"]')?.textContent?.trim();
+      if (characterName) {
         return {
-          name: characterName2,
+          name: characterName,
           level: "Unknown",
           class: "Unknown",
           race: "Unknown",

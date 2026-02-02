@@ -424,64 +424,92 @@
     // Spell Slots
     buildSpellSlotsDisplay();
 
-    // Abilities
-    const abilitiesGrid = document.getElementById('abilities-grid');
-    if (abilitiesGrid) {
-      abilitiesGrid.innerHTML = ''; // Clear existing
+    // Ability Scores & Saving Throws (Bundled format like OwlCloud)
+    const abilitiesSavesGrid = document.getElementById('abilities-saves-grid');
+    if (abilitiesSavesGrid) {
+      abilitiesSavesGrid.innerHTML = ''; // Clear existing
       const abilities = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
+
       abilities.forEach(ability => {
-      const score = data.attributes?.[ability] || 10;
-      const mod = data.attributeMods?.[ability] || 0;
-      const card = createCard(ability.substring(0, 3).toUpperCase(), score, `+${mod}`, () => {
-        // Announce ability check
-        const announcement = `&{template:default} {{name=${getColoredBanner(data)}${data.name} makes a ${ability.charAt(0).toUpperCase() + ability.slice(1)} check!}} {{Type=Ability Check}} {{Bonus=+${mod}}}`;
-        const messageData = {
-          action: 'announceSpell',
-          message: announcement,
-          color: data.notificationColor
-        };
+        const score = data.attributes?.[ability] || 10;
+        const checkMod = data.attributeMods?.[ability] || 0;
+        const saveMod = data.saves?.[ability] || data.savingThrows?.[ability] || checkMod; // Fallback to check if no save proficiency
 
-        if (window.opener && !window.opener.closed) {
-          try {
-            window.opener.postMessage(messageData, '*');
-          } catch (error) {
-            debug.log('❌ Failed to send ability check announcement:', error);
+        // Create bundled card
+        const card = document.createElement('div');
+        card.className = 'stat-card';
+        card.style.cssText = `
+          padding: 12px;
+          background: var(--bg-secondary, #2a2a2a);
+          border: 2px solid var(--border-color, #444);
+          border-radius: 8px;
+          text-align: center;
+          cursor: pointer;
+          transition: all 0.2s;
+        `;
+
+        const abilityShort = ability.substring(0, 3).toUpperCase();
+
+        card.innerHTML = `
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: var(--text-primary, #e0e0e0);">${abilityShort}</div>
+          <div style="font-size: 24px; font-weight: bold; margin-bottom: 8px; color: var(--accent-primary, #9b59b6);">${score}</div>
+          <div style="display: flex; justify-content: space-around; gap: 8px;">
+            <button class="check-btn" style="flex: 1; padding: 6px; background: var(--bg-tertiary, #333); border: 1px solid var(--border-color, #555); border-radius: 4px; color: var(--text-secondary, #b0b0b0); font-size: 11px; cursor: pointer;">
+              <div style="font-size: 10px;">Check</div>
+              <div style="font-weight: bold;">${checkMod >= 0 ? '+' : ''}${checkMod}</div>
+            </button>
+            <button class="save-btn" style="flex: 1; padding: 6px; background: var(--bg-tertiary, #333); border: 1px solid var(--border-color, #555); border-radius: 4px; color: var(--text-secondary, #b0b0b0); font-size: 11px; cursor: pointer;">
+              <div style="font-size: 10px;">Save</div>
+              <div style="font-weight: bold;">${saveMod >= 0 ? '+' : ''}${saveMod}</div>
+            </button>
+          </div>
+        `;
+
+        // Check button click handler
+        const checkBtn = card.querySelector('.check-btn');
+        checkBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const announcement = `&{template:default} {{name=${getColoredBanner(data)}${data.name} makes a ${ability.charAt(0).toUpperCase() + ability.slice(1)} check!}} {{Type=Ability Check}} {{Bonus=${checkMod >= 0 ? '+' : ''}${checkMod}}}`;
+          const messageData = {
+            action: 'announceSpell',
+            message: announcement,
+            color: data.notificationColor
+          };
+
+          if (window.opener && !window.opener.closed) {
+            try {
+              window.opener.postMessage(messageData, '*');
+            } catch (error) {
+              debug.log('❌ Failed to send ability check announcement:', error);
+            }
           }
-        }
 
-        roll(`${ability.charAt(0).toUpperCase() + ability.slice(1)} Check`, `1d20+${mod}`);
-      });
-        abilitiesGrid.appendChild(card);
-      });
-    }
+          roll(`${ability.charAt(0).toUpperCase() + ability.slice(1)} Check`, `1d20${checkMod >= 0 ? '+' : ''}${checkMod}`);
+        });
 
-    // Saves
-    const savesGrid = document.getElementById('saves-grid');
-    if (savesGrid) {
-      savesGrid.innerHTML = ''; // Clear existing
-      const abilities = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
-      abilities.forEach(ability => {
-      const bonus = data.savingThrows?.[ability] || 0;
-      const card = createCard(`${ability.substring(0, 3).toUpperCase()}`, `+${bonus}`, '', () => {
-        // Announce saving throw
-        const announcement = `&{template:default} {{name=${getColoredBanner(data)}${data.name} makes a ${ability.toUpperCase()} save!}} {{Type=Saving Throw}} {{Bonus=+${bonus}}}`;
-        const messageData = {
-          action: 'announceSpell',
-          message: announcement,
-          color: data.notificationColor
-        };
+        // Save button click handler
+        const saveBtn = card.querySelector('.save-btn');
+        saveBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const announcement = `&{template:default} {{name=${getColoredBanner(data)}${data.name} makes a ${abilityShort} save!}} {{Type=Saving Throw}} {{Bonus=${saveMod >= 0 ? '+' : ''}${saveMod}}}`;
+          const messageData = {
+            action: 'announceSpell',
+            message: announcement,
+            color: data.notificationColor
+          };
 
-        if (window.opener && !window.opener.closed) {
-          try {
-            window.opener.postMessage(messageData, '*');
-          } catch (error) {
-            debug.log('❌ Failed to send saving throw announcement:', error);
+          if (window.opener && !window.opener.closed) {
+            try {
+              window.opener.postMessage(messageData, '*');
+            } catch (error) {
+              debug.log('❌ Failed to send saving throw announcement:', error);
+            }
           }
-        }
 
-        roll(`${ability.toUpperCase()} Save`, `1d20+${bonus}`);
-      });
-        savesGrid.appendChild(card);
+          roll(`${abilityShort} Save`, `1d20${saveMod >= 0 ? '+' : ''}${saveMod}`);
+        });
+
+        abilitiesSavesGrid.appendChild(card);
       });
     }
 

@@ -1,6 +1,12 @@
 /**
  * Popup UI Script
  * Handles user interactions in the extension popup
+ *
+ * TODO: Optimize Supabase queries for egress reduction
+ * - Add .limit() to character list queries (getCharacters)
+ * - Use specific field selection instead of select('*')
+ * - Avoid fetching raw_dicecloud_data in list views
+ * - Consider pagination for large character lists
  */
 
 // Import browser polyfill for cross-browser compatibility
@@ -300,24 +306,6 @@ function initializePopup() {
       // Silently ignore polling errors
     }
   }, 5000);
-
-  // Periodic session validity check to detect conflicts from other browsers
-  setInterval(async () => {
-    try {
-      if (typeof SupabaseTokenManager !== 'undefined') {
-        const supabaseManager = new SupabaseTokenManager();
-        const sessionCheck = await supabaseManager.checkSessionValidity();
-        
-        if (!sessionCheck.valid) {
-          debug.log('⚠️ Session conflict detected via polling, logging out:', sessionCheck.reason);
-          await handleSessionConflict(sessionCheck);
-          showLoginSection();
-        }
-      }
-    } catch (error) {
-      debug.error('❌ Error in periodic session check:', error);
-    }
-  }, 10000); // Check every 10 seconds
 
   // Event Listeners - Login
   autoConnectBtn.addEventListener('click', handleAutoConnect);

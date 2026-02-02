@@ -66,6 +66,9 @@ export function parseCharacterData(apiData, characterId) {
   console.log('CarmaClouds: Variables count:', Object.keys(variables).length);
   console.log('CarmaClouds: Properties count:', properties.length);
 
+  // Extract character name early to ensure proper scope
+  const characterName = creature.name || '';
+
   // Calculate AC from multiple sources
   const calculateArmorClass = () => {
     // Helper: try to coerce a variety of shapes into a numeric AC
@@ -652,6 +655,209 @@ export function parseForRollCloud(rawData) {
     return finalAC;
   };
 
+  // Helper to extract text from DiceCloud text objects
+  const extractText = (field) => {
+    if (!field) return '';
+    if (typeof field === 'string') return field;
+    if (typeof field === 'object' && field.text) return field.text;
+    return '';
+  };
+
+  // Parse spells from properties with child attack/damage extraction
+  const spells = properties
+    .filter(p => p.type === 'spell')
+    .map(spell => {
+      // Find child properties (attack rolls, damage) for this spell
+      const spellChildren = properties.filter(p => {
+        if (p.type !== 'roll' && p.type !== 'damage' && p.type !== 'attack') return false;
+        if (p.ancestors && Array.isArray(p.ancestors)) {
+          return p.ancestors.some(ancestor => {
+            const ancestorId = typeof ancestor === 'object' ? ancestor.id : ancestor;
+            return ancestorId === spell._id;
+          });
+        }
+        return false;
+      });
+
+      // Extract attack roll from children
+      let attackRoll = '';
+      const attackChild = spellChildren.find(c => c.type === 'attack' || (c.type === 'roll' && c.name && c.name.toLowerCase().includes('attack')));
+      if (attackChild && attackChild.roll) {
+        if (typeof attackChild.roll === 'string') {
+          attackRoll = attackChild.roll;
+        } else if (typeof attackChild.roll === 'object') {
+          attackRoll = attackChild.roll.calculation || attackChild.roll.value || 'use_spell_attack_bonus';
+        }
+      }
+
+      // Extract damage rolls from children
+      const damageRolls = [];
+      spellChildren.filter(c => c.type === 'damage' || (c.type === 'roll' && c.name && (c.name.toLowerCase().includes('damage') || c.name.toLowerCase().includes('heal')))).forEach(damageChild => {
+        let formula = '';
+        // Try amount field first (standard damage property)
+        if (damageChild.amount) {
+          if (typeof damageChild.amount === 'string') {
+            formula = damageChild.amount;
+          } else if (typeof damageChild.amount === 'object') {
+            formula = damageChild.amount.calculation || String(damageChild.amount.value || '');
+          }
+        }
+        // Fallback to roll field (alternative structure)
+        else if (damageChild.roll) {
+          if (typeof damageChild.roll === 'string') {
+            formula = damageChild.roll;
+          } else if (typeof damageChild.roll === 'object') {
+            formula = damageChild.roll.calculation || String(damageChild.roll.value || '');
+          }
+        }
+        // Fallback to damage field
+        else if (damageChild.damage) {
+          if (typeof damageChild.damage === 'string') {
+            formula = damageChild.damage;
+          } else if (typeof damageChild.damage === 'object') {
+            formula = damageChild.damage.calculation || String(damageChild.damage.value || '');
+          }
+        }
+
+        if (formula) {
+          damageRolls.push({
+            formula: formula,
+            type: damageChild.damageType || '',
+            name: damageChild.name || ''
+          });
+        }
+      });
+
+      // First damage roll for backward compatibility
+      const damage = damageRolls.length > 0 ? damageRolls[0].formula : '';
+      const damageType = damageRolls.length > 0 ? damageRolls[0].type : '';
+
+      // Determine spell type (damage, healing, utility)
+      let spellType = 'utility';
+      if (damageRolls.length > 0) {
+        // Check if any damage roll is healing type
+        const hasHealingRoll = damageRolls.some(roll =>
+          roll.name.toLowerCase().includes('heal') ||
+          roll.type.toLowerCase().includes('heal')
+        );
+
+        // Also check spell name for healing keywords
+        const spellName = (spell.name || '').toLowerCase();
+        const hasHealingName = spellName.includes('heal') ||
+          spellName.includes('cure') ||
+          spellName.includes('regenerat') ||
+          spellName.includes('revivif') ||
+          spellName.includes('restoration') ||
+          spellName.includes('raise') ||
+          spellName.includes('resurrect');
+
+        // Check description for healing keywords
+        const spellDesc = extractText(spell.description).toLowerCase();
+        const hasHealingDesc = spellDesc.includes('regain') && spellDesc.includes('hit point');
+
+        spellType = (hasHealingRoll || hasHealingName || hasHealingDesc) ? 'healing' : 'damage';
+      }
+
+      return {
+        id: spell._id,
+        name: spell.name || 'Unnamed Spell',
+        level: spell.level || 0,
+        school: spell.school || '',
+        spellType: spellType,
+        castingTime: spell.castingTime || '',
+        range: spell.range || '',
+        components: spell.components || '',
+        duration: spell.duration || '',
+        description: extractText(spell.description),
+        summary: extractText(spell.summary),
+        ritual: spell.ritual || false,
+        concentration: spell.concentration || false,
+        prepared: spell.prepared !== false,
+        alwaysPrepared: spell.alwaysPrepared || false,
+        attackRoll: attackRoll,
+        damage: damage,
+        damageType: damageType,
+        damageRolls: damageRolls
+      };
+    });
+
+  // Parse actions from properties (exclude inactive/disabled)
+  const actions = properties
+    .filter(p => p.type === 'action' && p.name && !p.inactive && !p.disabled)
+    .map(action => {
+      // Extract attack roll and damage from the action
+      let attackRoll = '';
+      if (action.attackRoll) {
+        attackRoll = typeof action.attackRoll === 'string' ? action.attackRoll : String(action.attackRoll.value || action.attackRoll.calculation || '');
+      }
+
+      let damage = '';
+      let damageType = '';
+      if (action.damage) {
+        damage = typeof action.damage === 'string' ? action.damage : String(action.damage.value || action.damage.calculation || '');
+      }
+      if (action.damageType) {
+        damageType = action.damageType;
+      }
+
+      return {
+        id: action._id,
+        name: action.name,
+        actionType: action.actionType || 'action',
+        description: extractText(action.description),
+        summary: extractText(action.summary),
+        attackRoll: attackRoll,
+        damage: damage,
+        damageType: damageType,
+        uses: action.uses || 0,
+        usesUsed: action.usesUsed || 0,
+        reset: action.reset || '',
+        resources: action.resources || {},
+        tags: action.tags || []
+      };
+    });
+
+  // Parse spell slots from variables
+  // DiceCloud uses: slotLevel1, slotLevel2, etc.
+  const spellSlots = {};
+  for (let level = 1; level <= 9; level++) {
+    const slotVar = variables[`slotLevel${level}`];
+    if (slotVar) {
+      const current = slotVar.value || 0;
+      const max = slotVar.total || slotVar.max || slotVar.value || 0;
+      spellSlots[`level${level}SpellSlots`] = current;
+      spellSlots[`level${level}SpellSlotsMax`] = max;
+    }
+  }
+
+  // Parse resources from properties (only resource-type attributes)
+  const resources = properties
+    .filter(p => p.type === 'resource' || (p.type === 'attribute' && p.attributeType === 'resource'))
+    .map(resource => ({
+      id: resource._id,
+      name: resource.name || 'Unnamed Resource',
+      current: resource.value || resource.currentValue || 0,
+      max: resource.total || resource.max || 0,
+      reset: resource.reset || '',
+      variableName: resource.variableName || resource.varName || ''
+    }));
+
+  // Parse inventory from properties (items, equipment, and containers, exclude inactive)
+  const inventory = properties
+    .filter(p => (p.type === 'item' || p.type === 'equipment' || p.type === 'container') && !p.inactive)
+    .map(item => ({
+      id: item._id,
+      name: item.name || 'Unnamed Item',
+      quantity: item.quantity || 1,
+      weight: item.weight || 0,
+      value: item.value || 0,
+      description: extractText(item.description),
+      summary: extractText(item.summary),
+      equipped: item.equipped || false,
+      attuned: item.attuned || false,
+      requiresAttunement: item.requiresAttunement || false
+    }));
+
   return {
     name: characterName,
     race,
@@ -671,7 +877,12 @@ export function parseForRollCloud(rawData) {
     armorClass: calculateAC(),
     speed: variables.speed?.total || variables.speed?.value || 30,
     initiative: variables.initiative?.total || variables.initiative?.value || 0,
-    proficiencyBonus: variables.proficiencyBonus?.total || variables.proficiencyBonus?.value || 0
+    proficiencyBonus: variables.proficiencyBonus?.total || variables.proficiencyBonus?.value || 0,
+    spellSlots,
+    resources,
+    inventory,
+    spells,
+    actions
   };
 }
 

@@ -562,15 +562,145 @@ async function loadCharacterWithTabs() {
       activeCharacter = activeResponse.success ? activeResponse.data : null;
     }
 
+    // Check if character data is in raw format (missing hitPoints)
+    // If so, show loading screen and poll until parsed data is available
+    if (activeCharacter && !activeCharacter.hitPoints) {
+      debug.log('⏳ Character data is in raw format, waiting for parsed data...');
+
+      // Show loading message with instruction
+      const loadingOverlay = document.getElementById('loading-overlay');
+      if (loadingOverlay) {
+        loadingOverlay.style.display = 'flex';
+        loadingOverlay.innerHTML = `
+          <div style="text-align: center; color: var(--text-primary); max-width: 400px; padding: 20px;">
+            <div style="width: 80px; height: 80px; border: 4px solid var(--border-subtle); border-top: 4px solid var(--accent-primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+            <div style="font-size: 1.2em; font-weight: bold; margin-bottom: 10px;">
+              Character Data Not Formatted
+            </div>
+            <div style="font-size: 0.95em; color: var(--text-secondary); line-height: 1.6; margin-bottom: 20px;">
+              Your character needs to be formatted before it can be displayed.
+            </div>
+            <div style="background: var(--background-secondary); padding: 16px; border-radius: 8px; border-left: 4px solid var(--accent-info); text-align: left;">
+              <div style="font-weight: bold; margin-bottom: 8px; color: var(--text-primary);">
+                📋 Next Step:
+              </div>
+              <div style="font-size: 0.9em; color: var(--text-secondary); line-height: 1.5;">
+                Click the <strong>CarmaClouds extension icon</strong> → Go to <strong>RollCloud</strong> or <strong>OwlCloud</strong> tab → Click <strong>"Push to VTT"</strong>
+              </div>
+            </div>
+            <div style="font-size: 0.85em; color: var(--text-tertiary); margin-top: 16px;">
+              This sheet will automatically load once formatting is complete.
+            </div>
+          </div>
+        `;
+      }
+
+      // Poll local storage every 500ms for up to 10 seconds
+      let pollAttempts = 0;
+      const maxPolls = 20;
+      const pollInterval = 500;
+
+      const pollForParsedData = async () => {
+        pollAttempts++;
+        debug.log(`🔄 Polling for parsed data (attempt ${pollAttempts}/${maxPolls})...`);
+
+        const response = await browserAPI.runtime.sendMessage({ action: 'getCharacterData' });
+        const data = response.success ? response.data : null;
+
+        if (data && data.hitPoints) {
+          // Parsed data is now available!
+          debug.log('✅ Parsed data found, loading character sheet');
+          activeCharacter = data;
+
+          // Hide loading overlay
+          if (loadingOverlay) {
+            loadingOverlay.style.display = 'none';
+          }
+
+          // Continue with normal loading
+          characterData = activeCharacter;
+          await finishLoadingCharacter();
+          return;
+        }
+
+        // If we haven't reached max polls, try again
+        if (pollAttempts < maxPolls) {
+          setTimeout(pollForParsedData, pollInterval);
+        } else {
+          debug.warn('⚠️ Timed out waiting for parsed data');
+          if (loadingOverlay) {
+            loadingOverlay.innerHTML = `
+              <div style="text-align: center; color: var(--text-primary); max-width: 400px;">
+                <div style="font-size: 3em; margin-bottom: 20px;">⚠️</div>
+                <div style="font-size: 1.2em; font-weight: bold; margin-bottom: 10px;">
+                  Character Data Not Ready
+                </div>
+                <div style="font-size: 0.9em; color: var(--text-secondary); line-height: 1.4; margin-bottom: 15px;">
+                  Please click "Push to Roll20" or "Push to Owlbear" in the extension popup to format your character data.
+                </div>
+              </div>
+            `;
+          }
+        }
+      };
+
+      // Start polling
+      setTimeout(pollForParsedData, pollInterval);
+      return; // Exit early, polling will continue
+    }
+
     // Load active character
     if (activeCharacter) {
       characterData = activeCharacter;
+      await finishLoadingCharacter();
+    } else {
+      debug.error('❌ No character data found');
+      // Hide loading overlay even if no character data
+      const loadingOverlay = document.getElementById('loading-overlay');
+      if (loadingOverlay) {
+        loadingOverlay.innerHTML = `
+          <div style="text-align: center; color: var(--text-primary); max-width: 400px;">
+            <div style="font-size: 3em; margin-bottom: 20px;">📋</div>
+            <div style="font-size: 1.2em; font-weight: bold; margin-bottom: 10px;">
+              No Character Found
+            </div>
+            <div style="font-size: 0.9em; color: var(--text-secondary); line-height: 1.4;">
+              Use the <strong>Refresh Characters</strong> button in the extension popup to sync your characters from DiceCloud
+            </div>
+          </div>
+        `;
+      }
+    }
+  } catch (error) {
+    debug.error('❌ Failed to load characters:', error);
+    // Hide loading overlay and show error
+    const loadingOverlay = document.getElementById('loading-overlay');
+    if (loadingOverlay) {
+      loadingOverlay.innerHTML = `
+        <div style="text-align: center; color: var(--text-primary); max-width: 400px;">
+          <div style="font-size: 3em; margin-bottom: 20px;">⚠️</div>
+          <div style="font-size: 1.2em; font-weight: bold; margin-bottom: 10px;">
+            Failed to Load Character
+          </div>
+          <div style="font-size: 0.9em; color: var(--text-secondary); line-height: 1.4; margin-bottom: 15px;">
+            ${error.message || 'Unknown error'}
+          </div>
+          <div style="font-size: 0.9em; color: var(--text-secondary); line-height: 1.4;">
+            Try using the <strong>Refresh Characters</strong> button in the extension popup
+          </div>
+        </div>
+      `;
+    }
+  }
+}
 
-      // Validate that character data has required arrays (spells and actions)
-      const hasSpells = Array.isArray(characterData.spells);
-      const hasActions = Array.isArray(characterData.actions);
+// Finish loading character after data is confirmed to be in parsed format
+async function finishLoadingCharacter() {
+  // Validate that character data has required arrays (spells and actions)
+  const hasSpells = Array.isArray(characterData.spells);
+  const hasActions = Array.isArray(characterData.actions);
 
-      if (!hasSpells || !hasActions) {
+  if (!hasSpells || !hasActions) {
         debug.warn('⚠️ Character data is incomplete or outdated');
         debug.warn(`Missing data: spells=${!hasSpells}, actions=${!hasActions}`);
 
@@ -621,45 +751,6 @@ async function loadCharacterWithTabs() {
 
       // Initialize class features based on character data
       initClassFeatures();
-    } else {
-      debug.error('❌ No character data found');
-      // Hide loading overlay even if no character data
-      const loadingOverlay = document.getElementById('loading-overlay');
-      if (loadingOverlay) {
-        loadingOverlay.innerHTML = `
-          <div style="text-align: center; color: var(--text-primary); max-width: 400px;">
-            <div style="font-size: 3em; margin-bottom: 20px;">📋</div>
-            <div style="font-size: 1.2em; font-weight: bold; margin-bottom: 10px;">
-              No Character Found
-            </div>
-            <div style="font-size: 0.9em; color: var(--text-secondary); line-height: 1.4;">
-              Use the <strong>Refresh Characters</strong> button in the extension popup to sync your characters from DiceCloud
-            </div>
-          </div>
-        `;
-      }
-    }
-  } catch (error) {
-    debug.error('❌ Failed to load characters:', error);
-    // Hide loading overlay and show error
-    const loadingOverlay = document.getElementById('loading-overlay');
-    if (loadingOverlay) {
-      loadingOverlay.innerHTML = `
-        <div style="text-align: center; color: var(--text-primary); max-width: 400px;">
-          <div style="font-size: 3em; margin-bottom: 20px;">⚠️</div>
-          <div style="font-size: 1.2em; font-weight: bold; margin-bottom: 10px;">
-            Failed to Load Character
-          </div>
-          <div style="font-size: 0.9em; color: var(--text-secondary); line-height: 1.4; margin-bottom: 15px;">
-            ${error.message || 'Unknown error'}
-          </div>
-          <div style="font-size: 0.9em; color: var(--text-secondary); line-height: 1.4;">
-            Try using the <strong>Refresh Characters</strong> button in the extension popup
-          </div>
-        </div>
-      `;
-    }
-  }
 }
 
 // Get the active character ID from storage
@@ -1208,10 +1299,7 @@ let elementalWeaponDamage = '1d4';  // Default to level 3 (base damage)
 // Filter state for spells (now handled by modules/spell-display.js as window.spellFilters)
 
 // Filter state for inventory (default to equipped only)
-let inventoryFilters = {
-  filter: 'equipped', // all, equipped, attuned, container
-  search: ''
-};
+// Now uses global inventoryFilters from inventory-manager.js
 
 // Helper function to categorize an action
 // categorizeAction now in modules/action-filters.js
