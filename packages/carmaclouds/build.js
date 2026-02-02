@@ -107,6 +107,7 @@ await buildExtension({
     // Copy popup-sheet dependencies from core package
     { from: '../core/src/common', to: 'common' },
     { from: '../core/src/modules', to: 'modules' },
+    { from: '../core/src/supabase', to: 'common/supabase' },
   ],
   watch,
   minify
