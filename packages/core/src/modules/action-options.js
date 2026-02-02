@@ -23,7 +23,7 @@
     if (action.attackRoll) {
       // Convert to full formula if it's just a number (legacy data)
       let formula = action.attackRoll;
-      if (typeof formula === 'number' || !formula.includes('d20')) {
+      if (typeof formula === 'number' || (typeof formula === 'string' && !formula.includes('d20'))) {
         const bonus = parseInt(formula);
         formula = bonus >= 0 ? `1d20+${bonus}` : `1d20${bonus}`;
       }

@@ -269,7 +269,7 @@ async function handleRequestPreparedData() {
 
 // Helper functions to extract character info from DiceCloud raw data
 function extractClass(rawData) {
-  if (!rawData || !rawData.variables) return 'Unknown';
+  if (!rawData || !rawData.variables || !Array.isArray(rawData.variables)) return 'Unknown';
   for (const variable of rawData.variables) {
     if (variable.variableName === 'class') {
       return variable.value || 'Unknown';
@@ -279,7 +279,7 @@ function extractClass(rawData) {
 }
 
 function extractLevel(rawData) {
-  if (!rawData || !rawData.variables) return 1;
+  if (!rawData || !rawData.variables || !Array.isArray(rawData.variables)) return 1;
   for (const variable of rawData.variables) {
     if (variable.variableName === 'level') {
       return variable.value || 1;
@@ -289,7 +289,7 @@ function extractLevel(rawData) {
 }
 
 function extractRace(rawData) {
-  if (!rawData || !rawData.variables) return 'Unknown';
+  if (!rawData || !rawData.variables || !Array.isArray(rawData.variables)) return 'Unknown';
   for (const variable of rawData.variables) {
     if (variable.variableName === 'race') {
       return variable.value || 'Unknown';
