@@ -1229,28 +1229,25 @@ This will disconnect the character from this room. You can sync a different char
             }
           } else if (rawData.creature && rawData.variables && rawData.properties) {
             console.log("\u2705 Using pre-extracted character data");
-            const vars = rawData.variables;
-            characterData = {
-              ...rawData,
-              name: rawData.creature.name || data.character.character_name,
-              race: rawData.creature.race || data.character.race,
-              class: rawData.creature.class || data.character.class,
-              level: rawData.creature.level || data.character.level,
-              hitPoints: vars.hitPoints || { current: 0, max: 0 },
-              temporaryHP: vars.temporaryHitPoints?.value || 0,
-              armorClass: vars.armorClass?.total || vars.armorClass?.value || 10,
-              speed: vars.speed?.total || vars.speed?.value || 30,
-              initiative: vars.initiative?.total || vars.initiative?.value || 0,
-              proficiencyBonus: vars.proficiencyBonus?.total || vars.proficiencyBonus?.value || 2,
-              attributes: {
-                strength: vars.strength?.total || vars.strength?.value || 10,
-                dexterity: vars.dexterity?.total || vars.dexterity?.value || 10,
-                constitution: vars.constitution?.total || vars.constitution?.value || 10,
-                intelligence: vars.intelligence?.total || vars.intelligence?.value || 10,
-                wisdom: vars.wisdom?.total || vars.wisdom?.value || 10,
-                charisma: vars.charisma?.total || vars.charisma?.value || 10
-              }
+            const apiFormat = {
+              creatures: [rawData.creature],
+              creatureVariables: [rawData.variables],
+              creatureProperties: rawData.properties
             };
+            try {
+              characterData = parseCharacterData(apiFormat, data.character.dicecloud_character_id);
+              console.log("\u2705 Parsed extracted data:", characterData);
+            } catch (parseError) {
+              console.error("\u274C Failed to parse extracted data:", parseError);
+              const vars = rawData.variables;
+              characterData = {
+                ...rawData,
+                name: rawData.creature.name || data.character.character_name,
+                race: rawData.creature.race || data.character.race,
+                class: rawData.creature.class || data.character.class,
+                level: rawData.creature.level || data.character.level
+              };
+            }
           } else {
             console.warn("\u26A0\uFE0F Unknown data format, using as-is");
             characterData = rawData;
