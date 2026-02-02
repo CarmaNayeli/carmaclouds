@@ -866,7 +866,20 @@
       console.log("\u{1F4E6} Player character data:", playerData);
       if (playerData.success && playerData.character) {
         console.log("\u{1F517} Linking existing OBR character to user account...");
-        const character = playerData.character.raw_dicecloud_data || playerData.character;
+        const char = playerData.character;
+        const character = char.raw_dicecloud_data ? {
+          ...char.raw_dicecloud_data,
+          userId: char.user_id_dicecloud,
+          id: char.dicecloud_character_id,
+          name: char.character_name
+        } : {
+          userId: char.user_id_dicecloud,
+          id: char.dicecloud_character_id,
+          name: char.character_name,
+          class: char.class,
+          race: char.race,
+          level: char.level
+        };
         const linkResponse = await fetch(
           `${SUPABASE_URL}/functions/v1/characters`,
           {
