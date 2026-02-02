@@ -1281,17 +1281,24 @@ This will disconnect the character from this room. You can sync a different char
       const data = await response.json();
       const etag = response.headers.get("etag");
       console.log("\u{1F4E6} Response data:", data);
-      if (data.success && data.character) {
-        console.log("\u{1F4E6} Character data received:", data.character);
-        console.log("  - Has raw_dicecloud_data:", !!data.character.raw_dicecloud_data);
-        console.log("  - Has character_name:", !!data.character.character_name);
+      let character = null;
+      if (data.success && data.characters && data.characters.length > 0) {
+        character = data.characters[0];
+        console.log("\u{1F4E6} Character data received from array (taking first):", character);
+      } else if (data.success && data.character) {
+        character = data.character;
+        console.log("\u{1F4E6} Character data received:", character);
+      }
+      if (character) {
+        console.log("  - Has raw_dicecloud_data:", !!character.raw_dicecloud_data);
+        console.log("  - Has character_name:", !!character.character_name);
         let characterData;
-        if (data.character.raw_dicecloud_data) {
-          const rawData = data.character.raw_dicecloud_data;
+        if (character.raw_dicecloud_data) {
+          const rawData = character.raw_dicecloud_data;
           if (rawData.creatures && rawData.creatureVariables && rawData.creatureProperties) {
             console.log("\u{1F504} Parsing raw API response...");
             try {
-              characterData = parseCharacterData(rawData, data.character.dicecloud_character_id);
+              characterData = parseCharacterData(rawData, character.dicecloud_character_id);
               console.log("\u2705 Parsed character data:", characterData);
             } catch (parseError) {
               console.error("\u274C Failed to parse character data:", parseError);
@@ -1322,10 +1329,10 @@ This will disconnect the character from this room. You can sync a different char
               const vars = rawData.variables;
               characterData = {
                 ...rawData,
-                name: rawData.creature.name || data.character.character_name,
-                race: rawData.creature.race || data.character.race,
-                class: rawData.creature.class || data.character.class,
-                level: rawData.creature.level || data.character.level,
+                name: rawData.creature.name || character.character_name,
+                race: rawData.creature.race || character.race,
+                class: rawData.creature.class || character.class,
+                level: rawData.creature.level || character.level,
                 picture: portraitUrl
               };
             }
@@ -1334,7 +1341,7 @@ This will disconnect the character from this room. You can sync a different char
             characterData = rawData;
           }
         } else {
-          characterData = data.character;
+          characterData = character;
         }
         console.log("\u2705 Final character data for display:", characterData);
         localStorage.setItem(cacheKey, JSON.stringify(characterData));

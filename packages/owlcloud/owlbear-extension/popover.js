@@ -1720,22 +1720,33 @@ async function checkForActiveCharacter() {
 
     console.log('📦 Response data:', data);
 
-    if (data.success && data.character) {
-      console.log('📦 Character data received:', data.character);
-      console.log('  - Has raw_dicecloud_data:', !!data.character.raw_dicecloud_data);
-      console.log('  - Has character_name:', !!data.character.character_name);
+    // Handle both single character and array responses
+    let character = null;
+    if (data.success && data.characters && data.characters.length > 0) {
+      // Array response - take the first character
+      character = data.characters[0];
+      console.log('📦 Character data received from array (taking first):', character);
+    } else if (data.success && data.character) {
+      // Single character response
+      character = data.character;
+      console.log('📦 Character data received:', character);
+    }
+
+    if (character) {
+      console.log('  - Has raw_dicecloud_data:', !!character.raw_dicecloud_data);
+      console.log('  - Has character_name:', !!character.character_name);
 
       // Parse raw_dicecloud_data if available
       let characterData;
-      if (data.character.raw_dicecloud_data) {
-        const rawData = data.character.raw_dicecloud_data;
+      if (character.raw_dicecloud_data) {
+        const rawData = character.raw_dicecloud_data;
 
         // Check if this is the raw API format (creatures array) or extracted format (creature object)
         if (rawData.creatures && rawData.creatureVariables && rawData.creatureProperties) {
           // This is the raw API response - parse it
           console.log('🔄 Parsing raw API response...');
           try {
-            characterData = parseCharacterData(rawData, data.character.dicecloud_character_id);
+            characterData = parseCharacterData(rawData, character.dicecloud_character_id);
             console.log('✅ Parsed character data:', characterData);
           } catch (parseError) {
             console.error('❌ Failed to parse character data:', parseError);
@@ -1777,10 +1788,10 @@ async function checkForActiveCharacter() {
             const vars = rawData.variables;
             characterData = {
               ...rawData,
-              name: rawData.creature.name || data.character.character_name,
-              race: rawData.creature.race || data.character.race,
-              class: rawData.creature.class || data.character.class,
-              level: rawData.creature.level || data.character.level,
+              name: rawData.creature.name || character.character_name,
+              race: rawData.creature.race || character.race,
+              class: rawData.creature.class || character.class,
+              level: rawData.creature.level || character.level,
               picture: portraitUrl
             };
           }
@@ -1791,7 +1802,7 @@ async function checkForActiveCharacter() {
         }
       } else {
         // No raw data, use the database fields directly
-        characterData = data.character;
+        characterData = character;
       }
 
       console.log('✅ Final character data for display:', characterData);
