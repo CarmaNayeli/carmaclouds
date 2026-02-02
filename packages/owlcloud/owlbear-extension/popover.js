@@ -1140,11 +1140,20 @@ async function linkExistingCharacterToUser() {
     console.log('  - Current user ID:', currentUser.id);
     console.log('  - Owlbear player ID:', playerId);
 
+    // Get auth headers with access token
+    const authHeaders = { ...SUPABASE_HEADERS };
+    if (supabase) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+      }
+    }
+
     // First check if user already has a character linked by supabase_user_id
     console.log('📡 Checking if user already has a character...');
     const userCharResponse = await fetch(
       `${SUPABASE_URL}/functions/v1/characters?supabase_user_id=${encodeURIComponent(currentUser.id)}&active_only=true&fields=essential`,
-      { headers: SUPABASE_HEADERS }
+      { headers: authHeaders }
     );
 
     console.log('📡 User character check response:', userCharResponse.status);
@@ -1182,7 +1191,7 @@ async function linkExistingCharacterToUser() {
         `${SUPABASE_URL}/functions/v1/characters`,
         {
           method: 'POST',
-          headers: SUPABASE_HEADERS,
+          headers: authHeaders,
           body: JSON.stringify({
             owlbearPlayerId: playerId,
             supabaseUserId: currentUser.id,
@@ -1576,6 +1585,14 @@ async function checkForActiveCharacter() {
     const headers = { ...SUPABASE_HEADERS };
     if (cachedVersion) {
       headers['If-None-Match'] = cachedVersion;
+    }
+
+    // Add Authorization header if user is authenticated
+    if (currentUser && supabase) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
     }
 
     // Call unified characters edge function with conditional request

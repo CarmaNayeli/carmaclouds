@@ -831,10 +831,17 @@
       console.log("\u{1F517} Checking for existing character to link...");
       console.log("  - Current user ID:", currentUser.id);
       console.log("  - Owlbear player ID:", playerId);
+      const authHeaders = { ...SUPABASE_HEADERS };
+      if (supabase) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          authHeaders["Authorization"] = `Bearer ${session.access_token}`;
+        }
+      }
       console.log("\u{1F4E1} Checking if user already has a character...");
       const userCharResponse = await fetch(
         `${SUPABASE_URL}/functions/v1/characters?supabase_user_id=${encodeURIComponent(currentUser.id)}&active_only=true&fields=essential`,
-        { headers: SUPABASE_HEADERS }
+        { headers: authHeaders }
       );
       console.log("\u{1F4E1} User character check response:", userCharResponse.status);
       if (userCharResponse.ok) {
@@ -864,7 +871,7 @@
           `${SUPABASE_URL}/functions/v1/characters`,
           {
             method: "POST",
-            headers: SUPABASE_HEADERS,
+            headers: authHeaders,
             body: JSON.stringify({
               owlbearPlayerId: playerId,
               supabaseUserId: currentUser.id,
@@ -1162,6 +1169,12 @@ This will disconnect the character from this room. You can sync a different char
       const headers = { ...SUPABASE_HEADERS };
       if (cachedVersion) {
         headers["If-None-Match"] = cachedVersion;
+      }
+      if (currentUser && supabase) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          headers["Authorization"] = `Bearer ${session.access_token}`;
+        }
       }
       const fetchUrl = `${SUPABASE_URL}/functions/v1/characters?${queryParam}&fields=full`;
       console.log("\u{1F310} Fetching character from:", fetchUrl);
