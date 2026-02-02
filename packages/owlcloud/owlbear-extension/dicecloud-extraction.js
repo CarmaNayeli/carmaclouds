@@ -800,6 +800,20 @@ function parseForRollCloud(rawData) {
         damageType = action.damageType;
       }
 
+      // Extract uses properly - DiceCloud stores uses/quantity as objects with value/max
+      let uses = null;
+      if (action.uses && typeof action.uses === 'object') {
+        uses = {
+          value: action.uses.value || action.uses.currentValue || 0,
+          max: action.uses.max || action.uses.total || 0
+        };
+      } else if (action.quantity && typeof action.quantity === 'object') {
+        uses = {
+          value: action.quantity.value || action.quantity.currentValue || 0,
+          max: action.quantity.max || action.quantity.total || 0
+        };
+      }
+
       return {
         id: action._id,
         name: action.name,
@@ -809,8 +823,7 @@ function parseForRollCloud(rawData) {
         attackRoll: attackRoll,
         damage: damage,
         damageType: damageType,
-        uses: action.uses || 0,
-        usesUsed: action.usesUsed || 0,
+        uses: uses,
         reset: action.reset || '',
         resources: action.resources || {},
         tags: action.tags || []
@@ -878,16 +891,31 @@ function parseForRollCloud(rawData) {
 
       return false;
     })
-    .map(feature => ({
-      id: feature._id,
-      name: feature.name || 'Unnamed Feature',
-      description: extractText(feature.description),
-      summary: extractText(feature.summary),
-      uses: feature.uses || 0,
-      usesUsed: feature.usesUsed || 0,
-      reset: feature.reset || '',
-      tags: feature.tags || []
-    }));
+    .map(feature => {
+      // Extract uses properly - DiceCloud stores uses/quantity as objects with value/max
+      let uses = null;
+      if (feature.uses && typeof feature.uses === 'object') {
+        uses = {
+          value: feature.uses.value || feature.uses.currentValue || 0,
+          max: feature.uses.max || feature.uses.total || 0
+        };
+      } else if (feature.quantity && typeof feature.quantity === 'object') {
+        uses = {
+          value: feature.quantity.value || feature.quantity.currentValue || 0,
+          max: feature.quantity.max || feature.quantity.total || 0
+        };
+      }
+
+      return {
+        id: feature._id,
+        name: feature.name || 'Unnamed Feature',
+        description: extractText(feature.description),
+        summary: extractText(feature.summary),
+        uses: uses,
+        reset: feature.reset || '',
+        tags: feature.tags || []
+      };
+    });
 
   return {
     name: characterName,
