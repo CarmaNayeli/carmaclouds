@@ -118,13 +118,41 @@ serve(async (req) => {
       if (owlbearPlayerId) {
         const activeOnly = url.searchParams.get('active_only') === 'true'
 
+        // If requesting list of characters, return all
+        if (fields === 'list') {
+          const { data, error } = await query
+            .eq('owlbear_player_id', owlbearPlayerId)
+            .order('is_active', { ascending: false })
+            .order('character_name', { ascending: true })
+
+          if (error) {
+            return new Response(
+              JSON.stringify({ error: error.message }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          }
+
+          return jsonResponse({ success: true, characters: data }, 200, req)
+        }
+
+        // For full character data, try to get active character first
         let playerQuery = query.eq('owlbear_player_id', owlbearPlayerId)
 
         if (activeOnly) {
           playerQuery = playerQuery.eq('is_active', true)
+        } else {
+          // Try to get the active character first
+          const { data: activeChar } = await query
+            .eq('owlbear_player_id', owlbearPlayerId)
+            .eq('is_active', true)
+            .maybeSingle()
+
+          if (activeChar) {
+            return jsonResponse({ success: true, character: activeChar }, 200, req)
+          }
         }
 
-        const { data, error } = await playerQuery.single()
+        const { data, error } = await playerQuery.maybeSingle()
 
         if (error && error.code !== 'PGRST116') {
           return new Response(
