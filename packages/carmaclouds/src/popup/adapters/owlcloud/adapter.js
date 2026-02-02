@@ -96,19 +96,25 @@ export async function init(containerEl) {
               const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aWVzbWZqZGNtcHl3YXZ2ZnFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4ODYxNDksImV4cCI6MjA4NTQ2MjE0OX0.oqjHFf2HhCLcanh0HVryoQH7iSV7E9dHHZJdYehxZ0U';
 
               try {
+                // Use UPSERT (POST with Prefer: resolution=merge-duplicates) to insert or update
                 const updateResponse = await fetch(
-                  `${SUPABASE_URL}/rest/v1/clouds_characters?dicecloud_character_id=eq.${character.id}`,
+                  `${SUPABASE_URL}/rest/v1/clouds_characters`,
                   {
-                    method: 'PATCH',
+                    method: 'POST',
                     headers: {
                       'apikey': SUPABASE_ANON_KEY,
                       'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
                       'Content-Type': 'application/json',
-                      'Prefer': 'return=representation'
+                      'Prefer': 'resolution=merge-duplicates,return=representation'
                     },
                     body: JSON.stringify({
-                      raw_dicecloud_data: character.raw,
+                      dicecloud_character_id: character.id,
+                      character_name: character.name || 'Unknown',
                       user_id_dicecloud: diceCloudUserId,
+                      raw_dicecloud_data: character.raw,
+                      class: character.preview?.class || null,
+                      race: character.preview?.race || null,
+                      level: character.preview?.level || null,
                       updated_at: new Date().toISOString()
                     })
                   }

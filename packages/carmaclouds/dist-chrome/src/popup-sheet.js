@@ -1299,10 +1299,7 @@ let elementalWeaponDamage = '1d4';  // Default to level 3 (base damage)
 // Filter state for spells (now handled by modules/spell-display.js as window.spellFilters)
 
 // Filter state for inventory (default to equipped only)
-let inventoryFilters = {
-  filter: 'equipped', // all, equipped, attuned, container
-  search: ''
-};
+// Now uses global inventoryFilters from inventory-manager.js
 
 // Helper function to categorize an action
 // categorizeAction now in modules/action-filters.js

@@ -1,0 +1,95 @@
+{
+  "manifest_version": 3,
+  "name": "CarmaClouds: DiceCloud + VTT Integration",
+  "version": "2.2.1",
+  "description": "Sync DiceCloud V2 characters to Roll20, Owlbear Rodeo, and Foundry VTT with cloud storage",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "tabs",
+    "cookies",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://dicecloud.com/*",
+    "https://*.dicecloud.com/*",
+    "https://app.roll20.net/*",
+    "https://roll20.net/*",
+    "https://*.owlbear.rodeo/*",
+    "https://owlbear.rodeo/*"
+  ],
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://dicecloud.com/*",
+        "https://*.dicecloud.com/*"
+      ],
+      "js": [
+        "src/content/dicecloud.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://app.roll20.net/*"
+      ],
+      "js": [
+        "src/content/roll20.js",
+        "src/content/character-sheet-overlay.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://*.owlbear.rodeo/*",
+        "https://owlbear.rodeo/*"
+      ],
+      "js": [
+        "src/content/owlbear.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "src/popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "owlbear-extension/*"
+      ],
+      "matches": [
+        "https://*.owlbear.rodeo/*",
+        "https://owlbear.rodeo/*"
+      ]
+    },
+    {
+      "resources": [
+        "src/popup-sheet.html",
+        "src/popup-sheet.js",
+        "src/content/dicecloud-extraction.js",
+        "common/*",
+        "modules/*"
+      ],
+      "matches": [
+        "https://app.roll20.net/*"
+      ]
+    }
+  ]
+}

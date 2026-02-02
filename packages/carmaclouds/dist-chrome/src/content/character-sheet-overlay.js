@@ -1938,7 +1938,7 @@ ${spellDescription || "No description available"}`;
         });
       }
     });
-    function makeButtonDraggable(button, storageKey) {
+    function makeButtonDraggable(button, storageKey, dragHandle = null) {
       let isDragging = false;
       let startX, startY, initialLeft, initialTop;
       function isPositionValid(left, top) {
@@ -1966,7 +1966,8 @@ ${spellDescription || "No description available"}`;
       if (savedVisibility === "true") {
         button.style.display = "none";
       }
-      button.addEventListener("mousedown", (e) => {
+      const draggableElement = dragHandle || button;
+      draggableElement.addEventListener("mousedown", (e) => {
         if (e.button === 0) {
           isDragging = true;
           startX = e.clientX;
@@ -1975,7 +1976,11 @@ ${spellDescription || "No description available"}`;
           initialLeft = rect.left;
           initialTop = rect.top;
           requestAnimationFrame(() => {
-            button.style.cursor = "grabbing";
+            if (dragHandle) {
+              dragHandle.style.cursor = "grabbing";
+            } else {
+              button.style.cursor = "grabbing";
+            }
             button.style.transform = "none";
           });
           e.preventDefault();
@@ -1996,7 +2001,11 @@ ${spellDescription || "No description available"}`;
       document.addEventListener("mouseup", () => {
         if (isDragging) {
           isDragging = false;
-          button.style.cursor = "pointer";
+          if (dragHandle) {
+            dragHandle.style.cursor = "move";
+          } else {
+            button.style.cursor = "pointer";
+          }
           if (isPositionValid(button.style.left, button.style.top)) {
             localStorage.setItem(`${storageKey}_position`, JSON.stringify({
               left: button.style.left,
@@ -2101,22 +2110,24 @@ ${spellDescription || "No description available"}`;
       const dragHandle = document.createElement("div");
       dragHandle.innerHTML = "\u22EE\u22EE";
       dragHandle.style.cssText = `
-      background: rgba(142, 6, 130, 0.9);
+      background: rgba(0, 0, 0, 0.85);
       color: #fff;
-      padding: 4px 8px;
+      padding: 2px 0;
       border-radius: 8px 8px 0 0;
       cursor: move;
-      font-size: 12px;
+      font-size: 10px;
       text-align: center;
       user-select: none;
-      border: 1px solid rgba(252, 87, 249, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
       border-bottom: none;
+      letter-spacing: 2px;
+      line-height: 1;
     `;
       dragHandle.addEventListener("mouseenter", () => {
-        dragHandle.style.background = "rgba(252, 87, 249, 0.9)";
+        dragHandle.style.background = "rgba(30, 30, 30, 0.95)";
       });
       dragHandle.addEventListener("mouseleave", () => {
-        dragHandle.style.background = "rgba(142, 6, 130, 0.9)";
+        dragHandle.style.background = "rgba(0, 0, 0, 0.85)";
       });
       const button = document.createElement("button");
       button.id = "rollcloud-sheet-toggle";
@@ -2152,7 +2163,7 @@ ${spellDescription || "No description available"}`;
       container.appendChild(dragHandle);
       container.appendChild(button);
       document.body.appendChild(container);
-      makeButtonDraggable(container, "rollcloud-sheet-toggle");
+      makeButtonDraggable(container, "rollcloud-sheet-toggle", dragHandle);
       debug.log("\u2705 Character sheet button created with drag handle");
     }
     browserAPI.runtime.onMessage.addListener((request, sender, sendResponse) => {

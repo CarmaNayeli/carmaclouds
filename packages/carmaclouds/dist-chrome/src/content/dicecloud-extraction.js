@@ -556,13 +556,25 @@
         }
       }
       const damageRolls = [];
-      spellChildren.filter((c) => c.type === "damage" || c.type === "roll" && c.name && c.name.toLowerCase().includes("damage")).forEach((damageChild) => {
+      spellChildren.filter((c) => c.type === "damage" || c.type === "roll" && c.name && (c.name.toLowerCase().includes("damage") || c.name.toLowerCase().includes("heal"))).forEach((damageChild) => {
         let formula = "";
         if (damageChild.amount) {
           if (typeof damageChild.amount === "string") {
             formula = damageChild.amount;
           } else if (typeof damageChild.amount === "object") {
             formula = damageChild.amount.calculation || String(damageChild.amount.value || "");
+          }
+        } else if (damageChild.roll) {
+          if (typeof damageChild.roll === "string") {
+            formula = damageChild.roll;
+          } else if (typeof damageChild.roll === "object") {
+            formula = damageChild.roll.calculation || String(damageChild.roll.value || "");
+          }
+        } else if (damageChild.damage) {
+          if (typeof damageChild.damage === "string") {
+            formula = damageChild.damage;
+          } else if (typeof damageChild.damage === "object") {
+            formula = damageChild.damage.calculation || String(damageChild.damage.value || "");
           }
         }
         if (formula) {
@@ -577,10 +589,14 @@
       const damageType = damageRolls.length > 0 ? damageRolls[0].type : "";
       let spellType = "utility";
       if (damageRolls.length > 0) {
-        const hasHealing = damageRolls.some(
+        const hasHealingRoll = damageRolls.some(
           (roll) => roll.name.toLowerCase().includes("heal") || roll.type.toLowerCase().includes("heal")
         );
-        spellType = hasHealing ? "healing" : "damage";
+        const spellName = (spell.name || "").toLowerCase();
+        const hasHealingName = spellName.includes("heal") || spellName.includes("cure") || spellName.includes("regenerat") || spellName.includes("revivif") || spellName.includes("restoration") || spellName.includes("raise") || spellName.includes("resurrect");
+        const spellDesc = extractText(spell.description).toLowerCase();
+        const hasHealingDesc = spellDesc.includes("regain") && spellDesc.includes("hit point");
+        spellType = hasHealingRoll || hasHealingName || hasHealingDesc ? "healing" : "damage";
       }
       return {
         id: spell._id,

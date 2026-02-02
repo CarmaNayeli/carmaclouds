@@ -160,7 +160,15 @@
         console.log("   Has hitPoints:", !!characterData.hitPoints);
         console.log("   Has spells:", Array.isArray(characterData.spells));
         console.log("   Has actions:", Array.isArray(characterData.actions));
-        characters[existingIndex] = characterData;
+        const existingCharacter = characters[existingIndex];
+        characters[existingIndex] = {
+          ...characterData,
+          raw: existingCharacter.raw || characterData.raw,
+          // Keep raw if it exists
+          preview: existingCharacter.preview || characterData.preview
+          // Keep preview if it exists
+        };
+        console.log("   Preserved raw data:", !!characters[existingIndex].raw);
       } else {
         console.log("\u2705 Adding new character:", characterData.name);
         characters.push(characterData);

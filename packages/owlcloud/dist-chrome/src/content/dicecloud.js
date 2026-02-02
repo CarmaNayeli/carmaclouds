@@ -6670,7 +6670,8 @@
           });
           buttonsDiv.appendChild(useBtn);
         }
-        if (action.description) {
+        const hasDetails = action.description || action.summary || action.damageType || action.attackRoll || action.damage || action.source || action.range;
+        if (hasDetails) {
           const detailsBtn = document.createElement("button");
           detailsBtn.className = "details-btn";
           detailsBtn.textContent = "\u{1F4CB} Details";
@@ -6687,7 +6688,7 @@
         margin-bottom: 4px;
       `;
           detailsBtn.addEventListener("click", () => {
-            const descDiv = actionCard.querySelector(".action-description");
+            const descDiv = actionCard.querySelector(".action-details");
             if (descDiv) {
               descDiv.style.display = descDiv.style.display === "none" ? "block" : "none";
               detailsBtn.textContent = descDiv.style.display === "none" ? "\u{1F4CB} Details" : "\u{1F4CB} Hide";
@@ -6698,15 +6699,36 @@
         actionHeader.appendChild(nameDiv);
         actionHeader.appendChild(buttonsDiv);
         actionCard.appendChild(actionHeader);
-        if (action.description) {
-          const descDiv = document.createElement("div");
-          descDiv.className = "action-description";
-          descDiv.style.display = "none";
-          const resolvedDescription = resolveVariablesInFormula(action.description);
-          descDiv.innerHTML = `
-        <div style="margin-top: 10px; padding: 10px; background: var(--bg-secondary, #f5f5f5); border-radius: 4px; font-size: 0.9em;">${resolvedDescription}</div>
-      `;
-          actionCard.appendChild(descDiv);
+        if (hasDetails) {
+          const detailsDiv = document.createElement("div");
+          detailsDiv.className = "action-details";
+          detailsDiv.style.display = "none";
+          let detailsHTML = '<div style="margin-top: 10px; padding: 10px; background: var(--bg-secondary, #f5f5f5); border-radius: 4px; font-size: 0.9em;">';
+          if (action.summary) {
+            const resolvedSummary = resolveVariablesInFormula(action.summary);
+            detailsHTML += `<div style="margin-bottom: 8px;"><strong>Summary:</strong> ${resolvedSummary}</div>`;
+          }
+          if (action.description) {
+            const resolvedDescription = resolveVariablesInFormula(action.description);
+            detailsHTML += `<div style="margin-bottom: 8px;">${resolvedDescription}</div>`;
+          }
+          const details = [];
+          if (action.attackRoll)
+            details.push(`<strong>Attack:</strong> ${action.attackRoll}`);
+          if (action.damage)
+            details.push(`<strong>Damage:</strong> ${action.damage}`);
+          if (action.damageType)
+            details.push(`<strong>Type:</strong> ${action.damageType}`);
+          if (action.range)
+            details.push(`<strong>Range:</strong> ${action.range}`);
+          if (action.source)
+            details.push(`<strong>Source:</strong> ${action.source}`);
+          if (details.length > 0) {
+            detailsHTML += `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd; font-size: 0.85em;">${details.join(" \u2022 ")}</div>`;
+          }
+          detailsHTML += "</div>";
+          detailsDiv.innerHTML = detailsHTML;
+          actionCard.appendChild(detailsDiv);
         }
         container.appendChild(actionCard);
       });
@@ -6840,7 +6862,7 @@
         }
         options.push({
           type: "attack",
-          label: "\u{1F3AF} Attack",
+          label: "\u{1F3AF} Attack Roll",
           formula,
           icon: "\u{1F3AF}",
           color: "#e74c3c"
@@ -6861,7 +6883,7 @@
         } else if (action.actionType === "feature" || !action.attackRoll) {
           btnText = "\u{1F3B2} Roll";
         } else {
-          btnText = "\u{1F4A5} Damage";
+          btnText = "\u{1F4A5} Damage Roll";
         }
         options.push({
           type: isHealing ? "healing" : isTempHP ? "temphp" : "damage",
@@ -8329,6 +8351,11 @@
       debug.log("\u2705 Concentration tracker initialized");
     }
     function setConcentration(spellName) {
+      if (concentratingSpell && concentratingSpell !== spellName) {
+        const previousSpell = concentratingSpell;
+        showNotification(`\u26A0\uFE0F Dropped concentration on ${previousSpell} to concentrate on ${spellName}`);
+        debug.log(`\u{1F504} Replacing concentration: ${previousSpell} \u2192 ${spellName}`);
+      }
       concentratingSpell = spellName;
       if (characterData) {
         characterData.concentrationSpell = spellName;
@@ -8338,7 +8365,9 @@
       if (typeof sendStatusUpdate === "function") {
         sendStatusUpdate();
       }
-      showNotification(`\u{1F9E0} Concentrating on: ${spellName}`);
+      if (!concentratingSpell || concentratingSpell === spellName) {
+        showNotification(`\u{1F9E0} Concentrating on: ${spellName}`);
+      }
       debug.log(`\u{1F9E0} Concentration set: ${spellName}`);
     }
     function dropConcentration() {

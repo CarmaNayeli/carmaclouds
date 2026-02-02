@@ -44,6 +44,210 @@
     }
   });
 
+  // src/popup/adapters/owlcloud/adapter.js
+  var adapter_exports2 = {};
+  __export(adapter_exports2, {
+    init: () => init2
+  });
+  async function init2(containerEl) {
+    console.log("Initializing OwlCloud adapter...");
+    try {
+      containerEl.innerHTML = '<div class="loading">Loading OwlCloud...</div>';
+      const result = await chrome.storage.local.get(["carmaclouds_characters", "diceCloudUserId"]);
+      const characters = result.carmaclouds_characters || [];
+      const diceCloudUserId = result.diceCloudUserId;
+      console.log("Found", characters.length, "synced characters");
+      console.log("DiceCloud User ID:", diceCloudUserId);
+      const character = characters.length > 0 ? characters[0] : null;
+      const htmlPath = chrome.runtime.getURL("src/popup/adapters/owlcloud/popup.html");
+      const response = await fetch(htmlPath);
+      const html = await response.text();
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, "text/html");
+      const mainContent = doc.querySelector("main");
+      const wrapper = document.createElement("div");
+      wrapper.className = "owlcloud-adapter-scope";
+      wrapper.innerHTML = mainContent ? mainContent.innerHTML : doc.body.innerHTML;
+      containerEl.innerHTML = "";
+      containerEl.appendChild(wrapper);
+      const cssPath = chrome.runtime.getURL("src/popup/adapters/owlcloud/popup.css");
+      const cssResponse = await fetch(cssPath);
+      let css = await cssResponse.text();
+      css = css.replace(/(^|\})\s*([^{}@]+)\s*\{/gm, (match, closer, selector) => {
+        if (selector.trim().startsWith("@"))
+          return match;
+        const scopedSelector = selector.split(",").map((s) => `.owlcloud-adapter-scope ${s.trim()}`).join(", ");
+        return `${closer} ${scopedSelector} {`;
+      });
+      const style = document.createElement("style");
+      style.textContent = css;
+      containerEl.appendChild(style);
+      if (character && character.raw) {
+        const characterInfo = wrapper.querySelector("#characterInfo");
+        const statusSection = wrapper.querySelector("#status");
+        if (characterInfo) {
+          characterInfo.classList.remove("hidden");
+          const nameEl = characterInfo.querySelector("#charName");
+          const levelEl = characterInfo.querySelector("#charLevel");
+          const classEl = characterInfo.querySelector("#charClass");
+          const raceEl = characterInfo.querySelector("#charRace");
+          if (nameEl)
+            nameEl.textContent = character.name || "-";
+          if (levelEl)
+            levelEl.textContent = character.preview?.level || "-";
+          if (classEl)
+            classEl.textContent = character.preview?.class || "-";
+          if (raceEl)
+            raceEl.textContent = character.preview?.race || "Unknown";
+          const pushBtn = characterInfo.querySelector("#pushToVttBtn");
+          if (pushBtn) {
+            pushBtn.addEventListener("click", async () => {
+              const originalText = pushBtn.innerHTML;
+              try {
+                pushBtn.disabled = true;
+                pushBtn.innerHTML = "\u23F3 Syncing...";
+                if (!diceCloudUserId) {
+                  throw new Error("DiceCloud User ID not found. Please log in to DiceCloud first.");
+                }
+                console.log("\u{1F4BE} Storing raw character data to database...");
+                const SUPABASE_URL = "https://luiesmfjdcmpywavvfqm.supabase.co";
+                const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aWVzbWZqZGNtcHl3YXZ2ZnFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4ODYxNDksImV4cCI6MjA4NTQ2MjE0OX0.oqjHFf2HhCLcanh0HVryoQH7iSV7E9dHHZJdYehxZ0U";
+                try {
+                  const updateResponse = await fetch(
+                    `${SUPABASE_URL}/rest/v1/clouds_characters`,
+                    {
+                      method: "POST",
+                      headers: {
+                        "apikey": SUPABASE_ANON_KEY,
+                        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+                        "Content-Type": "application/json",
+                        "Prefer": "resolution=merge-duplicates,return=representation"
+                      },
+                      body: JSON.stringify({
+                        dicecloud_character_id: character.id,
+                        character_name: character.name || "Unknown",
+                        user_id_dicecloud: diceCloudUserId,
+                        raw_dicecloud_data: character.raw,
+                        class: character.preview?.class || null,
+                        race: character.preview?.race || null,
+                        level: character.preview?.level || null,
+                        updated_at: (/* @__PURE__ */ new Date()).toISOString()
+                      })
+                    }
+                  );
+                  if (updateResponse.ok) {
+                    console.log("\u2705 Raw character data stored in database");
+                  } else {
+                    const errorText = await updateResponse.text();
+                    console.warn("\u26A0\uFE0F Failed to store character data:", errorText);
+                    throw new Error(`Database sync failed: ${errorText}`);
+                  }
+                } catch (dbError) {
+                  console.error("\u26A0\uFE0F Database update failed:", dbError);
+                  throw dbError;
+                }
+                pushBtn.innerHTML = "\u2705 Synced!";
+                if (statusSection) {
+                  const statusIcon = statusSection.querySelector("#statusIcon");
+                  const statusText = statusSection.querySelector("#statusText");
+                  if (statusIcon)
+                    statusIcon.textContent = "\u2705";
+                  if (statusText) {
+                    statusText.innerHTML = `
+                    <div style="margin-bottom: 10px;">Character synced to database!</div>
+                    <div style="background: var(--bg-secondary, #f5f5f5); padding: 10px; border-radius: 4px; font-family: monospace;">
+                      <div style="margin-bottom: 5px; font-size: 12px; opacity: 0.8;">Your DiceCloud User ID:</div>
+                      <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="text" value="${diceCloudUserId}" readonly style="flex: 1; padding: 8px; border: 1px solid var(--border-color, #ddd); border-radius: 4px; font-family: monospace; font-size: 14px; background: white;">
+                        <button id="copyUserIdBtn" style="padding: 8px 12px; background: #16a75a; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">Copy</button>
+                      </div>
+                      <div style="margin-top: 8px; font-size: 11px; opacity: 0.7;">Paste this into the Owlbear extension to link your character.</div>
+                    </div>
+                  `;
+                    const copyBtn2 = statusSection.querySelector("#copyUserIdBtn");
+                    if (copyBtn2) {
+                      copyBtn2.addEventListener("click", async () => {
+                        try {
+                          await navigator.clipboard.writeText(diceCloudUserId);
+                          copyBtn2.textContent = "\u2713 Copied!";
+                          setTimeout(() => {
+                            copyBtn2.textContent = "Copy";
+                          }, 2e3);
+                        } catch (err) {
+                          console.error("Failed to copy:", err);
+                        }
+                      });
+                    }
+                  }
+                }
+                setTimeout(() => {
+                  pushBtn.innerHTML = originalText;
+                  pushBtn.disabled = false;
+                }, 3e3);
+              } catch (error) {
+                console.error("Error syncing to database:", error);
+                pushBtn.innerHTML = "\u274C Failed";
+                alert(`Failed to sync to database: ${error.message}`);
+                setTimeout(() => {
+                  pushBtn.innerHTML = originalText;
+                  pushBtn.disabled = false;
+                }, 2e3);
+              }
+            });
+          }
+        }
+        if (statusSection) {
+          const statusIcon = statusSection.querySelector("#statusIcon");
+          const statusText = statusSection.querySelector("#statusText");
+          if (statusIcon)
+            statusIcon.textContent = "\u{1F4CB}";
+          if (statusText)
+            statusText.textContent = `Ready to sync: ${character.name}`;
+        }
+      }
+      const copyBtn = wrapper.querySelector("#copyOwlbearUrlBtn");
+      if (copyBtn) {
+        copyBtn.addEventListener("click", async () => {
+          const urlInput = wrapper.querySelector("#owlbearExtensionUrl");
+          if (urlInput) {
+            try {
+              await navigator.clipboard.writeText(urlInput.value);
+              const originalText = copyBtn.textContent;
+              copyBtn.textContent = "\u2713 Copied!";
+              setTimeout(() => {
+                copyBtn.textContent = originalText;
+              }, 2e3);
+            } catch (err) {
+              console.error("Failed to copy:", err);
+              copyBtn.textContent = "\u2717 Failed";
+              setTimeout(() => {
+                copyBtn.textContent = "Copy";
+              }, 2e3);
+            }
+          }
+        });
+      }
+      chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.action === "dataSynced") {
+          console.log("\u{1F4E5} OwlCloud adapter received data sync notification:", message.characterName);
+          init2(containerEl);
+        }
+      });
+    } catch (error) {
+      console.error("Failed to load OwlCloud UI:", error);
+      containerEl.innerHTML = `
+      <div class="error">
+        <strong>Failed to load OwlCloud</strong>
+        <p>${error.message}</p>
+      </div>
+    `;
+    }
+  }
+  var init_adapter2 = __esm({
+    "src/popup/adapters/owlcloud/adapter.js"() {
+    }
+  });
+
   // src/content/dicecloud-extraction.js
   function parseForRollCloud(rawData) {
     if (!rawData || !rawData.creature || !rawData.variables || !rawData.properties) {
@@ -291,13 +495,25 @@
         }
       }
       const damageRolls = [];
-      spellChildren.filter((c) => c.type === "damage" || c.type === "roll" && c.name && c.name.toLowerCase().includes("damage")).forEach((damageChild) => {
+      spellChildren.filter((c) => c.type === "damage" || c.type === "roll" && c.name && (c.name.toLowerCase().includes("damage") || c.name.toLowerCase().includes("heal"))).forEach((damageChild) => {
         let formula = "";
         if (damageChild.amount) {
           if (typeof damageChild.amount === "string") {
             formula = damageChild.amount;
           } else if (typeof damageChild.amount === "object") {
             formula = damageChild.amount.calculation || String(damageChild.amount.value || "");
+          }
+        } else if (damageChild.roll) {
+          if (typeof damageChild.roll === "string") {
+            formula = damageChild.roll;
+          } else if (typeof damageChild.roll === "object") {
+            formula = damageChild.roll.calculation || String(damageChild.roll.value || "");
+          }
+        } else if (damageChild.damage) {
+          if (typeof damageChild.damage === "string") {
+            formula = damageChild.damage;
+          } else if (typeof damageChild.damage === "object") {
+            formula = damageChild.damage.calculation || String(damageChild.damage.value || "");
           }
         }
         if (formula) {
@@ -312,10 +528,14 @@
       const damageType = damageRolls.length > 0 ? damageRolls[0].type : "";
       let spellType = "utility";
       if (damageRolls.length > 0) {
-        const hasHealing = damageRolls.some(
+        const hasHealingRoll = damageRolls.some(
           (roll) => roll.name.toLowerCase().includes("heal") || roll.type.toLowerCase().includes("heal")
         );
-        spellType = hasHealing ? "healing" : "damage";
+        const spellName = (spell.name || "").toLowerCase();
+        const hasHealingName = spellName.includes("heal") || spellName.includes("cure") || spellName.includes("regenerat") || spellName.includes("revivif") || spellName.includes("restoration") || spellName.includes("raise") || spellName.includes("resurrect");
+        const spellDesc = extractText(spell.description).toLowerCase();
+        const hasHealingDesc = spellDesc.includes("regain") && spellDesc.includes("hit point");
+        spellType = hasHealingRoll || hasHealingName || hasHealingDesc ? "healing" : "damage";
       }
       return {
         id: spell._id,
@@ -425,9 +645,6 @@
       actions
     };
   }
-  function parseForOwlCloud(rawData) {
-    return parseForRollCloud(rawData);
-  }
   var STANDARD_VARS;
   var init_dicecloud_extraction = __esm({
     "src/content/dicecloud-extraction.js"() {
@@ -457,201 +674,6 @@
         ],
         combat: ["armorClass", "hitPoints", "speed", "initiative", "proficiencyBonus"]
       };
-    }
-  });
-
-  // src/popup/adapters/owlcloud/adapter.js
-  var adapter_exports2 = {};
-  __export(adapter_exports2, {
-    init: () => init2
-  });
-  async function init2(containerEl) {
-    console.log("Initializing OwlCloud adapter...");
-    try {
-      containerEl.innerHTML = '<div class="loading">Loading OwlCloud...</div>';
-      const result = await chrome.storage.local.get("carmaclouds_characters");
-      const characters = result.carmaclouds_characters || [];
-      console.log("Found", characters.length, "synced characters");
-      const character = characters.length > 0 ? characters[0] : null;
-      let parsedData = null;
-      if (character && character.raw) {
-        containerEl.innerHTML = '<div class="loading">Parsing character data...</div>';
-        console.log("Parsing character for Owlbear Rodeo:", character.name);
-        parsedData = parseForOwlCloud(character.raw);
-        console.log("Parsed data:", parsedData);
-      }
-      const htmlPath = chrome.runtime.getURL("src/popup/adapters/owlcloud/popup.html");
-      const response = await fetch(htmlPath);
-      const html = await response.text();
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, "text/html");
-      const mainContent = doc.querySelector("main");
-      const wrapper = document.createElement("div");
-      wrapper.className = "owlcloud-adapter-scope";
-      wrapper.innerHTML = mainContent ? mainContent.innerHTML : doc.body.innerHTML;
-      containerEl.innerHTML = "";
-      containerEl.appendChild(wrapper);
-      const cssPath = chrome.runtime.getURL("src/popup/adapters/owlcloud/popup.css");
-      const cssResponse = await fetch(cssPath);
-      let css = await cssResponse.text();
-      css = css.replace(/(^|\})\s*([^{}@]+)\s*\{/gm, (match, closer, selector) => {
-        if (selector.trim().startsWith("@"))
-          return match;
-        const scopedSelector = selector.split(",").map((s) => `.owlcloud-adapter-scope ${s.trim()}`).join(", ");
-        return `${closer} ${scopedSelector} {`;
-      });
-      const style = document.createElement("style");
-      style.textContent = css;
-      containerEl.appendChild(style);
-      if (parsedData && character) {
-        const characterInfo = wrapper.querySelector("#characterInfo");
-        const statusSection = wrapper.querySelector("#status");
-        if (characterInfo) {
-          characterInfo.classList.remove("hidden");
-          const nameEl = characterInfo.querySelector("#charName");
-          const levelEl = characterInfo.querySelector("#charLevel");
-          const classEl = characterInfo.querySelector("#charClass");
-          const raceEl = characterInfo.querySelector("#charRace");
-          if (nameEl)
-            nameEl.textContent = character.name || "-";
-          if (levelEl)
-            levelEl.textContent = character.preview?.level || "-";
-          if (classEl)
-            classEl.textContent = character.preview?.class || "-";
-          if (raceEl)
-            raceEl.textContent = character.preview?.race || "Unknown";
-          const pushBtn = characterInfo.querySelector("#pushToVttBtn");
-          if (pushBtn) {
-            pushBtn.addEventListener("click", async () => {
-              const originalText = pushBtn.innerHTML;
-              try {
-                pushBtn.disabled = true;
-                pushBtn.innerHTML = "\u23F3 Pushing...";
-                console.log("\u{1F4BE} Storing Owlbear parsed data to database...");
-                const SUPABASE_URL = "https://luiesmfjdcmpywavvfqm.supabase.co";
-                const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aWVzbWZqZGNtcHl3YXZ2ZnFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4ODYxNDksImV4cCI6MjA4NTQ2MjE0OX0.oqjHFf2HhCLcanh0HVryoQH7iSV7E9dHHZJdYehxZ0U";
-                try {
-                  const updateResponse = await fetch(
-                    `${SUPABASE_URL}/rest/v1/clouds_characters?dicecloud_character_id=eq.${character.id}`,
-                    {
-                      method: "PATCH",
-                      headers: {
-                        "apikey": SUPABASE_ANON_KEY,
-                        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-                        "Content-Type": "application/json",
-                        "Prefer": "return=representation"
-                      },
-                      body: JSON.stringify({
-                        owlbear_data: parsedData,
-                        updated_at: (/* @__PURE__ */ new Date()).toISOString()
-                      })
-                    }
-                  );
-                  if (updateResponse.ok) {
-                    console.log("\u2705 Owlbear data stored in database");
-                  } else {
-                    console.warn("\u26A0\uFE0F Failed to store Owlbear data:", await updateResponse.text());
-                  }
-                } catch (dbError) {
-                  console.warn("\u26A0\uFE0F Database update failed (non-fatal):", dbError);
-                }
-                console.log("\u{1F4BE} Updating local storage with parsed data...");
-                try {
-                  const dataToStore = {
-                    ...parsedData,
-                    id: character.id,
-                    dicecloud_character_id: character.id
-                  };
-                  await chrome.runtime.sendMessage({
-                    action: "storeCharacterData",
-                    data: dataToStore,
-                    slotId: character.slotId || "slot-1"
-                  });
-                  console.log("\u2705 Local storage updated with parsed Owlbear data");
-                  chrome.runtime.sendMessage({
-                    action: "dataSynced",
-                    characterName: dataToStore.name || "Character"
-                  }).catch(() => {
-                    console.log("\u2139\uFE0F No popup open to notify (normal)");
-                  });
-                } catch (storageError) {
-                  console.warn("\u26A0\uFE0F Local storage update failed (non-fatal):", storageError);
-                }
-                const tabs = await chrome.tabs.query({ url: "*://*.owlbear.rodeo/*" });
-                if (tabs.length === 0) {
-                  throw new Error("No Owlbear Rodeo tab found. Please open Owlbear Rodeo first.");
-                }
-                await chrome.tabs.sendMessage(tabs[0].id, {
-                  type: "PUSH_CHARACTER",
-                  data: parsedData
-                });
-                pushBtn.innerHTML = "\u2705 Pushed!";
-                setTimeout(() => {
-                  pushBtn.innerHTML = originalText;
-                  pushBtn.disabled = false;
-                }, 2e3);
-              } catch (error) {
-                console.error("Error pushing to Owlbear Rodeo:", error);
-                pushBtn.innerHTML = "\u274C Failed";
-                alert(`Failed to push to Owlbear Rodeo: ${error.message}`);
-                setTimeout(() => {
-                  pushBtn.innerHTML = originalText;
-                  pushBtn.disabled = false;
-                }, 2e3);
-              }
-            });
-          }
-        }
-        if (statusSection) {
-          const statusIcon = statusSection.querySelector("#statusIcon");
-          const statusText = statusSection.querySelector("#statusText");
-          if (statusIcon)
-            statusIcon.textContent = "\u2705";
-          if (statusText)
-            statusText.textContent = `Character synced: ${character.name}`;
-        }
-      }
-      const copyBtn = wrapper.querySelector("#copyOwlbearUrlBtn");
-      if (copyBtn) {
-        copyBtn.addEventListener("click", async () => {
-          const urlInput = wrapper.querySelector("#owlbearExtensionUrl");
-          if (urlInput) {
-            try {
-              await navigator.clipboard.writeText(urlInput.value);
-              const originalText = copyBtn.textContent;
-              copyBtn.textContent = "\u2713 Copied!";
-              setTimeout(() => {
-                copyBtn.textContent = originalText;
-              }, 2e3);
-            } catch (err) {
-              console.error("Failed to copy:", err);
-              copyBtn.textContent = "\u2717 Failed";
-              setTimeout(() => {
-                copyBtn.textContent = "Copy";
-              }, 2e3);
-            }
-          }
-        });
-      }
-      chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        if (message.action === "dataSynced") {
-          console.log("\u{1F4E5} OwlCloud adapter received data sync notification:", message.characterName);
-          init2(containerEl);
-        }
-      });
-    } catch (error) {
-      console.error("Failed to load OwlCloud UI:", error);
-      containerEl.innerHTML = `
-      <div class="error">
-        <strong>Failed to load OwlCloud</strong>
-        <p>${error.message}</p>
-      </div>
-    `;
-    }
-  }
-  var init_adapter2 = __esm({
-    "src/popup/adapters/owlcloud/adapter.js"() {
-      init_dicecloud_extraction();
     }
   });
 
