@@ -1103,6 +1103,7 @@
     const statusDiv = document.getElementById("fetch-status");
     if (!fetchBtn || !statusDiv)
       return;
+    localStorage.removeItem("owlcloud_manual_unsync");
     fetchBtn.disabled = true;
     fetchBtn.textContent = "\u23F3 Fetching...";
     statusDiv.style.display = "block";

@@ -1849,10 +1849,15 @@ async function fetchAllCharacters() {
     }
 
     const data = await response.json();
-    console.log('📋 Received characters:', data.characters?.length || 0);
+    console.log('📋 Received characters response:', data);
+    console.log('📋 Number of characters:', data.characters?.length || 0);
+    if (data.characters && data.characters.length > 0) {
+      console.log('📋 Character names:', data.characters.map(c => c.name || c.character_name).join(', '));
+    }
 
     if (data.success && data.characters && data.characters.length > 0) {
       allCharacters = data.characters;
+      console.log('📋 Set allCharacters array with', allCharacters.length, 'characters');
       displayCharacterList();
     } else {
       console.log('ℹ️ No characters found, hiding character list');
@@ -1874,13 +1879,20 @@ function displayCharacterList() {
   const characterListSection = document.getElementById('character-list-section');
   const characterList = document.getElementById('character-list');
 
+  if (!characterListSection || !characterList) {
+    console.error('Character list elements not found');
+    return;
+  }
+
   if (!allCharacters || allCharacters.length <= 1) {
     // Hide character list if there's only one or no characters
+    console.log('Hiding character list - only', allCharacters?.length || 0, 'characters');
     characterListSection.style.display = 'none';
     return;
   }
 
   // Show character list
+  console.log('Showing character list with', allCharacters.length, 'characters');
   characterListSection.style.display = 'block';
 
   let html = '';
