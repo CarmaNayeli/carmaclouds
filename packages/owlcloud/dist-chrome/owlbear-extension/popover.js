@@ -22,7 +22,6 @@
   var noCharacterSection = document.getElementById("no-character-section");
   var characterInfo = document.getElementById("character-info");
   var syncCharacterBtn = document.getElementById("sync-character-btn");
-  var searchCharactersBtn = document.getElementById("search-characters-btn");
   var openExtensionBtn = document.getElementById("open-extension-btn");
   var linkExtensionBtn = document.getElementById("link-extension-btn");
   var openChatWindowBtn = document.getElementById("open-chat-window-btn");
@@ -996,10 +995,6 @@
     const authSection = document.getElementById("auth-section");
     if (!authSection)
       return;
-    const searchCharactersBtn2 = document.getElementById("search-characters-btn");
-    if (searchCharactersBtn2) {
-      searchCharactersBtn2.style.display = currentUser ? "block" : "none";
-    }
     if (currentUser) {
       authSection.innerHTML = `
       <div style="padding: 16px; background: var(--theme-background); border-radius: 8px; border: 1px solid var(--theme-border);">
@@ -2313,36 +2308,6 @@ This will disconnect the character from this room. You can sync a different char
     statusText.textContent = "Syncing character...";
     setTimeout(checkForActiveCharacter, 2e3);
   });
-  if (searchCharactersBtn) {
-    searchCharactersBtn.addEventListener("click", async () => {
-      if (!currentUser) {
-        console.warn("Search characters clicked but no user is logged in");
-        return;
-      }
-      searchCharactersBtn.disabled = true;
-      searchCharactersBtn.textContent = "\u{1F50D} Searching...";
-      try {
-        await fetchAllCharacters();
-        if (isOwlbearReady) {
-          if (allCharacters && allCharacters.length > 1) {
-            OBR.notification.show(`Found ${allCharacters.length} characters!`, "SUCCESS");
-          } else if (allCharacters && allCharacters.length === 1) {
-            OBR.notification.show("Found 1 character", "INFO");
-          } else {
-            OBR.notification.show("No characters found", "WARNING");
-          }
-        }
-      } catch (error) {
-        console.error("Error searching for characters:", error);
-        if (isOwlbearReady) {
-          OBR.notification.show("Failed to search for characters", "ERROR");
-        }
-      } finally {
-        searchCharactersBtn.disabled = false;
-        searchCharactersBtn.textContent = "\u{1F50D} Search for Characters";
-      }
-    });
-  }
   openExtensionBtn.addEventListener("click", () => {
     const message = {
       type: "OWLCLOUD_OPEN_POPUP",

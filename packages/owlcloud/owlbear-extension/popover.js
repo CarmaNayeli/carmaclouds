@@ -42,7 +42,6 @@ const characterSection = document.getElementById('character-section');
 const noCharacterSection = document.getElementById('no-character-section');
 const characterInfo = document.getElementById('character-info');
 const syncCharacterBtn = document.getElementById('sync-character-btn');
-const searchCharactersBtn = document.getElementById('search-characters-btn');
 const openExtensionBtn = document.getElementById('open-extension-btn');
 const linkExtensionBtn = document.getElementById('link-extension-btn');
 const openChatWindowBtn = document.getElementById('open-chat-window-btn');
@@ -1335,12 +1334,6 @@ async function linkExistingCharacterToUser() {
 function updateAuthUI() {
   const authSection = document.getElementById('auth-section');
   if (!authSection) return;
-
-  // Show/hide search characters button based on login status
-  const searchCharactersBtn = document.getElementById('search-characters-btn');
-  if (searchCharactersBtn) {
-    searchCharactersBtn.style.display = currentUser ? 'block' : 'none';
-  }
 
   if (currentUser) {
     // User is signed in
@@ -3076,47 +3069,6 @@ syncCharacterBtn.addEventListener('click', () => {
   // Refresh character data after a delay
   setTimeout(checkForActiveCharacter, 2000);
 });
-
-/**
- * Search for characters - fetches all characters linked to the user's account
- */
-if (searchCharactersBtn) {
-  searchCharactersBtn.addEventListener('click', async () => {
-    if (!currentUser) {
-      console.warn('Search characters clicked but no user is logged in');
-      return;
-    }
-
-    // Update button state
-    searchCharactersBtn.disabled = true;
-    searchCharactersBtn.textContent = '🔍 Searching...';
-
-    try {
-      // Fetch all characters for this user
-      await fetchAllCharacters();
-
-      // Show notification based on result
-      if (isOwlbearReady) {
-        if (allCharacters && allCharacters.length > 1) {
-          OBR.notification.show(`Found ${allCharacters.length} characters!`, 'SUCCESS');
-        } else if (allCharacters && allCharacters.length === 1) {
-          OBR.notification.show('Found 1 character', 'INFO');
-        } else {
-          OBR.notification.show('No characters found', 'WARNING');
-        }
-      }
-    } catch (error) {
-      console.error('Error searching for characters:', error);
-      if (isOwlbearReady) {
-        OBR.notification.show('Failed to search for characters', 'ERROR');
-      }
-    } finally {
-      // Reset button state
-      searchCharactersBtn.disabled = false;
-      searchCharactersBtn.textContent = '🔍 Search for Characters';
-    }
-  });
-}
 
 /**
  * Open browser extension popup
