@@ -1217,19 +1217,22 @@ This will disconnect the character from this room. You can sync a different char
         console.log("  - Has character_name:", !!data.character.character_name);
         let characterData;
         if (data.character.raw_dicecloud_data) {
-          console.log("\u{1F504} Parsing raw DiceCloud data...");
-          console.log("\u{1F4E6} Raw data structure:", {
-            hasCreatures: !!data.character.raw_dicecloud_data.creatures,
-            hasCreatureVariables: !!data.character.raw_dicecloud_data.creatureVariables,
-            hasCreatureProperties: !!data.character.raw_dicecloud_data.creatureProperties,
-            keys: Object.keys(data.character.raw_dicecloud_data)
-          });
-          try {
-            characterData = parseCharacterData(data.character.raw_dicecloud_data, data.character.dicecloud_character_id);
-            console.log("\u2705 Parsed character data:", characterData);
-          } catch (parseError) {
-            console.error("\u274C Failed to parse character data:", parseError);
-            characterData = data.character.raw_dicecloud_data;
+          const rawData = data.character.raw_dicecloud_data;
+          if (rawData.creatures && rawData.creatureVariables && rawData.creatureProperties) {
+            console.log("\u{1F504} Parsing raw API response...");
+            try {
+              characterData = parseCharacterData(rawData, data.character.dicecloud_character_id);
+              console.log("\u2705 Parsed character data:", characterData);
+            } catch (parseError) {
+              console.error("\u274C Failed to parse character data:", parseError);
+              characterData = rawData;
+            }
+          } else if (rawData.creature && rawData.variables && rawData.properties) {
+            console.log("\u2705 Using pre-extracted character data");
+            characterData = rawData;
+          } else {
+            console.warn("\u26A0\uFE0F Unknown data format, using as-is");
+            characterData = rawData;
           }
         } else {
           characterData = data.character;

@@ -1648,21 +1648,27 @@ async function checkForActiveCharacter() {
       // Parse raw_dicecloud_data if available
       let characterData;
       if (data.character.raw_dicecloud_data) {
-        console.log('🔄 Parsing raw DiceCloud data...');
-        console.log('📦 Raw data structure:', {
-          hasCreatures: !!data.character.raw_dicecloud_data.creatures,
-          hasCreatureVariables: !!data.character.raw_dicecloud_data.creatureVariables,
-          hasCreatureProperties: !!data.character.raw_dicecloud_data.creatureProperties,
-          keys: Object.keys(data.character.raw_dicecloud_data)
-        });
-        try {
-          // The raw_dicecloud_data contains the API response with creatures, variables, properties
-          characterData = parseCharacterData(data.character.raw_dicecloud_data, data.character.dicecloud_character_id);
-          console.log('✅ Parsed character data:', characterData);
-        } catch (parseError) {
-          console.error('❌ Failed to parse character data:', parseError);
-          // Fall back to using the data as-is
-          characterData = data.character.raw_dicecloud_data;
+        const rawData = data.character.raw_dicecloud_data;
+
+        // Check if this is the raw API format (creatures array) or extracted format (creature object)
+        if (rawData.creatures && rawData.creatureVariables && rawData.creatureProperties) {
+          // This is the raw API response - parse it
+          console.log('🔄 Parsing raw API response...');
+          try {
+            characterData = parseCharacterData(rawData, data.character.dicecloud_character_id);
+            console.log('✅ Parsed character data:', characterData);
+          } catch (parseError) {
+            console.error('❌ Failed to parse character data:', parseError);
+            characterData = rawData;
+          }
+        } else if (rawData.creature && rawData.variables && rawData.properties) {
+          // This is already extracted by CarmaClouds - use it directly
+          console.log('✅ Using pre-extracted character data');
+          characterData = rawData;
+        } else {
+          // Unknown format - try to use as-is
+          console.warn('⚠️ Unknown data format, using as-is');
+          characterData = rawData;
         }
       } else {
         // No raw data, use the database fields directly
