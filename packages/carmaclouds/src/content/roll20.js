@@ -1272,6 +1272,37 @@ window.browserAPI = browserAPI;
           debug.log('✅ Character data stored and ready for sheet request');
         }
         
+        // 4. Sync character to database if SupabaseTokenManager is available
+        try {
+          if (typeof SupabaseTokenManager !== 'undefined') {
+            const supabaseManager = new SupabaseTokenManager();
+            
+            // Prepare character data for database storage
+            const characterForDB = {
+              ...formattedData,
+              id: characterData.id || formattedData.id,
+              name: formattedData.name || characterData.name,
+              source: 'rollcloud',
+              lastUpdated: new Date().toISOString(),
+              rawData: characterData // Keep raw data for backup
+            };
+            
+            // Store character in database
+            const dbResult = await supabaseManager.storeCharacter(characterForDB);
+            
+            if (dbResult.success) {
+              debug.log('✅ Character synced to database:', formattedData.name);
+            } else {
+              debug.log('⚠️ Failed to sync character to database:', dbResult.error);
+            }
+          } else {
+            debug.log('⚠️ SupabaseTokenManager not available, skipping database sync');
+          }
+        } catch (dbError) {
+          debug.log('⚠️ Database sync error:', dbError);
+          // Don't fail the push operation for database errors
+        }
+        
         debug.log('✅ Character data prepared - waiting for sheet to request it');
         sendResponse({ success: true, message: 'Character data prepared and waiting for sheet' });
       } catch (error) {
