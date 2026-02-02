@@ -2945,10 +2945,8 @@ openChatWindowBtn.addEventListener('click', async () => {
     isChatOpen = false;
     openChatWindowBtn.textContent = '💬 Open Chat Window';
   } else {
-    // Set chat height to match sheet height (half viewport minus action bar)
-    // TODO: Make this dynamic based on actual viewport height
-    // Currently using fixed 460px as workaround since window.innerHeight doesn't work in popovers
-    const chatHeight = 460;
+    // Set chat height to match CSS chat-container height
+    const chatHeight = 240;
 
     // Open chat as a persistent popover at bottom-left
     await OBR.popover.open({
