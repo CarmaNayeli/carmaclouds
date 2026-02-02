@@ -1889,15 +1889,15 @@ function displayCharacterList() {
     return;
   }
 
-  if (!allCharacters || allCharacters.length <= 1) {
-    // Hide character list if there's only one or no characters
-    console.log('Hiding character list - only', allCharacters?.length || 0, 'characters');
+  if (!allCharacters || allCharacters.length === 0) {
+    // Hide character list if there are no characters
+    console.log('Hiding character list - no characters found');
     characterListSection.style.display = 'none';
     return;
   }
 
-  // Show character list
-  console.log('Showing character list with', allCharacters.length, 'characters');
+  // Show character list (even if only 1 character)
+  console.log('Showing character list with', allCharacters.length, 'character(s)');
   characterListSection.style.display = 'block';
 
   let html = '';

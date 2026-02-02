@@ -1406,12 +1406,12 @@ This will disconnect the character from this room. You can sync a different char
       console.error("Character list elements not found");
       return;
     }
-    if (!allCharacters || allCharacters.length <= 1) {
-      console.log("Hiding character list - only", allCharacters?.length || 0, "characters");
+    if (!allCharacters || allCharacters.length === 0) {
+      console.log("Hiding character list - no characters found");
       characterListSection.style.display = "none";
       return;
     }
-    console.log("Showing character list with", allCharacters.length, "characters");
+    console.log("Showing character list with", allCharacters.length, "character(s)");
     characterListSection.style.display = "block";
     let html = "";
     allCharacters.forEach((character) => {
