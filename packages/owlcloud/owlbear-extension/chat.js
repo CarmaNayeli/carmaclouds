@@ -528,7 +528,7 @@ async function addChatMessageToMetadata(text, type = 'system', author = null) {
 
     // Strip HTML tags and truncate to reduce metadata size
     const plainText = text.replace(/<[^>]*>/g, '');
-    const truncatedText = plainText.length > 500 ? plainText.substring(0, 497) + '...' : plainText;
+    const truncatedText = plainText.length > 2000 ? plainText.substring(0, 1997) + '...' : plainText;
 
     // Get current theme color
     const currentTheme = localStorage.getItem('owlcloud-theme') || 'purple';

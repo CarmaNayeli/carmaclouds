@@ -402,7 +402,7 @@
       const metadata = await OBR.room.getMetadata();
       const messages = metadata["com.owlcloud.chat/messages"] || [];
       const plainText = text.replace(/<[^>]*>/g, "");
-      const truncatedText = plainText.length > 500 ? plainText.substring(0, 497) + "..." : plainText;
+      const truncatedText = plainText.length > 2e3 ? plainText.substring(0, 1997) + "..." : plainText;
       const currentTheme = localStorage.getItem("owlcloud-theme") || "purple";
       const themeColors = {
         purple: "#8B5CF6",
