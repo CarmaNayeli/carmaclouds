@@ -874,6 +874,9 @@
       if (error)
         throw error;
       console.log("\u2705 Signed out successfully");
+      currentUser = null;
+      updateAuthUI();
+      checkForActiveCharacter();
       return { success: true };
     } catch (error) {
       console.error("Sign out error:", error);

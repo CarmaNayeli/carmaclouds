@@ -1176,6 +1176,16 @@ async function signOut() {
     if (error) throw error;
 
     console.log('✅ Signed out successfully');
+
+    // Clear current user
+    currentUser = null;
+
+    // Update UI immediately
+    updateAuthUI();
+
+    // Check for character (will now query by owlbear_player_id only)
+    checkForActiveCharacter();
+
     return { success: true };
   } catch (error) {
     console.error('Sign out error:', error);
