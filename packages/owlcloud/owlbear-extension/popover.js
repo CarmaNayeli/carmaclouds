@@ -1369,24 +1369,29 @@ function updateAuthUI() {
         <div style="margin-bottom: 12px; color: #c0c0c0; font-size: 12px; line-height: 1.4;">
           Create a free account to access your characters from any device. This is separate from your DiceCloud login.
         </div>
-        <div style="display: flex; flex-direction: column; gap: 8px;">
+        <form id="auth-form" onsubmit="event.preventDefault(); handleSignIn(); return false;" style="display: flex; flex-direction: column; gap: 8px;">
           <input
             type="email"
             id="auth-email"
             placeholder="Email"
+            required
+            autocomplete="email"
             style="padding: 8px 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--theme-border); border-radius: 6px; color: #e0e0e0; font-size: 14px;">
           <input
             type="password"
             id="auth-password"
             placeholder="Password (min 6 characters)"
+            required
+            autocomplete="current-password"
             style="padding: 8px 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--theme-border); border-radius: 6px; color: #e0e0e0; font-size: 14px;">
           <div style="display: flex; gap: 8px;">
             <button
-              onclick="handleSignIn()"
+              type="submit"
               style="flex: 1; padding: 8px; background: var(--theme-gradient); border: none; border-radius: 6px; color: white; font-weight: 600; cursor: pointer; transition: all 0.2s;">
               Sign In
             </button>
             <button
+              type="button"
               onclick="handleSignUp()"
               style="flex: 1; padding: 8px; background: var(--theme-background); border: 1px solid var(--theme-primary); border-radius: 6px; color: var(--theme-primary-light); font-weight: 600; cursor: pointer; transition: all 0.2s;">
               Sign Up
@@ -1396,7 +1401,7 @@ function updateAuthUI() {
             New? Click <strong>Sign Up</strong> to create an account
           </div>
           <div id="auth-error" style="color: #EF4444; font-size: 12px; margin-top: 4px; display: none;"></div>
-        </div>
+        </form>
       </div>
     `;
   }
