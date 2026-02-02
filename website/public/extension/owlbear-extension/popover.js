@@ -1856,7 +1856,13 @@ This will disconnect the character from this room. You can sync a different char
     if (character.features && character.features.length > 0) {
       const filteredFeatures = character.features.filter((feature) => {
         const name = (feature.name || "").toLowerCase();
-        return !name.match(/^spellcasting\s*\[/i) && name !== "spellcasting";
+        if (name.match(/^spellcasting\s*\[/i) || name === "spellcasting") {
+          return false;
+        }
+        if (name.includes("proficiencies") || name.includes("proficiency")) {
+          return false;
+        }
+        return true;
       });
       if (filteredFeatures.length > 0) {
         html += '<div class="feature-list">';

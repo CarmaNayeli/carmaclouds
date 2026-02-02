@@ -2480,11 +2480,18 @@ function populateFeaturesTab(character) {
 
   // Features & Traits Section
   if (character.features && character.features.length > 0) {
-    // Filter out generic spellcasting features
+    // Filter out generic spellcasting features and proficiency lists
     const filteredFeatures = character.features.filter(feature => {
       const name = (feature.name || '').toLowerCase();
       // Exclude generic spellcasting features
-      return !name.match(/^spellcasting\s*\[/i) && name !== 'spellcasting';
+      if (name.match(/^spellcasting\s*\[/i) || name === 'spellcasting') {
+        return false;
+      }
+      // Exclude background and class proficiency lists
+      if (name.includes('proficiencies') || name.includes('proficiency')) {
+        return false;
+      }
+      return true;
     });
 
     if (filteredFeatures.length > 0) {
