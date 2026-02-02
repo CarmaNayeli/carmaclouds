@@ -1387,8 +1387,8 @@ This will disconnect the character from this room. You can sync a different char
     console.log("  character.creature?.avatarPicture:", character.creature?.avatarPicture);
     const portraitUrl = character.picture || character.avatarPicture || character.creature?.picture || character.creature?.avatarPicture;
     characterInfo.innerHTML = `
-    <div style="display: flex; align-items: center; gap: 16px;">
-      ${portraitUrl ? `<img id="settings-portrait" src="${portraitUrl}" alt="Character Portrait" style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--theme-primary); object-fit: cover; box-shadow: 0 4px 12px var(--theme-shadow);">` : ""}
+    <div class="character-info-container">
+      ${portraitUrl ? `<img id="settings-portrait" src="${portraitUrl}" alt="Character Portrait">` : ""}
       <div style="flex: 1;">
         <div class="character-name">${character.name || "Unknown Character"}</div>
         <div class="character-detail">Level ${character.level || "?"} ${character.race || ""} ${character.class || ""}</div>

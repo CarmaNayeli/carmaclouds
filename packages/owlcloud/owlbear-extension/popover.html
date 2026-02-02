@@ -186,6 +186,35 @@
       margin-bottom: 4px;
     }
 
+    .character-info-container {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    #settings-portrait {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      border: 3px solid var(--theme-primary);
+      object-fit: cover;
+      box-shadow: 0 4px 12px var(--theme-shadow);
+      flex-shrink: 0;
+    }
+
+    /* Larger portrait on wider screens */
+    @media (min-width: 400px) {
+      .character-info-container {
+        flex-direction: column;
+        text-align: center;
+      }
+
+      #settings-portrait {
+        width: 120px;
+        height: 120px;
+      }
+    }
+
     .character-list-item {
       background: var(--theme-bg-card);
       border: 2px solid var(--theme-border);
