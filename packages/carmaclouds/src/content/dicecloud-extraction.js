@@ -181,9 +181,6 @@ export function parseCharacterData(apiData, characterId) {
   });
   console.log('CarmaClouds: Property types in character:', propertyTypes);
 
-  // Just extract basic metadata for display
-  const characterName = creature.name || '';
-
   // Check if race is stored directly on creature
   if (creature.race) {
     console.log('CarmaClouds: Found race on creature:', creature.race);
@@ -405,6 +402,9 @@ export function parseForRollCloud(rawData) {
   }
 
   const { creature, variables, properties } = rawData;
+
+  // Extract character name early to ensure proper scope
+  const characterName = creature.name || '';
 
   // Extract race, class, level
   let race = 'Unknown';
