@@ -2036,7 +2036,11 @@ This will disconnect the character from this room. You can sync a different char
           }
         }
         let spellButtonsHtml = '<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">';
-        spellButtonsHtml += `<button class="rest-btn" style="flex: 1; min-width: 100px;" onclick="event.stopPropagation(); castSpell('${(spell.name || "Unknown Spell").replace(/'/g, "\\'")}', ${spellLevel})">\u2728 Cast</button>`;
+        if (spellLevel > 0) {
+          spellButtonsHtml += `<button class="rest-btn" style="flex: 1; min-width: 100px;" onclick="event.stopPropagation(); promptCastSpell('${(spell.name || "Unknown Spell").replace(/'/g, "\\'")}', ${spellLevel})">\u2728 Cast</button>`;
+        } else {
+          spellButtonsHtml += `<button class="rest-btn" style="flex: 1; min-width: 100px;" onclick="event.stopPropagation(); castSpell('${(spell.name || "Unknown Spell").replace(/'/g, "\\'")}', 0)">\u2728 Cast</button>`;
+        }
         if (isRitual) {
           spellButtonsHtml += `<button class="rest-btn" style="padding: 8px 12px; font-size: 12px;" onclick="event.stopPropagation(); castSpellAsRitual('${(spell.name || "Unknown Spell").replace(/'/g, "\\'")}')">\u{1F4FF} Ritual</button>`;
         }
@@ -2662,31 +2666,106 @@ This will disconnect the character from this room. You can sync a different char
       await rollDamageOnly(actionName, damageFormula);
     }
   };
+  window.promptCastSpell = async function(spellName, baseLevel) {
+    if (!currentCharacter || !currentCharacter.spellSlots)
+      return;
+    const availableSlots = [];
+    for (let level = baseLevel; level <= 9; level++) {
+      const slotKey = `level${level}SpellSlots`;
+      const current = currentCharacter.spellSlots[slotKey] || 0;
+      if (current > 0) {
+        availableSlots.push({
+          level,
+          remaining: current
+        });
+      }
+    }
+    if (availableSlots.length === 0) {
+      if (isOwlbearReady) {
+        OBR.notification.show(`No spell slots available to cast ${spellName}!`, "ERROR");
+      }
+      return;
+    }
+    if (availableSlots.length === 1) {
+      await castSpell(spellName, availableSlots[0].level);
+      return;
+    }
+    const optionsText = availableSlots.map((slot, i) => `${i + 1}. Level ${slot.level} (${slot.remaining} slots remaining)`).join("\n");
+    const promptText = `Cast ${spellName} at which level?
+
+${optionsText}
+
+Enter 1-${availableSlots.length}:`;
+    const choice = window.prompt(promptText);
+    if (choice === null) {
+      return;
+    }
+    const choiceNum = parseInt(choice);
+    if (isNaN(choiceNum) || choiceNum < 1 || choiceNum > availableSlots.length) {
+      if (isOwlbearReady) {
+        OBR.notification.show("Invalid choice", "ERROR");
+      }
+      return;
+    }
+    const selectedSlot = availableSlots[choiceNum - 1];
+    await castSpell(spellName, selectedSlot.level);
+  };
   window.castSpell = async function(spellName, level) {
     if (!currentCharacter)
       return;
+    const spell = currentCharacter.spells?.find((s) => s.name === spellName);
+    const spellBaseLevel = spell ? parseInt(spell.level) || 0 : level;
+    const isUpcast = level > spellBaseLevel;
+    let slotKey = null;
     if (level > 0) {
       if (!currentCharacter.spellSlots) {
         console.warn("No spell slots available on character");
         return;
       }
-      const slotKey2 = `level${level}SpellSlots`;
-      const current = currentCharacter.spellSlots[slotKey2] || 0;
+      slotKey = `level${level}SpellSlots`;
+      const current = currentCharacter.spellSlots[slotKey] || 0;
       if (current === 0) {
         if (isOwlbearReady) {
           OBR.notification.show(`No Level ${level} spell slots remaining!`, "ERROR");
         }
         return;
       }
-      currentCharacter.spellSlots[slotKey2] = current - 1;
+      currentCharacter.spellSlots[slotKey] = current - 1;
       populateStatsTab(currentCharacter);
     }
     const levelText = level === 0 ? "Cantrip" : `Level ${level} Spell`;
     const message = `\u2728 Casts <strong>${spellName}</strong> (${levelText})`;
-    let details = `<strong>${spellName}</strong><br>${levelText}`;
+    let details = `<strong>${spellName}</strong><br><strong>Level:</strong> ${levelText}`;
+    if (isUpcast && spellBaseLevel > 0) {
+      details += ` (Upcast from Level ${spellBaseLevel})`;
+    }
+    if (spell) {
+      if (spell.castingTime)
+        details += `<br><strong>Casting Time:</strong> ${spell.castingTime}`;
+      if (spell.range)
+        details += `<br><strong>Range:</strong> ${spell.range}`;
+      if (spell.components)
+        details += `<br><strong>Components:</strong> ${spell.components}`;
+      if (spell.duration)
+        details += `<br><strong>Duration:</strong> ${spell.duration}`;
+      if (spell.concentration)
+        details += `<br><strong>Concentration:</strong> Yes`;
+      if (spell.ritual)
+        details += `<br><strong>Ritual:</strong> Yes`;
+      if (spell.attackRoll)
+        details += `<br><strong>Attack:</strong> ${spell.attackRoll}`;
+      if (spell.damage)
+        details += `<br><strong>Damage:</strong> ${spell.damage}`;
+      if (spell.healing)
+        details += `<br><strong>Healing:</strong> ${spell.healing}`;
+      if (spell.summary)
+        details += `<br><br>${spell.summary}`;
+      if (spell.description)
+        details += `<br><br>${spell.description}`;
+    }
     if (level > 0 && slotKey) {
       const remaining = currentCharacter.spellSlots[slotKey] || 0;
-      details += `<br>Spell Slot Used: Level ${level}<br>Remaining Slots: ${remaining}`;
+      details += `<br><br><strong>Spell Slot Used:</strong> Level ${level}<br><strong>Remaining Slots:</strong> ${remaining}`;
     }
     if (isOwlbearReady) {
       OBR.notification.show(`${currentCharacter?.name || "Character"} casts ${spellName}`, "INFO");
@@ -2697,8 +2776,35 @@ This will disconnect the character from this room. You can sync a different char
   window.castSpellAsRitual = async function(spellName) {
     if (!currentCharacter)
       return;
+    const spell = currentCharacter.spells?.find((s) => s.name === spellName);
     const message = `\u{1F4FF} Casts <strong>${spellName}</strong> as a ritual`;
-    const details = `<strong>${spellName}</strong><br>Cast as Ritual (no spell slot consumed)`;
+    let details = `<strong>${spellName}</strong><br><strong>Cast as Ritual</strong> (no spell slot consumed)`;
+    if (spell) {
+      const spellLevel = parseInt(spell.level) || 0;
+      const levelText = spellLevel === 0 ? "Cantrip" : `Level ${spellLevel} Spell`;
+      details += `<br><strong>Level:</strong> ${levelText}`;
+      if (spell.castingTime) {
+        details += `<br><strong>Casting Time:</strong> ${spell.castingTime} + 10 minutes (ritual)`;
+      }
+      if (spell.range)
+        details += `<br><strong>Range:</strong> ${spell.range}`;
+      if (spell.components)
+        details += `<br><strong>Components:</strong> ${spell.components}`;
+      if (spell.duration)
+        details += `<br><strong>Duration:</strong> ${spell.duration}`;
+      if (spell.concentration)
+        details += `<br><strong>Concentration:</strong> Yes`;
+      if (spell.attackRoll)
+        details += `<br><strong>Attack:</strong> ${spell.attackRoll}`;
+      if (spell.damage)
+        details += `<br><strong>Damage:</strong> ${spell.damage}`;
+      if (spell.healing)
+        details += `<br><strong>Healing:</strong> ${spell.healing}`;
+      if (spell.summary)
+        details += `<br><br>${spell.summary}`;
+      if (spell.description)
+        details += `<br><br>${spell.description}`;
+    }
     if (isOwlbearReady) {
       OBR.notification.show(`${currentCharacter?.name || "Character"} casts ${spellName} as a ritual`, "INFO");
     }
@@ -2763,9 +2869,9 @@ Enter HP adjustment (negative for damage, positive for healing):`);
   window.adjustSpellSlot = function(level, isPactMagic = false) {
     if (!currentCharacter || !currentCharacter.spellSlots)
       return;
-    const slotKey2 = isPactMagic ? "pactMagicSlots" : `level${level}SpellSlots`;
+    const slotKey = isPactMagic ? "pactMagicSlots" : `level${level}SpellSlots`;
     const maxKey = isPactMagic ? "pactMagicSlotsMax" : `level${level}SpellSlotsMax`;
-    const current = currentCharacter.spellSlots[slotKey2] || 0;
+    const current = currentCharacter.spellSlots[slotKey] || 0;
     const max = currentCharacter.spellSlots[maxKey] || 0;
     const slotName = isPactMagic ? `Pact Magic` : `Level ${level} Spell Slot`;
     const adjustment = prompt(`${slotName}: ${current}/${max}
@@ -2777,7 +2883,7 @@ Enter adjustment (negative to use, positive to restore):`);
     if (isNaN(amount))
       return;
     const newCount = Math.max(0, Math.min(max, current + amount));
-    currentCharacter.spellSlots[slotKey2] = newCount;
+    currentCharacter.spellSlots[slotKey] = newCount;
     populateStatsTab(currentCharacter);
     if (isOwlbearReady) {
       const message = amount > 0 ? `Restored ${amount} ${slotName}` : `Used ${Math.abs(amount)} ${slotName}`;
@@ -2823,8 +2929,24 @@ Enter adjustment (negative to use, positive to restore):`);
         return;
       }
     }
+    const feature = currentCharacter.features?.find((f) => f.name === featureName);
     const message = `\u2728 Uses <strong>${featureName}</strong>${resourceName ? ` (${resourceName})` : ""}`;
-    await addChatMessage(message, "action", currentCharacter.name);
+    let details = `<strong>${featureName}</strong>`;
+    if (feature) {
+      if (resourceName) {
+        const resource = currentCharacter.resources?.find((r) => r.name === resourceName);
+        if (resource) {
+          details += `<br><strong>Resource:</strong> ${resourceName} (${resource.current}/${resource.max} remaining)`;
+        }
+      }
+      if (feature.summary)
+        details += `<br><br>${feature.summary}`;
+      if (feature.description)
+        details += `<br><br>${feature.description}`;
+      if (feature.reset)
+        details += `<br><br><strong>Resets:</strong> ${feature.reset}`;
+    }
+    await addChatMessage(message, "action", currentCharacter.name, details);
     if (isOwlbearReady) {
       OBR.notification.show(`${currentCharacter.name} uses ${featureName}`, "INFO");
     }
@@ -2850,7 +2972,17 @@ Enter adjustment (negative to use, positive to restore):`);
     feature.uses.value -= 1;
     populateFeaturesTab(currentCharacter);
     const message = `\u2728 Uses <strong>${featureName}</strong> (${feature.uses.value}/${feature.uses.max || feature.uses.value + 1} remaining)`;
-    await addChatMessage(message, "action", currentCharacter.name);
+    let details = `<strong>${featureName}</strong>`;
+    if (feature.uses) {
+      details += `<br><strong>Uses Remaining:</strong> ${feature.uses.value}/${feature.uses.max || feature.uses.value + 1}`;
+      if (feature.reset)
+        details += `<br><strong>Resets:</strong> ${feature.reset}`;
+    }
+    if (feature.summary)
+      details += `<br><br>${feature.summary}`;
+    if (feature.description)
+      details += `<br><br>${feature.description}`;
+    await addChatMessage(message, "action", currentCharacter.name, details);
     if (isOwlbearReady) {
       OBR.notification.show(`${currentCharacter.name} uses ${featureName}`, "INFO");
     }
@@ -2876,7 +3008,23 @@ Enter adjustment (negative to use, positive to restore):`);
     action.uses.value -= 1;
     populateActionsTab(currentCharacter);
     const message = `\u2728 Uses <strong>${actionName}</strong> (${action.uses.value}/${action.uses.max || action.uses.value + 1} remaining)`;
-    await addChatMessage(message, "action", currentCharacter.name);
+    let details = `<strong>${actionName}</strong><br><strong>Type:</strong> ${action.actionType || "Action"}`;
+    if (action.uses) {
+      details += `<br><strong>Uses Remaining:</strong> ${action.uses.value}/${action.uses.max || action.uses.value + 1}`;
+      if (action.reset)
+        details += `<br><strong>Resets:</strong> ${action.reset}`;
+    }
+    if (action.attackRoll)
+      details += `<br><strong>Attack:</strong> ${action.attackRoll}`;
+    if (action.damage)
+      details += `<br><strong>Damage:</strong> ${action.damage}`;
+    if (action.damageType)
+      details += ` (${action.damageType})`;
+    if (action.summary)
+      details += `<br><br>${action.summary}`;
+    if (action.description)
+      details += `<br><br>${action.description}`;
+    await addChatMessage(message, "action", currentCharacter.name, details);
     if (isOwlbearReady) {
       OBR.notification.show(`${currentCharacter.name} uses ${actionName}`, "INFO");
     }
