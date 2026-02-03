@@ -3,7 +3,10 @@
  * A custom ActorSheet that provides the FoundCloud UI for D&D 5e characters
  */
 
-export class FoundCloudSheet extends dnd5e.applications.actor.ActorSheet5eCharacter {
+// Support both old (v5.x) and new (v3.x+) D&D 5e system versions
+const BaseSheet = dnd5e.applications?.actor?.ActorSheet5eCharacter || game.dnd5e?.applications?.actor?.ActorSheet5eCharacter || ActorSheet;
+
+export class FoundCloudSheet extends BaseSheet {
   constructor(...args) {
     super(...args);
 
