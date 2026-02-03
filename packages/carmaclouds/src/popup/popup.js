@@ -792,6 +792,59 @@ async function init() {
     });
   });
 
+  // Password toggle functionality
+  const passwordToggle = document.getElementById('supabase-password-toggle');
+  const passwordField = document.getElementById('supabase-password');
+
+  if (passwordToggle && passwordField) {
+    const eyeIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+    const eyeSlashIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
+
+    passwordToggle.addEventListener('click', () => {
+      if (passwordField.type === 'password') {
+        passwordField.type = 'text';
+        passwordToggle.innerHTML = eyeSlashIcon;
+        passwordToggle.setAttribute('aria-label', 'Hide password');
+      } else {
+        passwordField.type = 'password';
+        passwordToggle.innerHTML = eyeIcon;
+        passwordToggle.setAttribute('aria-label', 'Show password');
+      }
+    });
+  }
+
+  // Supabase auth error formatting
+  function formatAuthError(error) {
+    const message = error?.message || '';
+
+    if (message.includes('Invalid login credentials')) {
+      return 'Incorrect email or password. Please try again.';
+    }
+    if (message.includes('Email not confirmed')) {
+      return 'Please check your email and click the confirmation link before signing in.';
+    }
+    if (message.includes('User already registered')) {
+      return 'An account with this email already exists. Try signing in instead.';
+    }
+    if (message.includes('Password should be at least 6 characters')) {
+      return 'Password must be at least 6 characters long.';
+    }
+    if (message.includes('invalid format') || message.includes('Unable to validate email')) {
+      return 'Please enter a valid email address.';
+    }
+    if (message.includes('rate limit') || message.includes('Email rate limit exceeded')) {
+      return 'Too many attempts. Please wait a few minutes and try again.';
+    }
+    if (message.includes('Signup requires email')) {
+      return 'Please enter your email address.';
+    }
+    if (message.includes('network') || message.includes('fetch')) {
+      return 'Network error. Please check your connection and try again.';
+    }
+
+    return 'Authentication failed. Please try again.';
+  }
+
   // Supabase auth handlers
   const supabase = window.supabaseClient;
   if (supabase) {
@@ -807,30 +860,64 @@ async function init() {
     // Sign in form
     document.getElementById('supabase-auth-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const email = document.getElementById('supabase-email').value;
+      const email = document.getElementById('supabase-email').value.trim();
       const password = document.getElementById('supabase-password').value;
       const errorDiv = document.getElementById('supabase-auth-error');
+      const signInBtn = document.getElementById('supabase-signin-btn');
+
+      // Disable button and show loading state
+      if (signInBtn) {
+        signInBtn.disabled = true;
+        signInBtn.textContent = 'Signing in...';
+      }
 
       try {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         errorDiv.classList.add('hidden');
       } catch (error) {
-        errorDiv.textContent = error.message;
+        errorDiv.textContent = formatAuthError(error);
         errorDiv.classList.remove('hidden');
+      } finally {
+        // Re-enable button
+        if (signInBtn) {
+          signInBtn.disabled = false;
+          signInBtn.textContent = 'Sign In';
+        }
       }
     });
 
     // Sign up button
     document.getElementById('supabase-signup-btn').addEventListener('click', async () => {
-      const email = document.getElementById('supabase-email').value;
+      const email = document.getElementById('supabase-email').value.trim();
       const password = document.getElementById('supabase-password').value;
       const errorDiv = document.getElementById('supabase-auth-error');
+      const signUpBtn = document.getElementById('supabase-signup-btn');
 
       if (!email || !password) {
         errorDiv.textContent = 'Please enter email and password';
         errorDiv.classList.remove('hidden');
         return;
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        errorDiv.textContent = 'Please enter a valid email address';
+        errorDiv.classList.remove('hidden');
+        return;
+      }
+
+      if (password.length < 6) {
+        errorDiv.textContent = 'Password must be at least 6 characters long';
+        errorDiv.classList.remove('hidden');
+        return;
+      }
+
+      // Disable button and show loading state
+      if (signUpBtn) {
+        signUpBtn.disabled = true;
+        signUpBtn.textContent = 'Creating account...';
       }
 
       try {
@@ -839,8 +926,14 @@ async function init() {
         errorDiv.classList.add('hidden');
         alert('Account created! Please check your email to verify your account.');
       } catch (error) {
-        errorDiv.textContent = error.message;
+        errorDiv.textContent = formatAuthError(error);
         errorDiv.classList.remove('hidden');
+      } finally {
+        // Re-enable button
+        if (signUpBtn) {
+          signUpBtn.disabled = false;
+          signUpBtn.textContent = 'Sign Up';
+        }
       }
     });
 

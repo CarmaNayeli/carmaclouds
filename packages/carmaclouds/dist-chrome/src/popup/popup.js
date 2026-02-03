@@ -140,27 +140,56 @@
       if (!diceCloudUserId || !supabaseUserId) {
         if (loginPrompt) {
           loginPrompt.classList.remove("hidden");
+          const titleEl = loginPrompt.querySelector("h3");
           const promptText = loginPrompt.querySelector("p");
-          if (promptText) {
-            if (!diceCloudUserId && !supabaseUserId) {
-              promptText.textContent = "Please login to both DiceCloud and your Account to sync characters.";
-            } else if (!diceCloudUserId) {
+          const openAuthBtn = loginPrompt.querySelector("#openAuthModalBtn");
+          if (!diceCloudUserId) {
+            if (titleEl)
+              titleEl.textContent = "Login Required";
+            if (promptText)
               promptText.textContent = "Please login to DiceCloud to sync your characters.";
-            } else {
-              promptText.textContent = "Please login to your Account (Account tab) for cross-device sync.";
+            if (openAuthBtn) {
+              openAuthBtn.textContent = "\u{1F510} Login to DiceCloud";
+              openAuthBtn.addEventListener("click", () => {
+                const authButton = document.querySelector("#dicecloud-auth-button");
+                if (authButton)
+                  authButton.click();
+              });
+            }
+          } else {
+            if (titleEl)
+              titleEl.textContent = "\u26A0\uFE0F Heads Up!";
+            if (promptText) {
+              promptText.innerHTML = "To auto-sync characters, you need a database username and password. <strong>It is NOT your DiceCloud login.</strong> Please register or sign in below.";
+            }
+            if (openAuthBtn) {
+              openAuthBtn.textContent = "\u{1F464} Go to Account Tab";
+              openAuthBtn.addEventListener("click", () => {
+                const authButton = document.querySelector("#dicecloud-auth-button");
+                if (authButton)
+                  authButton.click();
+                setTimeout(() => {
+                  const dicecloudTab = document.querySelector('[data-auth-tab="dicecloud"]');
+                  const dicecloudContent = document.querySelector("#dicecloud-auth-content");
+                  if (dicecloudTab)
+                    dicecloudTab.classList.remove("active");
+                  if (dicecloudContent)
+                    dicecloudContent.classList.remove("active");
+                  const supabaseTab = document.querySelector('[data-auth-tab="supabase"]');
+                  const supabaseContent = document.querySelector("#supabase-auth-content");
+                  if (supabaseTab)
+                    supabaseTab.classList.add("active");
+                  if (supabaseContent) {
+                    supabaseContent.classList.add("active");
+                    supabaseContent.style.display = "block";
+                  }
+                }, 100);
+              });
             }
           }
         }
         if (syncBox)
           syncBox.classList.add("hidden");
-        const openAuthBtn = wrapper.querySelector("#openAuthModalBtn");
-        if (openAuthBtn) {
-          openAuthBtn.addEventListener("click", () => {
-            const authButton = document.querySelector("#dicecloud-auth-button");
-            if (authButton)
-              authButton.click();
-          });
-        }
       } else if (characters.length > 0 && characters[0]?.raw) {
         const character2 = characters[0];
         if (loginPrompt)
@@ -274,6 +303,12 @@
               }, 2e3);
             }
           }
+        });
+      }
+      if (supabase) {
+        supabase.auth.onAuthStateChange((event, session) => {
+          console.log("\u{1F510} OwlCloud adapter detected Supabase auth change:", event);
+          init2(containerEl);
         });
       }
       browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -1495,6 +1530,51 @@
         });
       });
     });
+    const passwordToggle = document.getElementById("supabase-password-toggle");
+    const passwordField = document.getElementById("supabase-password");
+    if (passwordToggle && passwordField) {
+      const eyeIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+      const eyeSlashIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
+      passwordToggle.addEventListener("click", () => {
+        if (passwordField.type === "password") {
+          passwordField.type = "text";
+          passwordToggle.innerHTML = eyeSlashIcon;
+          passwordToggle.setAttribute("aria-label", "Hide password");
+        } else {
+          passwordField.type = "password";
+          passwordToggle.innerHTML = eyeIcon;
+          passwordToggle.setAttribute("aria-label", "Show password");
+        }
+      });
+    }
+    function formatAuthError(error) {
+      const message = error?.message || "";
+      if (message.includes("Invalid login credentials")) {
+        return "Incorrect email or password. Please try again.";
+      }
+      if (message.includes("Email not confirmed")) {
+        return "Please check your email and click the confirmation link before signing in.";
+      }
+      if (message.includes("User already registered")) {
+        return "An account with this email already exists. Try signing in instead.";
+      }
+      if (message.includes("Password should be at least 6 characters")) {
+        return "Password must be at least 6 characters long.";
+      }
+      if (message.includes("invalid format") || message.includes("Unable to validate email")) {
+        return "Please enter a valid email address.";
+      }
+      if (message.includes("rate limit") || message.includes("Email rate limit exceeded")) {
+        return "Too many attempts. Please wait a few minutes and try again.";
+      }
+      if (message.includes("Signup requires email")) {
+        return "Please enter your email address.";
+      }
+      if (message.includes("network") || message.includes("fetch")) {
+        return "Network error. Please check your connection and try again.";
+      }
+      return "Authentication failed. Please try again.";
+    }
     const supabase = window.supabaseClient;
     if (supabase) {
       const { data: { session } } = await supabase.auth.getSession();
@@ -1504,27 +1584,53 @@
       });
       document.getElementById("supabase-auth-form").addEventListener("submit", async (e) => {
         e.preventDefault();
-        const email = document.getElementById("supabase-email").value;
+        const email = document.getElementById("supabase-email").value.trim();
         const password = document.getElementById("supabase-password").value;
         const errorDiv = document.getElementById("supabase-auth-error");
+        const signInBtn = document.getElementById("supabase-signin-btn");
+        if (signInBtn) {
+          signInBtn.disabled = true;
+          signInBtn.textContent = "Signing in...";
+        }
         try {
           const { data, error } = await supabase.auth.signInWithPassword({ email, password });
           if (error)
             throw error;
           errorDiv.classList.add("hidden");
         } catch (error) {
-          errorDiv.textContent = error.message;
+          errorDiv.textContent = formatAuthError(error);
           errorDiv.classList.remove("hidden");
+        } finally {
+          if (signInBtn) {
+            signInBtn.disabled = false;
+            signInBtn.textContent = "Sign In";
+          }
         }
       });
       document.getElementById("supabase-signup-btn").addEventListener("click", async () => {
-        const email = document.getElementById("supabase-email").value;
+        const email = document.getElementById("supabase-email").value.trim();
         const password = document.getElementById("supabase-password").value;
         const errorDiv = document.getElementById("supabase-auth-error");
+        const signUpBtn = document.getElementById("supabase-signup-btn");
         if (!email || !password) {
           errorDiv.textContent = "Please enter email and password";
           errorDiv.classList.remove("hidden");
           return;
+        }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          errorDiv.textContent = "Please enter a valid email address";
+          errorDiv.classList.remove("hidden");
+          return;
+        }
+        if (password.length < 6) {
+          errorDiv.textContent = "Password must be at least 6 characters long";
+          errorDiv.classList.remove("hidden");
+          return;
+        }
+        if (signUpBtn) {
+          signUpBtn.disabled = true;
+          signUpBtn.textContent = "Creating account...";
         }
         try {
           const { data, error } = await supabase.auth.signUp({ email, password });
@@ -1533,8 +1639,13 @@
           errorDiv.classList.add("hidden");
           alert("Account created! Please check your email to verify your account.");
         } catch (error) {
-          errorDiv.textContent = error.message;
+          errorDiv.textContent = formatAuthError(error);
           errorDiv.classList.remove("hidden");
+        } finally {
+          if (signUpBtn) {
+            signUpBtn.disabled = false;
+            signUpBtn.textContent = "Sign Up";
+          }
         }
       });
       document.getElementById("supabase-signout-btn").addEventListener("click", async () => {

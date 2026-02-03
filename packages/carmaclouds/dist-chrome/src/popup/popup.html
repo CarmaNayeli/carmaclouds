@@ -220,7 +220,15 @@
               </div>
               <div class="form-group">
                 <label for="supabase-password">Password</label>
-                <input type="password" id="supabase-password" required autocomplete="current-password" placeholder="Min 6 characters" minlength="6">
+                <div class="password-field-container">
+                  <input type="password" id="supabase-password" required autocomplete="current-password" placeholder="Min 6 characters" minlength="6">
+                  <button type="button" class="password-toggle-btn" id="supabase-password-toggle" aria-label="Show password">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                  </button>
+                </div>
               </div>
               <div style="display: flex; gap: 8px;">
                 <button type="submit" class="btn btn-primary" id="supabase-signin-btn" style="flex: 1;">

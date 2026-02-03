@@ -1342,6 +1342,17 @@ class SupabaseTokenManager {
 // Always export to window/self for browser extensions
 if (typeof window !== 'undefined') {
   window.SupabaseTokenManager = SupabaseTokenManager;
+
+  // Create global Supabase client for authentication (email/password login)
+  // This is separate from SupabaseTokenManager which handles DiceCloud tokens
+  if (typeof window.createSupabaseClient === 'function') {
+    try {
+      window.supabaseClient = window.createSupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      debug.log('✅ Created global Supabase auth client');
+    } catch (error) {
+      debug.error('❌ Failed to create Supabase client:', error);
+    }
+  }
 } else if (typeof self !== 'undefined') {
   // Service worker context
   self.SupabaseTokenManager = SupabaseTokenManager;

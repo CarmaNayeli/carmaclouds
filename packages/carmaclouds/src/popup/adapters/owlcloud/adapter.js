@@ -155,10 +155,22 @@ export async function init(containerEl) {
               const authButton = document.querySelector('#dicecloud-auth-button');
               if (authButton) authButton.click();
 
-              // Then switch to the Account (Supabase) tab
+              // Then switch to the Account (Supabase) tab manually
               setTimeout(() => {
+                // Deactivate DiceCloud tab
+                const dicecloudTab = document.querySelector('[data-auth-tab="dicecloud"]');
+                const dicecloudContent = document.querySelector('#dicecloud-auth-content');
+                if (dicecloudTab) dicecloudTab.classList.remove('active');
+                if (dicecloudContent) dicecloudContent.classList.remove('active');
+
+                // Activate Supabase tab
                 const supabaseTab = document.querySelector('[data-auth-tab="supabase"]');
-                if (supabaseTab) supabaseTab.click();
+                const supabaseContent = document.querySelector('#supabase-auth-content');
+                if (supabaseTab) supabaseTab.classList.add('active');
+                if (supabaseContent) {
+                  supabaseContent.classList.add('active');
+                  supabaseContent.style.display = 'block';
+                }
               }, 100);
             });
           }

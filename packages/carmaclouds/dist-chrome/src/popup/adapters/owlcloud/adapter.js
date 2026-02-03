@@ -92,27 +92,56 @@
       if (!diceCloudUserId || !supabaseUserId) {
         if (loginPrompt) {
           loginPrompt.classList.remove("hidden");
+          const titleEl = loginPrompt.querySelector("h3");
           const promptText = loginPrompt.querySelector("p");
-          if (promptText) {
-            if (!diceCloudUserId && !supabaseUserId) {
-              promptText.textContent = "Please login to both DiceCloud and your Account to sync characters.";
-            } else if (!diceCloudUserId) {
+          const openAuthBtn = loginPrompt.querySelector("#openAuthModalBtn");
+          if (!diceCloudUserId) {
+            if (titleEl)
+              titleEl.textContent = "Login Required";
+            if (promptText)
               promptText.textContent = "Please login to DiceCloud to sync your characters.";
-            } else {
-              promptText.textContent = "Please login to your Account (Account tab) for cross-device sync.";
+            if (openAuthBtn) {
+              openAuthBtn.textContent = "\u{1F510} Login to DiceCloud";
+              openAuthBtn.addEventListener("click", () => {
+                const authButton = document.querySelector("#dicecloud-auth-button");
+                if (authButton)
+                  authButton.click();
+              });
+            }
+          } else {
+            if (titleEl)
+              titleEl.textContent = "\u26A0\uFE0F Heads Up!";
+            if (promptText) {
+              promptText.innerHTML = "To auto-sync characters, you need a database username and password. <strong>It is NOT your DiceCloud login.</strong> Please register or sign in below.";
+            }
+            if (openAuthBtn) {
+              openAuthBtn.textContent = "\u{1F464} Go to Account Tab";
+              openAuthBtn.addEventListener("click", () => {
+                const authButton = document.querySelector("#dicecloud-auth-button");
+                if (authButton)
+                  authButton.click();
+                setTimeout(() => {
+                  const dicecloudTab = document.querySelector('[data-auth-tab="dicecloud"]');
+                  const dicecloudContent = document.querySelector("#dicecloud-auth-content");
+                  if (dicecloudTab)
+                    dicecloudTab.classList.remove("active");
+                  if (dicecloudContent)
+                    dicecloudContent.classList.remove("active");
+                  const supabaseTab = document.querySelector('[data-auth-tab="supabase"]');
+                  const supabaseContent = document.querySelector("#supabase-auth-content");
+                  if (supabaseTab)
+                    supabaseTab.classList.add("active");
+                  if (supabaseContent) {
+                    supabaseContent.classList.add("active");
+                    supabaseContent.style.display = "block";
+                  }
+                }, 100);
+              });
             }
           }
         }
         if (syncBox)
           syncBox.classList.add("hidden");
-        const openAuthBtn = wrapper.querySelector("#openAuthModalBtn");
-        if (openAuthBtn) {
-          openAuthBtn.addEventListener("click", () => {
-            const authButton = document.querySelector("#dicecloud-auth-button");
-            if (authButton)
-              authButton.click();
-          });
-        }
       } else if (characters.length > 0 && characters[0]?.raw) {
         const character2 = characters[0];
         if (loginPrompt)
@@ -226,6 +255,12 @@
               }, 2e3);
             }
           }
+        });
+      }
+      if (supabase) {
+        supabase.auth.onAuthStateChange((event, session) => {
+          console.log("\u{1F510} OwlCloud adapter detected Supabase auth change:", event);
+          init(containerEl);
         });
       }
       browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {

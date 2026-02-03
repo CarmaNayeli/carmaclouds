@@ -957,7 +957,6 @@
       <!-- Tab Navigation -->
       <div class="tabs-nav">
         <button class="tab-button active" data-tab="settings">⚙️ Settings</button>
-        <button class="tab-button" data-tab="account">🔐 Account</button>
         <button class="tab-button" data-tab="stats">📊 Stats & Resources</button>
         <button class="tab-button" data-tab="abilities">🎯 Abilities</button>
         <button class="tab-button" data-tab="features">🎭 Features</button>
@@ -970,6 +969,17 @@
 
       <!-- Settings Tab -->
       <div class="tab-content active" id="tab-settings">
+        <!-- Character Sync (Auth Section) -->
+        <div style="padding: 16px; background: var(--theme-bg-accent); border-radius: 8px; border: 1px solid var(--theme-border); margin-bottom: 16px;">
+          <div style="color: var(--theme-primary-light); font-weight: 600; margin-bottom: 12px; font-size: 14px;">
+            🔐 Character Sync
+          </div>
+          <div id="auth-section">
+            <!-- Auth UI will be populated here by updateAuthUI() -->
+          </div>
+        </div>
+
+        <!-- Character Cards -->
         <div id="character-section" style="display: none;">
           <div class="character-info" id="character-info">
             <!-- Character info will be populated here -->
@@ -1003,13 +1013,13 @@
           </button>
         </div>
 
-        <!-- Chat button - always visible -->
+        <!-- Chat button -->
         <button class="button button-secondary" id="open-chat-window-btn" style="margin-top: 12px;">
           💬 Open Chat Window
         </button>
 
         <!-- Theme selector -->
-        <div style="margin-top: 20px; padding: 16px; background: var(--theme-bg-accent); border-radius: 8px; border: 1px solid var(--theme-border);">
+        <div style="margin-top: 16px; padding: 16px; background: var(--theme-bg-accent); border-radius: 8px; border: 1px solid var(--theme-border);">
           <div class="section-header collapsible" id="theme-section-header" style="cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s ease;">
             <div style="color: var(--theme-primary-light); font-weight: 600; font-size: 14px;">
               🎨 Theme
@@ -1021,20 +1031,6 @@
               <!-- Theme options will be populated here -->
             </div>
           </div>
-        </div>
-
-        <div class="status" style="margin-top: 20px;">
-          <div class="status-title">Extension Status</div>
-          <div class="status-text" id="status-text">
-            Connecting to browser extension...
-          </div>
-        </div>
-      </div>
-
-      <!-- Account Tab -->
-      <div class="tab-content" id="tab-account">
-        <div id="auth-section">
-          <!-- Auth UI will be populated here by updateAuthUI() -->
         </div>
       </div>
 

@@ -1523,6 +1523,14 @@
       };
       if (typeof window !== "undefined") {
         window.SupabaseTokenManager = SupabaseTokenManager;
+        if (typeof window.createSupabaseClient === "function") {
+          try {
+            window.supabaseClient = window.createSupabaseClient(SUPABASE_URL2, SUPABASE_ANON_KEY2);
+            debug.log("\u2705 Created global Supabase auth client");
+          } catch (error) {
+            debug.error("\u274C Failed to create Supabase client:", error);
+          }
+        }
       } else if (typeof self !== "undefined") {
         self.SupabaseTokenManager = SupabaseTokenManager;
       }
