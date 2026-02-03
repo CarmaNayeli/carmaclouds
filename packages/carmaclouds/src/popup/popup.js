@@ -683,12 +683,14 @@ async function checkAndUpdateAuthToken() {
 
 // Update Supabase auth UI based on user state
 function updateSupabaseAuthUI(user) {
+  console.log('🔄 Updating Supabase auth UI, user:', user);
   const loginView = document.getElementById('supabase-login-view');
   const loggedInView = document.getElementById('supabase-logged-in-view');
   const emailDisplay = document.getElementById('supabase-user-email');
 
   if (user) {
     // User is signed in
+    console.log('✅ User signed in, showing logged in view');
     loginView.classList.add('hidden');
     loggedInView.classList.remove('hidden');
     if (emailDisplay) {
@@ -696,6 +698,7 @@ function updateSupabaseAuthUI(user) {
     }
   } else {
     // User is not signed in
+    console.log('❌ No user, showing login view');
     loginView.classList.remove('hidden');
     loggedInView.classList.add('hidden');
   }
@@ -896,11 +899,15 @@ async function init() {
       }
 
       try {
+        console.log('🔐 Attempting sign in...');
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        console.log('🔐 Sign in response:', { data, error });
         if (error) throw error;
         errorDiv.classList.add('hidden');
+        console.log('✅ Sign in successful, showing success message');
         showSuccessMessage('✅ Signed in successfully!');
       } catch (error) {
+        console.error('❌ Sign in error:', error);
         errorDiv.textContent = formatAuthError(error);
         errorDiv.classList.remove('hidden');
       } finally {

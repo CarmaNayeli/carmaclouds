@@ -1458,16 +1458,19 @@
     }
   }
   function updateSupabaseAuthUI(user) {
+    console.log("\u{1F504} Updating Supabase auth UI, user:", user);
     const loginView = document.getElementById("supabase-login-view");
     const loggedInView = document.getElementById("supabase-logged-in-view");
     const emailDisplay = document.getElementById("supabase-user-email");
     if (user) {
+      console.log("\u2705 User signed in, showing logged in view");
       loginView.classList.add("hidden");
       loggedInView.classList.remove("hidden");
       if (emailDisplay) {
         emailDisplay.textContent = user.email;
       }
     } else {
+      console.log("\u274C No user, showing login view");
       loginView.classList.remove("hidden");
       loggedInView.classList.add("hidden");
     }
@@ -1609,12 +1612,16 @@
           signInBtn.textContent = "Signing in...";
         }
         try {
+          console.log("\u{1F510} Attempting sign in...");
           const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+          console.log("\u{1F510} Sign in response:", { data, error });
           if (error)
             throw error;
           errorDiv.classList.add("hidden");
+          console.log("\u2705 Sign in successful, showing success message");
           showSuccessMessage("\u2705 Signed in successfully!");
         } catch (error) {
+          console.error("\u274C Sign in error:", error);
           errorDiv.textContent = formatAuthError(error);
           errorDiv.classList.remove("hidden");
         } finally {
