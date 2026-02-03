@@ -60,6 +60,17 @@ export async function init(containerEl) {
           dbCharacters.forEach(dbChar => {
             const existingIndex = characters.findIndex(c => c.id === dbChar.dicecloud_character_id);
 
+            // Parse raw_data if it's a JSON string
+            let rawData = dbChar.raw_data || {};
+            if (typeof rawData === 'string') {
+              try {
+                rawData = JSON.parse(rawData);
+              } catch (e) {
+                console.warn('Failed to parse raw_data for character:', dbChar.character_name, e);
+                rawData = {};
+              }
+            }
+
             // Convert database format to local storage format
             const characterEntry = {
               id: dbChar.dicecloud_character_id,
@@ -67,7 +78,7 @@ export async function init(containerEl) {
               level: dbChar.level || '?',
               class: dbChar.class_name || 'No Class',
               race: dbChar.race || 'Unknown',
-              raw: dbChar.raw_data || {},
+              raw: rawData,
               lastSynced: dbChar.updated_at || new Date().toISOString()
             };
 

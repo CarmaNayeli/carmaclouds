@@ -1144,13 +1144,22 @@ This cannot be undone.`)) {
             console.log("Found", dbCharacters.length, "characters from Supabase");
             dbCharacters.forEach((dbChar) => {
               const existingIndex = characters.findIndex((c) => c.id === dbChar.dicecloud_character_id);
+              let rawData = dbChar.raw_data || {};
+              if (typeof rawData === "string") {
+                try {
+                  rawData = JSON.parse(rawData);
+                } catch (e) {
+                  console.warn("Failed to parse raw_data for character:", dbChar.character_name, e);
+                  rawData = {};
+                }
+              }
               const characterEntry = {
                 id: dbChar.dicecloud_character_id,
                 name: dbChar.character_name || "Unknown",
                 level: dbChar.level || "?",
                 class: dbChar.class_name || "No Class",
                 race: dbChar.race || "Unknown",
-                raw: dbChar.raw_data || {},
+                raw: rawData,
                 lastSynced: dbChar.updated_at || (/* @__PURE__ */ new Date()).toISOString()
               };
               if (existingIndex >= 0) {
