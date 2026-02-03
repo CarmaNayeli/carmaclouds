@@ -307,7 +307,7 @@
       }
       if (supabase) {
         if (authSubscription) {
-          authSubscription.subscription.unsubscribe();
+          authSubscription.data.subscription.unsubscribe();
           console.log("\u{1F513} Unsubscribed from previous auth listener");
         }
         authSubscription = supabase.auth.onAuthStateChange((event, session) => {
@@ -1489,7 +1489,12 @@
     const lastTab = settings.lastActiveTab || "rollcloud";
     document.querySelectorAll(".tab-button").forEach((btn) => {
       btn.addEventListener("click", () => {
-        switchTab(btn.dataset.tab);
+        const tabName = btn.dataset.tab;
+        if (tabName) {
+          switchTab(tabName);
+        } else {
+          console.warn("Tab button missing data-tab attribute:", btn);
+        }
       });
     });
     document.getElementById("settings-button").addEventListener("click", openSettingsModal);

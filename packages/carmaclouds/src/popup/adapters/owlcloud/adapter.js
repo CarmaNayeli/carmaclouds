@@ -316,7 +316,7 @@ export async function init(containerEl) {
     if (supabase) {
       // Unsubscribe from previous listener to prevent infinite loops
       if (authSubscription) {
-        authSubscription.subscription.unsubscribe();
+        authSubscription.data.subscription.unsubscribe();
         console.log('🔓 Unsubscribed from previous auth listener');
       }
 

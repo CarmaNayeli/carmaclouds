@@ -715,7 +715,12 @@ async function init() {
   // Set up tab click handlers
   document.querySelectorAll('.tab-button').forEach(btn => {
     btn.addEventListener('click', () => {
-      switchTab(btn.dataset.tab);
+      const tabName = btn.dataset.tab;
+      if (tabName) {
+        switchTab(tabName);
+      } else {
+        console.warn('Tab button missing data-tab attribute:', btn);
+      }
     });
   });
 

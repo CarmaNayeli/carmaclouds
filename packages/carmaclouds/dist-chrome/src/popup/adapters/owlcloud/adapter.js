@@ -260,7 +260,7 @@
       }
       if (supabase) {
         if (authSubscription) {
-          authSubscription.subscription.unsubscribe();
+          authSubscription.data.subscription.unsubscribe();
           console.log("\u{1F513} Unsubscribed from previous auth listener");
         }
         authSubscription = supabase.auth.onAuthStateChange((event, session) => {
