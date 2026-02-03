@@ -63,34 +63,42 @@
           </p>
         </div>
 
-        <div id="status" class="status-section" style="background: transparent; padding: 12px; margin: 12px; text-align: left;">
-          <div class="status-indicator" style="display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 8px; background: rgba(22, 167, 90, 0.15); border: 1px solid rgba(22, 167, 90, 0.3);">
-            <span id="statusIcon" style="font-size: 20px;">⏳</span>
-            <span id="statusText" style="color: #16a75a; font-weight: 500;">No character data synced</span>
-          </div>
+        <!-- Login Prompt (shown when not logged in) -->
+        <div id="loginPrompt" class="hidden" style="margin: 12px; padding: 20px; background: #2a2a2a; border-radius: 8px; border: 1px solid #16a75a; text-align: center;">
+          <h3 style="color: #16a75a; margin-bottom: 12px;">Login Required</h3>
+          <p style="color: #b0b0b0; margin-bottom: 16px;">Please login to DiceCloud to sync your characters.</p>
+          <button id="openAuthModalBtn" class="btn btn-primary">
+            🔐 Login to DiceCloud
+          </button>
         </div>
 
-        <div id="characterInfo" class="character-info hidden" style="background: #2a2a2a; padding: 16px; margin: 12px; border-radius: 8px; border: 1px solid #16a75a;">
-          <h3 style="color: #16a75a; margin-top: 0;">Synced Character</h3>
-          <div class="info-row" style="display: flex; justify-content: space-between; margin: 8px 0;">
-            <span class="label" style="color: #888;">Name:</span>
-            <span id="charName">-</span>
+        <!-- Sync Box (current character from DiceCloud) -->
+        <div id="syncBox" class="hidden" style="margin: 12px; padding: 16px; background: #2a2a2a; border-radius: 8px; border: 2px solid #16a75a;">
+          <h3 style="color: #16a75a; margin: 0 0 12px 0;">Ready to Sync</h3>
+          <div id="currentCharacter" style="margin-bottom: 12px;">
+            <h4 style="color: #fff; margin: 0 0 8px 0; font-size: 16px;" id="syncCharName">-</h4>
+            <div style="display: flex; gap: 12px; font-size: 13px; color: #b0b0b0; margin-bottom: 12px;">
+              <span id="syncCharLevel">Lvl -</span>
+              <span>•</span>
+              <span id="syncCharClass">-</span>
+              <span>•</span>
+              <span id="syncCharRace">-</span>
+            </div>
           </div>
-          <div class="info-row" style="display: flex; justify-content: space-between; margin: 8px 0;">
-            <span class="label" style="color: #888;">Level:</span>
-            <span id="charLevel">-</span>
-          </div>
-          <div class="info-row" style="display: flex; justify-content: space-between; margin: 8px 0;">
-            <span class="label" style="color: #888;">Class:</span>
-            <span id="charClass">-</span>
-          </div>
-          <div class="info-row" style="display: flex; justify-content: space-between; margin: 8px 0;">
-            <span class="label" style="color: #888;">Race:</span>
-            <span id="charRace">-</span>
-          </div>
-          <button id="pushToVttBtn" class="btn btn-primary" style="margin-top: 12px; width: 100%;">
+          <button id="pushToVttBtn" class="btn btn-primary" style="width: 100%;">
             🎲 Push to Roll20
           </button>
+        </div>
+
+        <!-- Pushed Characters List -->
+        <div id="pushedCharactersSection" style="margin: 12px;">
+          <h3 style="color: #16a75a; margin-bottom: 12px;">Synced Characters</h3>
+          <div id="pushedCharactersList" style="display: grid; grid-template-columns: 1fr; gap: 12px;">
+            <!-- Character cards will be dynamically added here -->
+          </div>
+          <div id="noPushedCharacters" class="hidden" style="padding: 20px; text-align: center; color: #888; background: #1a1a1a; border-radius: 8px;">
+            No characters synced yet. Sync a character to get started.
+          </div>
         </div>
 
         <!-- Discord Integration -->
