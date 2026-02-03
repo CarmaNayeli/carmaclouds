@@ -297,6 +297,15 @@ export async function init(containerEl) {
       });
     }
 
+    // Listen for Supabase auth state changes to refresh the UI
+    if (supabase) {
+      supabase.auth.onAuthStateChange((event, session) => {
+        console.log('🔐 OwlCloud adapter detected Supabase auth change:', event);
+        // Reload the entire adapter when auth state changes
+        init(containerEl);
+      });
+    }
+
     // Listen for data sync notifications to refresh the UI
     browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message.action === 'dataSynced') {
