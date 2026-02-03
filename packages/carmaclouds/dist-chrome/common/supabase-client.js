@@ -1345,13 +1345,32 @@ if (typeof window !== 'undefined') {
 
   // Create global Supabase client for authentication (email/password login)
   // This is separate from SupabaseTokenManager which handles DiceCloud tokens
+  console.log('🔍 [Supabase Client] Checking for createSupabaseClient function...', typeof window.createSupabaseClient);
   if (typeof window.createSupabaseClient === 'function') {
     try {
       window.supabaseClient = window.createSupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      console.log('✅ [Supabase Client] Created global Supabase auth client');
       debug.log('✅ Created global Supabase auth client');
     } catch (error) {
+      console.error('❌ [Supabase Client] Failed to create Supabase client:', error);
       debug.error('❌ Failed to create Supabase client:', error);
     }
+  } else {
+    console.warn('⚠️ [Supabase Client] createSupabaseClient function not available yet - will retry on DOMContentLoaded');
+    // Retry after DOM loads (when module scripts have finished)
+    window.addEventListener('DOMContentLoaded', () => {
+      console.log('🔍 [Supabase Client] DOMContentLoaded - retrying createSupabaseClient check...', typeof window.createSupabaseClient);
+      if (typeof window.createSupabaseClient === 'function' && !window.supabaseClient) {
+        try {
+          window.supabaseClient = window.createSupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+          console.log('✅ [Supabase Client] Created global Supabase auth client (after DOMContentLoaded)');
+          debug.log('✅ Created global Supabase auth client (after DOMContentLoaded)');
+        } catch (error) {
+          console.error('❌ [Supabase Client] Failed to create Supabase client:', error);
+          debug.error('❌ Failed to create Supabase client:', error);
+        }
+      }
+    });
   }
 } else if (typeof self !== 'undefined') {
   // Service worker context

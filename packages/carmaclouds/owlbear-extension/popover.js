@@ -1228,11 +1228,17 @@ async function linkExistingCharacterToUser() {
  * Update auth UI based on current user state
  */
 function updateAuthUI() {
+  console.log('🔄 [Owlbear] Updating auth UI, currentUser:', currentUser);
   const authSection = document.getElementById('auth-section');
-  if (!authSection) return;
+  console.log('🔍 [Owlbear] auth-section element:', authSection);
+  if (!authSection) {
+    console.error('❌ [Owlbear] auth-section element not found!');
+    return;
+  }
 
   if (currentUser) {
     // User is signed in
+    console.log('✅ [Owlbear] User signed in, showing logged in view');
     authSection.innerHTML = `
       <div style="padding: 16px; background: var(--theme-background); border-radius: 8px; border: 1px solid var(--theme-border);">
         <div style="margin-bottom: 12px;">
@@ -1273,24 +1279,42 @@ function updateAuthUI() {
         <div style="margin-bottom: 12px; color: #c0c0c0; font-size: 12px; line-height: 1.4;">
           Create a free account to access your characters from any device. This is separate from your DiceCloud login.
         </div>
-        <div style="display: flex; flex-direction: column; gap: 8px;">
+        <form id="auth-form" onsubmit="event.preventDefault(); handleSignIn(); return false;" style="display: flex; flex-direction: column; gap: 8px;">
           <input
             type="email"
             id="auth-email"
             placeholder="Email"
+            required
+            autocomplete="email"
             style="padding: 8px 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--theme-border); border-radius: 6px; color: #e0e0e0; font-size: 14px;">
-          <input
-            type="password"
-            id="auth-password"
-            placeholder="Password (min 6 characters)"
-            style="padding: 8px 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--theme-border); border-radius: 6px; color: #e0e0e0; font-size: 14px;">
+          <div style="position: relative;">
+            <input
+              type="password"
+              id="auth-password"
+              placeholder="Password (min 6 characters)"
+              required
+              autocomplete="current-password"
+              style="padding: 8px 12px; padding-right: 40px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--theme-border); border-radius: 6px; color: #e0e0e0; font-size: 14px; width: 100%;">
+            <button
+              type="button"
+              onclick="togglePasswordVisibility('auth-password', 'toggle-password-btn')"
+              id="toggle-password-btn"
+              aria-label="Toggle password visibility"
+              style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: transparent; border: none; color: #888; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+          </div>
           <div style="display: flex; gap: 8px;">
             <button
-              onclick="handleSignIn()"
+              type="submit"
               style="flex: 1; padding: 8px; background: var(--theme-gradient); border: none; border-radius: 6px; color: white; font-weight: 600; cursor: pointer; transition: all 0.2s;">
               Sign In
             </button>
             <button
+              type="button"
               onclick="handleSignUp()"
               style="flex: 1; padding: 8px; background: var(--theme-background); border: 1px solid var(--theme-primary); border-radius: 6px; color: var(--theme-primary-light); font-weight: 600; cursor: pointer; transition: all 0.2s;">
               Sign Up
@@ -1300,19 +1324,105 @@ function updateAuthUI() {
             New? Click <strong>Sign Up</strong> to create an account
           </div>
           <div id="auth-error" style="color: #EF4444; font-size: 12px; margin-top: 4px; display: none;"></div>
-        </div>
+          <div id="auth-success" style="color: #10B981; font-size: 12px; margin-top: 4px; padding: 8px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 4px; display: none; transition: opacity 0.3s ease-out;"></div>
+        </form>
       </div>
     `;
   }
 }
 
 /**
+ * Format Supabase auth errors to be more user-friendly
+ */
+function formatAuthError(error) {
+  const message = error?.message || '';
+
+  if (message.includes('Invalid login credentials')) {
+    return 'Incorrect email or password. Please try again.';
+  }
+  if (message.includes('Email not confirmed')) {
+    return 'Please check your email and click the confirmation link before signing in.';
+  }
+  if (message.includes('User already registered')) {
+    return 'An account with this email already exists. Try signing in instead.';
+  }
+  if (message.includes('Password should be at least 6 characters')) {
+    return 'Password must be at least 6 characters long.';
+  }
+  if (message.includes('invalid format') || message.includes('Unable to validate email')) {
+    return 'Please enter a valid email address.';
+  }
+  if (message.includes('rate limit') || message.includes('Email rate limit exceeded')) {
+    return 'Too many attempts. Please wait a few minutes and try again.';
+  }
+  if (message.includes('Signup requires email')) {
+    return 'Please enter your email address.';
+  }
+  if (message.includes('network') || message.includes('fetch')) {
+    return 'Network error. Please check your connection and try again.';
+  }
+
+  // Fallback to generic message
+  return 'Authentication failed. Please try again.';
+}
+
+/**
+ * Show success message that fades out after 2 seconds
+ */
+function showAuthSuccess(message) {
+  const successDiv = document.getElementById('auth-success');
+  const errorDiv = document.getElementById('auth-error');
+
+  if (!successDiv) return;
+
+  // Hide error message
+  if (errorDiv) errorDiv.style.display = 'none';
+
+  // Show success message
+  successDiv.textContent = message;
+  successDiv.style.display = 'block';
+  successDiv.style.opacity = '1';
+
+  // Fade out after 2 seconds
+  setTimeout(() => {
+    successDiv.style.opacity = '0';
+    setTimeout(() => {
+      successDiv.style.display = 'none';
+    }, 300); // Wait for fade animation to complete
+  }, 2000);
+}
+
+/**
+ * Toggle password visibility
+ */
+window.togglePasswordVisibility = function(passwordFieldId, toggleButtonId) {
+  const passwordField = document.getElementById(passwordFieldId);
+  const toggleButton = document.getElementById(toggleButtonId);
+
+  if (!passwordField || !toggleButton) return;
+
+  const eyeIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+  const eyeSlashIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
+
+  if (passwordField.type === 'password') {
+    passwordField.type = 'text';
+    toggleButton.innerHTML = eyeSlashIcon;
+    toggleButton.setAttribute('aria-label', 'Hide password');
+  } else {
+    passwordField.type = 'password';
+    toggleButton.innerHTML = eyeIcon;
+    toggleButton.setAttribute('aria-label', 'Show password');
+  }
+};
+
+/**
  * Handle sign in button click
  */
 window.handleSignIn = async function() {
-  const email = document.getElementById('auth-email').value;
+  const email = document.getElementById('auth-email').value.trim();
   const password = document.getElementById('auth-password').value;
   const errorDiv = document.getElementById('auth-error');
+  const signInBtn = document.querySelector('#auth-form button[type="submit"]');
 
   if (!email || !password) {
     errorDiv.textContent = 'Please enter email and password';
@@ -1320,11 +1430,26 @@ window.handleSignIn = async function() {
     return;
   }
 
+  // Disable button and show loading state
+  if (signInBtn) {
+    signInBtn.disabled = true;
+    signInBtn.textContent = 'Signing in...';
+  }
+
   const result = await signIn(email, password);
 
+  // Re-enable button
+  if (signInBtn) {
+    signInBtn.disabled = false;
+    signInBtn.textContent = 'Sign In';
+  }
+
   if (!result.success) {
-    errorDiv.textContent = result.error;
+    errorDiv.textContent = formatAuthError(result);
     errorDiv.style.display = 'block';
+  } else {
+    errorDiv.style.display = 'none';
+    showAuthSuccess('✅ Signed in successfully!');
   }
 };
 
@@ -1332,9 +1457,13 @@ window.handleSignIn = async function() {
  * Handle sign up button click
  */
 window.handleSignUp = async function() {
-  const email = document.getElementById('auth-email').value;
+  const email = document.getElementById('auth-email').value.trim();
   const password = document.getElementById('auth-password').value;
   const errorDiv = document.getElementById('auth-error');
+  const signUpBtn = document.querySelector('button[onclick="handleSignUp()"]');
+
+  // Reset error styling
+  errorDiv.style.color = '#EF4444';
 
   if (!email || !password) {
     errorDiv.textContent = 'Please enter email and password';
@@ -1342,21 +1471,40 @@ window.handleSignUp = async function() {
     return;
   }
 
-  if (password.length < 6) {
-    errorDiv.textContent = 'Password must be at least 6 characters';
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    errorDiv.textContent = 'Please enter a valid email address';
     errorDiv.style.display = 'block';
     return;
   }
 
+  if (password.length < 6) {
+    errorDiv.textContent = 'Password must be at least 6 characters long';
+    errorDiv.style.display = 'block';
+    return;
+  }
+
+  // Disable button and show loading state
+  if (signUpBtn) {
+    signUpBtn.disabled = true;
+    signUpBtn.textContent = 'Creating account...';
+  }
+
   const result = await signUp(email, password);
 
+  // Re-enable button
+  if (signUpBtn) {
+    signUpBtn.disabled = false;
+    signUpBtn.textContent = 'Sign Up';
+  }
+
   if (!result.success) {
-    errorDiv.textContent = result.error;
+    errorDiv.textContent = formatAuthError(result);
     errorDiv.style.display = 'block';
   } else {
-    errorDiv.textContent = 'Check your email to confirm your account!';
-    errorDiv.style.color = '#10B981';
-    errorDiv.style.display = 'block';
+    errorDiv.style.display = 'none';
+    showAuthSuccess('✅ Account created successfully!');
   }
 };
 
