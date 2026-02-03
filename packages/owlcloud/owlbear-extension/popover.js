@@ -1876,7 +1876,28 @@ async function checkForActiveCharacter() {
       // Parse raw_dicecloud_data if available
       let characterData;
       if (character.raw_dicecloud_data) {
-        const rawData = character.raw_dicecloud_data;
+        let rawData = character.raw_dicecloud_data;
+
+        // Check if raw_dicecloud_data is a string that needs parsing
+        if (typeof rawData === 'string') {
+          console.log('🔄 raw_dicecloud_data is a string, parsing JSON...');
+          try {
+            rawData = JSON.parse(rawData);
+            console.log('✅ Successfully parsed JSON string');
+          } catch (e) {
+            console.error('❌ Failed to parse raw_dicecloud_data JSON:', e);
+          }
+        }
+
+        console.log('🔍 Raw data structure check:', {
+          hasCreatures: !!rawData.creatures,
+          hasCreatureVariables: !!rawData.creatureVariables,
+          hasCreatureProperties: !!rawData.creatureProperties,
+          hasCreature: !!rawData.creature,
+          hasVariables: !!rawData.variables,
+          hasProperties: !!rawData.properties,
+          topLevelKeys: Object.keys(rawData)
+        });
 
         // Check if this is the raw API format (creatures array) or extracted format (creature object)
         if (rawData.creatures && rawData.creatureVariables && rawData.creatureProperties) {

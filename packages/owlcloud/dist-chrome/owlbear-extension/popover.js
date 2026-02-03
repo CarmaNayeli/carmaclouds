@@ -1387,7 +1387,25 @@ This will disconnect the character from this room. You can sync a different char
         console.log("  - Has character_name:", !!character.character_name);
         let characterData;
         if (character.raw_dicecloud_data) {
-          const rawData = character.raw_dicecloud_data;
+          let rawData = character.raw_dicecloud_data;
+          if (typeof rawData === "string") {
+            console.log("\u{1F504} raw_dicecloud_data is a string, parsing JSON...");
+            try {
+              rawData = JSON.parse(rawData);
+              console.log("\u2705 Successfully parsed JSON string");
+            } catch (e) {
+              console.error("\u274C Failed to parse raw_dicecloud_data JSON:", e);
+            }
+          }
+          console.log("\u{1F50D} Raw data structure check:", {
+            hasCreatures: !!rawData.creatures,
+            hasCreatureVariables: !!rawData.creatureVariables,
+            hasCreatureProperties: !!rawData.creatureProperties,
+            hasCreature: !!rawData.creature,
+            hasVariables: !!rawData.variables,
+            hasProperties: !!rawData.properties,
+            topLevelKeys: Object.keys(rawData)
+          });
           if (rawData.creatures && rawData.creatureVariables && rawData.creatureProperties) {
             console.log("\u{1F504} Parsing raw API response...");
             try {
