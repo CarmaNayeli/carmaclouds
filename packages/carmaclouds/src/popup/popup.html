@@ -263,7 +263,11 @@
     </div>
   </div>
 
-  <!-- Load dependencies in order: browser-polyfill -> debug -> supabase-client -> popup.js -->
+  <!-- Load dependencies in order: Supabase library -> browser-polyfill -> debug -> supabase-client -> popup.js -->
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+    window.createSupabaseClient = createClient;
+  </script>
   <script src="../../common/browser-polyfill.js"></script>
   <script src="../../common/debug.js"></script>
   <script src="../../common/supabase-client.js"></script>
