@@ -151,9 +151,15 @@ export async function init(containerEl) {
           if (openAuthBtn) {
             openAuthBtn.textContent = '👤 Go to Account Tab';
             openAuthBtn.addEventListener('click', () => {
-              // Switch to the Account tab
-              const accountTab = document.querySelector('[data-tab="account"]');
-              if (accountTab) accountTab.click();
+              // Open the auth modal first
+              const authButton = document.querySelector('#dicecloud-auth-button');
+              if (authButton) authButton.click();
+
+              // Then switch to the Account (Supabase) tab
+              setTimeout(() => {
+                const supabaseTab = document.querySelector('[data-auth-tab="supabase"]');
+                if (supabaseTab) supabaseTab.click();
+              }, 100);
             });
           }
         }
