@@ -367,7 +367,18 @@ async function extractCharacterData() {
 
     // Parse the character data using comprehensive extraction
     const characterData = parseCharacterData(data, characterId);
+
+    // IMPORTANT: Preserve the raw API data for later use in VTT extensions
+    // This contains creature, variables, and properties needed for full character display
+    characterData.raw = {
+      creature: data.creatures?.[0] || {},
+      variables: data.creatureVariables?.[0] || {},
+      properties: data.creatureProperties || []
+    };
+
     console.log('CarmaClouds: Successfully extracted character data:', characterData);
+    console.log('CarmaClouds: Preserved raw API data with',
+      characterData.raw.properties.length, 'properties');
     return characterData;
     
   } catch (error) {
