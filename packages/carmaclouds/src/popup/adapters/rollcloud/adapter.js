@@ -5,6 +5,7 @@
  */
 
 import { parseForRollCloud, parseCharacterData } from '../../../content/dicecloud-extraction.js';
+import { parseRawCharacterData } from './raw-data-parser.js';
 
 // Detect browser API (Firefox uses 'browser', Chrome uses 'chrome')
 const browserAPI = (typeof browser !== 'undefined' && browser.runtime) ? browser : chrome;
@@ -445,10 +446,21 @@ async function handlePushToRoll20(token, activeCharacterId, wrapper, allCharacte
       properties: charData.creatureProperties || []
     };
 
-    // Parse using OwlCloud's parser for consistency
+    // Parse raw data into full character format for sheet-builder
+    const fullCharacterData = parseRawCharacterData(rawData, activeCharacterId);
+
+    // Also parse using OwlCloud's parser for preview/metadata
     const parsedChar = parseCharacterData(charData, activeCharacterId);
 
-    // Create updated character entry
+    // Store the FULL parsed character data via background script
+    // This ensures sheet-builder gets all the data it needs (hitPoints, actions, spells, etc.)
+    await browserAPI.runtime.sendMessage({
+      action: 'storeCharacterData',
+      data: fullCharacterData,
+      slotId: `slot-${allCharacters.length + 1}`
+    });
+
+    // Create lightweight entry for the character list UI
     const characterEntry = {
       id: activeCharacterId,
       name: parsedChar.name || 'Unknown',
@@ -459,24 +471,13 @@ async function handlePushToRoll20(token, activeCharacterId, wrapper, allCharacte
       lastSynced: new Date().toISOString()
     };
 
-    // Update in the merged characters list
+    // Update in the merged characters list for UI display
     const existingIndex = allCharacters.findIndex(c => c.id === activeCharacterId);
     if (existingIndex >= 0) {
       allCharacters[existingIndex] = characterEntry;
     } else {
       allCharacters.push(characterEntry);
     }
-
-    // Also update local storage
-    const existingChars = await browserAPI.storage.local.get('carmaclouds_characters');
-    const localCharacters = existingChars.carmaclouds_characters || [];
-    const localIndex = localCharacters.findIndex(c => c.id === activeCharacterId);
-    if (localIndex >= 0) {
-      localCharacters[localIndex] = characterEntry;
-    } else {
-      localCharacters.push(characterEntry);
-    }
-    await browserAPI.storage.local.set({ carmaclouds_characters: localCharacters });
 
     pushBtn.textContent = '✓ Synced!';
     pushBtn.style.background = 'linear-gradient(135deg, #28a745 0%, #1e7e34 100%)';
