@@ -2054,11 +2054,13 @@ function displayCharacterList() {
 
   let html = '';
   allCharacters.forEach((character) => {
-    const isActive = currentCharacter && character.id === currentCharacter.id;
-    // Try multiple possible name fields
+    // Get character names for comparison
     const characterName = character.name || character.character_name || character.creature?.name || 'Unknown Character';
+    const currentCharName = currentCharacter?.name || currentCharacter?.character_name;
+    const isActive = currentCharacter && characterName === currentCharName;
+
     html += `
-      <div class="character-list-item ${isActive ? 'active' : ''}" onclick="switchToCharacter('${character.id}')">
+      <div class="character-list-item ${isActive ? 'active' : ''}" onclick="switchToCharacter('${characterName.replace(/'/g, "\\'")}')">
         <div class="character-list-item-name">${characterName}</div>
         <div class="character-list-item-details">
           Level ${character.level || '?'} ${character.race || ''} ${character.class || ''}
@@ -2074,20 +2076,36 @@ function displayCharacterList() {
 /**
  * Switch to a different character
  */
-window.switchToCharacter = async function(characterId) {
+window.switchToCharacter = async function(characterName) {
   try {
-    // Find the character in the list
-    const character = allCharacters.find(c => c.id === characterId);
+    console.log('🔄 Attempting to switch to character:', characterName);
+    // Find the character in the list by name
+    const character = allCharacters.find(c =>
+      (c.name || c.character_name) === characterName
+    );
     if (!character) {
-      console.error('Character not found:', characterId);
+      console.error('❌ Character not found:', characterName);
+      console.log('Available characters:', allCharacters.map(c => ({
+        name: c.name || c.character_name
+      })));
       return;
     }
+    console.log('✅ Found character:', characterName);
+
+    // Normalize character object - edge function expects specific fields
+    const normalizedCharacter = {
+      ...character,
+      id: character.dicecloud_character_id || character.id,
+      name: character.name || character.character_name,
+      userId: character.user_id_dicecloud,
+      user_id_dicecloud: character.user_id_dicecloud
+    };
 
     // Update active character using unified characters edge function
     const playerId = await OBR.player.getId();
     const requestBody = {
       owlbearPlayerId: playerId,
-      character: character
+      character: normalizedCharacter
     };
 
     // Include supabase_user_id if authenticated for cross-device sync
