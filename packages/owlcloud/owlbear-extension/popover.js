@@ -528,10 +528,14 @@ const ThemeManager = {
  */
 function initializeThemeSelector() {
   const themeSelector = document.getElementById('theme-selector');
-  if (!themeSelector) return;
+  if (!themeSelector) {
+    console.error('❌ Theme selector element not found');
+    return;
+  }
 
   const themes = ThemeManager.getAvailableThemes();
   const currentTheme = ThemeManager.getCurrentTheme();
+  console.log('🎨 Initializing theme selector with', themes.length, 'themes');
 
   themes.forEach(theme => {
     const themeOption = document.createElement('div');
@@ -544,14 +548,17 @@ function initializeThemeSelector() {
     `;
 
     themeOption.addEventListener('click', () => {
+      console.log('🎨 Theme option clicked:', theme.key, theme.name);
+
       // Remove active class from all options
       document.querySelectorAll('.theme-option').forEach(opt => opt.classList.remove('active'));
-      
+
       // Add active class to clicked option
       themeOption.classList.add('active');
-      
+
       // Switch theme
-      ThemeManager.switchTheme(theme.key);
+      const success = ThemeManager.switchTheme(theme.key);
+      console.log('🎨 Theme switch', success ? 'successful' : 'failed');
     });
 
     themeSelector.appendChild(themeOption);
