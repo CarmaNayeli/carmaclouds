@@ -565,7 +565,17 @@
       const data = await response.json();
       console.log("CarmaClouds: Received API data");
       const characterData = parseCharacterData(data, characterId);
+      characterData.raw = {
+        creature: data.creatures?.[0] || {},
+        variables: data.creatureVariables?.[0] || {},
+        properties: data.creatureProperties || []
+      };
       console.log("CarmaClouds: Successfully extracted character data:", characterData);
+      console.log(
+        "CarmaClouds: Preserved raw API data with",
+        characterData.raw.properties.length,
+        "properties"
+      );
       return characterData;
     } catch (error) {
       console.error("CarmaClouds: Error extracting character data:", error);

@@ -926,12 +926,15 @@ async function init() {
 
     // Sign up button
     document.getElementById('supabase-signup-btn').addEventListener('click', async () => {
+      console.log('🔐 Sign up button clicked');
       const email = document.getElementById('supabase-email').value.trim();
       const password = document.getElementById('supabase-password').value;
       const errorDiv = document.getElementById('supabase-auth-error');
       const signUpBtn = document.getElementById('supabase-signup-btn');
+      console.log(`📧 Email: ${email}, Password length: ${password?.length}`);
 
       if (!email || !password) {
+        console.log('❌ Missing email or password');
         errorDiv.textContent = 'Please enter email and password';
         errorDiv.classList.remove('hidden');
         return;
@@ -940,12 +943,14 @@ async function init() {
       // Validate email format
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
+        console.log('❌ Invalid email format');
         errorDiv.textContent = 'Please enter a valid email address';
         errorDiv.classList.remove('hidden');
         return;
       }
 
       if (password.length < 6) {
+        console.log('❌ Password too short');
         errorDiv.textContent = 'Password must be at least 6 characters long';
         errorDiv.classList.remove('hidden');
         return;
@@ -958,11 +963,15 @@ async function init() {
       }
 
       try {
+        console.log('🔐 Attempting sign up...');
         const { data, error } = await supabase.auth.signUp({ email, password });
+        console.log('🔐 Sign up response:', { data, error });
         if (error) throw error;
         errorDiv.classList.add('hidden');
+        console.log('✅ Sign up successful, user:', data?.user);
         showSuccessMessage('✅ Account created successfully!');
       } catch (error) {
+        console.error('❌ Sign up error:', error);
         errorDiv.textContent = formatAuthError(error);
         errorDiv.classList.remove('hidden');
       } finally {

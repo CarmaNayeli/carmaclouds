@@ -1693,22 +1693,27 @@ This cannot be undone.`)) {
         }
       });
       document.getElementById("supabase-signup-btn").addEventListener("click", async () => {
+        console.log("\u{1F510} Sign up button clicked");
         const email = document.getElementById("supabase-email").value.trim();
         const password = document.getElementById("supabase-password").value;
         const errorDiv = document.getElementById("supabase-auth-error");
         const signUpBtn = document.getElementById("supabase-signup-btn");
+        console.log(`\u{1F4E7} Email: ${email}, Password length: ${password?.length}`);
         if (!email || !password) {
+          console.log("\u274C Missing email or password");
           errorDiv.textContent = "Please enter email and password";
           errorDiv.classList.remove("hidden");
           return;
         }
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
+          console.log("\u274C Invalid email format");
           errorDiv.textContent = "Please enter a valid email address";
           errorDiv.classList.remove("hidden");
           return;
         }
         if (password.length < 6) {
+          console.log("\u274C Password too short");
           errorDiv.textContent = "Password must be at least 6 characters long";
           errorDiv.classList.remove("hidden");
           return;
@@ -1718,12 +1723,16 @@ This cannot be undone.`)) {
           signUpBtn.textContent = "Creating account...";
         }
         try {
+          console.log("\u{1F510} Attempting sign up...");
           const { data, error } = await supabase.auth.signUp({ email, password });
+          console.log("\u{1F510} Sign up response:", { data, error });
           if (error)
             throw error;
           errorDiv.classList.add("hidden");
+          console.log("\u2705 Sign up successful, user:", data?.user);
           showSuccessMessage("\u2705 Account created successfully!");
         } catch (error) {
+          console.error("\u274C Sign up error:", error);
           errorDiv.textContent = formatAuthError(error);
           errorDiv.classList.remove("hidden");
         } finally {

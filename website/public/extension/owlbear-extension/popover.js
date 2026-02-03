@@ -17,6 +17,46 @@
   };
   var supabase = null;
   var currentUser = null;
+  function evaluateDiceCloudFormula(formula2, character) {
+    if (!formula2 || typeof formula2 !== "string")
+      return formula2;
+    if (/\d+d\d+/i.test(formula2))
+      return formula2;
+    if (!/[a-zA-Z]/.test(formula2))
+      return formula2;
+    try {
+      let variables = null;
+      if (character.raw_dicecloud_data) {
+        const rawData = typeof character.raw_dicecloud_data === "string" ? JSON.parse(character.raw_dicecloud_data) : character.raw_dicecloud_data;
+        variables = rawData.variables || rawData.creatureVariables?.[0];
+      }
+      if (!variables)
+        return formula2;
+      let evaluated = formula2;
+      for (const [key, value] of Object.entries(variables)) {
+        if (typeof value === "number" || typeof value === "string" && /^\d+d\d+/.test(value)) {
+          const regex = new RegExp("\\b" + key + "\\b", "g");
+          evaluated = evaluated.replace(regex, value);
+        }
+      }
+      if (/\d+d\d+/i.test(evaluated) && !/[a-zA-Z]/.test(evaluated.replace(/d/gi, ""))) {
+        return evaluated;
+      }
+      if (!/[a-zA-Z]/.test(evaluated)) {
+        try {
+          const result = new Function("return " + evaluated)();
+          if (typeof result === "number" && !isNaN(result)) {
+            return String(result);
+          }
+        } catch (e) {
+        }
+      }
+      return formula2;
+    } catch (error) {
+      console.warn("Failed to evaluate formula:", formula2, error);
+      return formula2;
+    }
+  }
   var statusText = document.getElementById("status-text");
   var characterSection = document.getElementById("character-section");
   var noCharacterSection = document.getElementById("no-character-section");
@@ -475,6 +515,7 @@
     });
     initializeCollapsibleThemeSection();
     initializeCollapsibleAuthSection();
+    initializeHPModal();
   }
   function initializeCollapsibleThemeSection() {
     const themeHeader = document.getElementById("theme-section-header");
@@ -2145,7 +2186,7 @@ This will disconnect the character from this room. You can sync a different char
       deduplicatedActions.forEach((action, index) => {
         const actionId = `action-${index}`;
         const actionType = action.actionType || "Action";
-        const damage = action.damage || "";
+        const damage = evaluateDiceCloudFormula(action.damage || "", character);
         const attackRoll = action.attackRoll || "";
         const uses = action.uses;
         console.log(`[OwlCloud] Action "${action.name}" uses:`, uses);
@@ -2305,8 +2346,8 @@ This will disconnect the character from this room. You can sync a different char
         const duration = spell.duration || "";
         const spellLevel = parseInt(spell.level) || 0;
         const attackRoll = spell.attackRoll || spell.attack || "";
-        const damage = spell.damage || "";
-        const healing = spell.healing || "";
+        const damage = evaluateDiceCloudFormula(spell.damage || "", character);
+        const healing = evaluateDiceCloudFormula(spell.healing || "", character);
         let attackBonus = 0;
         if (attackRoll) {
           const bonusMatch = attackRoll.match(/[+-](\d+)/);
@@ -3159,38 +3200,118 @@ This will disconnect the character from this room. You can sync a different char
     }
     populateSpellsTab(currentCharacter);
   };
-  window.adjustHP = async function() {
+  window.adjustHP = function() {
     if (!currentCharacter)
       return;
-    console.log("\u{1FA7A} adjustHP called, current character:", currentCharacter.name);
+    openHPModal();
+  };
+  function openHPModal() {
+    const modal = document.getElementById("hp-modal");
+    const input = document.getElementById("hp-input");
+    if (!modal || !input)
+      return;
+    input.value = "";
+    modal.style.display = "flex";
+    setTimeout(() => input.focus(), 100);
+  }
+  window.closeHPModal = function() {
+    const modal = document.getElementById("hp-modal");
+    const input = document.getElementById("hp-input");
+    if (!modal)
+      return;
+    modal.style.display = "none";
+    if (input)
+      input.value = "";
+  };
+  window.applyHP = async function(type) {
+    if (!currentCharacter)
+      return;
+    const input = document.getElementById("hp-input");
+    const amount = parseInt(input.value);
+    if (!input || isNaN(amount) || amount <= 0) {
+      if (isOwlbearReady) {
+        OBR.notification.show("Please enter a valid positive number", "ERROR");
+      }
+      return;
+    }
+    console.log(`\u{1FA7A} applyHP called: type=${type}, amount=${amount}`);
     console.log("  Current HP object:", currentCharacter.hitPoints);
     const currentHP = currentCharacter.hitPoints?.current || 0;
     const maxHP = currentCharacter.hitPoints?.max || 0;
-    const adjustment = prompt(`Current HP: ${currentHP}/${maxHP}
-
-Enter HP adjustment (negative for damage, positive for healing):`);
-    if (adjustment === null)
-      return;
-    const amount = parseInt(adjustment);
-    if (isNaN(amount))
-      return;
-    const newHP = Math.max(0, Math.min(maxHP, currentHP + amount));
-    console.log(`  Adjustment: ${amount}, New HP: ${newHP}/${maxHP}`);
+    const currentTempHP = currentCharacter.temporaryHP || 0;
     if (!currentCharacter.hitPoints) {
       currentCharacter.hitPoints = { current: 0, max: 0 };
     }
-    currentCharacter.hitPoints.current = newHP;
-    console.log("  Updated currentCharacter.hitPoints:", currentCharacter.hitPoints);
-    const message = amount > 0 ? `${currentCharacter.name} heals ${amount} HP (${newHP}/${maxHP})` : `${currentCharacter.name} takes ${Math.abs(amount)} damage (${newHP}/${maxHP})`;
-    if (isOwlbearReady) {
-      OBR.notification.show(message, amount > 0 ? "SUCCESS" : "WARNING");
+    let message = "";
+    let messageType = "";
+    let newHP = currentHP;
+    let newTempHP = currentTempHP;
+    if (type === "damage") {
+      let remainingDamage = amount;
+      if (currentTempHP > 0) {
+        if (currentTempHP >= remainingDamage) {
+          newTempHP = currentTempHP - remainingDamage;
+          remainingDamage = 0;
+          message = `${currentCharacter.name} takes ${amount} damage (absorbed by temp HP)`;
+        } else {
+          remainingDamage -= currentTempHP;
+          newTempHP = 0;
+          newHP = Math.max(0, currentHP - remainingDamage);
+          message = `${currentCharacter.name} takes ${amount} damage (temp HP depleted, ${remainingDamage} to HP) (${newHP}/${maxHP})`;
+        }
+      } else {
+        newHP = Math.max(0, currentHP - amount);
+        message = `${currentCharacter.name} takes ${amount} damage (${newHP}/${maxHP})`;
+      }
+      messageType = "damage";
+    } else if (type === "healing") {
+      newHP = Math.min(maxHP, currentHP + amount);
+      const actualHealing = newHP - currentHP;
+      message = `${currentCharacter.name} heals ${actualHealing} HP (${newHP}/${maxHP})`;
+      messageType = "healing";
+    } else if (type === "temp") {
+      if (amount > currentTempHP) {
+        newTempHP = amount;
+        message = `${currentCharacter.name} gains ${amount} temporary HP`;
+      } else {
+        message = `${currentCharacter.name} keeps ${currentTempHP} temporary HP (higher than ${amount})`;
+      }
+      messageType = "info";
     }
-    const messageType = amount > 0 ? "healing" : "damage";
+    currentCharacter.hitPoints.current = newHP;
+    currentCharacter.temporaryHP = newTempHP;
+    console.log(`  New HP: ${newHP}/${maxHP}, Temp HP: ${newTempHP}`);
+    if (isOwlbearReady) {
+      const notificationType = type === "healing" ? "SUCCESS" : type === "damage" ? "WARNING" : "INFO";
+      OBR.notification.show(message, notificationType);
+    }
     console.log("  Sending message to chat:", message);
     await addChatMessage(message, messageType, currentCharacter.name);
-    console.log("  Re-rendering stats tab with currentCharacter:", currentCharacter.hitPoints);
+    console.log("  Re-rendering stats tab");
     populateStatsTab(currentCharacter);
+    closeHPModal();
   };
+  function initializeHPModal() {
+    const modal = document.getElementById("hp-modal");
+    const input = document.getElementById("hp-input");
+    if (!modal || !input)
+      return;
+    input.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        applyHP("damage");
+      }
+    });
+    modal.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        closeHPModal();
+      }
+    });
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) {
+        closeHPModal();
+      }
+    });
+  }
   window.adjustSpellSlot = function(level, isPactMagic = false) {
     if (!currentCharacter || !currentCharacter.spellSlots)
       return;

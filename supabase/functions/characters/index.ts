@@ -283,9 +283,9 @@ serve(async (req) => {
       const discordIdToUse = bodyDiscordId || discordUserId
       const supabaseIdToUse = bodySupabaseId || supabaseUserId
 
-      if (!playerIdToUse && !discordIdToUse) {
+      if (!playerIdToUse && !discordIdToUse && !supabaseIdToUse) {
         return new Response(
-          JSON.stringify({ error: 'owlbearPlayerId or discordUserId required' }),
+          JSON.stringify({ error: 'owlbearPlayerId, discordUserId, or supabaseUserId required' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }

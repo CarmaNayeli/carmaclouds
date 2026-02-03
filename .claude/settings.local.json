@@ -21,7 +21,8 @@
       "Bash(magick:*)",
       "Bash(powershell \"Expand-Archive -Path ''releases\\\\carmaclouds-chrome.zip'' -DestinationPath ''releases\\\\test-chrome'' -Force\")",
       "WebFetch(domain:extensions.owlbear.rodeo)",
-      "Bash(supabase --version:*)"
+      "Bash(supabase --version:*)",
+      "Bash(git revert:*)"
     ],
     "additionalDirectories": [
       "c:\\Users\\c_dow\\carmaclouds\\packages\\core\\src",

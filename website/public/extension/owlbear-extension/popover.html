@@ -1332,6 +1332,30 @@
     </div>
   </div>
 
+  <!-- HP Management Modal -->
+  <div id="hp-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>Manage HP</h3>
+        <button class="modal-close-btn" onclick="closeHPModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="number" id="hp-input" placeholder="Enter amount" min="0" style="width: 100%; padding: 12px; border: 1px solid var(--theme-border); border-radius: 8px; background: var(--theme-bg-card); color: var(--theme-text-primary); font-size: 16px; margin-bottom: 12px;">
+        <div class="spell-level-options">
+          <div class="spell-level-option" onclick="applyHP('damage')" style="border-left: 3px solid #EF4444;">
+            <span class="spell-level-label" style="color: #EF4444;">💥 Take Damage</span>
+          </div>
+          <div class="spell-level-option" onclick="applyHP('healing')" style="border-left: 3px solid #10B981;">
+            <span class="spell-level-label" style="color: #10B981;">❤️ Heal</span>
+          </div>
+          <div class="spell-level-option" onclick="applyHP('temp')" style="border-left: 3px solid #3B82F6;">
+            <span class="spell-level-label" style="color: #3B82F6;">🛡️ Temp HP</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Load Owlbear SDK and Supabase Auth -->
   <script type="module">
     import OBR, { buildImage } from 'https://esm.sh/@owlbear-rodeo/sdk@3.1.0';
