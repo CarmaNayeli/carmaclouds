@@ -19,6 +19,7 @@ await buildExtension({
     // Main extension files
     'src/background': './src/background.js',
     'src/popup/popup': './src/popup/popup.js',
+    'src/popup/supabase-init': './src/popup/supabase-init.js',
     'src/content/dicecloud': './src/content/dicecloud.js',
     'src/content/roll20': './src/content/roll20.js',
     'src/content/character-sheet-overlay': './src/content/character-sheet-overlay.js',
@@ -76,6 +77,7 @@ await buildExtension({
     // Main extension files
     'src/background': './src/background.js',
     'src/popup/popup': './src/popup/popup.js',
+    'src/popup/supabase-init': './src/popup/supabase-init.js',
     'src/content/dicecloud': './src/content/dicecloud.js',
     'src/content/roll20': './src/content/roll20.js',
     'src/content/character-sheet-overlay': './src/content/character-sheet-overlay.js',

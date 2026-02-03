@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/popup/supabase-init.js"],
+  "sourcesContent": ["/**\r\n * Initialize Supabase client for browser extension\r\n * This must be a separate external file due to CSP restrictions on inline scripts\r\n */\r\nimport { createClient } from 'https://esm.sh/@supabase/supabase-js@2';\r\n\r\nwindow.createSupabaseClient = createClient;\r\nconsole.log('\u2705 Supabase createClient loaded');\r\n"],
+  "mappings": ";;;;;;;;;;AAIA,6BAA6B;AAE7B,SAAO,uBAAuB;AAC9B,UAAQ,IAAI,qCAAgC;",
+  "names": []
+}
