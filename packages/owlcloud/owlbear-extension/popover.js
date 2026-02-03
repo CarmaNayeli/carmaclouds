@@ -1164,9 +1164,12 @@ async function initializeSupabaseAuth() {
         await linkExistingCharacterToUser();
       }
 
-      // Refresh character data when user signs in/out
+      // Refresh character data and UI when user signs in/out
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-        checkForActiveCharacter();
+        await checkForActiveCharacter();
+        await fetchAllCharacters();
+        displayCharacterList();
+        updateAuthUI();
       }
     });
   } catch (error) {

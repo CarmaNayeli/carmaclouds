@@ -867,7 +867,10 @@
           await linkExistingCharacterToUser();
         }
         if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
-          checkForActiveCharacter();
+          await checkForActiveCharacter();
+          await fetchAllCharacters();
+          displayCharacterList();
+          updateAuthUI();
         }
       });
     } catch (error) {
