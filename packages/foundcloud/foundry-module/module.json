@@ -39,9 +39,9 @@
       }
     ]
   },
-  "url": "https://github.com/CarmaNayeli/foundCloud",
-  "manifest": "https://raw.githubusercontent.com/CarmaNayeli/foundCloud/main/foundry-module/module.json",
-  "download": "https://github.com/CarmaNayeli/foundCloud/releases/latest/download/foundcloud.zip",
+  "url": "https://carmaclouds.vercel.app",
+  "manifest": "https://carmaclouds.vercel.app/foundry-module/module.json",
+  "download": "https://carmaclouds.vercel.app/foundry-module.zip",
   "license": "LICENSE",
   "readme": "README.md",
   "bugs": "https://github.com/CarmaNayeli/foundCloud/issues",
