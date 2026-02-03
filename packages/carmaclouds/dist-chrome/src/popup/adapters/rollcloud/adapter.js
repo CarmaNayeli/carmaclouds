@@ -766,7 +766,7 @@
                 id: dbChar.dicecloud_character_id,
                 name: dbChar.character_name || "Unknown",
                 level: dbChar.level || "?",
-                class: dbChar.class_name || "No Class",
+                class: dbChar.class || "No Class",
                 race: dbChar.race || "Unknown",
                 raw: rawData,
                 lastSynced: dbChar.updated_at || (/* @__PURE__ */ new Date()).toISOString()
@@ -1021,14 +1021,14 @@
           syncCharRace.textContent = displayRace;
       }
       if (pushToRoll20Btn) {
-        pushToRoll20Btn.addEventListener("click", () => handlePushToRoll20(token, result.activeCharacterId, wrapper));
+        pushToRoll20Btn.addEventListener("click", () => handlePushToRoll20(token, result.activeCharacterId, wrapper, characters));
       }
       displaySyncedCharacters(wrapper, characters);
     } catch (error) {
       console.error("Error initializing RollCloud UI:", error);
     }
   }
-  async function handlePushToRoll20(token, activeCharacterId, wrapper) {
+  async function handlePushToRoll20(token, activeCharacterId, wrapper, allCharacters) {
     const pushBtn = wrapper.querySelector("#pushToRoll20Btn");
     if (!pushBtn)
       return;
@@ -1051,9 +1051,6 @@
         properties: charData.creatureProperties || []
       };
       const parsedChar = parseCharacterData(charData, activeCharacterId);
-      const existingChars = await browserAPI.storage.local.get("carmaclouds_characters");
-      const characters = existingChars.carmaclouds_characters || [];
-      const existingIndex = characters.findIndex((c) => c.id === activeCharacterId);
       const characterEntry = {
         id: activeCharacterId,
         name: parsedChar.name || "Unknown",
@@ -1063,15 +1060,24 @@
         raw: rawData,
         lastSynced: (/* @__PURE__ */ new Date()).toISOString()
       };
+      const existingIndex = allCharacters.findIndex((c) => c.id === activeCharacterId);
       if (existingIndex >= 0) {
-        characters[existingIndex] = characterEntry;
+        allCharacters[existingIndex] = characterEntry;
       } else {
-        characters.push(characterEntry);
+        allCharacters.push(characterEntry);
       }
-      await browserAPI.storage.local.set({ carmaclouds_characters: characters });
+      const existingChars = await browserAPI.storage.local.get("carmaclouds_characters");
+      const localCharacters = existingChars.carmaclouds_characters || [];
+      const localIndex = localCharacters.findIndex((c) => c.id === activeCharacterId);
+      if (localIndex >= 0) {
+        localCharacters[localIndex] = characterEntry;
+      } else {
+        localCharacters.push(characterEntry);
+      }
+      await browserAPI.storage.local.set({ carmaclouds_characters: localCharacters });
       pushBtn.textContent = "\u2713 Synced!";
       pushBtn.style.background = "linear-gradient(135deg, #28a745 0%, #1e7e34 100%)";
-      displaySyncedCharacters(wrapper, characters);
+      displaySyncedCharacters(wrapper, allCharacters);
       setTimeout(() => {
         pushBtn.textContent = originalText;
         pushBtn.style.background = "";
