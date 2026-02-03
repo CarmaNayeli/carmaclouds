@@ -474,6 +474,7 @@
       themeSelector.appendChild(themeOption);
     });
     initializeCollapsibleThemeSection();
+    initializeCollapsibleAuthSection();
   }
   function initializeCollapsibleThemeSection() {
     const themeHeader = document.getElementById("theme-section-header");
@@ -498,6 +499,35 @@
       } else {
         themeContent.classList.add("collapsed");
         themeHeader.classList.add("collapsed");
+        if (arrow) {
+          arrow.style.transform = "rotate(-90deg)";
+        }
+      }
+    });
+  }
+  function initializeCollapsibleAuthSection() {
+    const authHeader = document.getElementById("auth-section-header");
+    const authContent = document.getElementById("auth-section-content");
+    if (!authHeader || !authContent)
+      return;
+    let isExpanded = false;
+    authContent.classList.add("collapsed");
+    authHeader.classList.add("collapsed");
+    const arrow = authHeader.querySelector("span");
+    if (arrow) {
+      arrow.style.transform = "rotate(-90deg)";
+    }
+    authHeader.addEventListener("click", () => {
+      isExpanded = !isExpanded;
+      if (isExpanded) {
+        authContent.classList.remove("collapsed");
+        authHeader.classList.remove("collapsed");
+        if (arrow) {
+          arrow.style.transform = "rotate(0deg)";
+        }
+      } else {
+        authContent.classList.add("collapsed");
+        authHeader.classList.add("collapsed");
         if (arrow) {
           arrow.style.transform = "rotate(-90deg)";
         }

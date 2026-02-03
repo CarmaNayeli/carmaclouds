@@ -1182,48 +1182,21 @@
 
       <!-- Settings Tab -->
       <div class="tab-content active" id="tab-settings">
-        <!-- Character Sync (Auth Section) -->
-        <div style="padding: 16px; background: var(--theme-bg-accent); border-radius: 8px; border: 1px solid var(--theme-border); margin-bottom: 16px;">
-          <div style="color: var(--theme-primary-light); font-weight: 600; margin-bottom: 12px; font-size: 14px;">
-            🔐 Character Sync
-          </div>
-          <div id="auth-section">
-            <!-- Auth UI will be populated here by updateAuthUI() -->
-          </div>
-        </div>
-
-        <!-- Character Cards -->
+        <!-- 1. Active Character Card -->
         <div id="character-section" style="display: none;">
-          <div class="character-info" id="character-info">
+          <div class="character-info" id="character-info" style="margin-bottom: 16px;">
             <!-- Character info will be populated here -->
           </div>
-
-          <div id="character-list-section" style="margin-top: 20px; display: none;">
-            <div style="color: var(--theme-primary-light); font-weight: 600; margin-bottom: 12px; font-size: 14px;">
-              Switch Character
-            </div>
-            <div id="character-list" style="display: grid; gap: 8px;">
-              <!-- Character list will be populated here -->
-            </div>
-          </div>
-
-          <button class="button button-secondary" id="sync-character-btn">
-            🔄 Sync from DiceCloud
-          </button>
-
-          <!-- Unsync button - visible when character is loaded -->
-          <button class="button" id="unsync-character-btn" onclick="handleUnsyncCharacter()" style="margin-top: 8px; background: rgba(251, 146, 60, 0.2); border: 1px solid #FB923C; color: #FB923C;">
-            🔓 Unsync from Owlbear
-          </button>
         </div>
 
+        <!-- No Characters Message -->
         <div id="no-character-section" style="display: none;">
           <div style="padding: 16px; background: rgba(59, 130, 246, 0.1); border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.3); margin-bottom: 16px;">
             <div style="font-weight: 600; color: var(--theme-primary-light); font-size: 14px; margin-bottom: 8px;">
               🎭 No Characters Found
             </div>
             <div style="color: #c0c0c0; font-size: 13px; line-height: 1.4; margin-bottom: 12px;">
-              Sign in above to access your characters from any device, or install the browser extension to sync a character.
+              Sign in below to access your characters from any device, or install the browser extension to sync a character.
             </div>
             <a href="https://carmaclouds.vercel.app" target="_blank" style="color: var(--theme-primary-light); font-size: 12px; text-decoration: underline;">
               Install OwlCloud Browser Extension →
@@ -1231,9 +1204,45 @@
           </div>
         </div>
 
-        <!-- Chat button -->
-        <button class="button button-secondary" id="open-chat-window-btn" style="margin-top: 12px;">
+        <!-- 2. Chat Button -->
+        <button class="button button-secondary" id="open-chat-window-btn" style="margin-bottom: 16px;">
           💬 Open Chat Window
+        </button>
+
+        <!-- 3. Character Switcher -->
+        <div id="character-list-section" style="display: none;">
+          <div style="padding: 16px; background: var(--theme-bg-accent); border-radius: 8px; border: 1px solid var(--theme-border); margin-bottom: 16px;">
+            <div style="color: var(--theme-primary-light); font-weight: 600; margin-bottom: 12px; font-size: 14px;">
+              Switch Character
+            </div>
+            <div id="character-list" style="display: grid; gap: 8px;">
+              <!-- Character list will be populated here -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Sign In (Collapsible) -->
+        <div style="margin-bottom: 16px; padding: 16px; background: var(--theme-bg-accent); border-radius: 8px; border: 1px solid var(--theme-border);">
+          <div class="section-header collapsible" id="auth-section-header" style="cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s ease; margin: 0;">
+            <div style="color: var(--theme-primary-light); font-weight: 600; font-size: 14px;">
+              🔐 Character Sync
+            </div>
+            <span style="color: var(--theme-primary-light); font-size: 12px; transition: transform 0.2s ease;">▼</span>
+          </div>
+          <div id="auth-section-content" class="collapsible-content" style="margin-top: 12px;">
+            <div id="auth-section">
+              <!-- Auth UI will be populated here by updateAuthUI() -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. Unsync Button -->
+        <button class="button" id="unsync-character-btn" onclick="handleUnsyncCharacter()" style="margin-bottom: 8px; background: rgba(251, 146, 60, 0.2); border: 1px solid #FB923C; color: #FB923C; display: none;">
+          🔓 Unsync from Owlbear
+        </button>
+
+        <button class="button button-secondary" id="sync-character-btn" style="margin-bottom: 16px; display: none;">
+          🔄 Sync from DiceCloud
         </button>
 
         <!-- Theme selector -->

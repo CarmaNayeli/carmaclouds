@@ -564,8 +564,9 @@ function initializeThemeSelector() {
     themeSelector.appendChild(themeOption);
   });
   
-  // Initialize collapsible theme section
+  // Initialize collapsible sections
   initializeCollapsibleThemeSection();
+  initializeCollapsibleAuthSection();
 }
 
 /**
@@ -600,6 +601,45 @@ function initializeCollapsibleThemeSection() {
     } else {
       themeContent.classList.add('collapsed');
       themeHeader.classList.add('collapsed');
+      if (arrow) {
+        arrow.style.transform = 'rotate(-90deg)';
+      }
+    }
+  });
+}
+
+/**
+ * Initialize collapsible auth section
+ */
+function initializeCollapsibleAuthSection() {
+  const authHeader = document.getElementById('auth-section-header');
+  const authContent = document.getElementById('auth-section-content');
+
+  if (!authHeader || !authContent) return;
+
+  // Set initial state (collapsed by default)
+  let isExpanded = false;
+  authContent.classList.add('collapsed');
+  authHeader.classList.add('collapsed');
+
+  // Set initial arrow state (pointing right when collapsed)
+  const arrow = authHeader.querySelector('span');
+  if (arrow) {
+    arrow.style.transform = 'rotate(-90deg)';
+  }
+
+  authHeader.addEventListener('click', () => {
+    isExpanded = !isExpanded;
+
+    if (isExpanded) {
+      authContent.classList.remove('collapsed');
+      authHeader.classList.remove('collapsed');
+      if (arrow) {
+        arrow.style.transform = 'rotate(0deg)';
+      }
+    } else {
+      authContent.classList.add('collapsed');
+      authHeader.classList.add('collapsed');
       if (arrow) {
         arrow.style.transform = 'rotate(-90deg)';
       }
