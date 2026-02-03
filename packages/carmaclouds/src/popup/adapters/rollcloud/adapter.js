@@ -450,12 +450,60 @@ function extractClass(raw) {
  */
 function extractRace(raw) {
   if (!raw) return 'Unknown';
+
+  // Check creature directly
   if (raw.creature && raw.creature.race) return raw.creature.race;
 
-  // Try to get from properties
+  // Check denormalizedStats
+  if (raw.creature && raw.creature.denormalizedStats && raw.creature.denormalizedStats.race) {
+    return raw.creature.denormalizedStats.race;
+  }
+
+  // Check properties
   if (raw.properties) {
-    const race = raw.properties.find(prop => prop.type === 'race' || prop.tags?.includes('race'));
-    if (race && race.name) return race.name;
+    // Check for race property types
+    const raceProp = raw.properties.find(prop =>
+      prop.type === 'race' || prop.type === 'species' || prop.type === 'characterRace'
+    );
+    if (raceProp && raceProp.name) return raceProp.name;
+
+    // Check for race as a constant
+    const raceConstant = raw.properties.find(prop =>
+      prop.type === 'constant' && prop.name && prop.name.toLowerCase() === 'race'
+    );
+    if (raceConstant && raceConstant.value) return raceConstant.value;
+
+    // Check for race as a folder with common race names (sorted longest first)
+    const commonRaces = ['half-elf', 'half-orc', 'dragonborn', 'tiefling', 'aarakocra', 'lizardfolk', 'warforged', 'changeling', 'kalashtar', 'goliath', 'firbolg', 'genasi', 'yuan-ti', 'bugbear', 'hobgoblin', 'halfling', 'tortle', 'kobold', 'tabaxi', 'goblin', 'kenku', 'human', 'dwarf', 'gnome', 'triton', 'elf', 'orc', 'shifter'];
+
+    for (const prop of raw.properties) {
+      if (prop.type === 'folder' && prop.name) {
+        const propNameLower = prop.name.toLowerCase();
+        const matchedRace = commonRaces.find(race => propNameLower.includes(race));
+        if (matchedRace) {
+          const parentDepth = prop.ancestors ? prop.ancestors.length : 0;
+          if (parentDepth <= 2) {
+            return prop.name;
+          }
+        }
+      }
+    }
+  }
+
+  // Check variables
+  if (raw.variables) {
+    const raceVars = Object.keys(raw.variables).filter(key =>
+      key.toLowerCase().includes('race') || key.toLowerCase().includes('species')
+    );
+
+    if (raceVars.length > 0) {
+      for (const varName of raceVars) {
+        const value = raw.variables[varName];
+        if (typeof value === 'string' && value.length > 0) {
+          return value;
+        }
+      }
+    }
   }
 
   return 'Unknown';
