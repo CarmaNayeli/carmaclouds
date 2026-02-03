@@ -50,6 +50,6 @@
   "download": "https://carmaclouds.vercel.app/foundry-module.zip",
   "license": "LICENSE",
   "readme": "README.md",
-  "bugs": "https://github.com/CarmaNayeli/foundCloud/issues",
-  "changelog": "https://github.com/CarmaNayeli/foundCloud/releases"
+  "bugs": "https://carmaclouds.vercel.app",
+  "changelog": "https://carmaclouds.vercel.app"
 }
