@@ -803,7 +803,9 @@
     await showRollResult(name, result);
   }
   async function initializeSupabaseAuth() {
+    console.log("\u{1F680} [Owlbear] Initializing Supabase auth...");
     try {
+      console.log("\u{1F527} [Owlbear] Creating Supabase client with URL:", SUPABASE_URL);
       supabase = window.createSupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         auth: {
           persistSession: true,
@@ -974,10 +976,15 @@
     }
   }
   function updateAuthUI() {
+    console.log("\u{1F504} [Owlbear] Updating auth UI, currentUser:", currentUser);
     const authSection = document.getElementById("auth-section");
-    if (!authSection)
+    console.log("\u{1F50D} [Owlbear] auth-section element:", authSection);
+    if (!authSection) {
+      console.error("\u274C [Owlbear] auth-section element not found!");
       return;
+    }
     if (currentUser) {
+      console.log("\u2705 [Owlbear] User signed in, showing logged in view");
       authSection.innerHTML = `
       <div style="padding: 16px; background: var(--theme-background); border-radius: 8px; border: 1px solid var(--theme-border);">
         <div style="margin-bottom: 12px;">

@@ -1079,7 +1079,9 @@ async function executeLocalRoll(rollContext) {
  * Initialize Supabase Auth client and check for existing session
  */
 async function initializeSupabaseAuth() {
+  console.log('🚀 [Owlbear] Initializing Supabase auth...');
   try {
+    console.log('🔧 [Owlbear] Creating Supabase client with URL:', SUPABASE_URL);
     // Initialize Supabase client (createSupabaseClient is loaded from popover.html)
     supabase = window.createSupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {
@@ -1320,11 +1322,17 @@ async function linkExistingCharacterToUser() {
  * Update auth UI based on current user state
  */
 function updateAuthUI() {
+  console.log('🔄 [Owlbear] Updating auth UI, currentUser:', currentUser);
   const authSection = document.getElementById('auth-section');
-  if (!authSection) return;
+  console.log('🔍 [Owlbear] auth-section element:', authSection);
+  if (!authSection) {
+    console.error('❌ [Owlbear] auth-section element not found!');
+    return;
+  }
 
   if (currentUser) {
     // User is signed in
+    console.log('✅ [Owlbear] User signed in, showing logged in view');
     authSection.innerHTML = `
       <div style="padding: 16px; background: var(--theme-background); border-radius: 8px; border: 1px solid var(--theme-border);">
         <div style="margin-bottom: 12px;">
