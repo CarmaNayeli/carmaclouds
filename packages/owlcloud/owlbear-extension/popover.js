@@ -2124,13 +2124,20 @@ window.switchToCharacter = async function(characterName) {
     const result = await response.json();
 
     if (response.ok && result.success) {
-      // Display the new character
-      displayCharacter(character);
-      displayCharacterList(); // Refresh the list to update active state
-      updateAuthUI(); // Update auth UI to show unsync button
+      console.log('✅ Successfully switched to:', characterName);
+
+      // Refetch full character data with raw_dicecloud_data
+      await checkForActiveCharacter();
+
+      // Refresh the character list to update active state
+      await fetchAllCharacters();
+      displayCharacterList();
+
+      // Update auth UI to show unsync button
+      updateAuthUI();
 
       if (isOwlbearReady) {
-        OBR.notification.show(`Switched to ${character.name}`, 'SUCCESS');
+        OBR.notification.show(`Switched to ${characterName}`, 'SUCCESS');
       }
     } else {
       console.error('Failed to switch character:', result.error);
