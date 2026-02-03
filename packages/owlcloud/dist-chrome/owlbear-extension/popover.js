@@ -1404,8 +1404,15 @@ This will disconnect the character from this room. You can sync a different char
             hasCreature: !!rawData.creature,
             hasVariables: !!rawData.variables,
             hasProperties: !!rawData.properties,
-            topLevelKeys: Object.keys(rawData)
+            topLevelKeys: Object.keys(rawData),
+            rawDataType: typeof rawData,
+            isArray: Array.isArray(rawData)
           });
+          console.log("\u{1F50D} Full topLevelKeys array:", Object.keys(rawData));
+          if (typeof rawData === "object" && Object.keys(rawData).length > 0) {
+            const firstKey = Object.keys(rawData)[0];
+            console.log(`\u{1F50D} Sample field "${firstKey}":`, rawData[firstKey]);
+          }
           if (rawData.creatures && rawData.creatureVariables && rawData.creatureProperties) {
             console.log("\u{1F504} Parsing raw API response...");
             try {

@@ -1896,8 +1896,17 @@ async function checkForActiveCharacter() {
           hasCreature: !!rawData.creature,
           hasVariables: !!rawData.variables,
           hasProperties: !!rawData.properties,
-          topLevelKeys: Object.keys(rawData)
+          topLevelKeys: Object.keys(rawData),
+          rawDataType: typeof rawData,
+          isArray: Array.isArray(rawData)
         });
+        console.log('🔍 Full topLevelKeys array:', Object.keys(rawData));
+
+        // Show a sample of the actual data structure
+        if (typeof rawData === 'object' && Object.keys(rawData).length > 0) {
+          const firstKey = Object.keys(rawData)[0];
+          console.log(`🔍 Sample field "${firstKey}":`, rawData[firstKey]);
+        }
 
         // Check if this is the raw API format (creatures array) or extracted format (creature object)
         if (rawData.creatures && rawData.creatureVariables && rawData.creatureProperties) {
