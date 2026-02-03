@@ -2052,25 +2052,34 @@ function displayCharacterList() {
   console.log('Showing character list with', allCharacters.length, 'character(s)');
   characterListSection.style.display = 'block';
 
-  let html = '';
+  // Clear existing content
+  characterList.innerHTML = '';
+
   allCharacters.forEach((character) => {
     // Get character names for comparison
     const characterName = character.name || character.character_name || character.creature?.name || 'Unknown Character';
     const currentCharName = currentCharacter?.name || currentCharacter?.character_name;
     const isActive = currentCharacter && characterName === currentCharName;
 
-    html += `
-      <div class="character-list-item ${isActive ? 'active' : ''}" onclick="switchToCharacter('${characterName.replace(/'/g, "\\'")}')">
-        <div class="character-list-item-name">${characterName}</div>
-        <div class="character-list-item-details">
-          Level ${character.level || '?'} ${character.race || ''} ${character.class || ''}
-          ${isActive ? '• Active' : ''}
-        </div>
+    // Create character card element
+    const card = document.createElement('div');
+    card.className = `character-list-item ${isActive ? 'active' : ''}`;
+    card.innerHTML = `
+      <div class="character-list-item-name">${characterName}</div>
+      <div class="character-list-item-details">
+        Level ${character.level || '?'} ${character.race || ''} ${character.class || ''}
+        ${isActive ? '• Active' : ''}
       </div>
     `;
-  });
 
-  characterList.innerHTML = html;
+    // Add click handler with proper closure
+    card.addEventListener('click', () => {
+      console.log('🖱️ Character card clicked:', characterName);
+      window.switchToCharacter(characterName);
+    });
+
+    characterList.appendChild(card);
+  });
 }
 
 /**

@@ -1516,10 +1516,11 @@ This will disconnect the character from this room. You can sync a different char
     characterListSection.style.display = "block";
     let html = "";
     allCharacters.forEach((character) => {
-      const isActive = currentCharacter && character.id === currentCharacter.id;
       const characterName = character.name || character.character_name || character.creature?.name || "Unknown Character";
+      const currentCharName = currentCharacter?.name || currentCharacter?.character_name;
+      const isActive = currentCharacter && characterName === currentCharName;
       html += `
-      <div class="character-list-item ${isActive ? "active" : ""}" onclick="switchToCharacter('${character.id}')">
+      <div class="character-list-item ${isActive ? "active" : ""}" onclick="switchToCharacter('${characterName.replace(/'/g, "\\'")}')">
         <div class="character-list-item-name">${characterName}</div>
         <div class="character-list-item-details">
           Level ${character.level || "?"} ${character.race || ""} ${character.class || ""}
@@ -1530,17 +1531,31 @@ This will disconnect the character from this room. You can sync a different char
     });
     characterList.innerHTML = html;
   }
-  window.switchToCharacter = async function(characterId) {
+  window.switchToCharacter = async function(characterName) {
     try {
-      const character = allCharacters.find((c) => c.id === characterId);
+      console.log("\u{1F504} Attempting to switch to character:", characterName);
+      const character = allCharacters.find(
+        (c) => (c.name || c.character_name) === characterName
+      );
       if (!character) {
-        console.error("Character not found:", characterId);
+        console.error("\u274C Character not found:", characterName);
+        console.log("Available characters:", allCharacters.map((c) => ({
+          name: c.name || c.character_name
+        })));
         return;
       }
+      console.log("\u2705 Found character:", characterName);
+      const normalizedCharacter = {
+        ...character,
+        id: character.dicecloud_character_id || character.id,
+        name: character.name || character.character_name,
+        userId: character.user_id_dicecloud,
+        user_id_dicecloud: character.user_id_dicecloud
+      };
       const playerId = await OBR.player.getId();
       const requestBody = {
         owlbearPlayerId: playerId,
-        character
+        character: normalizedCharacter
       };
       if (currentUser) {
         requestBody.supabaseUserId = currentUser.id;
