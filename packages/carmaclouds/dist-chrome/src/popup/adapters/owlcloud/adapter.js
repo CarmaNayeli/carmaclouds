@@ -188,99 +188,95 @@ This cannot be undone.`)) {
         }
         if (syncBox)
           syncBox.classList.add("hidden");
-      } else if (characters.length > 0 && characters[characters.length - 1]?.raw) {
-        const character2 = characters[characters.length - 1];
-        if (loginPrompt)
-          loginPrompt.classList.add("hidden");
-        if (syncBox)
-          syncBox.classList.remove("hidden");
-        const nameEl = wrapper.querySelector("#syncCharName");
-        const levelEl = wrapper.querySelector("#syncCharLevel");
-        const classEl = wrapper.querySelector("#syncCharClass");
-        const raceEl = wrapper.querySelector("#syncCharRace");
-        if (nameEl)
-          nameEl.textContent = character2.name || "Unknown";
-        if (levelEl)
-          levelEl.textContent = `Lvl ${character2.preview?.level || "?"}`;
-        if (classEl)
-          classEl.textContent = character2.preview?.class || "Unknown";
-        if (raceEl)
-          raceEl.textContent = character2.preview?.race || "Unknown";
-        const pushBtn = wrapper.querySelector("#pushToVttBtn");
-        if (pushBtn) {
-          pushBtn.addEventListener("click", async () => {
-            const originalText = pushBtn.innerHTML;
-            try {
-              pushBtn.disabled = true;
-              pushBtn.innerHTML = "\u23F3 Pushing...";
-              const supabase2 = window.supabaseClient;
-              let supabaseUserId2 = null;
-              if (supabase2) {
-                const { data: { session } } = await supabase2.auth.getSession();
-                supabaseUserId2 = session?.user?.id;
-              }
-              const characterData = {
-                dicecloud_character_id: character2.id,
-                character_name: character2.name || "Unknown",
-                user_id_dicecloud: diceCloudUserId,
-                level: character2.preview?.level || null,
-                class: character2.preview?.class || null,
-                race: character2.preview?.race || null,
-                raw_dicecloud_data: character2.raw,
-                is_active: false,
-                updated_at: (/* @__PURE__ */ new Date()).toISOString()
-              };
-              if (supabaseUserId2) {
-                characterData.supabase_user_id = supabaseUserId2;
-                console.log("\u2705 Including Supabase user ID:", supabaseUserId2);
-              }
-              const response2 = await fetch(
-                `${SUPABASE_URL}/rest/v1/clouds_characters?on_conflict=user_id_dicecloud,dicecloud_character_id`,
-                {
-                  method: "POST",
-                  headers: {
-                    "apikey": SUPABASE_ANON_KEY,
-                    "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-                    "Content-Type": "application/json",
-                    "Prefer": "resolution=merge-duplicates,return=representation"
-                  },
-                  body: JSON.stringify(characterData)
-                }
-              );
-              if (response2.ok) {
-                console.log("\u2705 Character pushed:", character2.name);
-                pushBtn.innerHTML = "\u2705 Pushed!";
-                await browserAPI.storage.local.remove(["carmaclouds_characters"]);
-                console.log("\u{1F5D1}\uFE0F Cleared ready-to-sync character from local storage");
-                await loadPushedCharacters();
-                setTimeout(async () => {
-                  await init(containerEl);
-                }, 1500);
-              } else {
-                const errorText = await response2.text();
-                throw new Error(`Push failed: ${errorText}`);
-              }
-            } catch (error) {
-              console.error("Error pushing character:", error);
-              pushBtn.innerHTML = "\u274C Failed";
-              alert(`Failed to push: ${error.message}`);
-              setTimeout(() => {
-                pushBtn.innerHTML = originalText;
-                pushBtn.disabled = false;
-              }, 2e3);
-            }
-          });
-        }
-        await loadPushedCharacters();
       } else {
         if (loginPrompt)
           loginPrompt.classList.add("hidden");
-        if (syncBox)
-          syncBox.classList.add("hidden");
-        if (noPushedCharacters) {
-          noPushedCharacters.textContent = "No character data found. Sync a character from DiceCloud first.";
-          noPushedCharacters.classList.remove("hidden");
+        if (characters.length > 0 && characters[characters.length - 1]?.raw) {
+          const character2 = characters[characters.length - 1];
+          if (syncBox)
+            syncBox.classList.remove("hidden");
+          const nameEl = wrapper.querySelector("#syncCharName");
+          const levelEl = wrapper.querySelector("#syncCharLevel");
+          const classEl = wrapper.querySelector("#syncCharClass");
+          const raceEl = wrapper.querySelector("#syncCharRace");
+          if (nameEl)
+            nameEl.textContent = character2.name || "Unknown";
+          if (levelEl)
+            levelEl.textContent = `Lvl ${character2.preview?.level || "?"}`;
+          if (classEl)
+            classEl.textContent = character2.preview?.class || "Unknown";
+          if (raceEl)
+            raceEl.textContent = character2.preview?.race || "Unknown";
+          const pushBtn = wrapper.querySelector("#pushToVttBtn");
+          if (pushBtn) {
+            pushBtn.addEventListener("click", async () => {
+              const originalText = pushBtn.innerHTML;
+              try {
+                pushBtn.disabled = true;
+                pushBtn.innerHTML = "\u23F3 Pushing...";
+                const supabase2 = window.supabaseClient;
+                let supabaseUserId2 = null;
+                if (supabase2) {
+                  const { data: { session } } = await supabase2.auth.getSession();
+                  supabaseUserId2 = session?.user?.id;
+                }
+                const characterData = {
+                  dicecloud_character_id: character2.id,
+                  character_name: character2.name || "Unknown",
+                  user_id_dicecloud: diceCloudUserId,
+                  level: character2.preview?.level || null,
+                  class: character2.preview?.class || null,
+                  race: character2.preview?.race || null,
+                  raw_dicecloud_data: character2.raw,
+                  is_active: false,
+                  updated_at: (/* @__PURE__ */ new Date()).toISOString()
+                };
+                if (supabaseUserId2) {
+                  characterData.supabase_user_id = supabaseUserId2;
+                  console.log("\u2705 Including Supabase user ID:", supabaseUserId2);
+                }
+                const response2 = await fetch(
+                  `${SUPABASE_URL}/rest/v1/clouds_characters?on_conflict=user_id_dicecloud,dicecloud_character_id`,
+                  {
+                    method: "POST",
+                    headers: {
+                      "apikey": SUPABASE_ANON_KEY,
+                      "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+                      "Content-Type": "application/json",
+                      "Prefer": "resolution=merge-duplicates,return=representation"
+                    },
+                    body: JSON.stringify(characterData)
+                  }
+                );
+                if (response2.ok) {
+                  console.log("\u2705 Character pushed:", character2.name);
+                  pushBtn.innerHTML = "\u2705 Pushed!";
+                  await browserAPI.storage.local.remove(["carmaclouds_characters"]);
+                  console.log("\u{1F5D1}\uFE0F Cleared ready-to-sync character from local storage");
+                  await loadPushedCharacters();
+                  setTimeout(async () => {
+                    await init(containerEl);
+                  }, 1500);
+                } else {
+                  const errorText = await response2.text();
+                  throw new Error(`Push failed: ${errorText}`);
+                }
+              } catch (error) {
+                console.error("Error pushing character:", error);
+                pushBtn.innerHTML = "\u274C Failed";
+                alert(`Failed to push: ${error.message}`);
+                setTimeout(() => {
+                  pushBtn.innerHTML = originalText;
+                  pushBtn.disabled = false;
+                }, 2e3);
+              }
+            });
+          }
+        } else {
+          if (syncBox)
+            syncBox.classList.add("hidden");
         }
+        await loadPushedCharacters();
       }
       const copyBtn = wrapper.querySelector("#copyOwlbearUrlBtn");
       if (copyBtn) {
@@ -320,6 +316,12 @@ This cannot be undone.`)) {
       browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.action === "dataSynced") {
           console.log("\u{1F4E5} OwlCloud adapter received data sync notification:", message.characterName);
+          init(containerEl);
+        }
+      });
+      browserAPI.storage.onChanged.addListener((changes, areaName) => {
+        if (areaName === "local" && changes.carmaclouds_characters) {
+          console.log("\u{1F4E6} OwlCloud adapter detected character storage change");
           init(containerEl);
         }
       });

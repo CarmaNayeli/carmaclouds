@@ -231,117 +231,116 @@ export async function init(containerEl) {
         }
       }
       if (syncBox) syncBox.classList.add('hidden');
-    } else if (characters.length > 0 && characters[characters.length - 1]?.raw) {
-      // User is logged in and has character data - show sync box
-      // Use the most recently synced character (last in array)
-      const character = characters[characters.length - 1];
-
-      if (loginPrompt) loginPrompt.classList.add('hidden');
-      if (syncBox) syncBox.classList.remove('hidden');
-
-      // Populate sync box with current character
-      const nameEl = wrapper.querySelector('#syncCharName');
-      const levelEl = wrapper.querySelector('#syncCharLevel');
-      const classEl = wrapper.querySelector('#syncCharClass');
-      const raceEl = wrapper.querySelector('#syncCharRace');
-
-      if (nameEl) nameEl.textContent = character.name || 'Unknown';
-      if (levelEl) levelEl.textContent = `Lvl ${character.preview?.level || '?'}`;
-      if (classEl) classEl.textContent = character.preview?.class || 'Unknown';
-      if (raceEl) raceEl.textContent = character.preview?.race || 'Unknown';
-
-      // Add push to VTT button handler
-      const pushBtn = wrapper.querySelector('#pushToVttBtn');
-      if (pushBtn) {
-        pushBtn.addEventListener('click', async () => {
-          const originalText = pushBtn.innerHTML;
-          try {
-            pushBtn.disabled = true;
-            pushBtn.innerHTML = '⏳ Pushing...';
-
-            // Get Supabase user ID if authenticated
-            const supabase = window.supabaseClient;
-            let supabaseUserId = null;
-            if (supabase) {
-              const { data: { session } } = await supabase.auth.getSession();
-              supabaseUserId = session?.user?.id;
-            }
-
-            // Prepare character data with ALL info including supabase_user_id
-            const characterData = {
-              dicecloud_character_id: character.id,
-              character_name: character.name || 'Unknown',
-              user_id_dicecloud: diceCloudUserId,
-              level: character.preview?.level || null,
-              class: character.preview?.class || null,
-              race: character.preview?.race || null,
-              raw_dicecloud_data: character.raw,
-              is_active: false,
-              updated_at: new Date().toISOString()
-            };
-
-            // Include Supabase user ID for cross-device sync
-            if (supabaseUserId) {
-              characterData.supabase_user_id = supabaseUserId;
-              console.log('✅ Including Supabase user ID:', supabaseUserId);
-            }
-
-            // Push to database
-            const response = await fetch(
-              `${SUPABASE_URL}/rest/v1/clouds_characters?on_conflict=user_id_dicecloud,dicecloud_character_id`,
-              {
-                method: 'POST',
-                headers: {
-                  'apikey': SUPABASE_ANON_KEY,
-                  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                  'Content-Type': 'application/json',
-                  'Prefer': 'resolution=merge-duplicates,return=representation'
-                },
-                body: JSON.stringify(characterData)
-              }
-            );
-
-            if (response.ok) {
-              console.log('✅ Character pushed:', character.name);
-              pushBtn.innerHTML = '✅ Pushed!';
-
-              // Clear the character from local storage so a new one can be loaded
-              await browserAPI.storage.local.remove(['carmaclouds_characters']);
-              console.log('🗑️ Cleared ready-to-sync character from local storage');
-
-              // Reload pushed characters list
-              await loadPushedCharacters();
-
-              // Reload the entire adapter to show empty sync box
-              setTimeout(async () => {
-                await init(containerEl);
-              }, 1500);
-            } else {
-              const errorText = await response.text();
-              throw new Error(`Push failed: ${errorText}`);
-            }
-          } catch (error) {
-            console.error('Error pushing character:', error);
-            pushBtn.innerHTML = '❌ Failed';
-            alert(`Failed to push: ${error.message}`);
-            setTimeout(() => {
-              pushBtn.innerHTML = originalText;
-              pushBtn.disabled = false;
-            }, 2000);
-          }
-        });
-      }
-
-      // Load and display pushed characters
-      await loadPushedCharacters();
     } else {
-      // Logged in but no character data from DiceCloud
+      // User is logged in to both DiceCloud and Supabase
       if (loginPrompt) loginPrompt.classList.add('hidden');
-      if (syncBox) syncBox.classList.add('hidden');
-      if (noPushedCharacters) {
-        noPushedCharacters.textContent = 'No character data found. Sync a character from DiceCloud first.';
-        noPushedCharacters.classList.remove('hidden');
+
+      // Handle "Ready to Sync" box - only show if there are local characters
+      if (characters.length > 0 && characters[characters.length - 1]?.raw) {
+        // Use the most recently synced character (last in array)
+        const character = characters[characters.length - 1];
+
+        if (syncBox) syncBox.classList.remove('hidden');
+
+        // Populate sync box with current character
+        const nameEl = wrapper.querySelector('#syncCharName');
+        const levelEl = wrapper.querySelector('#syncCharLevel');
+        const classEl = wrapper.querySelector('#syncCharClass');
+        const raceEl = wrapper.querySelector('#syncCharRace');
+
+        if (nameEl) nameEl.textContent = character.name || 'Unknown';
+        if (levelEl) levelEl.textContent = `Lvl ${character.preview?.level || '?'}`;
+        if (classEl) classEl.textContent = character.preview?.class || 'Unknown';
+        if (raceEl) raceEl.textContent = character.preview?.race || 'Unknown';
+
+        // Add push to VTT button handler
+        const pushBtn = wrapper.querySelector('#pushToVttBtn');
+        if (pushBtn) {
+          pushBtn.addEventListener('click', async () => {
+            const originalText = pushBtn.innerHTML;
+            try {
+              pushBtn.disabled = true;
+              pushBtn.innerHTML = '⏳ Pushing...';
+
+              // Get Supabase user ID if authenticated
+              const supabase = window.supabaseClient;
+              let supabaseUserId = null;
+              if (supabase) {
+                const { data: { session } } = await supabase.auth.getSession();
+                supabaseUserId = session?.user?.id;
+              }
+
+              // Prepare character data with ALL info including supabase_user_id
+              const characterData = {
+                dicecloud_character_id: character.id,
+                character_name: character.name || 'Unknown',
+                user_id_dicecloud: diceCloudUserId,
+                level: character.preview?.level || null,
+                class: character.preview?.class || null,
+                race: character.preview?.race || null,
+                raw_dicecloud_data: character.raw,
+                is_active: false,
+                updated_at: new Date().toISOString()
+              };
+
+              // Include Supabase user ID for cross-device sync
+              if (supabaseUserId) {
+                characterData.supabase_user_id = supabaseUserId;
+                console.log('✅ Including Supabase user ID:', supabaseUserId);
+              }
+
+              // Push to database
+              const response = await fetch(
+                `${SUPABASE_URL}/rest/v1/clouds_characters?on_conflict=user_id_dicecloud,dicecloud_character_id`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'resolution=merge-duplicates,return=representation'
+                  },
+                  body: JSON.stringify(characterData)
+                }
+              );
+
+              if (response.ok) {
+                console.log('✅ Character pushed:', character.name);
+                pushBtn.innerHTML = '✅ Pushed!';
+
+                // Clear the character from local storage so a new one can be loaded
+                await browserAPI.storage.local.remove(['carmaclouds_characters']);
+                console.log('🗑️ Cleared ready-to-sync character from local storage');
+
+                // Reload pushed characters list
+                await loadPushedCharacters();
+
+                // Reload the entire adapter to show empty sync box
+                setTimeout(async () => {
+                  await init(containerEl);
+                }, 1500);
+              } else {
+                const errorText = await response.text();
+                throw new Error(`Push failed: ${errorText}`);
+              }
+            } catch (error) {
+              console.error('Error pushing character:', error);
+              pushBtn.innerHTML = '❌ Failed';
+              alert(`Failed to push: ${error.message}`);
+              setTimeout(() => {
+                pushBtn.innerHTML = originalText;
+                pushBtn.disabled = false;
+              }, 2000);
+            }
+          });
+        }
+      } else {
+        // No local characters - hide sync box
+        if (syncBox) syncBox.classList.add('hidden');
       }
+
+      // ALWAYS load and display pushed characters when logged in (independent of local storage)
+      await loadPushedCharacters();
     }
 
     // Add copy button handler
@@ -392,6 +391,15 @@ export async function init(containerEl) {
       if (message.action === 'dataSynced') {
         console.log('📥 OwlCloud adapter received data sync notification:', message.characterName);
         // Reload the entire adapter to show updated character data
+        init(containerEl);
+      }
+    });
+
+    // Listen for storage changes to refresh when characters are synced
+    browserAPI.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName === 'local' && changes.carmaclouds_characters) {
+        console.log('📦 OwlCloud adapter detected character storage change');
+        // Reload the adapter to show updated characters
         init(containerEl);
       }
     });
