@@ -818,6 +818,18 @@
       stealth: getVar("stealth"),
       survival: getVar("survival")
     };
+    const findChildren = (parentId) => {
+      return properties.filter((p) => {
+        if (!p || p.inactive || p.disabled)
+          return false;
+        if (p.ancestors && Array.isArray(p.ancestors)) {
+          return p.ancestors.some((ancestor) => {
+            return ancestor.id === parentId || ancestor === parentId;
+          });
+        }
+        return p.parent === parentId;
+      });
+    };
     const actions = [];
     const spells = [];
     const features = [];
@@ -826,16 +838,70 @@
       if (!prop || prop.inactive || prop.disabled)
         continue;
       if (prop.type === "action" && prop.name) {
+        const children = findChildren(prop._id);
+        let attackBonus = prop.attackBonus;
+        const damages = [];
+        for (const child of children) {
+          if (child.type === "attack" || child.type === "roll" && child.name?.toLowerCase().includes("attack")) {
+            if (child.roll) {
+              attackBonus = typeof child.roll === "string" ? child.roll : child.roll.calculation || child.roll.value;
+            }
+          }
+          if (child.type === "damage" || child.type === "roll" && (child.name?.toLowerCase().includes("damage") || child.name?.toLowerCase().includes("heal"))) {
+            let formula = "";
+            if (child.amount) {
+              formula = typeof child.amount === "string" ? child.amount : child.amount.calculation || String(child.amount.value || "");
+            } else if (child.roll) {
+              formula = typeof child.roll === "string" ? child.roll : child.roll.calculation || String(child.roll.value || "");
+            } else if (child.damage) {
+              formula = typeof child.damage === "string" ? child.damage : child.damage.calculation || String(child.damage.value || "");
+            }
+            if (formula) {
+              damages.push({
+                formula,
+                type: child.damageType || "",
+                name: child.name || ""
+              });
+            }
+          }
+        }
         actions.push({
           name: prop.name,
           description: prop.description || "",
           actionType: prop.actionType || "action",
-          attackBonus: prop.attackBonus,
-          damage: prop.damage,
+          attackBonus,
+          damage: damages.length > 0 ? damages : prop.damage,
           uses: prop.uses
         });
       }
       if (prop.type === "spell" && prop.name) {
+        const children = findChildren(prop._id);
+        let attackRoll = "";
+        const damageRolls = [];
+        for (const child of children) {
+          if (child.type === "attack" || child.type === "roll" && child.name?.toLowerCase().includes("attack")) {
+            if (child.roll) {
+              attackRoll = typeof child.roll === "string" ? child.roll : child.roll.calculation || child.roll.value || "use_spell_attack_bonus";
+            }
+          }
+          if (child.type === "damage" || child.type === "roll" && (child.name?.toLowerCase().includes("damage") || child.name?.toLowerCase().includes("heal"))) {
+            let formula = "";
+            if (child.amount) {
+              formula = typeof child.amount === "string" ? child.amount : child.amount.calculation || String(child.amount.value || "");
+            } else if (child.roll) {
+              formula = typeof child.roll === "string" ? child.roll : child.roll.calculation || String(child.roll.value || "");
+            } else if (child.damage) {
+              formula = typeof child.damage === "string" ? child.damage : child.damage.calculation || String(child.damage.value || "");
+            }
+            if (formula) {
+              damageRolls.push({
+                formula,
+                type: child.damageType || "",
+                name: child.name || ""
+              });
+            }
+          }
+        }
         spells.push({
           name: prop.name,
           level: prop.level || 0,
@@ -844,7 +910,9 @@
           range: prop.range || "",
           duration: prop.duration || "",
           description: prop.description || "",
-          prepared: prop.prepared !== false
+          prepared: prop.prepared !== false,
+          attackRoll,
+          damage: damageRolls
         });
       }
       if (prop.type === "feature" && prop.name) {
