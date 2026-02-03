@@ -373,6 +373,17 @@ function initializePopup() {
   // Modal event listeners
   document.getElementById('closeSlotModal').addEventListener('click', closeSlotModal);
 
+  // RollCloud-specific event listeners
+  const pushToVttBtn = document.getElementById('pushToVttBtn');
+  const openAuthModalBtn = document.getElementById('openAuthModalBtn');
+
+  if (pushToVttBtn) {
+    pushToVttBtn.addEventListener('click', handlePushToRoll20);
+  }
+  if (openAuthModalBtn) {
+    openAuthModalBtn.addEventListener('click', handleAutoConnect);
+  }
+
   // Experimental features event listeners
   if (autoBackwardsSyncToggle) {
     // Load initial state
@@ -653,6 +664,7 @@ function initializePopup() {
   function showLoginSection() {
     loginSection.classList.remove('hidden');
     mainSection.classList.add('hidden');
+    updateRollCloudUI();
   }
 
   /**
@@ -662,7 +674,8 @@ function initializePopup() {
     loginSection.classList.add('hidden');
     mainSection.classList.remove('hidden');
     loadCharacterData();
-    
+    updateRollCloudUI();
+
     // Update Discord button now that user is logged in
     showDiscordNotConnected();
   }
@@ -2394,6 +2407,335 @@ function initializePopup() {
         statusDiv.style.display = 'none';
       }, 3000);
     }
+  }
+
+  /**
+   * Updates RollCloud-specific UI based on login status
+   */
+  async function updateRollCloudUI() {
+    try {
+      const loginPrompt = document.getElementById('loginPrompt');
+      const syncBox = document.getElementById('syncBox');
+      const pushedCharactersSection = document.getElementById('pushedCharactersSection');
+
+      // Check if user is logged in to DiceCloud (has auth token)
+      const result = await browserAPI.storage.local.get(['diceCloudToken', 'activeCharacterId']);
+      const hasDiceCloudToken = !!result.diceCloudToken;
+
+      if (!hasDiceCloudToken) {
+        // Show login prompt
+        if (loginPrompt) loginPrompt.classList.remove('hidden');
+        if (syncBox) syncBox.classList.add('hidden');
+        if (pushedCharactersSection) pushedCharactersSection.classList.add('hidden');
+        return;
+      }
+
+      // Hide login prompt, show sync box
+      if (loginPrompt) loginPrompt.classList.add('hidden');
+      if (syncBox) syncBox.classList.remove('hidden');
+      if (pushedCharactersSection) pushedCharactersSection.classList.remove('hidden');
+
+      // Update sync box with current character info
+      await updateSyncBoxCharacter();
+
+      // Display synced characters list
+      await displaySyncedCharacters();
+    } catch (error) {
+      debug.error('Error updating RollCloud UI:', error);
+    }
+  }
+
+  /**
+   * Updates the sync box with current character info
+   */
+  async function updateSyncBoxCharacter() {
+    try {
+      const result = await browserAPI.storage.local.get(['activeCharacterId']);
+      const activeCharacterId = result.activeCharacterId;
+
+      if (!activeCharacterId) {
+        // No active character
+        document.getElementById('syncCharName').textContent = 'No character selected';
+        document.getElementById('syncCharLevel').textContent = 'Lvl -';
+        document.getElementById('syncCharClass').textContent = '-';
+        document.getElementById('syncCharRace').textContent = '-';
+        return;
+      }
+
+      // Get character data
+      const profilesResponse = await browserAPI.runtime.sendMessage({ action: 'getAllCharacterProfiles' });
+      const profiles = profilesResponse.success ? profilesResponse.profiles : {};
+
+      const character = profiles[activeCharacterId];
+      if (character) {
+        document.getElementById('syncCharName').textContent = character.name || 'Unknown';
+        document.getElementById('syncCharLevel').textContent = `Lvl ${character.level || '?'}`;
+        document.getElementById('syncCharClass').textContent = character.class || 'No Class';
+        document.getElementById('syncCharRace').textContent = character.race || 'Unknown';
+      }
+    } catch (error) {
+      debug.error('Error updating sync box character:', error);
+    }
+  }
+
+  /**
+   * Displays synced characters from local storage
+   */
+  async function displaySyncedCharacters() {
+    try {
+      const pushedCharactersList = document.getElementById('pushedCharactersList');
+      const noPushedCharacters = document.getElementById('noPushedCharacters');
+
+      if (!pushedCharactersList || !noPushedCharacters) return;
+
+      // Get all characters from local storage
+      const result = await browserAPI.storage.local.get('carmaclouds_characters');
+      const characters = result.carmaclouds_characters || [];
+
+      if (characters.length === 0) {
+        pushedCharactersList.innerHTML = '';
+        noPushedCharacters.classList.remove('hidden');
+        return;
+      }
+
+      noPushedCharacters.classList.add('hidden');
+      pushedCharactersList.innerHTML = '';
+
+      // Create character cards
+      characters.forEach(char => {
+        const card = document.createElement('div');
+        card.style.cssText = 'padding: 12px; background: #2a2a2a; border-radius: 8px; border: 1px solid #333;';
+
+        const name = char.name || char.raw?.name || 'Unknown';
+        const level = char.level || extractLevel(char.raw) || '?';
+        const charClass = char.class || extractClass(char.raw) || 'No Class';
+        const race = char.race || extractRace(char.raw) || 'Unknown';
+
+        card.innerHTML = `
+          <h4 style="color: #fff; margin: 0 0 8px 0; font-size: 15px;">${name}</h4>
+          <div style="display: flex; gap: 12px; font-size: 12px; color: #b0b0b0;">
+            <span>Lvl ${level}</span>
+            <span>•</span>
+            <span>${charClass}</span>
+            <span>•</span>
+            <span>${race}</span>
+          </div>
+        `;
+
+        pushedCharactersList.appendChild(card);
+      });
+    } catch (error) {
+      debug.error('Error displaying synced characters:', error);
+    }
+  }
+
+  /**
+   * Handles pushing characters to Roll20
+   * Fetches all characters from DiceCloud and stores them locally
+   */
+  async function handlePushToRoll20() {
+    const pushBtn = document.getElementById('pushToVttBtn');
+    if (!pushBtn) return;
+
+    const originalText = pushBtn.textContent;
+
+    try {
+      pushBtn.disabled = true;
+      pushBtn.textContent = '⏳ Syncing...';
+
+      // Get DiceCloud auth token
+      const result = await browserAPI.storage.local.get(['diceCloudToken', 'diceCloudUserId']);
+      const token = result.diceCloudToken;
+      const userId = result.diceCloudUserId;
+
+      if (!token) {
+        throw new Error('Not logged in to DiceCloud. Please login first.');
+      }
+
+      // Fetch user's character list from DiceCloud API
+      const API_BASE = 'https://dicecloud.com/api';
+      const userResponse = await fetch(`${API_BASE}/user`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!userResponse.ok) {
+        if (userResponse.status === 401) {
+          throw new Error('Authentication expired. Please login again.');
+        }
+        throw new Error(`Failed to fetch user data: ${userResponse.status}`);
+      }
+
+      const userData = await userResponse.json();
+
+      // The API might return characters in different formats
+      let characterIds = [];
+      if (Array.isArray(userData.characters)) {
+        characterIds = userData.characters;
+      } else if (userData.user && Array.isArray(userData.user.characters)) {
+        characterIds = userData.user.characters;
+      } else if (userData._id && userData.creatures) {
+        // Alternative: creatures array contains character data directly
+        characterIds = userData.creatures.map(c => c._id).filter(Boolean);
+      }
+
+      debug.log(`Found ${characterIds.length} characters for user`);
+
+      if (characterIds.length === 0) {
+        showError('No characters found in your DiceCloud account.');
+        pushBtn.textContent = originalText;
+        pushBtn.disabled = false;
+        return;
+      }
+
+      // Fetch each character's full data
+      const existingChars = await browserAPI.storage.local.get('carmaclouds_characters');
+      const characters = existingChars.carmaclouds_characters || [];
+      let newCount = 0;
+      let updatedCount = 0;
+
+      for (const charId of characterIds) {
+        try {
+          // Fetch character data from DiceCloud API
+          const charResponse = await fetch(`${API_BASE}/creature/${charId}`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (!charResponse.ok) continue;
+
+          const charData = await charResponse.json();
+
+          // Store raw character data
+          const rawData = {
+            creature: charData.creatures?.[0] || {},
+            variables: charData.creatureVariables?.[0] || {},
+            properties: charData.creatureProperties || []
+          };
+
+          // Extract basic info for display
+          const creature = rawData.creature;
+          const characterName = creature.name || 'Unknown';
+
+          // Check if character already exists
+          const existingIndex = characters.findIndex(c => c.id === charId);
+
+          const characterEntry = {
+            id: charId,
+            name: characterName,
+            level: extractLevel(rawData),
+            class: extractClass(rawData),
+            race: extractRace(rawData),
+            raw: rawData,
+            lastSynced: new Date().toISOString()
+          };
+
+          if (existingIndex >= 0) {
+            characters[existingIndex] = characterEntry;
+            updatedCount++;
+          } else {
+            characters.push(characterEntry);
+            newCount++;
+          }
+        } catch (error) {
+          debug.error(`Error fetching character ${charId}:`, error);
+          // Continue with other characters
+        }
+      }
+
+      // Save to local storage
+      await browserAPI.storage.local.set({ carmaclouds_characters: characters });
+
+      // Optionally sync to Supabase if authenticated
+      if (typeof SupabaseTokenManager !== 'undefined') {
+        try {
+          const supabaseManager = new SupabaseTokenManager();
+          await supabaseManager.syncCharactersToCloud(characters, userId);
+        } catch (error) {
+          debug.log('Cloud sync skipped:', error.message);
+        }
+      }
+
+      // Update UI
+      await displaySyncedCharacters();
+
+      pushBtn.style.background = 'linear-gradient(135deg, #28a745 0%, #1e7e34 100%)';
+      pushBtn.textContent = '✓ Synced!';
+
+      showSuccess(`Synced ${newCount} new and ${updatedCount} updated characters!`);
+
+      setTimeout(() => {
+        pushBtn.style.background = '';
+        pushBtn.textContent = originalText;
+        pushBtn.disabled = false;
+      }, 3000);
+    } catch (error) {
+      debug.error('Error pushing to Roll20:', error);
+      showError(`Sync failed: ${error.message}`);
+      pushBtn.textContent = originalText;
+      pushBtn.disabled = false;
+    }
+  }
+
+  /**
+   * Extracts character level from raw DiceCloud data
+   */
+  function extractLevel(raw) {
+    if (!raw) return '?';
+    if (raw.creature && raw.creature.level) return raw.creature.level;
+
+    // Try to calculate from class levels
+    if (raw.properties) {
+      let totalLevel = 0;
+      raw.properties.forEach(prop => {
+        if (prop.type === 'class' && prop.level) {
+          totalLevel += prop.level;
+        }
+      });
+      if (totalLevel > 0) return totalLevel;
+    }
+
+    return '?';
+  }
+
+  /**
+   * Extracts character class from raw DiceCloud data
+   */
+  function extractClass(raw) {
+    if (!raw) return 'No Class';
+    if (raw.creature && raw.creature.class) return raw.creature.class;
+
+    // Try to get from properties
+    if (raw.properties) {
+      const classes = raw.properties
+        .filter(prop => prop.type === 'class' && prop.name)
+        .map(prop => prop.name);
+      if (classes.length > 0) return classes.join(', ');
+    }
+
+    return 'No Class';
+  }
+
+  /**
+   * Extracts character race from raw DiceCloud data
+   */
+  function extractRace(raw) {
+    if (!raw) return 'Unknown';
+    if (raw.creature && raw.creature.race) return raw.creature.race;
+
+    // Try to get from properties
+    if (raw.properties) {
+      const race = raw.properties.find(prop => prop.type === 'race' || prop.tags?.includes('race'));
+      if (race && race.name) return race.name;
+    }
+
+    return 'Unknown';
   }
 
   /**
