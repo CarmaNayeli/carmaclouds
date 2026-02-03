@@ -28,6 +28,12 @@
       "path": "lang/en.json"
     }
   ],
+  "media": [
+    {
+      "type": "icon",
+      "url": "foundcloud-logo.png"
+    }
+  ],
   "relationships": {
     "systems": [
       {
