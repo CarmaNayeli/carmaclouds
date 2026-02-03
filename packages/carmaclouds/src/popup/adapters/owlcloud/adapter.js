@@ -231,9 +231,10 @@ export async function init(containerEl) {
         }
       }
       if (syncBox) syncBox.classList.add('hidden');
-    } else if (characters.length > 0 && characters[0]?.raw) {
+    } else if (characters.length > 0 && characters[characters.length - 1]?.raw) {
       // User is logged in and has character data - show sync box
-      const character = characters[0];
+      // Use the most recently synced character (last in array)
+      const character = characters[characters.length - 1];
 
       if (loginPrompt) loginPrompt.classList.add('hidden');
       if (syncBox) syncBox.classList.remove('hidden');

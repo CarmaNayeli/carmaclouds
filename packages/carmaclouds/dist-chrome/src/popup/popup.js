@@ -235,8 +235,8 @@ This cannot be undone.`)) {
         }
         if (syncBox)
           syncBox.classList.add("hidden");
-      } else if (characters.length > 0 && characters[0]?.raw) {
-        const character2 = characters[0];
+      } else if (characters.length > 0 && characters[characters.length - 1]?.raw) {
+        const character2 = characters[characters.length - 1];
         if (loginPrompt)
           loginPrompt.classList.add("hidden");
         if (syncBox)
