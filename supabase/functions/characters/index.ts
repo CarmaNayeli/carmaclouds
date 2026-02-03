@@ -323,10 +323,20 @@ serve(async (req) => {
       // Set active character for Owlbear player
       if (character && playerIdToUse) {
         // First, mark all characters for this user as inactive
-        await supabaseClient
-          .from('clouds_characters')
-          .update({ is_active: false })
-          .eq('owlbear_player_id', playerIdToUse)
+        // Use user_id_dicecloud to catch all characters, including those pushed from browser extension
+        const userId = character.userId || character.user_id_dicecloud
+        if (userId) {
+          await supabaseClient
+            .from('clouds_characters')
+            .update({ is_active: false })
+            .eq('user_id_dicecloud', userId)
+        } else {
+          // Fallback to owlbear_player_id if no dicecloud user id
+          await supabaseClient
+            .from('clouds_characters')
+            .update({ is_active: false })
+            .eq('owlbear_player_id', playerIdToUse)
+        }
 
         // Build upsert data - include both IDs if available
         const upsertData: any = {
