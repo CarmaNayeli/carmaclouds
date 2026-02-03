@@ -23,21 +23,29 @@ export async function init(containerEl) {
     console.log('Found', characters.length, 'synced characters from local storage');
 
     // Also fetch from Supabase if authenticated
-    const authResult = await browserAPI.storage.local.get(['supabase_auth_token', 'supabaseAuthToken']);
-    const supabaseToken = authResult.supabase_auth_token || authResult.supabaseAuthToken;
+    const supabase = window.supabaseClient;
+    let supabaseUserId = null;
 
-    if (supabaseToken) {
+    if (supabase) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        supabaseUserId = session?.user?.id;
+      } catch (err) {
+        console.warn('Failed to get Supabase session:', err);
+      }
+    }
+
+    if (supabaseUserId) {
       console.log('User authenticated to Supabase, fetching characters from database...');
       try {
         const SUPABASE_URL = 'https://luiesmfjdcmpywavvfqm.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aWVzbWZqZGNtcHl3YXZ2ZnFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4ODYxNDksImV4cCI6MjA4NTQ2MjE0OX0.oqjHFf2HhCLcanh0HVryoQH7iSV7E9dHHZJdYehxZ0U';
 
         const dbResponse = await fetch(
-          `${SUPABASE_URL}/rest/v1/clouds_characters?select=*`,
+          `${SUPABASE_URL}/rest/v1/clouds_characters?select=*&supabase_user_id=eq.${supabaseUserId}`,
           {
             headers: {
               'apikey': SUPABASE_ANON_KEY,
-              'Authorization': `Bearer ${supabaseToken}`,
               'Content-Type': 'application/json'
             }
           }
