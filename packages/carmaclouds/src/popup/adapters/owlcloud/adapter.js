@@ -126,28 +126,39 @@ export async function init(containerEl) {
       // Show login prompt - need both logins
       if (loginPrompt) {
         loginPrompt.classList.remove('hidden');
+        const titleEl = loginPrompt.querySelector('h3');
         const promptText = loginPrompt.querySelector('p');
-        if (promptText) {
-          if (!diceCloudUserId && !supabaseUserId) {
-            promptText.textContent = 'Please login to both DiceCloud and your Account to sync characters.';
-          } else if (!diceCloudUserId) {
-            promptText.textContent = 'Please login to DiceCloud to sync your characters.';
-          } else {
-            promptText.textContent = 'Please login to your Account (Account tab) for cross-device sync.';
+        const openAuthBtn = loginPrompt.querySelector('#openAuthModalBtn');
+
+        if (!diceCloudUserId) {
+          // DiceCloud not logged in - show standard DiceCloud login prompt
+          if (titleEl) titleEl.textContent = 'Login Required';
+          if (promptText) promptText.textContent = 'Please login to DiceCloud to sync your characters.';
+          if (openAuthBtn) {
+            openAuthBtn.textContent = '🔐 Login to DiceCloud';
+            openAuthBtn.addEventListener('click', () => {
+              // Trigger the main popup's DiceCloud auth modal
+              const authButton = document.querySelector('#dicecloud-auth-button');
+              if (authButton) authButton.click();
+            });
+          }
+        } else {
+          // DiceCloud logged in but Supabase not - show "heads up" notification
+          if (titleEl) titleEl.textContent = '⚠️ Heads Up!';
+          if (promptText) {
+            promptText.innerHTML = 'To auto-sync characters, you need a database username and password. <strong>It is NOT your DiceCloud login.</strong> Please register or sign in below.';
+          }
+          if (openAuthBtn) {
+            openAuthBtn.textContent = '👤 Go to Account Tab';
+            openAuthBtn.addEventListener('click', () => {
+              // Switch to the Account tab
+              const accountTab = document.querySelector('[data-tab="account"]');
+              if (accountTab) accountTab.click();
+            });
           }
         }
       }
       if (syncBox) syncBox.classList.add('hidden');
-
-      // Add login button handler
-      const openAuthBtn = wrapper.querySelector('#openAuthModalBtn');
-      if (openAuthBtn) {
-        openAuthBtn.addEventListener('click', () => {
-          // Trigger the main popup's auth modal
-          const authButton = document.querySelector('#dicecloud-auth-button');
-          if (authButton) authButton.click();
-        });
-      }
     } else if (characters.length > 0 && characters[0]?.raw) {
       // User is logged in and has character data - show sync box
       const character = characters[0];
