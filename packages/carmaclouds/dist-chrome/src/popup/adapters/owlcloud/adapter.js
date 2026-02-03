@@ -62,9 +62,18 @@
                 noPushedCharacters.classList.add("hidden");
               pushedChars.forEach((char) => {
                 const card = document.createElement("div");
-                card.style.cssText = "background: #1a1a1a; padding: 12px; border-radius: 8px; border: 1px solid #333;";
+                card.style.cssText = "background: #1a1a1a; padding: 12px; border-radius: 8px; border: 1px solid #333; position: relative;";
                 card.innerHTML = `
-                <h4 style="color: #16a75a; margin: 0 0 6px 0; font-size: 14px;">${char.character_name || "Unknown"}</h4>
+                <button
+                  class="delete-char-btn"
+                  data-char-id="${char.dicecloud_character_id}"
+                  style="position: absolute; top: 8px; right: 8px; background: rgba(239, 68, 68, 0.2); border: 1px solid #EF4444; color: #EF4444; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; transition: all 0.2s;"
+                  title="Delete character from database"
+                  onmouseover="this.style.background='rgba(239, 68, 68, 0.4)'"
+                  onmouseout="this.style.background='rgba(239, 68, 68, 0.2)'">
+                  \u2715
+                </button>
+                <h4 style="color: #16a75a; margin: 0 0 6px 0; font-size: 14px; padding-right: 30px;">${char.character_name || "Unknown"}</h4>
                 <div style="display: flex; gap: 8px; font-size: 12px; color: #888;">
                   <span>Lvl ${char.level || "?"}</span>
                   <span>\u2022</span>
@@ -73,6 +82,42 @@
                   <span>${char.race || "Unknown"}</span>
                 </div>
               `;
+                const deleteBtn = card.querySelector(".delete-char-btn");
+                if (deleteBtn) {
+                  deleteBtn.addEventListener("click", async (e) => {
+                    e.stopPropagation();
+                    if (!confirm(`Delete ${char.character_name || "this character"} from the database?
+
+This cannot be undone.`)) {
+                      return;
+                    }
+                    try {
+                      deleteBtn.disabled = true;
+                      deleteBtn.textContent = "\u23F3";
+                      const response3 = await fetch(
+                        `${SUPABASE_URL}/rest/v1/clouds_characters?dicecloud_character_id=eq.${char.dicecloud_character_id}&user_id_dicecloud=eq.${diceCloudUserId}`,
+                        {
+                          method: "DELETE",
+                          headers: {
+                            "apikey": SUPABASE_ANON_KEY,
+                            "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+                          }
+                        }
+                      );
+                      if (response3.ok) {
+                        console.log("\u2705 Character deleted:", char.character_name);
+                        await loadPushedCharacters();
+                      } else {
+                        throw new Error(`Delete failed: ${response3.status}`);
+                      }
+                    } catch (error) {
+                      console.error("Error deleting character:", error);
+                      alert(`Failed to delete: ${error.message}`);
+                      deleteBtn.disabled = false;
+                      deleteBtn.textContent = "\u2715";
+                    }
+                  });
+                }
                 pushedCharactersList.appendChild(card);
               });
             } else {
@@ -205,11 +250,12 @@
               if (response2.ok) {
                 console.log("\u2705 Character pushed:", character2.name);
                 pushBtn.innerHTML = "\u2705 Pushed!";
+                await browserAPI.storage.local.remove(["carmaclouds_characters"]);
+                console.log("\u{1F5D1}\uFE0F Cleared ready-to-sync character from local storage");
                 await loadPushedCharacters();
-                setTimeout(() => {
-                  pushBtn.innerHTML = originalText;
-                  pushBtn.disabled = false;
-                }, 2e3);
+                setTimeout(async () => {
+                  await init(containerEl);
+                }, 1500);
               } else {
                 const errorText = await response2.text();
                 throw new Error(`Push failed: ${errorText}`);

@@ -95,9 +95,18 @@ export async function init(containerEl) {
 
             pushedChars.forEach(char => {
               const card = document.createElement('div');
-              card.style.cssText = 'background: #1a1a1a; padding: 12px; border-radius: 8px; border: 1px solid #333;';
+              card.style.cssText = 'background: #1a1a1a; padding: 12px; border-radius: 8px; border: 1px solid #333; position: relative;';
               card.innerHTML = `
-                <h4 style="color: #16a75a; margin: 0 0 6px 0; font-size: 14px;">${char.character_name || 'Unknown'}</h4>
+                <button
+                  class="delete-char-btn"
+                  data-char-id="${char.dicecloud_character_id}"
+                  style="position: absolute; top: 8px; right: 8px; background: rgba(239, 68, 68, 0.2); border: 1px solid #EF4444; color: #EF4444; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; transition: all 0.2s;"
+                  title="Delete character from database"
+                  onmouseover="this.style.background='rgba(239, 68, 68, 0.4)'"
+                  onmouseout="this.style.background='rgba(239, 68, 68, 0.2)'">
+                  ✕
+                </button>
+                <h4 style="color: #16a75a; margin: 0 0 6px 0; font-size: 14px; padding-right: 30px;">${char.character_name || 'Unknown'}</h4>
                 <div style="display: flex; gap: 8px; font-size: 12px; color: #888;">
                   <span>Lvl ${char.level || '?'}</span>
                   <span>•</span>
@@ -106,6 +115,48 @@ export async function init(containerEl) {
                   <span>${char.race || 'Unknown'}</span>
                 </div>
               `;
+
+              // Add delete button handler
+              const deleteBtn = card.querySelector('.delete-char-btn');
+              if (deleteBtn) {
+                deleteBtn.addEventListener('click', async (e) => {
+                  e.stopPropagation();
+
+                  if (!confirm(`Delete ${char.character_name || 'this character'} from the database?\n\nThis cannot be undone.`)) {
+                    return;
+                  }
+
+                  try {
+                    deleteBtn.disabled = true;
+                    deleteBtn.textContent = '⏳';
+
+                    const response = await fetch(
+                      `${SUPABASE_URL}/rest/v1/clouds_characters?dicecloud_character_id=eq.${char.dicecloud_character_id}&user_id_dicecloud=eq.${diceCloudUserId}`,
+                      {
+                        method: 'DELETE',
+                        headers: {
+                          'apikey': SUPABASE_ANON_KEY,
+                          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                        }
+                      }
+                    );
+
+                    if (response.ok) {
+                      console.log('✅ Character deleted:', char.character_name);
+                      // Reload the list
+                      await loadPushedCharacters();
+                    } else {
+                      throw new Error(`Delete failed: ${response.status}`);
+                    }
+                  } catch (error) {
+                    console.error('Error deleting character:', error);
+                    alert(`Failed to delete: ${error.message}`);
+                    deleteBtn.disabled = false;
+                    deleteBtn.textContent = '✕';
+                  }
+                });
+              }
+
               pushedCharactersList.appendChild(card);
             });
           } else {
@@ -253,13 +304,17 @@ export async function init(containerEl) {
               console.log('✅ Character pushed:', character.name);
               pushBtn.innerHTML = '✅ Pushed!';
 
+              // Clear the character from local storage so a new one can be loaded
+              await browserAPI.storage.local.remove(['carmaclouds_characters']);
+              console.log('🗑️ Cleared ready-to-sync character from local storage');
+
               // Reload pushed characters list
               await loadPushedCharacters();
 
-              setTimeout(() => {
-                pushBtn.innerHTML = originalText;
-                pushBtn.disabled = false;
-              }, 2000);
+              // Reload the entire adapter to show empty sync box
+              setTimeout(async () => {
+                await init(containerEl);
+              }, 1500);
             } else {
               const errorText = await response.text();
               throw new Error(`Push failed: ${errorText}`);

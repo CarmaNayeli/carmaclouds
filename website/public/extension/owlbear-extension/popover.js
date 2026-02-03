@@ -533,7 +533,8 @@
   OBR.onReady(async () => {
     isOwlbearReady = true;
     console.log("\u{1F989} Owlbear SDK ready");
-    statusText.textContent = "Connected to Owlbear Rodeo";
+    if (statusText)
+      statusText.textContent = "Connected to Owlbear Rodeo";
     const sheetHeight = 460;
     try {
       await OBR.popover.setHeight(sheetHeight);
@@ -2416,14 +2417,17 @@ This will disconnect the character from this room. You can sync a different char
       setTimeout(checkForActiveCharacter, 2e3);
     });
   }
-  openExtensionBtn.addEventListener("click", () => {
-    const message = {
-      type: "OWLCLOUD_OPEN_POPUP",
-      source: "owlbear-extension"
-    };
-    window.parent.postMessage(message, "https://www.owlbear.rodeo");
-    alert("Please click the OwlCloud extension icon in your browser toolbar to select a character.");
-  });
+  var openExtensionBtn = document.getElementById("openExtensionBtn");
+  if (openExtensionBtn) {
+    openExtensionBtn.addEventListener("click", () => {
+      const message = {
+        type: "OWLCLOUD_OPEN_POPUP",
+        source: "owlbear-extension"
+      };
+      window.parent.postMessage(message, "https://www.owlbear.rodeo");
+      alert("Please click the OwlCloud extension icon in your browser toolbar to select a character.");
+    });
+  }
   var isChatOpen = false;
   if (openChatWindowBtn) {
     openChatWindowBtn.addEventListener("click", async () => {

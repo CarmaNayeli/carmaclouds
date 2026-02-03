@@ -654,7 +654,7 @@ initializeTabs();
 OBR.onReady(async () => {
   isOwlbearReady = true;
   console.log('🦉 Owlbear SDK ready');
-  statusText.textContent = 'Connected to Owlbear Rodeo';
+  if (statusText) statusText.textContent = 'Connected to Owlbear Rodeo';
 
   // Set character sheet height to half viewport minus action bar
   // TODO: Make this dynamic based on actual viewport height
@@ -3230,17 +3230,20 @@ if (syncCharacterBtn) {
 /**
  * Open browser extension popup
  */
-openExtensionBtn.addEventListener('click', () => {
-  // Send message to browser extension to open popup
-  const message = {
-    type: 'OWLCLOUD_OPEN_POPUP',
-    source: 'owlbear-extension'
-  };
+const openExtensionBtn = document.getElementById('openExtensionBtn');
+if (openExtensionBtn) {
+  openExtensionBtn.addEventListener('click', () => {
+    // Send message to browser extension to open popup
+    const message = {
+      type: 'OWLCLOUD_OPEN_POPUP',
+      source: 'owlbear-extension'
+    };
 
-  window.parent.postMessage(message, 'https://www.owlbear.rodeo');
+    window.parent.postMessage(message, 'https://www.owlbear.rodeo');
 
-  alert('Please click the OwlCloud extension icon in your browser toolbar to select a character.');
-});
+    alert('Please click the OwlCloud extension icon in your browser toolbar to select a character.');
+  });
+}
 
 /**
  * Toggle chat window
