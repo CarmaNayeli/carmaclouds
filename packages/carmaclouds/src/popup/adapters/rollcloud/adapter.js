@@ -70,6 +70,9 @@ export async function init(containerEl) {
     style.textContent = css;
     containerEl.appendChild(style);
 
+    // Initialize the new UI elements (login prompt, sync box, etc.)
+    await initializeRollCloudUI(wrapper, characters);
+
     // Populate character info directly if we have data
     if (parsedData && character) {
       // Show character info card
@@ -215,4 +218,289 @@ export async function init(containerEl) {
       </div>
     `;
   }
+}
+
+/**
+ * Initialize RollCloud UI elements (auth check, sync buttons, character list)
+ */
+async function initializeRollCloudUI(wrapper, characters) {
+  try {
+    const loginPrompt = wrapper.querySelector('#loginPrompt');
+    const syncBox = wrapper.querySelector('#syncBox');
+    const pushedCharactersSection = wrapper.querySelector('#pushedCharactersSection');
+    const syncCurrentBtn = wrapper.querySelector('#syncCurrentBtn');
+    const syncAllBtn = wrapper.querySelector('#syncAllBtn');
+    const openAuthModalBtn = wrapper.querySelector('#openAuthModalBtn');
+
+    // Check if user is authenticated to DiceCloud
+    const result = await browserAPI.storage.local.get(['diceCloudToken', 'dicecloud_auth_token', 'activeCharacterId']);
+    const hasDiceCloudToken = !!(result.diceCloudToken || result.dicecloud_auth_token);
+    const token = result.diceCloudToken || result.dicecloud_auth_token;
+
+    console.log('RollCloud auth check:', { hasDiceCloudToken, hasActiveChar: !!result.activeCharacterId });
+
+    if (!hasDiceCloudToken) {
+      // Show login prompt
+      if (loginPrompt) loginPrompt.classList.remove('hidden');
+      if (syncBox) syncBox.classList.add('hidden');
+      if (pushedCharactersSection) pushedCharactersSection.classList.add('hidden');
+
+      // Add login button handler
+      if (openAuthModalBtn) {
+        openAuthModalBtn.addEventListener('click', () => {
+          // Open DiceCloud in a new tab for login
+          browserAPI.tabs.create({ url: 'https://dicecloud.com' });
+        });
+      }
+      return;
+    }
+
+    // User is authenticated - show sync box
+    if (loginPrompt) loginPrompt.classList.add('hidden');
+    if (syncBox) syncBox.classList.remove('hidden');
+    if (pushedCharactersSection) pushedCharactersSection.classList.remove('hidden');
+
+    // Update sync box with current character info
+    if (result.activeCharacterId && characters.length > 0) {
+      const activeChar = characters.find(c => c.id === result.activeCharacterId) || characters[0];
+
+      const syncCharName = wrapper.querySelector('#syncCharName');
+      const syncCharLevel = wrapper.querySelector('#syncCharLevel');
+      const syncCharClass = wrapper.querySelector('#syncCharClass');
+      const syncCharRace = wrapper.querySelector('#syncCharRace');
+
+      if (syncCharName) syncCharName.textContent = activeChar.name || 'Unknown';
+      if (syncCharLevel) syncCharLevel.textContent = `Lvl ${activeChar.level || '?'}`;
+      if (syncCharClass) syncCharClass.textContent = activeChar.class || 'No Class';
+      if (syncCharRace) syncCharRace.textContent = activeChar.race || 'Unknown';
+    }
+
+    // Add sync button handlers
+    if (syncCurrentBtn) {
+      syncCurrentBtn.addEventListener('click', () => handleSyncCurrent(token, result.activeCharacterId, wrapper));
+    }
+    if (syncAllBtn) {
+      syncAllBtn.addEventListener('click', () => handleSyncAll(token, wrapper));
+    }
+
+    // Display synced characters
+    displaySyncedCharacters(wrapper, characters);
+
+  } catch (error) {
+    console.error('Error initializing RollCloud UI:', error);
+  }
+}
+
+/**
+ * Handle syncing current character
+ */
+async function handleSyncCurrent(token, activeCharacterId, wrapper) {
+  const syncCurrentBtn = wrapper.querySelector('#syncCurrentBtn');
+  if (!syncCurrentBtn) return;
+
+  const originalText = syncCurrentBtn.textContent;
+
+  try {
+    syncCurrentBtn.disabled = true;
+    syncCurrentBtn.textContent = '⏳ Syncing...';
+
+    if (!activeCharacterId) {
+      throw new Error('No active character selected');
+    }
+
+    // Fetch character from DiceCloud API
+    const response = await fetch(`https://dicecloud.com/api/creature/${activeCharacterId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (!response.ok) throw new Error(`Failed to fetch character: ${response.status}`);
+
+    const charData = await response.json();
+    const rawData = {
+      creature: charData.creatures?.[0] || {},
+      variables: charData.creatureVariables?.[0] || {},
+      properties: charData.creatureProperties || []
+    };
+
+    // Store in local storage
+    const existingChars = await browserAPI.storage.local.get('carmaclouds_characters');
+    const characters = existingChars.carmaclouds_characters || [];
+
+    const existingIndex = characters.findIndex(c => c.id === activeCharacterId);
+    const characterEntry = {
+      id: activeCharacterId,
+      name: rawData.creature.name || 'Unknown',
+      raw: rawData,
+      lastSynced: new Date().toISOString()
+    };
+
+    if (existingIndex >= 0) {
+      characters[existingIndex] = characterEntry;
+    } else {
+      characters.push(characterEntry);
+    }
+
+    await browserAPI.storage.local.set({ carmaclouds_characters: characters });
+
+    syncCurrentBtn.textContent = '✓ Synced!';
+    syncCurrentBtn.style.background = 'linear-gradient(135deg, #28a745 0%, #1e7e34 100%)';
+
+    // Refresh the character list
+    displaySyncedCharacters(wrapper, characters);
+
+    setTimeout(() => {
+      syncCurrentBtn.textContent = originalText;
+      syncCurrentBtn.style.background = '';
+      syncCurrentBtn.disabled = false;
+    }, 2000);
+
+  } catch (error) {
+    console.error('Sync current error:', error);
+    syncCurrentBtn.textContent = '❌ Failed';
+    alert(`Sync failed: ${error.message}`);
+    setTimeout(() => {
+      syncCurrentBtn.textContent = originalText;
+      syncCurrentBtn.disabled = false;
+    }, 2000);
+  }
+}
+
+/**
+ * Handle syncing all characters
+ */
+async function handleSyncAll(token, wrapper) {
+  const syncAllBtn = wrapper.querySelector('#syncAllBtn');
+  if (!syncAllBtn) return;
+
+  const originalText = syncAllBtn.textContent;
+
+  try {
+    syncAllBtn.disabled = true;
+    syncAllBtn.textContent = '⏳ Syncing...';
+
+    // Fetch user's character list
+    const userResponse = await fetch('https://dicecloud.com/api/user', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (!userResponse.ok) throw new Error(`Failed to fetch user data: ${userResponse.status}`);
+
+    const userData = await userResponse.json();
+    let characterIds = [];
+    if (Array.isArray(userData.characters)) {
+      characterIds = userData.characters;
+    } else if (userData.user && Array.isArray(userData.user.characters)) {
+      characterIds = userData.user.characters;
+    }
+
+    if (characterIds.length === 0) {
+      throw new Error('No characters found');
+    }
+
+    // Fetch each character
+    const existingChars = await browserAPI.storage.local.get('carmaclouds_characters');
+    const characters = existingChars.carmaclouds_characters || [];
+    let newCount = 0;
+    let updatedCount = 0;
+
+    for (const charId of characterIds) {
+      try {
+        const charResponse = await fetch(`https://dicecloud.com/api/creature/${charId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!charResponse.ok) continue;
+
+        const charData = await charResponse.json();
+        const rawData = {
+          creature: charData.creatures?.[0] || {},
+          variables: charData.creatureVariables?.[0] || {},
+          properties: charData.creatureProperties || []
+        };
+
+        const characterEntry = {
+          id: charId,
+          name: rawData.creature.name || 'Unknown',
+          raw: rawData,
+          lastSynced: new Date().toISOString()
+        };
+
+        const existingIndex = characters.findIndex(c => c.id === charId);
+        if (existingIndex >= 0) {
+          characters[existingIndex] = characterEntry;
+          updatedCount++;
+        } else {
+          characters.push(characterEntry);
+          newCount++;
+        }
+      } catch (error) {
+        console.error(`Error fetching character ${charId}:`, error);
+      }
+    }
+
+    await browserAPI.storage.local.set({ carmaclouds_characters: characters });
+
+    syncAllBtn.textContent = '✓ Synced!';
+    syncAllBtn.style.background = 'linear-gradient(135deg, #28a745 0%, #1e7e34 100%)';
+
+    // Refresh the character list
+    displaySyncedCharacters(wrapper, characters);
+
+    setTimeout(() => {
+      syncAllBtn.textContent = originalText;
+      syncAllBtn.style.background = '';
+      syncAllBtn.disabled = false;
+    }, 2000);
+
+  } catch (error) {
+    console.error('Sync all error:', error);
+    syncAllBtn.textContent = '❌ Failed';
+    alert(`Sync failed: ${error.message}`);
+    setTimeout(() => {
+      syncAllBtn.textContent = originalText;
+      syncAllBtn.disabled = false;
+    }, 2000);
+  }
+}
+
+/**
+ * Display synced characters in the list
+ */
+function displaySyncedCharacters(wrapper, characters) {
+  const pushedCharactersList = wrapper.querySelector('#pushedCharactersList');
+  const noPushedCharacters = wrapper.querySelector('#noPushedCharacters');
+
+  if (!pushedCharactersList || !noPushedCharacters) return;
+
+  if (characters.length === 0) {
+    pushedCharactersList.innerHTML = '';
+    noPushedCharacters.classList.remove('hidden');
+    return;
+  }
+
+  noPushedCharacters.classList.add('hidden');
+  pushedCharactersList.innerHTML = '';
+
+  characters.forEach(char => {
+    const card = document.createElement('div');
+    card.style.cssText = 'padding: 12px; background: #2a2a2a; border-radius: 8px; border: 1px solid #333;';
+
+    const name = char.name || 'Unknown';
+    const level = char.level || '?';
+    const charClass = char.class || 'No Class';
+    const race = char.race || 'Unknown';
+
+    card.innerHTML = `
+      <h4 style="color: #fff; margin: 0 0 8px 0; font-size: 15px;">${name}</h4>
+      <div style="display: flex; gap: 12px; font-size: 12px; color: #b0b0b0;">
+        <span>Lvl ${level}</span>
+        <span>•</span>
+        <span>${charClass}</span>
+        <span>•</span>
+        <span>${race}</span>
+      </div>
+    `;
+
+    pushedCharactersList.appendChild(card);
+  });
 }
