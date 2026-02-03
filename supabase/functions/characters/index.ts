@@ -320,6 +320,36 @@ serve(async (req) => {
         )
       }
 
+      // Set active character by name (for Owlbear with Supabase auth)
+      if (characterName && supabaseIdToUse) {
+        // First, mark all characters as inactive for this user
+        await supabaseClient
+          .from('clouds_characters')
+          .update({ is_active: false })
+          .eq('supabase_user_id', supabaseIdToUse)
+
+        // Then set the named character as active
+        const { data, error } = await supabaseClient
+          .from('clouds_characters')
+          .update({ is_active: true })
+          .eq('supabase_user_id', supabaseIdToUse)
+          .ilike('character_name', characterName)
+          .select(selectFields)
+          .single()
+
+        if (error) {
+          return new Response(
+            JSON.stringify({ error: error.message }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+
+        return new Response(
+          JSON.stringify({ success: true, character: data }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
       // Set active character for Owlbear player
       if (character && playerIdToUse) {
         // First, mark all characters for this user as inactive
