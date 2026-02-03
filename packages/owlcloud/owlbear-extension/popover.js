@@ -1821,18 +1821,15 @@ async function checkForActiveCharacter() {
       headers['If-None-Match'] = cachedVersion;
     }
 
-    // Add Authorization header if user is authenticated
-    if (currentUser && supabase) {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.access_token) {
-        headers['Authorization'] = `Bearer ${session.access_token}`;
-      }
-    }
+    // Note: We don't send the user's auth token here because the edge function
+    // uses the service role key internally and doesn't need user authentication.
+    // The supabase_user_id parameter in the URL is sufficient for identification.
 
     // Call unified characters edge function with conditional request
     const fetchUrl = `${SUPABASE_URL}/functions/v1/characters?${queryParam}&fields=full`;
     console.log('🌐 Fetching character from:', fetchUrl);
     console.log('🔑 Headers:', headers);
+    console.log('👤 Current user:', currentUser?.id || 'not authenticated');
 
     const response = await fetch(fetchUrl, { headers });
 
@@ -4622,26 +4619,39 @@ window.toggleFeatureCard = function(cardId) {
 // ============== Initialization ==============
 
 console.log('🎲 OwlCloud Owlbear extension popover loaded');
-statusText.textContent = 'Initializing...';
+console.log('📄 Document ready state:', document.readyState);
+if (statusText) {
+  statusText.textContent = 'Initializing...';
+}
 
 // Wait for DOM to be ready before initializing themes
+console.log('🔧 Starting theme initialization check...');
 if (document.readyState === 'loading') {
+  console.log('⏳ DOM still loading, waiting for DOMContentLoaded...');
   document.addEventListener('DOMContentLoaded', () => {
+    console.log('✅ DOMContentLoaded fired');
     // Initialize theme manager
+    console.log('🎨 Calling ThemeManager.init()...');
     ThemeManager.init();
+    console.log('🎨 Calling initializeThemeSelector()...');
     initializeThemeSelector();
   });
 } else {
   // DOM is already ready
+  console.log('✅ DOM already ready, initializing themes now...');
   // Initialize theme manager
+  console.log('🎨 Calling ThemeManager.init()...');
   ThemeManager.init();
+  console.log('🎨 Calling initializeThemeSelector()...');
   initializeThemeSelector();
 }
 
 // Initial check for character (will happen after OBR.onReady)
 setTimeout(() => {
   if (!isOwlbearReady) {
-    statusText.textContent = 'Waiting for Owlbear SDK...';
+    if (statusText) {
+      statusText.textContent = 'Waiting for Owlbear SDK...';
+    }
   }
 }, 1000);
 

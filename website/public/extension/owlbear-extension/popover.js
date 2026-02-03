@@ -449,10 +449,13 @@
   };
   function initializeThemeSelector() {
     const themeSelector = document.getElementById("theme-selector");
-    if (!themeSelector)
+    if (!themeSelector) {
+      console.error("\u274C Theme selector element not found");
       return;
+    }
     const themes = ThemeManager.getAvailableThemes();
     const currentTheme = ThemeManager.getCurrentTheme();
+    console.log("\u{1F3A8} Initializing theme selector with", themes.length, "themes");
     themes.forEach((theme) => {
       const themeOption = document.createElement("div");
       themeOption.className = `theme-option ${theme.key === ThemeManager.currentTheme ? "active" : ""}`;
@@ -462,9 +465,11 @@
       <div class="theme-name">${theme.name}</div>
     `;
       themeOption.addEventListener("click", () => {
+        console.log("\u{1F3A8} Theme option clicked:", theme.key, theme.name);
         document.querySelectorAll(".theme-option").forEach((opt) => opt.classList.remove("active"));
         themeOption.classList.add("active");
-        ThemeManager.switchTheme(theme.key);
+        const success = ThemeManager.switchTheme(theme.key);
+        console.log("\u{1F3A8} Theme switch", success ? "successful" : "failed");
       });
       themeSelector.appendChild(themeOption);
     });
@@ -1346,15 +1351,10 @@ This will disconnect the character from this room. You can sync a different char
       if (cachedVersion) {
         headers["If-None-Match"] = cachedVersion;
       }
-      if (currentUser && supabase) {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.access_token) {
-          headers["Authorization"] = `Bearer ${session.access_token}`;
-        }
-      }
       const fetchUrl = `${SUPABASE_URL}/functions/v1/characters?${queryParam}&fields=full`;
       console.log("\u{1F310} Fetching character from:", fetchUrl);
       console.log("\u{1F511} Headers:", headers);
+      console.log("\u{1F464} Current user:", currentUser?.id || "not authenticated");
       const response = await fetch(fetchUrl, { headers });
       console.log("\u{1F4E1} Response received:", response.status, response.statusText);
       if (response.status === 304) {
@@ -3381,19 +3381,32 @@ How many do you want to spend?`);
     }
   };
   console.log("\u{1F3B2} OwlCloud Owlbear extension popover loaded");
-  statusText.textContent = "Initializing...";
+  console.log("\u{1F4C4} Document ready state:", document.readyState);
+  if (statusText) {
+    statusText.textContent = "Initializing...";
+  }
+  console.log("\u{1F527} Starting theme initialization check...");
   if (document.readyState === "loading") {
+    console.log("\u23F3 DOM still loading, waiting for DOMContentLoaded...");
     document.addEventListener("DOMContentLoaded", () => {
+      console.log("\u2705 DOMContentLoaded fired");
+      console.log("\u{1F3A8} Calling ThemeManager.init()...");
       ThemeManager.init();
+      console.log("\u{1F3A8} Calling initializeThemeSelector()...");
       initializeThemeSelector();
     });
   } else {
+    console.log("\u2705 DOM already ready, initializing themes now...");
+    console.log("\u{1F3A8} Calling ThemeManager.init()...");
     ThemeManager.init();
+    console.log("\u{1F3A8} Calling initializeThemeSelector()...");
     initializeThemeSelector();
   }
   setTimeout(() => {
     if (!isOwlbearReady) {
-      statusText.textContent = "Waiting for Owlbear SDK...";
+      if (statusText) {
+        statusText.textContent = "Waiting for Owlbear SDK...";
+      }
     }
   }, 1e3);
   console.log("\u{1F3B2} OwlCloud popover initialized");
