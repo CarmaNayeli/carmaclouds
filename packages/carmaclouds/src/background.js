@@ -259,10 +259,10 @@ async function handleGetAllCharacterProfiles() {
     // Old format: { [characterId]: { name, class, level, race, ...raw data } }
     const profiles = {};
 
-    characters.forEach(char => {
+    characters.forEach((char, index) => {
       if (char.id) {
-        // Use db- prefix so these appear as cloud characters in the sheet tabs
-        const profileKey = `db-${char.id}`;
+        // Assign to regular slot numbers (slot-1, slot-2, etc.)
+        const profileKey = `slot-${index + 1}`;
         profiles[profileKey] = {
           id: char.id,
           name: char.name || 'Unknown',
@@ -270,7 +270,6 @@ async function handleGetAllCharacterProfiles() {
           class: char.class || 'Unknown',
           level: char.level || 1,
           race: char.race || 'Unknown',
-          source: 'database', // Mark as database character
           raw: char.raw // Include raw data for parsing
         };
       }

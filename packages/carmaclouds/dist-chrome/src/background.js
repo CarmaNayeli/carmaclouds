@@ -188,9 +188,9 @@
       const result = await browserAPI.storage.local.get("carmaclouds_characters");
       const characters = result.carmaclouds_characters || [];
       const profiles = {};
-      characters.forEach((char) => {
+      characters.forEach((char, index) => {
         if (char.id) {
-          const profileKey = `db-${char.id}`;
+          const profileKey = `slot-${index + 1}`;
           profiles[profileKey] = {
             id: char.id,
             name: char.name || "Unknown",
@@ -198,8 +198,6 @@
             class: char.class || "Unknown",
             level: char.level || 1,
             race: char.race || "Unknown",
-            source: "database",
-            // Mark as database character
             raw: char.raw
             // Include raw data for parsing
           };
