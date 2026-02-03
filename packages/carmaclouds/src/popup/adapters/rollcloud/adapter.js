@@ -330,6 +330,9 @@ async function handleSyncCurrent(token, activeCharacterId, wrapper) {
     const characterEntry = {
       id: activeCharacterId,
       name: rawData.creature.name || 'Unknown',
+      level: extractLevel(rawData),
+      class: extractClass(rawData),
+      race: extractRace(rawData),
       raw: rawData,
       lastSynced: new Date().toISOString()
     };
@@ -421,6 +424,9 @@ async function handleSyncAll(token, wrapper) {
         const characterEntry = {
           id: charId,
           name: rawData.creature.name || 'Unknown',
+          level: extractLevel(rawData),
+          class: extractClass(rawData),
+          race: extractRace(rawData),
           raw: rawData,
           lastSynced: new Date().toISOString()
         };
@@ -503,4 +509,59 @@ function displaySyncedCharacters(wrapper, characters) {
 
     pushedCharactersList.appendChild(card);
   });
+}
+
+/**
+ * Extract character level from raw DiceCloud data
+ */
+function extractLevel(raw) {
+  if (!raw) return '?';
+  if (raw.creature && raw.creature.level) return raw.creature.level;
+
+  // Try to calculate from class levels
+  if (raw.properties) {
+    let totalLevel = 0;
+    raw.properties.forEach(prop => {
+      if (prop.type === 'class' && prop.level) {
+        totalLevel += prop.level;
+      }
+    });
+    if (totalLevel > 0) return totalLevel;
+  }
+
+  return '?';
+}
+
+/**
+ * Extract character class from raw DiceCloud data
+ */
+function extractClass(raw) {
+  if (!raw) return 'No Class';
+  if (raw.creature && raw.creature.class) return raw.creature.class;
+
+  // Try to get from properties
+  if (raw.properties) {
+    const classes = raw.properties
+      .filter(prop => prop.type === 'class' && prop.name)
+      .map(prop => prop.name);
+    if (classes.length > 0) return classes.join(', ');
+  }
+
+  return 'No Class';
+}
+
+/**
+ * Extract character race from raw DiceCloud data
+ */
+function extractRace(raw) {
+  if (!raw) return 'Unknown';
+  if (raw.creature && raw.creature.race) return raw.creature.race;
+
+  // Try to get from properties
+  if (raw.properties) {
+    const race = raw.properties.find(prop => prop.type === 'race' || prop.tags?.includes('race'));
+    if (race && race.name) return race.name;
+  }
+
+  return 'Unknown';
 }
