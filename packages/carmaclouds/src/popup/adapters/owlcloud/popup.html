@@ -72,18 +72,7 @@
           </button>
         </div>
 
-        <!-- Pushed Characters List (shown first when logged in) -->
-        <div id="pushedCharactersSection" style="margin: 12px;">
-          <h3 style="color: #16a75a; margin-bottom: 12px;">Your Characters</h3>
-          <div id="pushedCharactersList" style="display: grid; grid-template-columns: 1fr; gap: 12px;">
-            <!-- Character cards will be dynamically added here -->
-          </div>
-          <div id="noPushedCharacters" class="hidden" style="padding: 20px; text-align: center; color: #888; background: #1a1a1a; border-radius: 8px;">
-            No characters pushed yet. Push a character to get started.
-          </div>
-        </div>
-
-        <!-- Sync Box (shown below pushed characters when there's a character to sync) -->
+        <!-- Sync Box (current character from DiceCloud) -->
         <div id="syncBox" class="hidden" style="margin: 12px; padding: 16px; background: #2a2a2a; border-radius: 8px; border: 2px solid #16a75a;">
           <h3 style="color: #16a75a; margin: 0 0 12px 0;">Ready to Sync</h3>
           <div id="currentCharacter" style="margin-bottom: 12px;">
@@ -99,6 +88,17 @@
           <button id="pushToVttBtn" class="btn btn-primary" style="width: 100%;">
             🦉 Push to Owlbear Rodeo
           </button>
+        </div>
+
+        <!-- Pushed Characters List -->
+        <div id="pushedCharactersSection" style="margin: 12px;">
+          <h3 style="color: #16a75a; margin-bottom: 12px;">Pushed Characters</h3>
+          <div id="pushedCharactersList" style="display: grid; grid-template-columns: 1fr; gap: 12px;">
+            <!-- Character cards will be dynamically added here -->
+          </div>
+          <div id="noPushedCharacters" class="hidden" style="padding: 20px; text-align: center; color: #888; background: #1a1a1a; border-radius: 8px;">
+            No characters pushed yet. Push a character to get started.
+          </div>
         </div>
 
         <!-- Owlbear Extension Setup Section -->
