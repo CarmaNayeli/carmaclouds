@@ -374,11 +374,15 @@ function initializePopup() {
   document.getElementById('closeSlotModal').addEventListener('click', closeSlotModal);
 
   // RollCloud-specific event listeners
-  const pushToVttBtn = document.getElementById('pushToVttBtn');
+  const syncCurrentBtn = document.getElementById('syncCurrentBtn');
+  const syncAllBtn = document.getElementById('syncAllBtn');
   const openAuthModalBtn = document.getElementById('openAuthModalBtn');
 
-  if (pushToVttBtn) {
-    pushToVttBtn.addEventListener('click', handlePushToRoll20);
+  if (syncCurrentBtn) {
+    syncCurrentBtn.addEventListener('click', handleSyncCurrentCharacter);
+  }
+  if (syncAllBtn) {
+    syncAllBtn.addEventListener('click', handleSyncAllCharacters);
   }
   if (openAuthModalBtn) {
     openAuthModalBtn.addEventListener('click', handleAutoConnect);
@@ -2530,18 +2534,134 @@ function initializePopup() {
   }
 
   /**
-   * Handles pushing characters to Roll20
-   * Fetches all characters from DiceCloud and stores them locally
+   * Handles syncing the current/active character from DiceCloud
+   * Fetches only the active character and stores it locally
    */
-  async function handlePushToRoll20() {
-    const pushBtn = document.getElementById('pushToVttBtn');
-    if (!pushBtn) return;
+  async function handleSyncCurrentCharacter() {
+    const syncCurrentBtn = document.getElementById('syncCurrentBtn');
+    if (!syncCurrentBtn) return;
 
-    const originalText = pushBtn.textContent;
+    const originalText = syncCurrentBtn.textContent;
 
     try {
-      pushBtn.disabled = true;
-      pushBtn.textContent = '⏳ Syncing...';
+      syncCurrentBtn.disabled = true;
+      syncCurrentBtn.textContent = '⏳ Syncing...';
+
+      // Get DiceCloud auth token and active character ID
+      const result = await browserAPI.storage.local.get(['diceCloudToken', 'diceCloudUserId', 'activeCharacterId']);
+      const token = result.diceCloudToken;
+      const activeCharacterId = result.activeCharacterId;
+
+      if (!token) {
+        throw new Error('Not logged in to DiceCloud. Please login first.');
+      }
+
+      if (!activeCharacterId) {
+        throw new Error('No active character selected. Please select a character first.');
+      }
+
+      // Fetch character data from DiceCloud API
+      const API_BASE = 'https://dicecloud.com/api';
+      const charResponse = await fetch(`${API_BASE}/creature/${activeCharacterId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!charResponse.ok) {
+        if (charResponse.status === 401) {
+          throw new Error('Authentication expired. Please login again.');
+        }
+        throw new Error(`Failed to fetch character data: ${charResponse.status}`);
+      }
+
+      const charData = await charResponse.json();
+
+      // Store raw character data
+      const rawData = {
+        creature: charData.creatures?.[0] || {},
+        variables: charData.creatureVariables?.[0] || {},
+        properties: charData.creatureProperties || []
+      };
+
+      // Extract basic info for display
+      const creature = rawData.creature;
+      const characterName = creature.name || 'Unknown';
+
+      // Get existing characters and update/add this one
+      const existingChars = await browserAPI.storage.local.get('carmaclouds_characters');
+      const characters = existingChars.carmaclouds_characters || [];
+
+      const characterEntry = {
+        id: activeCharacterId,
+        name: characterName,
+        level: extractLevel(rawData),
+        class: extractClass(rawData),
+        race: extractRace(rawData),
+        raw: rawData,
+        lastSynced: new Date().toISOString()
+      };
+
+      // Check if character already exists
+      const existingIndex = characters.findIndex(c => c.id === activeCharacterId);
+      let isNew = false;
+
+      if (existingIndex >= 0) {
+        characters[existingIndex] = characterEntry;
+      } else {
+        characters.push(characterEntry);
+        isNew = true;
+      }
+
+      // Save to local storage
+      await browserAPI.storage.local.set({ carmaclouds_characters: characters });
+
+      // Optionally sync to Supabase if authenticated
+      if (typeof SupabaseTokenManager !== 'undefined') {
+        try {
+          const supabaseManager = new SupabaseTokenManager();
+          await supabaseManager.syncCharactersToCloud(characters, result.diceCloudUserId);
+        } catch (error) {
+          debug.log('Cloud sync skipped:', error.message);
+        }
+      }
+
+      // Update UI
+      await displaySyncedCharacters();
+
+      syncCurrentBtn.style.background = 'linear-gradient(135deg, #28a745 0%, #1e7e34 100%)';
+      syncCurrentBtn.textContent = '✓ Synced!';
+
+      showSuccess(isNew ? `${characterName} added successfully!` : `${characterName} updated successfully!`);
+
+      setTimeout(() => {
+        syncCurrentBtn.style.background = '';
+        syncCurrentBtn.textContent = originalText;
+        syncCurrentBtn.disabled = false;
+      }, 3000);
+    } catch (error) {
+      debug.error('Error syncing current character:', error);
+      showError(`Sync failed: ${error.message}`);
+      syncCurrentBtn.textContent = originalText;
+      syncCurrentBtn.disabled = false;
+    }
+  }
+
+  /**
+   * Handles syncing all characters from DiceCloud
+   * Fetches all characters from DiceCloud API and stores them locally
+   */
+  async function handleSyncAllCharacters() {
+    const syncAllBtn = document.getElementById('syncAllBtn');
+    if (!syncAllBtn) return;
+
+    const originalText = syncAllBtn.textContent;
+
+    try {
+      syncAllBtn.disabled = true;
+      syncAllBtn.textContent = '⏳ Syncing...';
 
       // Get DiceCloud auth token
       const result = await browserAPI.storage.local.get(['diceCloudToken', 'diceCloudUserId']);
@@ -2586,8 +2706,8 @@ function initializePopup() {
 
       if (characterIds.length === 0) {
         showError('No characters found in your DiceCloud account.');
-        pushBtn.textContent = originalText;
-        pushBtn.disabled = false;
+        syncAllBtn.textContent = originalText;
+        syncAllBtn.disabled = false;
         return;
       }
 
@@ -2665,21 +2785,21 @@ function initializePopup() {
       // Update UI
       await displaySyncedCharacters();
 
-      pushBtn.style.background = 'linear-gradient(135deg, #28a745 0%, #1e7e34 100%)';
-      pushBtn.textContent = '✓ Synced!';
+      syncAllBtn.style.background = 'linear-gradient(135deg, #28a745 0%, #1e7e34 100%)';
+      syncAllBtn.textContent = '✓ Synced!';
 
       showSuccess(`Synced ${newCount} new and ${updatedCount} updated characters!`);
 
       setTimeout(() => {
-        pushBtn.style.background = '';
-        pushBtn.textContent = originalText;
-        pushBtn.disabled = false;
+        syncAllBtn.style.background = '';
+        syncAllBtn.textContent = originalText;
+        syncAllBtn.disabled = false;
       }, 3000);
     } catch (error) {
-      debug.error('Error pushing to Roll20:', error);
+      debug.error('Error syncing all characters:', error);
       showError(`Sync failed: ${error.message}`);
-      pushBtn.textContent = originalText;
-      pushBtn.disabled = false;
+      syncAllBtn.textContent = originalText;
+      syncAllBtn.disabled = false;
     }
   }
 
