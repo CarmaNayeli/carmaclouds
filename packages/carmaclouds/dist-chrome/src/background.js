@@ -189,16 +189,19 @@
       const characters = result.carmaclouds_characters || [];
       const profiles = {};
       characters.forEach((char) => {
-        if (char.id && char.raw) {
-          profiles[char.id] = {
+        if (char.id) {
+          const profileKey = `db-${char.id}`;
+          profiles[profileKey] = {
             id: char.id,
-            name: char.name || char.raw.name || "Unknown",
-            character_name: char.name || char.raw.name || "Unknown",
-            class: extractClass(char.raw),
-            level: extractLevel(char.raw),
-            race: extractRace(char.raw),
-            ...char.raw
-            // Include all raw data for compatibility
+            name: char.name || "Unknown",
+            character_name: char.name || "Unknown",
+            class: char.class || "Unknown",
+            level: char.level || 1,
+            race: char.race || "Unknown",
+            source: "database",
+            // Mark as database character
+            raw: char.raw
+            // Include raw data for parsing
           };
         }
       });
@@ -271,36 +274,6 @@
         error: error.message
       };
     }
-  }
-  function extractClass(rawData) {
-    if (!rawData || !rawData.variables || !Array.isArray(rawData.variables))
-      return "Unknown";
-    for (const variable of rawData.variables) {
-      if (variable.variableName === "class") {
-        return variable.value || "Unknown";
-      }
-    }
-    return "Unknown";
-  }
-  function extractLevel(rawData) {
-    if (!rawData || !rawData.variables || !Array.isArray(rawData.variables))
-      return 1;
-    for (const variable of rawData.variables) {
-      if (variable.variableName === "level") {
-        return variable.value || 1;
-      }
-    }
-    return 1;
-  }
-  function extractRace(rawData) {
-    if (!rawData || !rawData.variables || !Array.isArray(rawData.variables))
-      return "Unknown";
-    for (const variable of rawData.variables) {
-      if (variable.variableName === "race") {
-        return variable.value || "Unknown";
-      }
-    }
-    return "Unknown";
   }
   async function handleCharacterUpdate(data) {
     console.log("Character updated:", data);
