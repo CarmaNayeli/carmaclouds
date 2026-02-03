@@ -1514,22 +1514,26 @@ This will disconnect the character from this room. You can sync a different char
     }
     console.log("Showing character list with", allCharacters.length, "character(s)");
     characterListSection.style.display = "block";
-    let html = "";
+    characterList.innerHTML = "";
     allCharacters.forEach((character) => {
       const characterName = character.name || character.character_name || character.creature?.name || "Unknown Character";
       const currentCharName = currentCharacter?.name || currentCharacter?.character_name;
       const isActive = currentCharacter && characterName === currentCharName;
-      html += `
-      <div class="character-list-item ${isActive ? "active" : ""}" onclick="switchToCharacter('${characterName.replace(/'/g, "\\'")}')">
-        <div class="character-list-item-name">${characterName}</div>
-        <div class="character-list-item-details">
-          Level ${character.level || "?"} ${character.race || ""} ${character.class || ""}
-          ${isActive ? "\u2022 Active" : ""}
-        </div>
+      const card = document.createElement("div");
+      card.className = `character-list-item ${isActive ? "active" : ""}`;
+      card.innerHTML = `
+      <div class="character-list-item-name">${characterName}</div>
+      <div class="character-list-item-details">
+        Level ${character.level || "?"} ${character.race || ""} ${character.class || ""}
+        ${isActive ? "\u2022 Active" : ""}
       </div>
     `;
+      card.addEventListener("click", () => {
+        console.log("\u{1F5B1}\uFE0F Character card clicked:", characterName);
+        window.switchToCharacter(characterName);
+      });
+      characterList.appendChild(card);
     });
-    characterList.innerHTML = html;
   }
   window.switchToCharacter = async function(characterName) {
     try {

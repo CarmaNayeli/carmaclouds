@@ -2101,23 +2101,13 @@ window.switchToCharacter = async function(characterName) {
     }
     console.log('✅ Found character:', characterName);
 
-    // Normalize character object - edge function expects specific fields
-    const normalizedCharacter = {
-      ...character,
-      id: character.dicecloud_character_id || character.id,
-      name: character.name || character.character_name,
-      userId: character.user_id_dicecloud,
-      user_id_dicecloud: character.user_id_dicecloud
-    };
-
-    // Update active character using unified characters edge function
-    const playerId = await OBR.player.getId();
+    // Use name-based switching to avoid overwriting raw_dicecloud_data
+    // The edge function will find the character by name and just update is_active
     const requestBody = {
-      owlbearPlayerId: playerId,
-      character: normalizedCharacter
+      characterName: characterName
     };
 
-    // Include supabase_user_id if authenticated for cross-device sync
+    // Include user IDs for proper filtering
     if (currentUser) {
       requestBody.supabaseUserId = currentUser.id;
     }
