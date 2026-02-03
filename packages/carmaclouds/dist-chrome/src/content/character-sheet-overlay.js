@@ -2118,10 +2118,12 @@ ${spellDescription || "No description available"}`;
       font-size: 10px;
       text-align: center;
       user-select: none;
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(252, 87, 249, 0.3);
       border-bottom: none;
       letter-spacing: 2px;
       line-height: 1;
+      width: 180px;
+      box-sizing: border-box;
     `;
       dragHandle.addEventListener("mouseenter", () => {
         dragHandle.style.background = "rgba(30, 30, 30, 0.95)";
@@ -2135,7 +2137,6 @@ ${spellDescription || "No description available"}`;
       button.style.cssText = `
       background: linear-gradient(135deg, #FC57F9 0%, #8E0682 100%);
       color: white;
-      border: none;
       padding: 12px 20px;
       border-radius: 0 0 8px 8px;
       cursor: pointer;
@@ -2145,9 +2146,10 @@ ${spellDescription || "No description available"}`;
       transition: all 0.2s;
       user-select: none;
       display: block;
-      width: 100%;
+      width: 180px;
       border: 1px solid rgba(252, 87, 249, 0.3);
       border-top: none;
+      box-sizing: border-box;
     `;
       button.addEventListener("mouseenter", () => {
         button.style.boxShadow = "0 6px 20px rgba(252, 87, 249, 0.5)";
