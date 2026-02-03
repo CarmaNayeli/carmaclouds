@@ -7,6 +7,9 @@
 // Detect browser API (Firefox uses 'browser', Chrome uses 'chrome')
 const browserAPI = (typeof browser !== 'undefined' && browser.runtime) ? browser : chrome;
 
+// Store auth subscription to prevent multiple listeners
+let authSubscription = null;
+
 export async function init(containerEl) {
   console.log('Initializing OwlCloud adapter...');
 
@@ -311,10 +314,20 @@ export async function init(containerEl) {
 
     // Listen for Supabase auth state changes to refresh the UI
     if (supabase) {
-      supabase.auth.onAuthStateChange((event, session) => {
+      // Unsubscribe from previous listener to prevent infinite loops
+      if (authSubscription) {
+        authSubscription.subscription.unsubscribe();
+        console.log('🔓 Unsubscribed from previous auth listener');
+      }
+
+      // Set up new listener
+      authSubscription = supabase.auth.onAuthStateChange((event, session) => {
         console.log('🔐 OwlCloud adapter detected Supabase auth change:', event);
-        // Reload the entire adapter when auth state changes
-        init(containerEl);
+        // Only reload on actual auth changes, not initial session
+        if (event !== 'INITIAL_SESSION') {
+          console.log('🔄 Reloading adapter due to auth change');
+          init(containerEl);
+        }
       });
     }
 

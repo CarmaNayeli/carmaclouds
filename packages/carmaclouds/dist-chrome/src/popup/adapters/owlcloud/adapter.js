@@ -1,6 +1,7 @@
 (() => {
   // src/popup/adapters/owlcloud/adapter.js
   var browserAPI = typeof browser !== "undefined" && browser.runtime ? browser : chrome;
+  var authSubscription = null;
   async function init(containerEl) {
     console.log("Initializing OwlCloud adapter...");
     try {
@@ -258,9 +259,16 @@
         });
       }
       if (supabase) {
-        supabase.auth.onAuthStateChange((event, session) => {
+        if (authSubscription) {
+          authSubscription.subscription.unsubscribe();
+          console.log("\u{1F513} Unsubscribed from previous auth listener");
+        }
+        authSubscription = supabase.auth.onAuthStateChange((event, session) => {
           console.log("\u{1F510} OwlCloud adapter detected Supabase auth change:", event);
-          init(containerEl);
+          if (event !== "INITIAL_SESSION") {
+            console.log("\u{1F504} Reloading adapter due to auth change");
+            init(containerEl);
+          }
         });
       }
       browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {

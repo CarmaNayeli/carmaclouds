@@ -306,9 +306,16 @@
         });
       }
       if (supabase) {
-        supabase.auth.onAuthStateChange((event, session) => {
+        if (authSubscription) {
+          authSubscription.subscription.unsubscribe();
+          console.log("\u{1F513} Unsubscribed from previous auth listener");
+        }
+        authSubscription = supabase.auth.onAuthStateChange((event, session) => {
           console.log("\u{1F510} OwlCloud adapter detected Supabase auth change:", event);
-          init2(containerEl);
+          if (event !== "INITIAL_SESSION") {
+            console.log("\u{1F504} Reloading adapter due to auth change");
+            init2(containerEl);
+          }
         });
       }
       browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -327,10 +334,11 @@
     `;
     }
   }
-  var browserAPI;
+  var browserAPI, authSubscription;
   var init_adapter2 = __esm({
     "src/popup/adapters/owlcloud/adapter.js"() {
       browserAPI = typeof browser !== "undefined" && browser.runtime ? browser : chrome;
+      authSubscription = null;
     }
   });
 

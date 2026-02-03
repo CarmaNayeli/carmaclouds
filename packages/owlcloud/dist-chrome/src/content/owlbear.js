@@ -1523,13 +1523,31 @@
       };
       if (typeof window !== "undefined") {
         window.SupabaseTokenManager = SupabaseTokenManager;
+        console.log("\u{1F50D} [Supabase Client] Checking for createSupabaseClient function...", typeof window.createSupabaseClient);
         if (typeof window.createSupabaseClient === "function") {
           try {
             window.supabaseClient = window.createSupabaseClient(SUPABASE_URL2, SUPABASE_ANON_KEY2);
+            console.log("\u2705 [Supabase Client] Created global Supabase auth client");
             debug.log("\u2705 Created global Supabase auth client");
           } catch (error) {
+            console.error("\u274C [Supabase Client] Failed to create Supabase client:", error);
             debug.error("\u274C Failed to create Supabase client:", error);
           }
+        } else {
+          console.warn("\u26A0\uFE0F [Supabase Client] createSupabaseClient function not available yet - will retry on DOMContentLoaded");
+          window.addEventListener("DOMContentLoaded", () => {
+            console.log("\u{1F50D} [Supabase Client] DOMContentLoaded - retrying createSupabaseClient check...", typeof window.createSupabaseClient);
+            if (typeof window.createSupabaseClient === "function" && !window.supabaseClient) {
+              try {
+                window.supabaseClient = window.createSupabaseClient(SUPABASE_URL2, SUPABASE_ANON_KEY2);
+                console.log("\u2705 [Supabase Client] Created global Supabase auth client (after DOMContentLoaded)");
+                debug.log("\u2705 Created global Supabase auth client (after DOMContentLoaded)");
+              } catch (error) {
+                console.error("\u274C [Supabase Client] Failed to create Supabase client:", error);
+                debug.error("\u274C Failed to create Supabase client:", error);
+              }
+            }
+          });
         }
       } else if (typeof self !== "undefined") {
         self.SupabaseTokenManager = SupabaseTokenManager;
