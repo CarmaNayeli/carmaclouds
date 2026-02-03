@@ -3166,17 +3166,18 @@ function showNoCharacter() {
 /**
  * Sync character from DiceCloud
  */
-syncCharacterBtn.addEventListener('click', () => {
-  // Clear manual unsync flag to allow auto-syncing again
-  localStorage.removeItem('owlcloud_manual_unsync');
+if (syncCharacterBtn) {
+  syncCharacterBtn.addEventListener('click', () => {
+    // Clear manual unsync flag to allow auto-syncing again
+    localStorage.removeItem('owlcloud_manual_unsync');
 
-  // Send message to browser extension to sync character
-  const message = {
-    type: 'OWLCLOUD_SYNC_CHARACTER',
-    source: 'owlbear-extension'
-  };
+    // Send message to browser extension to sync character
+    const message = {
+      type: 'OWLCLOUD_SYNC_CHARACTER',
+      source: 'owlbear-extension'
+    };
 
-  window.parent.postMessage(message, 'https://www.owlbear.rodeo');
+    window.parent.postMessage(message, 'https://www.owlbear.rodeo');
 
   // Show notification in Owlbear
   if (isOwlbearReady) {
@@ -3188,7 +3189,8 @@ syncCharacterBtn.addEventListener('click', () => {
 
   // Refresh character data after a delay
   setTimeout(checkForActiveCharacter, 2000);
-});
+  });
+}
 
 /**
  * Open browser extension popup
@@ -3210,11 +3212,12 @@ openExtensionBtn.addEventListener('click', () => {
  */
 let isChatOpen = false;
 
-openChatWindowBtn.addEventListener('click', async () => {
-  if (!isOwlbearReady) {
-    alert('Owlbear SDK not ready. Please wait a moment and try again.');
-    return;
-  }
+if (openChatWindowBtn) {
+  openChatWindowBtn.addEventListener('click', async () => {
+    if (!isOwlbearReady) {
+      alert('Owlbear SDK not ready. Please wait a moment and try again.');
+      return;
+    }
 
   if (isChatOpen) {
     // Close the chat window
@@ -3238,7 +3241,8 @@ openChatWindowBtn.addEventListener('click', async () => {
     isChatOpen = true;
     openChatWindowBtn.textContent = '💬 Close Chat Window';
   }
-});
+  });
+}
 
 // ============== Message Listener ==============
 

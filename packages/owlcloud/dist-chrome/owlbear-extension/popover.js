@@ -2376,19 +2376,21 @@ This will disconnect the character from this room. You can sync a different char
     if (inventoryContent)
       inventoryContent.innerHTML = "";
   }
-  syncCharacterBtn.addEventListener("click", () => {
-    localStorage.removeItem("owlcloud_manual_unsync");
-    const message = {
-      type: "OWLCLOUD_SYNC_CHARACTER",
-      source: "owlbear-extension"
-    };
-    window.parent.postMessage(message, "https://www.owlbear.rodeo");
-    if (isOwlbearReady) {
-      OBR.notification.show("Syncing character from DiceCloud...", "INFO");
-    }
-    statusText.textContent = "Syncing character...";
-    setTimeout(checkForActiveCharacter, 2e3);
-  });
+  if (syncCharacterBtn) {
+    syncCharacterBtn.addEventListener("click", () => {
+      localStorage.removeItem("owlcloud_manual_unsync");
+      const message = {
+        type: "OWLCLOUD_SYNC_CHARACTER",
+        source: "owlbear-extension"
+      };
+      window.parent.postMessage(message, "https://www.owlbear.rodeo");
+      if (isOwlbearReady) {
+        OBR.notification.show("Syncing character from DiceCloud...", "INFO");
+      }
+      statusText.textContent = "Syncing character...";
+      setTimeout(checkForActiveCharacter, 2e3);
+    });
+  }
   openExtensionBtn.addEventListener("click", () => {
     const message = {
       type: "OWLCLOUD_OPEN_POPUP",
@@ -2398,30 +2400,32 @@ This will disconnect the character from this room. You can sync a different char
     alert("Please click the OwlCloud extension icon in your browser toolbar to select a character.");
   });
   var isChatOpen = false;
-  openChatWindowBtn.addEventListener("click", async () => {
-    if (!isOwlbearReady) {
-      alert("Owlbear SDK not ready. Please wait a moment and try again.");
-      return;
-    }
-    if (isChatOpen) {
-      await OBR.popover.close("com.owlcloud.chat");
-      isChatOpen = false;
-      openChatWindowBtn.textContent = "\u{1F4AC} Open Chat Window";
-    } else {
-      const chatHeight = 300;
-      await OBR.popover.open({
-        id: "com.owlcloud.chat",
-        url: "/extension/owlbear-extension/chat.html",
-        height: chatHeight,
-        width: 400,
-        anchorOrigin: { horizontal: "LEFT", vertical: "BOTTOM" },
-        transformOrigin: { horizontal: "LEFT", vertical: "BOTTOM" },
-        disableClickAway: true
-      });
-      isChatOpen = true;
-      openChatWindowBtn.textContent = "\u{1F4AC} Close Chat Window";
-    }
-  });
+  if (openChatWindowBtn) {
+    openChatWindowBtn.addEventListener("click", async () => {
+      if (!isOwlbearReady) {
+        alert("Owlbear SDK not ready. Please wait a moment and try again.");
+        return;
+      }
+      if (isChatOpen) {
+        await OBR.popover.close("com.owlcloud.chat");
+        isChatOpen = false;
+        openChatWindowBtn.textContent = "\u{1F4AC} Open Chat Window";
+      } else {
+        const chatHeight = 300;
+        await OBR.popover.open({
+          id: "com.owlcloud.chat",
+          url: "/extension/owlbear-extension/chat.html",
+          height: chatHeight,
+          width: 400,
+          anchorOrigin: { horizontal: "LEFT", vertical: "BOTTOM" },
+          transformOrigin: { horizontal: "LEFT", vertical: "BOTTOM" },
+          disableClickAway: true
+        });
+        isChatOpen = true;
+        openChatWindowBtn.textContent = "\u{1F4AC} Close Chat Window";
+      }
+    });
+  }
   window.addEventListener("message", (event) => {
     if (event.origin !== "https://www.owlbear.rodeo") {
       return;
