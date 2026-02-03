@@ -1062,6 +1062,10 @@
     }
     if (currentUser) {
       console.log("\u2705 [Owlbear] User signed in, showing logged in view");
+      const fetchStandaloneBtn = document.getElementById("fetch-character-standalone-btn");
+      if (fetchStandaloneBtn) {
+        fetchStandaloneBtn.style.display = "block";
+      }
       if (authHeaderText) {
         authHeaderText.textContent = "\u{1F513} Sign Out";
       }
@@ -1079,24 +1083,20 @@
           <div style="font-size: 12px; color: var(--theme-primary-light); margin-bottom: 4px;">Signed in as</div>
           <div style="font-weight: 600; color: #e0e0e0;">${currentUser.email}</div>
         </div>
-        <div style="display: flex; flex-direction: column; gap: 8px;">
-          <button
-            onclick="handleFetchCharacter()"
-            id="fetch-character-btn"
-            style="width: 100%; padding: 8px; background: var(--theme-gradient); border: none; border-radius: 6px; color: white; font-weight: 600; cursor: pointer; transition: all 0.2s;">
-            \u{1F504} Fetch Character
-          </button>
-          <button
-            onclick="signOut()"
-            style="width: 100%; padding: 8px; background: rgba(239, 68, 68, 0.2); border: 1px solid #EF4444; border-radius: 6px; color: #EF4444; font-weight: 600; cursor: pointer; transition: all 0.2s;">
-            Sign Out
-          </button>
-        </div>
+        <button
+          onclick="signOut()"
+          style="width: 100%; padding: 8px; background: rgba(239, 68, 68, 0.2); border: 1px solid #EF4444; border-radius: 6px; color: #EF4444; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+          Sign Out
+        </button>
         <div id="fetch-status" style="margin-top: 8px; font-size: 12px; display: none;"></div>
       </div>
     `;
     } else {
       console.log("\u274C [Owlbear] User not signed in, showing login form");
+      const fetchStandaloneBtn = document.getElementById("fetch-character-standalone-btn");
+      if (fetchStandaloneBtn) {
+        fetchStandaloneBtn.style.display = "none";
+      }
       if (authHeaderText) {
         authHeaderText.textContent = "\u{1F510} Sign In / Sign Up";
       }

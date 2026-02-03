@@ -202,9 +202,16 @@ function parseCharacterData(apiData, characterId) {
     // Check for race as a folder (DiceCloud often stores races as folders)
     // Look for folders with common race names at the top level
     if (!raceFound && prop.type === 'folder' && prop.name) {
-      const commonRaces = ['human', 'elf', 'dwarf', 'halfling', 'gnome', 'half-elf', 'half-orc', 'dragonborn', 'tiefling', 'orc', 'goblin', 'kobold', 'warforged', 'tabaxi', 'kenku', 'aarakocra', 'genasi', 'aasimar', 'firbolg', 'goliath', 'triton', 'yuan-ti', 'tortle', 'lizardfolk', 'bugbear', 'hobgoblin', 'changeling', 'shifter', 'kalashtar'];
-      const nameMatchesRace = commonRaces.some(race => prop.name.toLowerCase().includes(race));
-      if (nameMatchesRace) {
+      // Sort by length (longest first) to match most specific races first
+      // This prevents "elf" from matching before "half-elf" or "tiefling"
+      const commonRaces = ['half-elf', 'half-orc', 'dragonborn', 'tiefling', 'aarakocra', 'lizardfolk', 'warforged', 'changeling', 'kalashtar', 'goliath', 'firbolg', 'genasi', 'yuan-ti', 'bugbear', 'hobgoblin', 'halfling', 'tortle', 'kobold', 'tabaxi', 'goblin', 'kenku', 'human', 'dwarf', 'gnome', 'triton', 'elf', 'orc', 'shifter'];
+
+      const propNameLower = prop.name.toLowerCase();
+
+      // Find the longest matching race (most specific)
+      const matchedRace = commonRaces.find(race => propNameLower.includes(race));
+
+      if (matchedRace) {
         const parentDepth = prop.ancestors ? prop.ancestors.length : 0;
         if (parentDepth <= 2) { // Top-level or near top-level folder
           console.log('CarmaClouds: Found race folder:', prop.name);

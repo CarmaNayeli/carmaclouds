@@ -391,6 +391,290 @@ This cannot be undone.`)) {
   });
 
   // src/content/dicecloud-extraction.js
+  function parseCharacterData(apiData, characterId) {
+    console.log("CarmaClouds: Parsing character data...");
+    if (!apiData.creatures || apiData.creatures.length === 0) {
+      console.error("CarmaClouds: No creatures found in API response");
+      throw new Error("No character data found in API response");
+    }
+    const creature = apiData.creatures[0];
+    const variables = apiData.creatureVariables && apiData.creatureVariables[0] || {};
+    const properties = apiData.creatureProperties || [];
+    console.log("CarmaClouds: Creature:", creature.name);
+    console.log("CarmaClouds: Variables count:", Object.keys(variables).length);
+    console.log("CarmaClouds: Properties count:", properties.length);
+    const characterName = creature.name || "";
+    const calculateArmorClass = () => {
+      const extractNumeric = (val) => {
+        if (val === null || val === void 0)
+          return null;
+        if (typeof val === "number" && !isNaN(val))
+          return val;
+        if (typeof val === "string") {
+          const parsed = parseFloat(val);
+          return isNaN(parsed) ? null : parsed;
+        }
+        if (typeof val === "object") {
+          if (val.total !== void 0 && typeof val.total === "number")
+            return val.total;
+          if (val.value !== void 0 && typeof val.value === "number")
+            return val.value;
+          if (val.calculation && typeof val.calculation === "string") {
+            const bm = val.calculation.match(/^(\d+)/);
+            if (bm)
+              return parseInt(bm[1]);
+          }
+        }
+        return null;
+      };
+      if (variables.armorClass && (variables.armorClass.total || variables.armorClass.value)) {
+        const variableAC = variables.armorClass.total || variables.armorClass.value;
+        console.log(`CarmaClouds: Using Dicecloud's calculated AC: ${variableAC}`);
+        return variableAC;
+      }
+      if (creature && creature.denormalizedStats) {
+        const tryKeys = ["armorClass", "ac", "armor"];
+        for (const k of tryKeys) {
+          if (creature.denormalizedStats.hasOwnProperty(k)) {
+            const num = extractNumeric(creature.denormalizedStats[k]);
+            if (num !== null) {
+              console.log(`CarmaClouds: Using denormalizedStats.${k}:`, num);
+              return num;
+            }
+          }
+        }
+      }
+      const varNamesToCheck = ["armor", "armorClass", "armor_class", "ac", "acTotal"];
+      for (const vn of varNamesToCheck) {
+        if (variables.hasOwnProperty(vn)) {
+          const v = variables[vn];
+          const candidate = extractNumeric(v && (v.total ?? v.value ?? v));
+          if (candidate !== null) {
+            console.log(`CarmaClouds: Using variable ${vn}:`, candidate);
+            return candidate;
+          }
+        }
+      }
+      let baseAC = 10;
+      let armorAC = null;
+      const acBonuses = [];
+      properties.forEach((prop) => {
+        if (prop.inactive || prop.disabled)
+          return;
+        const hasArmorStat = prop.stat === "armor" || Array.isArray(prop.stats) && prop.stats.includes("armor");
+        if (hasArmorStat) {
+          let amount = null;
+          if (typeof prop.amount === "number") {
+            amount = prop.amount;
+          } else if (typeof prop.amount === "string") {
+            amount = parseFloat(prop.amount);
+          }
+          if (amount !== null && !isNaN(amount)) {
+            const operation = prop.operation || "";
+            if (operation === "base" || operation === "Base value") {
+              if (armorAC === null || amount > armorAC) {
+                armorAC = amount;
+              }
+            } else if (operation === "add" || operation === "Add") {
+              acBonuses.push({ name: prop.name, amount });
+            }
+          }
+        }
+      });
+      let finalAC = armorAC !== null ? armorAC : baseAC;
+      acBonuses.forEach((bonus) => {
+        finalAC += bonus.amount;
+      });
+      console.log("CarmaClouds: Calculated AC:", finalAC);
+      return finalAC;
+    };
+    let characterRace = "Unknown";
+    let characterClass = "";
+    let characterLevel = 0;
+    const uniqueClasses = /* @__PURE__ */ new Set();
+    let raceFound = false;
+    console.log("CarmaClouds: Extracting basic character info...");
+    const propertyTypes = {};
+    properties.forEach((prop) => {
+      if (prop && prop.type) {
+        propertyTypes[prop.type] = (propertyTypes[prop.type] || 0) + 1;
+      }
+    });
+    console.log("CarmaClouds: Property types in character:", propertyTypes);
+    if (creature.race) {
+      console.log("CarmaClouds: Found race on creature:", creature.race);
+      characterRace = creature.race;
+      raceFound = true;
+    }
+    if (creature.denormalizedStats && creature.denormalizedStats.race) {
+      console.log("CarmaClouds: Found race in denormalizedStats:", creature.denormalizedStats.race);
+      characterRace = creature.denormalizedStats.race;
+      raceFound = true;
+    }
+    for (const prop of properties) {
+      if (!prop)
+        continue;
+      if (!raceFound && prop.type === "folder" && prop.name) {
+        const commonRaces = ["human", "elf", "dwarf", "halfling", "gnome", "half-elf", "half-orc", "dragonborn", "tiefling", "orc", "goblin", "kobold", "warforged", "tabaxi", "kenku", "aarakocra", "genasi", "aasimar", "firbolg", "goliath", "triton", "yuan-ti", "tortle", "lizardfolk", "bugbear", "hobgoblin", "changeling", "shifter", "kalashtar"];
+        const nameMatchesRace = commonRaces.some((race) => prop.name.toLowerCase().includes(race));
+        if (nameMatchesRace) {
+          const parentDepth = prop.ancestors ? prop.ancestors.length : 0;
+          if (parentDepth <= 2) {
+            console.log("CarmaClouds: Found race folder:", prop.name);
+            characterRace = prop.name;
+            raceFound = true;
+          }
+        }
+      }
+      if (!raceFound && (prop.type === "race" || prop.type === "species" || prop.type === "characterRace")) {
+        if (prop.name) {
+          console.log("CarmaClouds: Found race property:", prop.type, prop.name);
+          characterRace = prop.name;
+          raceFound = true;
+        }
+      }
+      if (!raceFound && prop.type === "constant" && prop.name && prop.name.toLowerCase() === "race") {
+        if (prop.value) {
+          console.log("CarmaClouds: Found race as constant:", prop.value);
+          characterRace = prop.value;
+          raceFound = true;
+        }
+      }
+      if (prop.type === "class" && prop.name && !prop.inactive && !prop.disabled) {
+        const cleanName = prop.name.replace(/\s*\[Multiclass\]/i, "").trim();
+        const normalizedClassName = cleanName.toLowerCase().trim();
+        if (!uniqueClasses.has(normalizedClassName)) {
+          uniqueClasses.add(normalizedClassName);
+          if (characterClass) {
+            characterClass += ` / ${cleanName}`;
+          } else {
+            characterClass = cleanName;
+          }
+        }
+      }
+      if (prop.type === "classLevel" && !prop.inactive && !prop.disabled) {
+        characterLevel += 1;
+      }
+    }
+    if (!raceFound && (!characterRace || characterRace === "Unknown")) {
+      console.log("CarmaClouds: Race not found in properties, checking variables...");
+      const raceVars = Object.keys(variables).filter(
+        (key) => key.toLowerCase().includes("race") || key.toLowerCase().includes("species")
+      );
+      if (raceVars.length > 0) {
+        console.log("CarmaClouds: Found race-related variables:", raceVars);
+        raceVars.forEach((varName) => {
+          console.log(`CarmaClouds: Raw data for "${varName}":`, variables[varName]);
+        });
+        const formatRaceName = (name) => {
+          if (!name)
+            return null;
+          if (name.toLowerCase() === "custom" || name.toLowerCase() === "customlineage") {
+            return "Custom Lineage";
+          }
+          let formatted = name.replace(/([a-z])([A-Z])/g, "$1 $2");
+          formatted = formatted.split(" ").map(
+            (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+          ).join(" ");
+          return formatted;
+        };
+        const extractRaceFromVarName = (varName) => {
+          const raceName2 = varName.replace(/race$/i, "").replace(/^race$/i, "");
+          if (raceName2 && raceName2 !== varName.toLowerCase()) {
+            return raceName2.charAt(0).toUpperCase() + raceName2.slice(1);
+          }
+          return null;
+        };
+        let raceName = null;
+        let subraceName = null;
+        const subRaceVar = raceVars.find((key) => key.toLowerCase() === "subrace");
+        if (subRaceVar) {
+          const subRaceValue = variables[subRaceVar];
+          console.log("CarmaClouds: Found subRace variable:", subRaceValue);
+          if (typeof subRaceValue === "object" && subRaceValue !== null) {
+            if (subRaceValue.name) {
+              subraceName = formatRaceName(subRaceValue.name);
+            } else if (subRaceValue.text) {
+              subraceName = formatRaceName(subRaceValue.text);
+            } else if (subRaceValue.value) {
+              subraceName = formatRaceName(subRaceValue.value);
+            }
+          } else if (typeof subRaceValue === "string") {
+            subraceName = formatRaceName(subRaceValue);
+          }
+        }
+        const raceVar = raceVars.find((key) => key.toLowerCase() === "race");
+        if (raceVar) {
+          const raceValue = variables[raceVar];
+          console.log("CarmaClouds: Found race variable:", raceValue);
+          if (typeof raceValue === "object" && raceValue !== null) {
+            if (raceValue.value && typeof raceValue.value === "object" && raceValue.value.value) {
+              raceName = formatRaceName(raceValue.value.value);
+              console.log("CarmaClouds: Extracted race from nested value.value:", raceName);
+            } else if (raceValue.value && typeof raceValue.value === "string") {
+              raceName = formatRaceName(raceValue.value);
+            } else if (raceValue.name) {
+              raceName = formatRaceName(raceValue.name);
+            } else if (raceValue.text) {
+              raceName = formatRaceName(raceValue.text);
+            }
+          } else if (typeof raceValue === "string") {
+            raceName = formatRaceName(raceValue);
+          }
+        }
+        if (!raceName) {
+          for (const varName of raceVars) {
+            const varValue = variables[varName];
+            if (typeof varValue === "object" && varValue !== null && varValue.value === true) {
+              const extracted = extractRaceFromVarName(varName);
+              if (extracted) {
+                raceName = extracted;
+                console.log("CarmaClouds: Extracted race from variable name:", varName, "->", raceName);
+                break;
+              }
+            }
+          }
+        }
+        if (raceName && subraceName) {
+          characterRace = `${raceName} - ${subraceName}`;
+          console.log("CarmaClouds: Combined race and subrace:", characterRace);
+        } else if (subraceName) {
+          characterRace = subraceName;
+          console.log("CarmaClouds: Using subrace as race:", characterRace);
+        } else if (raceName) {
+          characterRace = raceName;
+          console.log("CarmaClouds: Using race:", characterRace);
+        } else {
+          console.log("CarmaClouds: Could not determine race from variables");
+        }
+      } else {
+        console.log("CarmaClouds: No race variables found");
+      }
+    }
+    console.log("CarmaClouds: Character preview:", characterName, characterLevel, characterRace, characterClass);
+    const characterData = {
+      // Metadata
+      id: creature._id || characterId,
+      name: characterName,
+      url: window.location.href,
+      timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+      source: "dicecloud",
+      // Preview info (for character lists, etc.)
+      preview: {
+        race: characterRace,
+        class: characterClass || "Unknown",
+        level: characterLevel
+      },
+      // Raw DiceCloud API data - VTT adapters will parse this as needed
+      raw: {
+        creature,
+        variables,
+        properties
+      }
+    };
+    console.log("CarmaClouds: Successfully stored character data:", characterData.name);
+    return characterData;
+  }
   function parseForRollCloud(rawData) {
     if (!rawData || !rawData.creature || !rawData.variables || !rawData.properties) {
       throw new Error("Invalid raw data format");
@@ -829,8 +1113,52 @@ This cannot be undone.`)) {
     try {
       containerEl.innerHTML = '<div class="loading">Loading RollCloud...</div>';
       const result = await browserAPI2.storage.local.get("carmaclouds_characters") || {};
-      const characters = result.carmaclouds_characters || [];
-      console.log("Found", characters.length, "synced characters");
+      let characters = result.carmaclouds_characters || [];
+      console.log("Found", characters.length, "synced characters from local storage");
+      const authResult = await browserAPI2.storage.local.get(["supabase_auth_token", "supabaseAuthToken"]);
+      const supabaseToken = authResult.supabase_auth_token || authResult.supabaseAuthToken;
+      if (supabaseToken) {
+        console.log("User authenticated to Supabase, fetching characters from database...");
+        try {
+          const SUPABASE_URL = "https://luiesmfjdcmpywavvfqm.supabase.co";
+          const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aWVzbWZqZGNtcHl3YXZ2ZnFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4ODYxNDksImV4cCI6MjA4NTQ2MjE0OX0.oqjHFf2HhCLcanh0HVryoQH7iSV7E9dHHZJdYehxZ0U";
+          const dbResponse = await fetch(
+            `${SUPABASE_URL}/rest/v1/clouds_characters?select=*`,
+            {
+              headers: {
+                "apikey": SUPABASE_ANON_KEY,
+                "Authorization": `Bearer ${supabaseToken}`,
+                "Content-Type": "application/json"
+              }
+            }
+          );
+          if (dbResponse.ok) {
+            const dbCharacters = await dbResponse.json();
+            console.log("Found", dbCharacters.length, "characters from Supabase");
+            dbCharacters.forEach((dbChar) => {
+              const existingIndex = characters.findIndex((c) => c.id === dbChar.dicecloud_character_id);
+              const characterEntry = {
+                id: dbChar.dicecloud_character_id,
+                name: dbChar.character_name || "Unknown",
+                level: dbChar.level || "?",
+                class: dbChar.class_name || "No Class",
+                race: dbChar.race || "Unknown",
+                raw: dbChar.raw_data || {},
+                lastSynced: dbChar.updated_at || (/* @__PURE__ */ new Date()).toISOString()
+              };
+              if (existingIndex >= 0) {
+                characters[existingIndex] = characterEntry;
+              } else {
+                characters.push(characterEntry);
+              }
+            });
+            console.log("Merged characters list now has", characters.length, "total characters");
+          }
+        } catch (dbError) {
+          console.warn("Failed to fetch from Supabase (non-fatal):", dbError);
+        }
+      }
+      console.log("Final character count:", characters.length);
       const character = characters.length > 0 ? characters[0] : null;
       let parsedData = null;
       if (character && character.raw) {
@@ -862,6 +1190,7 @@ This cannot be undone.`)) {
       const style = document.createElement("style");
       style.textContent = css;
       containerEl.appendChild(style);
+      await initializeRollCloudUI(wrapper, characters);
       if (parsedData && character) {
         const characterInfo = wrapper.querySelector("#characterInfo");
         const statusSection = wrapper.querySelector("#status");
@@ -986,6 +1315,190 @@ This cannot be undone.`)) {
     `;
     }
   }
+  async function initializeRollCloudUI(wrapper, characters) {
+    try {
+      const loginPrompt = wrapper.querySelector("#loginPrompt");
+      const syncBox = wrapper.querySelector("#syncBox");
+      const pushedCharactersSection = wrapper.querySelector("#pushedCharactersSection");
+      const pushToRoll20Btn = wrapper.querySelector("#pushToRoll20Btn");
+      const openAuthModalBtn = wrapper.querySelector("#openAuthModalBtn");
+      const result = await browserAPI2.storage.local.get(["diceCloudToken", "dicecloud_auth_token", "activeCharacterId"]);
+      const hasDiceCloudToken = !!(result.diceCloudToken || result.dicecloud_auth_token);
+      const token = result.diceCloudToken || result.dicecloud_auth_token;
+      console.log("RollCloud auth check:", { hasDiceCloudToken, hasActiveChar: !!result.activeCharacterId });
+      if (!hasDiceCloudToken) {
+        if (loginPrompt)
+          loginPrompt.classList.remove("hidden");
+        if (syncBox)
+          syncBox.classList.add("hidden");
+        if (pushedCharactersSection)
+          pushedCharactersSection.classList.add("hidden");
+        if (openAuthModalBtn) {
+          openAuthModalBtn.addEventListener("click", () => {
+            browserAPI2.tabs.create({ url: "https://dicecloud.com" });
+          });
+        }
+        return;
+      }
+      if (loginPrompt)
+        loginPrompt.classList.add("hidden");
+      if (syncBox)
+        syncBox.classList.remove("hidden");
+      if (pushedCharactersSection)
+        pushedCharactersSection.classList.remove("hidden");
+      if (result.activeCharacterId && characters.length > 0) {
+        const activeChar = characters.find((c) => c.id === result.activeCharacterId) || characters[0];
+        const syncCharName = wrapper.querySelector("#syncCharName");
+        const syncCharLevel = wrapper.querySelector("#syncCharLevel");
+        const syncCharClass = wrapper.querySelector("#syncCharClass");
+        const syncCharRace = wrapper.querySelector("#syncCharRace");
+        let displayName = activeChar.name || "Unknown";
+        let displayLevel = "?";
+        let displayClass = "No Class";
+        let displayRace = "Unknown";
+        if (activeChar.raw) {
+          try {
+            const fakeApiResponse = {
+              creatures: [activeChar.raw.creature || {}],
+              creatureVariables: [activeChar.raw.variables || {}],
+              creatureProperties: activeChar.raw.properties || []
+            };
+            const parsed = parseCharacterData(fakeApiResponse, activeChar.id);
+            displayName = parsed.name || displayName;
+            displayLevel = parsed.preview?.level || parsed.level || displayLevel;
+            displayClass = parsed.preview?.class || parsed.class || displayClass;
+            displayRace = parsed.preview?.race || parsed.race || displayRace;
+          } catch (parseError) {
+            console.warn("Failed to re-parse character for sync box:", parseError);
+            displayLevel = activeChar.level || displayLevel;
+            displayClass = activeChar.class || displayClass;
+            displayRace = activeChar.race || displayRace;
+          }
+        } else {
+          displayLevel = activeChar.level || displayLevel;
+          displayClass = activeChar.class || displayClass;
+          displayRace = activeChar.race || displayRace;
+        }
+        if (syncCharName)
+          syncCharName.textContent = displayName;
+        if (syncCharLevel)
+          syncCharLevel.textContent = `Lvl ${displayLevel}`;
+        if (syncCharClass)
+          syncCharClass.textContent = displayClass;
+        if (syncCharRace)
+          syncCharRace.textContent = displayRace;
+      }
+      if (pushToRoll20Btn) {
+        pushToRoll20Btn.addEventListener("click", () => handlePushToRoll20(token, result.activeCharacterId, wrapper));
+      }
+      displaySyncedCharacters(wrapper, characters);
+    } catch (error) {
+      console.error("Error initializing RollCloud UI:", error);
+    }
+  }
+  async function handlePushToRoll20(token, activeCharacterId, wrapper) {
+    const pushBtn = wrapper.querySelector("#pushToRoll20Btn");
+    if (!pushBtn)
+      return;
+    const originalText = pushBtn.textContent;
+    try {
+      pushBtn.disabled = true;
+      pushBtn.textContent = "\u23F3 Syncing...";
+      if (!activeCharacterId) {
+        throw new Error("No active character selected");
+      }
+      const response = await fetch(`https://dicecloud.com/api/creature/${activeCharacterId}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (!response.ok)
+        throw new Error(`Failed to fetch character: ${response.status}`);
+      const charData = await response.json();
+      const rawData = {
+        creature: charData.creatures?.[0] || {},
+        variables: charData.creatureVariables?.[0] || {},
+        properties: charData.creatureProperties || []
+      };
+      const parsedChar = parseCharacterData(charData, activeCharacterId);
+      const existingChars = await browserAPI2.storage.local.get("carmaclouds_characters");
+      const characters = existingChars.carmaclouds_characters || [];
+      const existingIndex = characters.findIndex((c) => c.id === activeCharacterId);
+      const characterEntry = {
+        id: activeCharacterId,
+        name: parsedChar.name || "Unknown",
+        level: parsedChar.preview?.level || parsedChar.level || "?",
+        class: parsedChar.preview?.class || parsedChar.class || "No Class",
+        race: parsedChar.preview?.race || parsedChar.race || "Unknown",
+        raw: rawData,
+        lastSynced: (/* @__PURE__ */ new Date()).toISOString()
+      };
+      if (existingIndex >= 0) {
+        characters[existingIndex] = characterEntry;
+      } else {
+        characters.push(characterEntry);
+      }
+      await browserAPI2.storage.local.set({ carmaclouds_characters: characters });
+      pushBtn.textContent = "\u2713 Synced!";
+      pushBtn.style.background = "linear-gradient(135deg, #28a745 0%, #1e7e34 100%)";
+      displaySyncedCharacters(wrapper, characters);
+      setTimeout(() => {
+        pushBtn.textContent = originalText;
+        pushBtn.style.background = "";
+        pushBtn.disabled = false;
+      }, 2e3);
+    } catch (error) {
+      console.error("Sync current error:", error);
+      pushBtn.textContent = "\u274C Failed";
+      alert(`Sync failed: ${error.message}`);
+      setTimeout(() => {
+        pushBtn.textContent = originalText;
+        pushBtn.disabled = false;
+      }, 2e3);
+    }
+  }
+  function displaySyncedCharacters(wrapper, characters) {
+    const pushedCharactersList = wrapper.querySelector("#pushedCharactersList");
+    const noPushedCharacters = wrapper.querySelector("#noPushedCharacters");
+    if (!pushedCharactersList || !noPushedCharacters)
+      return;
+    if (characters.length === 0) {
+      pushedCharactersList.innerHTML = "";
+      noPushedCharacters.classList.remove("hidden");
+      return;
+    }
+    noPushedCharacters.classList.add("hidden");
+    pushedCharactersList.innerHTML = "";
+    characters.forEach((char) => {
+      const card = document.createElement("div");
+      card.style.cssText = "position: relative; padding: 16px; background: #1a1a1a; border-radius: 8px; border: 1px solid #2a2a2a;";
+      const name = char.name || "Unknown";
+      const level = char.level || "?";
+      const charClass = char.class || "No Class";
+      const race = char.race || "Unknown";
+      card.innerHTML = `
+      <button class="delete-char-btn" data-char-id="${char.id}" style="position: absolute; top: 8px; right: 8px; background: #dc3545; border: 1px solid #c82333; color: white; border-radius: 4px; width: 28px; height: 28px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; line-height: 1;">\xD7</button>
+      <h4 style="color: #16a75a; margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">${name}</h4>
+      <div style="display: flex; gap: 8px; font-size: 13px; color: #b0b0b0;">
+        <span>Lvl ${level}</span>
+        <span>\u2022</span>
+        <span>${charClass}</span>
+        <span>\u2022</span>
+        <span>${race}</span>
+      </div>
+    `;
+      const deleteBtn = card.querySelector(".delete-char-btn");
+      if (deleteBtn) {
+        deleteBtn.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          if (confirm(`Delete ${name}?`)) {
+            const updatedChars = characters.filter((c) => c.id !== char.id);
+            await browserAPI2.storage.local.set({ carmaclouds_characters: updatedChars });
+            displaySyncedCharacters(wrapper, updatedChars);
+          }
+        });
+      }
+      pushedCharactersList.appendChild(card);
+    });
+  }
   var browserAPI2;
   var init_adapter3 = __esm({
     "src/popup/adapters/rollcloud/adapter.js"() {
@@ -1109,8 +1622,8 @@ This cannot be undone.`)) {
     modal.classList.remove("active");
   }
   async function getAuthToken() {
-    const result = await browserAPI3.storage.local.get("dicecloud_auth_token");
-    return result?.dicecloud_auth_token || null;
+    const result = await browserAPI3.storage.local.get(["dicecloud_auth_token", "diceCloudToken"]);
+    return result?.dicecloud_auth_token || result?.diceCloudToken || null;
   }
   async function saveAuthToken(token, userId = null, username = null) {
     console.log("\u{1F4BE} Saving auth token with userId:", userId || "not provided", "username:", username || "not provided");

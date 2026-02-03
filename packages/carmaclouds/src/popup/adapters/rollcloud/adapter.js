@@ -16,11 +16,68 @@ export async function init(containerEl) {
     // Show loading state
     containerEl.innerHTML = '<div class="loading">Loading RollCloud...</div>';
 
-    // Fetch synced characters from storage
+    // Fetch synced characters from local storage
     const result = await browserAPI.storage.local.get('carmaclouds_characters') || {};
-    const characters = result.carmaclouds_characters || [];
+    let characters = result.carmaclouds_characters || [];
 
-    console.log('Found', characters.length, 'synced characters');
+    console.log('Found', characters.length, 'synced characters from local storage');
+
+    // Also fetch from Supabase if authenticated
+    const authResult = await browserAPI.storage.local.get(['supabase_auth_token', 'supabaseAuthToken']);
+    const supabaseToken = authResult.supabase_auth_token || authResult.supabaseAuthToken;
+
+    if (supabaseToken) {
+      console.log('User authenticated to Supabase, fetching characters from database...');
+      try {
+        const SUPABASE_URL = 'https://luiesmfjdcmpywavvfqm.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aWVzbWZqZGNtcHl3YXZ2ZnFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4ODYxNDksImV4cCI6MjA4NTQ2MjE0OX0.oqjHFf2HhCLcanh0HVryoQH7iSV7E9dHHZJdYehxZ0U';
+
+        const dbResponse = await fetch(
+          `${SUPABASE_URL}/rest/v1/clouds_characters?select=*`,
+          {
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${supabaseToken}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        if (dbResponse.ok) {
+          const dbCharacters = await dbResponse.json();
+          console.log('Found', dbCharacters.length, 'characters from Supabase');
+
+          // Merge database characters with local storage
+          // Database characters take priority (more up-to-date)
+          dbCharacters.forEach(dbChar => {
+            const existingIndex = characters.findIndex(c => c.id === dbChar.dicecloud_character_id);
+
+            // Convert database format to local storage format
+            const characterEntry = {
+              id: dbChar.dicecloud_character_id,
+              name: dbChar.character_name || 'Unknown',
+              level: dbChar.level || '?',
+              class: dbChar.class_name || 'No Class',
+              race: dbChar.race || 'Unknown',
+              raw: dbChar.raw_data || {},
+              lastSynced: dbChar.updated_at || new Date().toISOString()
+            };
+
+            if (existingIndex >= 0) {
+              characters[existingIndex] = characterEntry;
+            } else {
+              characters.push(characterEntry);
+            }
+          });
+
+          console.log('Merged characters list now has', characters.length, 'total characters');
+        }
+      } catch (dbError) {
+        console.warn('Failed to fetch from Supabase (non-fatal):', dbError);
+      }
+    }
+
+    console.log('Final character count:', characters.length);
 
     // Get the most recent character (for now - later we'll add character selection)
     const character = characters.length > 0 ? characters[0] : null;
@@ -268,10 +325,44 @@ async function initializeRollCloudUI(wrapper, characters) {
       const syncCharClass = wrapper.querySelector('#syncCharClass');
       const syncCharRace = wrapper.querySelector('#syncCharRace');
 
-      if (syncCharName) syncCharName.textContent = activeChar.name || 'Unknown';
-      if (syncCharLevel) syncCharLevel.textContent = `Lvl ${activeChar.level || '?'}`;
-      if (syncCharClass) syncCharClass.textContent = activeChar.class || 'No Class';
-      if (syncCharRace) syncCharRace.textContent = activeChar.race || 'Unknown';
+      // Re-parse character data from raw using the same parser as OwlCloud
+      let displayName = activeChar.name || 'Unknown';
+      let displayLevel = '?';
+      let displayClass = 'No Class';
+      let displayRace = 'Unknown';
+
+      if (activeChar.raw) {
+        try {
+          // Create a fake API response format for the parser
+          const fakeApiResponse = {
+            creatures: [activeChar.raw.creature || {}],
+            creatureVariables: [activeChar.raw.variables || {}],
+            creatureProperties: activeChar.raw.properties || []
+          };
+
+          const parsed = parseCharacterData(fakeApiResponse, activeChar.id);
+          displayName = parsed.name || displayName;
+          displayLevel = parsed.preview?.level || parsed.level || displayLevel;
+          displayClass = parsed.preview?.class || parsed.class || displayClass;
+          displayRace = parsed.preview?.race || parsed.race || displayRace;
+        } catch (parseError) {
+          console.warn('Failed to re-parse character for sync box:', parseError);
+          // Fall back to stored values
+          displayLevel = activeChar.level || displayLevel;
+          displayClass = activeChar.class || displayClass;
+          displayRace = activeChar.race || displayRace;
+        }
+      } else {
+        // No raw data, use stored values
+        displayLevel = activeChar.level || displayLevel;
+        displayClass = activeChar.class || displayClass;
+        displayRace = activeChar.race || displayRace;
+      }
+
+      if (syncCharName) syncCharName.textContent = displayName;
+      if (syncCharLevel) syncCharLevel.textContent = `Lvl ${displayLevel}`;
+      if (syncCharClass) syncCharClass.textContent = displayClass;
+      if (syncCharRace) syncCharRace.textContent = displayRace;
     }
 
     // Add push button handler
