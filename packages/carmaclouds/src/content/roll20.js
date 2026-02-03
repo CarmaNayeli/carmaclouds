@@ -3,34 +3,6 @@
  * Handles roll announcements and character sheet overlay
  */
 
-// Import RollCloud-specific lib modules for two-way sync (experimental)
-import MeteorDDPClient from '../lib/meteor-ddp-client.js';
-import DiceCloudSync from '../lib/dicecloud-sync.js';
-
-// Make them available globally for the IIFE
-window.DDPClient = MeteorDDPClient;
-window.DiceCloudSync = DiceCloudSync;
-
-// Initialize debug and browserAPI globals
-if (typeof window !== 'undefined' && !window.debug) {
-  window.debug = {
-    log: console.log.bind(console),
-    warn: console.warn.bind(console),
-    error: console.error.bind(console),
-    info: console.info.bind(console),
-    group: console.group.bind(console),
-    groupEnd: console.groupEnd.bind(console),
-    table: console.table.bind(console),
-    time: console.time.bind(console),
-    timeEnd: console.timeEnd.bind(console),
-    isEnabled: () => true
-  };
-}
-const debug = window.debug;
-// Make browserAPI available both as const and on window for functions that need it
-const browserAPI = typeof chrome !== 'undefined' ? chrome : (typeof browser !== 'undefined' ? browser : {});
-window.browserAPI = browserAPI;
-
 (function() {
   'use strict';
 
@@ -1248,80 +1220,6 @@ window.browserAPI = browserAPI;
         debug.error('❌ Error in endTurnFromDiscord:', endTurnError);
         sendResponse({ success: false, error: endTurnError.message });
       }
-    } else if (request.type === 'PUSH_CHARACTER') {
-      // Handle character push from RollCloud adapter
-      debug.log('📤 Received PUSH_CHARACTER - preparing character data');
-      
-      try {
-        // 1. Refresh character data from storage
-        const characterData = await refreshCharacterData();
-        if (!characterData) {
-          throw new Error('No character data available. Please sync a character first.');
-        }
-        
-        debug.log('✅ Character data refreshed:', characterData.name);
-        
-        // 2. Use the formatted data from the adapter
-        const formattedData = request.data;
-        debug.log('📋 Formatted character data received:', formattedData);
-        
-        // 3. Store the character data for when the sheet requests it
-        if (typeof window !== 'undefined') {
-          window.carmacloudsPendingData = formattedData;
-          window.carmacloudsPendingTimestamp = Date.now();
-          debug.log('✅ Character data stored and ready for sheet request');
-        }
-
-        // Note: Database sync is handled by the popup adapter before sending PUSH_CHARACTER message
-        // No need to sync again here in the content script
-
-        debug.log('✅ Character data prepared - waiting for sheet to request it');
-        sendResponse({ success: true, message: 'Character data prepared and waiting for sheet' });
-      } catch (error) {
-        debug.error('❌ Error in PUSH_CHARACTER:', error);
-        sendResponse({ success: false, error: error.message });
-      }
-      return true;
-    } else if (request.type === 'REQUEST_PREPARED_DATA') {
-      // Handle request from character sheet for prepared data
-      debug.log('📥 Character sheet requesting prepared data');
-      
-      try {
-        if (typeof window !== 'undefined' && window.carmacloudsPendingData) {
-          const data = window.carmacloudsPendingData;
-          const timestamp = window.carmacloudsPendingTimestamp;
-          
-          // Check if data is recent (within 5 minutes)
-          const now = Date.now();
-          const age = now - timestamp;
-          
-          if (age < 5 * 60 * 1000) { // 5 minutes
-            debug.log('✅ Sending prepared character data to sheet:', data.name);
-            sendResponse({ 
-              success: true, 
-              data: data,
-              timestamp: timestamp,
-              age: age
-            });
-          } else {
-            debug.warn('⚠️ Prepared data is too old, ignoring');
-            sendResponse({ 
-              success: false, 
-              error: 'Prepared data expired. Please push character data again.' 
-            });
-          }
-        } else {
-          debug.warn('⚠️ No prepared character data available');
-          sendResponse({ 
-            success: false, 
-            error: 'No character data prepared. Please use "Push to Roll20" first.' 
-          });
-        }
-      } catch (error) {
-        debug.error('❌ Error sending prepared data:', error);
-        sendResponse({ success: false, error: error.message });
-      }
-      return true;
     }
     } catch (outerError) {
       // Catch any unexpected errors to prevent breaking the message listener
@@ -3688,28 +3586,6 @@ ${player.deathSaves ? `Death Saves: ✓${player.deathSaves.successes || 0} / ✗
       sendResponse({ success: true });
     }
 
-    // Handle active character changes for experimental two-way sync
-    if (request.action === 'activeCharacterChanged') {
-      debug.log('🔄 Active character changed, re-initializing sync:', request.characterId);
-
-      // Re-initialize the sync with the new character
-      if (window.diceCloudSync && typeof window.diceCloudSync.initialize === 'function') {
-        debug.log('🔄 Re-initializing DiceCloud sync with character:', request.characterId);
-        window.diceCloudSync.initialize(request.characterId)
-          .then(() => {
-            debug.log('✅ DiceCloud sync re-initialized successfully');
-            sendResponse({ success: true });
-          })
-          .catch(error => {
-            debug.error('❌ Failed to re-initialize DiceCloud sync:', error);
-            sendResponse({ success: false, error: error.message });
-          });
-        return true; // Keep message channel open for async response
-      } else {
-        debug.warn('⚠️ DiceCloud sync not available for re-initialization');
-        sendResponse({ success: false, error: 'Sync not available' });
-      }
-    }
   });
 
   /**
@@ -3858,50 +3734,7 @@ ${player.deathSaves ? `Death Saves: ✓${player.deathSaves.successes || 0} / ✗
   // Start monitoring for character selection changes
   startCharacterSelectionMonitor();
 
-  // Initialize experimental two-way sync if available
-  if (typeof browserAPI !== 'undefined' && browserAPI.runtime) {
-    // Check if this is an experimental build by asking background script
-    browserAPI.runtime.sendMessage({ action: 'getManifest' }).then(response => {
-      if (response && response.success && response.manifest) {
-        debug.log('🔍 Manifest check:', response.manifest);
-        debug.log('🔍 Manifest name:', response.manifest.name);
-
-        if (response.manifest.name && response.manifest.name.toLowerCase().includes('experimental')) {
-          debug.log('🧪 Experimental build detected, initializing two-way sync...');
-          
-          // Scripts are loaded as content scripts, just initialize
-          setTimeout(() => {
-            // Debug: Check what's available on window
-            debug.log('🔍 Window objects check:', {
-              DDPClient: typeof window.DDPClient,
-              initializeDiceCloudSync: typeof window.initializeDiceCloudSync,
-              DiceCloudSync: typeof window.DiceCloudSync
-            });
-            
-            // Initialize the sync
-            if (typeof window.initializeDiceCloudSync === 'function') {
-              debug.log('✅ Calling initializeDiceCloudSync function...');
-              window.initializeDiceCloudSync();
-              debug.log('✅ Experimental two-way sync initialized');
-            } else {
-              debug.warn('⚠️ DiceCloud sync initialization function not found');
-              debug.warn('⚠️ Available window properties:', Object.keys(window).filter(key => key.toLowerCase().includes('dicecloud') || key.toLowerCase().includes('sync')));
-            }
-          }, 500); // Wait for content scripts to fully load
-        } else {
-          debug.log('📦 Standard build detected, skipping experimental sync');
-        }
-      } else {
-        debug.log('📦 Could not get manifest info, assuming standard build');
-      }
-    }).catch(error => {
-      debug.log('📦 Standard build detected (error), skipping experimental sync:', error);
-    });
-  } else {
-    debug.log('❌ browserAPI.runtime not available');
-  }
-
-  debug.log(' Roll20 script ready - listening for roll announcements and GM mode');
+  debug.log('✅ Roll20 script ready - listening for roll announcements and GM mode');
 
   /**
    * Refresh character data from storage
