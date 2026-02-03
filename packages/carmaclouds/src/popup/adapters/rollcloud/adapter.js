@@ -387,7 +387,7 @@ function displaySyncedCharacters(wrapper, characters) {
 
   characters.forEach(char => {
     const card = document.createElement('div');
-    card.style.cssText = 'padding: 12px; background: #2a2a2a; border-radius: 8px; border: 1px solid #333;';
+    card.style.cssText = 'position: relative; padding: 16px; background: #1a1a1a; border-radius: 8px; border: 1px solid #2a2a2a;';
 
     const name = char.name || 'Unknown';
     const level = char.level || '?';
@@ -395,8 +395,9 @@ function displaySyncedCharacters(wrapper, characters) {
     const race = char.race || 'Unknown';
 
     card.innerHTML = `
-      <h4 style="color: #fff; margin: 0 0 8px 0; font-size: 15px;">${name}</h4>
-      <div style="display: flex; gap: 12px; font-size: 12px; color: #b0b0b0;">
+      <button class="delete-char-btn" data-char-id="${char.id}" style="position: absolute; top: 8px; right: 8px; background: #dc3545; border: 1px solid #c82333; color: white; border-radius: 4px; width: 28px; height: 28px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; line-height: 1;">×</button>
+      <h4 style="color: #16a75a; margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">${name}</h4>
+      <div style="display: flex; gap: 8px; font-size: 13px; color: #b0b0b0;">
         <span>Lvl ${level}</span>
         <span>•</span>
         <span>${charClass}</span>
@@ -404,6 +405,19 @@ function displaySyncedCharacters(wrapper, characters) {
         <span>${race}</span>
       </div>
     `;
+
+    // Add delete button handler
+    const deleteBtn = card.querySelector('.delete-char-btn');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (confirm(`Delete ${name}?`)) {
+          const updatedChars = characters.filter(c => c.id !== char.id);
+          await browserAPI.storage.local.set({ carmaclouds_characters: updatedChars });
+          displaySyncedCharacters(wrapper, updatedChars);
+        }
+      });
+    }
 
     pushedCharactersList.appendChild(card);
   });
