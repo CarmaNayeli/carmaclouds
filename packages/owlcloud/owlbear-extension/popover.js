@@ -678,6 +678,7 @@ function initializeCollapsibleThemeSection() {
 
 /**
  * Initialize collapsible auth section
+ * Note: Initial state (expanded/collapsed) is set by updateAuthUI() based on login status
  */
 function initializeCollapsibleAuthSection() {
   const authHeader = document.getElementById('auth-section-header');
@@ -685,27 +686,21 @@ function initializeCollapsibleAuthSection() {
 
   if (!authHeader || !authContent) return;
 
-  // Set initial state (collapsed by default)
-  let isExpanded = false;
-  authContent.classList.add('collapsed');
-  authHeader.classList.add('collapsed');
-
-  // Set initial arrow state (pointing right when collapsed)
   const arrow = authHeader.querySelector('span');
-  if (arrow) {
-    arrow.style.transform = 'rotate(-90deg)';
-  }
 
   authHeader.addEventListener('click', () => {
-    isExpanded = !isExpanded;
+    // Toggle the collapsed state
+    const isCurrentlyCollapsed = authContent.classList.contains('collapsed');
 
-    if (isExpanded) {
+    if (isCurrentlyCollapsed) {
+      // Expand
       authContent.classList.remove('collapsed');
       authHeader.classList.remove('collapsed');
       if (arrow) {
         arrow.style.transform = 'rotate(0deg)';
       }
     } else {
+      // Collapse
       authContent.classList.add('collapsed');
       authHeader.classList.add('collapsed');
       if (arrow) {
@@ -1442,6 +1437,10 @@ async function linkExistingCharacterToUser() {
 function updateAuthUI() {
   console.log('🔄 [Owlbear] Updating auth UI, currentUser:', currentUser);
   const authSection = document.getElementById('auth-section');
+  const authHeader = document.getElementById('auth-section-header');
+  const authContent = document.getElementById('auth-section-content');
+  const authHeaderText = authHeader?.querySelector('div');
+
   console.log('🔍 [Owlbear] auth-section element:', authSection);
   if (!authSection) {
     console.error('❌ [Owlbear] auth-section element not found!');
@@ -1451,6 +1450,22 @@ function updateAuthUI() {
   if (currentUser) {
     // User is signed in
     console.log('✅ [Owlbear] User signed in, showing logged in view');
+
+    // Update header text to "Sign Out"
+    if (authHeaderText) {
+      authHeaderText.textContent = '🔓 Sign Out';
+    }
+
+    // Collapse the section when signed in (user probably doesn't need to see it)
+    if (authContent && authHeader) {
+      authContent.classList.add('collapsed');
+      authHeader.classList.add('collapsed');
+      const arrow = authHeader.querySelector('span');
+      if (arrow) {
+        arrow.style.transform = 'rotate(-90deg)';
+      }
+    }
+
     authSection.innerHTML = `
       <div style="padding: 16px; background: var(--theme-background); border-radius: 8px; border: 1px solid var(--theme-border);">
         <div style="margin-bottom: 12px;">
@@ -1475,6 +1490,23 @@ function updateAuthUI() {
     `;
   } else {
     // User is not signed in
+    console.log('❌ [Owlbear] User not signed in, showing login form');
+
+    // Update header text to "Sign In / Sign Up"
+    if (authHeaderText) {
+      authHeaderText.textContent = '🔐 Sign In / Sign Up';
+    }
+
+    // Expand the section when logged out so users can see the login form
+    if (authContent && authHeader) {
+      authContent.classList.remove('collapsed');
+      authHeader.classList.remove('collapsed');
+      const arrow = authHeader.querySelector('span');
+      if (arrow) {
+        arrow.style.transform = 'rotate(0deg)';
+      }
+    }
+
     authSection.innerHTML = `
       <div style="padding: 16px; background: rgba(59, 130, 246, 0.1); border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.3);">
         <div style="font-weight: 600; color: var(--theme-primary-light); font-size: 14px; margin-bottom: 8px;">

@@ -551,16 +551,10 @@
     const authContent = document.getElementById("auth-section-content");
     if (!authHeader || !authContent)
       return;
-    let isExpanded = false;
-    authContent.classList.add("collapsed");
-    authHeader.classList.add("collapsed");
     const arrow = authHeader.querySelector("span");
-    if (arrow) {
-      arrow.style.transform = "rotate(-90deg)";
-    }
     authHeader.addEventListener("click", () => {
-      isExpanded = !isExpanded;
-      if (isExpanded) {
+      const isCurrentlyCollapsed = authContent.classList.contains("collapsed");
+      if (isCurrentlyCollapsed) {
         authContent.classList.remove("collapsed");
         authHeader.classList.remove("collapsed");
         if (arrow) {
@@ -1058,6 +1052,9 @@
   function updateAuthUI() {
     console.log("\u{1F504} [Owlbear] Updating auth UI, currentUser:", currentUser);
     const authSection = document.getElementById("auth-section");
+    const authHeader = document.getElementById("auth-section-header");
+    const authContent = document.getElementById("auth-section-content");
+    const authHeaderText = authHeader?.querySelector("div");
     console.log("\u{1F50D} [Owlbear] auth-section element:", authSection);
     if (!authSection) {
       console.error("\u274C [Owlbear] auth-section element not found!");
@@ -1065,6 +1062,17 @@
     }
     if (currentUser) {
       console.log("\u2705 [Owlbear] User signed in, showing logged in view");
+      if (authHeaderText) {
+        authHeaderText.textContent = "\u{1F513} Sign Out";
+      }
+      if (authContent && authHeader) {
+        authContent.classList.add("collapsed");
+        authHeader.classList.add("collapsed");
+        const arrow = authHeader.querySelector("span");
+        if (arrow) {
+          arrow.style.transform = "rotate(-90deg)";
+        }
+      }
       authSection.innerHTML = `
       <div style="padding: 16px; background: var(--theme-background); border-radius: 8px; border: 1px solid var(--theme-border);">
         <div style="margin-bottom: 12px;">
@@ -1088,6 +1096,18 @@
       </div>
     `;
     } else {
+      console.log("\u274C [Owlbear] User not signed in, showing login form");
+      if (authHeaderText) {
+        authHeaderText.textContent = "\u{1F510} Sign In / Sign Up";
+      }
+      if (authContent && authHeader) {
+        authContent.classList.remove("collapsed");
+        authHeader.classList.remove("collapsed");
+        const arrow = authHeader.querySelector("span");
+        if (arrow) {
+          arrow.style.transform = "rotate(0deg)";
+        }
+      }
       authSection.innerHTML = `
       <div style="padding: 16px; background: rgba(59, 130, 246, 0.1); border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.3);">
         <div style="font-weight: 600; color: var(--theme-primary-light); font-size: 14px; margin-bottom: 8px;">
