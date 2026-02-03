@@ -60,16 +60,26 @@ export async function init(containerEl) {
           dbCharacters.forEach(dbChar => {
             const existingIndex = characters.findIndex(c => c.id === dbChar.dicecloud_character_id);
 
-            // Parse raw_data if it's a JSON string
-            let rawData = dbChar.raw_data || {};
+            // Parse raw_dicecloud_data if it's a JSON string
+            let rawData = dbChar.raw_dicecloud_data || {};
             if (typeof rawData === 'string') {
               try {
                 rawData = JSON.parse(rawData);
               } catch (e) {
-                console.warn('Failed to parse raw_data for character:', dbChar.character_name, e);
+                console.warn('Failed to parse raw_dicecloud_data for character:', dbChar.character_name, e);
                 rawData = {};
               }
             }
+
+            // Log the structure to debug
+            console.log('Character from DB:', dbChar.character_name);
+            console.log('Raw data structure:', {
+              hasCreature: !!rawData.creature,
+              hasVariables: !!rawData.variables,
+              hasProperties: !!rawData.properties,
+              keys: Object.keys(rawData),
+              sample: rawData
+            });
 
             // Convert database format to local storage format
             const characterEntry = {
@@ -107,6 +117,13 @@ export async function init(containerEl) {
       containerEl.innerHTML = '<div class="loading">Parsing character data...</div>';
 
       console.log('Parsing character for Roll20:', character.name);
+      console.log('Raw data structure before parsing:', {
+        hasCreature: !!character.raw.creature,
+        hasVariables: !!character.raw.variables,
+        hasProperties: !!character.raw.properties,
+        keys: Object.keys(character.raw),
+        rawSample: character.raw
+      });
       parsedData = parseForRollCloud(character.raw);
       console.log('Parsed data:', parsedData);
     }
