@@ -5,6 +5,9 @@
 
 import { parseCharacterData } from './dicecloud-extraction.js';
 
+// Browser API polyfill for cross-browser compatibility
+const browserAPI = (typeof browser !== 'undefined' && browser.runtime) ? browser : chrome;
+
 console.log('CarmaClouds: DiceCloud content script loaded');
 
 // Wait for page to load
@@ -228,7 +231,7 @@ async function handleSyncToCarmaClouds() {
 
     let response;
     try {
-      response = await chrome.runtime.sendMessage({
+      response = await browserAPI.runtime.sendMessage({
         type: 'SYNC_CHARACTER_TO_CARMACLOUDS',
         data: characterData
       });
@@ -325,7 +328,7 @@ async function extractCharacterData() {
     }
 
     // Get API token from extension storage
-    const tokenResult = await chrome.storage.local.get(['dicecloud_auth_token']);
+    const tokenResult = await browserAPI.storage.local.get(['dicecloud_auth_token']);
     const token = tokenResult.dicecloud_auth_token;
     
     if (!token) {

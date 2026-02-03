@@ -6,6 +6,16 @@
 (function() {
   'use strict';
 
+  // Browser API polyfill for cross-browser compatibility
+  const browserAPI = (typeof browser !== 'undefined' && browser.runtime) ? browser : chrome;
+
+  // Debug utility
+  const debug = {
+    log: (...args) => console.log('[RollCloud]', ...args),
+    warn: (...args) => console.warn('[RollCloud]', ...args),
+    error: (...args) => console.error('[RollCloud]', ...args)
+  };
+
   debug.log('RollCloud: Roll20 content script loaded');
 
   /**
@@ -1238,6 +1248,11 @@
    * Listen for messages from popup windows
    */
   window.addEventListener('message', (event) => {
+    // Log ALL incoming messages to debug why rollFromPopout isn't being received
+    if (event.data && event.data.action) {
+      debug.log('📨 [Roll20] Received message with action:', event.data.action, event.data);
+    }
+    
     if (event.data.action === 'postRollToChat') {
       handleDiceCloudRoll(event.data.roll);
     } else if (event.data.action === 'postChat') {
@@ -1286,6 +1301,12 @@
         }
       }
     } else if (event.data.action === 'announceSpell') {
+      // Check if silent rolls mode is enabled - if so, don't announce
+      if (silentRollsEnabled) {
+        debug.log('🔇 Silent rolls active - suppressing spell/action announcement');
+        return;
+      }
+
       // Handle spell announcements - check if we have structured spell data or just a message
       if (event.data.spellData) {
         // New pathway: structured spell data from popup-sheet
@@ -1456,11 +1477,30 @@
     addFormSection.appendChild(addFormHeader);
     addFormSection.appendChild(addForm);
 
+    // Add End Combat button at bottom
+    const endCombatBtn = document.createElement('button');
+    endCombatBtn.id = 'end-combat-btn';
+    endCombatBtn.style.cssText = `
+      padding: 12px;
+      background: #e74c3c;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 1em;
+      margin-top: 15px;
+      box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+      display: none;
+    `;
+    endCombatBtn.textContent = '🛑 End Combat';
+
     // Add initiative content to initiative tab
     initiativeTab.appendChild(controls);
     initiativeTab.appendChild(roundDisplay);
     initiativeTab.appendChild(initiativeList);
     initiativeTab.appendChild(addFormSection);
+    initiativeTab.appendChild(endCombatBtn);
 
     // ===== HIDDEN ROLLS TAB CONTENT =====
     hiddenRollsTab.innerHTML = `
@@ -1477,7 +1517,7 @@
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
         <h3 style="margin: 0; font-size: 1.2em; color: #FC57F9;">Party Overview</h3>
         <div style="display: flex; gap: 8px;">
-          <button id="import-players-btn" style="padding: 8px 14px; background: #c2185b; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 0.95em; font-weight: bold;">📥 Import</button>
+          <!-- <button id="import-players-btn" style="padding: 8px 14px; background: #c2185b; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 0.95em; font-weight: bold;">📥 Import</button> -->
           <button id="refresh-players-btn" style="padding: 8px 14px; background: #9b59b6; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 0.95em; font-weight: bold;">🔄 Refresh</button>
         </div>
       </div>
@@ -1817,18 +1857,21 @@
     const nextBtn = document.getElementById('next-turn-btn');
     const prevBtn = document.getElementById('prev-turn-btn');
     const clearAllBtn = document.getElementById('clear-all-btn');
+    const endCombatBtn = document.getElementById('end-combat-btn');
 
     debug.log('🔍 GM Panel controls found:', {
       startCombatBtn: !!startCombatBtn,
       nextBtn: !!nextBtn,
       prevBtn: !!prevBtn,
-      clearAllBtn: !!clearAllBtn
+      clearAllBtn: !!clearAllBtn,
+      endCombatBtn: !!endCombatBtn
     });
 
     if (startCombatBtn) startCombatBtn.addEventListener('click', startCombat);
     if (nextBtn) nextBtn.addEventListener('click', nextTurn);
     if (prevBtn) prevBtn.addEventListener('click', prevTurn);
     if (clearAllBtn) clearAllBtn.addEventListener('click', clearAllCombatants);
+    if (endCombatBtn) endCombatBtn.addEventListener('click', endCombat);
 
     // Collapsible add form toggle
     const addFormHeader = gmPanel.querySelector('div[style*="cursor: pointer"]');
@@ -2755,11 +2798,18 @@ ${player.deathSaves ? `Death Saves: ✓${player.deathSaves.successes || 0} / ✗
    * Add combatant to initiative tracker
    */
   function addCombatant(name, initiative, source = 'chat') {
+    debug.log(`🎲 addCombatant called: name="${name}", initiative=${initiative}, source=${source}`);
+    debug.log(`🎲 Current combatants:`, initiativeTracker.combatants.map(c => c.name));
+    
     // Check if already exists
     const exists = initiativeTracker.combatants.find(c => c.name === name);
     if (exists) {
-      debug.log(`⚠️ Combatant ${name} already in tracker, updating initiative`);
+      debug.log(`⚠️ Combatant "${name}" already in tracker, updating initiative from ${exists.initiative} to ${initiative}`);
       exists.initiative = initiative;
+      
+      // Re-sort after update
+      initiativeTracker.combatants.sort((a, b) => b.initiative - a.initiative);
+      
       updateInitiativeDisplay();
       return;
     }
@@ -2774,7 +2824,8 @@ ${player.deathSaves ? `Death Saves: ✓${player.deathSaves.successes || 0} / ✗
     initiativeTracker.combatants.sort((a, b) => b.initiative - a.initiative);
 
     updateInitiativeDisplay();
-    debug.log(`✅ Added combatant: ${name} (Init: ${initiative})`);
+    debug.log(`✅ Added combatant: "${name}" (Init: ${initiative})`);
+    debug.log(`✅ Total combatants now: ${initiativeTracker.combatants.length}`);
   }
 
   /**
@@ -2839,12 +2890,14 @@ ${player.deathSaves ? `Death Saves: ✓${player.deathSaves.successes || 0} / ✗
     const startBtn = document.getElementById('start-combat-btn');
     const prevBtn = document.getElementById('prev-turn-btn');
     const nextBtn = document.getElementById('next-turn-btn');
+    const endBtn = document.getElementById('end-combat-btn');
 
     if (startBtn) {
       startBtn.style.display = 'none';
     }
     if (prevBtn) prevBtn.style.display = 'block';
     if (nextBtn) nextBtn.style.display = 'block';
+    if (endBtn) endBtn.style.display = 'block';
 
     updateInitiativeDisplay();
     notifyCurrentTurn();
@@ -2854,6 +2907,57 @@ ${player.deathSaves ? `Death Saves: ✓${player.deathSaves.successes || 0} / ✗
     announceTurn();
 
     debug.log('⚔️ Combat started!');
+  }
+
+  /**
+   * End combat - keep combatants but reset to pre-combat state
+   */
+  function endCombat() {
+    if (!combatStarted) {
+      debug.warn('⚠️ Combat is not active');
+      return;
+    }
+
+    combatStarted = false;
+    initiativeTracker.currentTurnIndex = 0;
+    initiativeTracker.round = 1;
+
+    // Update UI - hide turn controls, show Start Combat button
+    const startBtn = document.getElementById('start-combat-btn');
+    const prevBtn = document.getElementById('prev-turn-btn');
+    const nextBtn = document.getElementById('next-turn-btn');
+    const endBtn = document.getElementById('end-combat-btn');
+
+    if (startBtn) startBtn.style.display = 'block';
+    if (prevBtn) prevBtn.style.display = 'none';
+    if (nextBtn) nextBtn.style.display = 'none';
+    if (endBtn) endBtn.style.display = 'none';
+
+    // Reset round display
+    document.getElementById('round-display').textContent = 'Round 1';
+
+    // Deactivate all character turns
+    Object.keys(characterPopups).forEach(characterName => {
+      const popup = characterPopups[characterName];
+      if (popup && !popup.closed) {
+        try {
+          popup.postMessage({
+            action: 'deactivateTurn',
+            combatant: characterName
+          }, '*');
+          debug.log(`📤 Sent deactivateTurn to "${characterName}" (combat ended)`);
+        } catch (error) {
+          debug.warn(`⚠️ Could not send deactivateTurn to ${characterName}:`, error);
+        }
+      }
+    });
+
+    updateInitiativeDisplay();
+
+    // Announce combat end
+    postChatMessage('🛑 Combat has ended!');
+
+    debug.log('🛑 Combat ended - combatants preserved for next encounter');
   }
 
   /**
@@ -3252,13 +3356,21 @@ ${player.deathSaves ? `Death Saves: ✓${player.deathSaves.successes || 0} / ✗
 
     // Skip our own announcements (turn changes, round starts, GM mode toggles)
     // These start with specific emojis and should not be parsed as initiative rolls
-    const ownAnnouncementPrefixes = ['🎯', '⚔️', '👑'];
+    // But allow character broadcasts that contain 👑 in the middle (e.g., 👑[ROLLCLOUD:CHARACTER:...])
+    const ownAnnouncementPrefixes = ['🎯', '⚔️', '👑 GM Mode'];
     const trimmedText = text.trim();
     for (const prefix of ownAnnouncementPrefixes) {
-      if (trimmedText.includes(prefix)) {
+      if (trimmedText.startsWith(prefix)) {
         debug.log('⏭️ Skipping own announcement message');
         return;
       }
+    }
+    
+    // Check for character broadcast pattern specifically
+    if (trimmedText.includes('👑[ROLLCLOUD:CHARACTER:') && trimmedText.includes(']👑')) {
+      debug.log('👑 Detected character broadcast in chat');
+      parseCharacterBroadcast(trimmedText);
+      return; // Don't process as initiative roll
     }
 
     // Check for Roll20's inline roll format in HTML
@@ -3541,6 +3653,12 @@ ${player.deathSaves ? `Death Saves: ✓${player.deathSaves.successes || 0} / ✗
       try {
         postChatMessage(event.data.message);
         debug.log('✅ Character broadcast posted to chat');
+        
+        // Also parse the broadcast directly if GM panel is open
+        if (gmPanel && event.data.message) {
+          debug.log('👑 GM panel is open, parsing broadcast directly');
+          parseCharacterBroadcast(event.data.message);
+        }
       } catch (error) {
         debug.error('❌ Error posting character broadcast:', error);
       }

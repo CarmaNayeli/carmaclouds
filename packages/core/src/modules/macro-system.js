@@ -112,7 +112,13 @@ function updateMacrosDisplay() {
     return;
   }
   
-  container.innerHTML = customMacros.map(macro => `
+  container.innerHTML = customMacros.map(macro => {
+    // Validate macro properties to prevent undefined display
+    const macroName = macro.name || 'Unnamed Macro';
+    const macroFormula = macro.formula || '';
+    const macroDescription = macro.description || '';
+    
+    return `
     <div class="macro-item" style="
       background: var(--bg-secondary);
       border: 2px solid var(--border-color);
@@ -126,12 +132,12 @@ function updateMacrosDisplay() {
     ">
       <div style="flex: 1;">
         <div style="font-weight: bold; color: var(--text-primary); margin-bottom: 4px;">
-          ${macro.name}
+          ${macroName}
         </div>
         <div style="font-family: monospace; color: var(--accent-info); font-size: 0.9em; margin-bottom: 4px;">
-          ${macro.formula}
+          ${macroFormula}
         </div>
-        ${macro.description ? `<div style="font-size: 0.85em; color: var(--text-secondary);">${macro.description}</div>` : ''}
+        ${macroDescription ? `<div style="font-size: 0.85em; color: var(--text-secondary);">${macroDescription}</div>` : ''}
       </div>
       <div style="display: flex; gap: 8px;">
         <button class="macro-roll-btn" data-macro-id="${macro.id}" style="
@@ -159,7 +165,8 @@ function updateMacrosDisplay() {
         </button>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
   
   // Add event listeners
   container.querySelectorAll('.macro-roll-btn').forEach(btn => {

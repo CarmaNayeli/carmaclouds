@@ -1868,15 +1868,15 @@ ${spellDescription || "No description available"}`;
           try {
             popupWindow = window.open(popupURL, "rollcloud-character-sheet", "width=900,height=700,scrollbars=yes,resizable=yes,menubar=no,toolbar=no,location=no,status=no");
           } catch (error) {
-            debug.error(" Error opening popup window:", error);
+            debug.error("\u274C Error opening popup window:", error);
             popupWindow = null;
           }
           if (!popupWindow) {
-            debug.error(" Failed to open popup window. Please allow popups for this site.");
+            debug.error("\u274C Failed to open popup window. Please allow popups for this site.");
             showNotification("Popup blocked. Please allow popups for this site. Retrying...", "error");
             window.removeEventListener("message", messageHandler);
             setTimeout(() => {
-              debug.log(" Retrying popup window open...");
+              debug.log("\u{1F504} Retrying popup window open...");
               showOverlay();
             }, 1e3);
             return;
@@ -1890,12 +1890,12 @@ ${spellDescription || "No description available"}`;
                   messageSent = true;
                   popupWindow.postMessage({
                     action: "initCharacterSheet",
-                    data: response.data
+                    data: parsedData
                   }, "*");
                   debug.log("\u2705 Character data sent via fallback");
                 }
               } catch (error) {
-                debug.warn("\u26A0\uFE0F Could not send fallback message to popup (Firefox security):", error.message);
+                debug.warn("\u26A0\uFE0F Could not send fallback message to popup:", error.message);
               }
             }
           }, 500);
@@ -1928,7 +1928,9 @@ ${spellDescription || "No description available"}`;
         debug.log("\u{1F4BE} Received character data update from popup:", event.data.data);
         browserAPI.runtime.sendMessage({
           action: "storeCharacterData",
-          data: event.data.data
+          data: event.data.data,
+          slotId: event.data.characterId
+          // Use characterId from message as slotId
         }, (response) => {
           if (response && response.success) {
             debug.log("\u2705 Character data updated successfully");

@@ -72,6 +72,18 @@
       const reason = skipSlotConsumption ? 'concentration recast' : (isMagicItemSpell ? 'magic item' : (isFreeSpell ? 'free spell' : 'cantrip'));
       debug.log(`✨ Casting ${reason} (no spell slot needed)`);
 
+      // Mark action economy as used based on casting time
+      if (!skipSlotConsumption && typeof window.markActionEconomyUsed === 'function') {
+        const castingTime = (spell.castingTime || '').toLowerCase();
+        if (castingTime.includes('bonus')) {
+          window.markActionEconomyUsed('bonus');
+        } else if (castingTime.includes('reaction')) {
+          window.markActionEconomyUsed('reaction');
+        } else {
+          window.markActionEconomyUsed('action');
+        }
+      }
+
       if (!skipAnnouncement && typeof announceSpellCast === 'function') {
         announceSpellCast(spell, skipSlotConsumption ? 'concentration recast (no slot)' : ((isMagicItemSpell || isFreeSpell) ? `${spell.source} (no slot)` : null));
       }
@@ -227,14 +239,30 @@
   function castWithSlot(spell, slot, metamagicOptions = [], afterCast = null) {
     const debug = window.debug || console;
 
+    debug.log(`🎯 castWithSlot called for "${spell.name}"`, {
+      slotLevel: slot.level,
+      slotVar: slot.slotVar,
+      currentSlots: slot.current,
+      maxSlots: slot.max,
+      noSlotUsed: slot.noSlotUsed,
+      isPactMagic: slot.isPactMagic
+    });
+
     // Deduct spell slot (unless casting without a slot)
     if (!slot.noSlotUsed && slot.slotVar) {
+      const beforeDecrement = characterData.spellSlots[slot.slotVar];
       characterData.spellSlots[slot.slotVar] = slot.current - 1;
+      const afterDecrement = characterData.spellSlots[slot.slotVar];
+      
+      debug.log(`✅ Decremented ${slot.slotVar}: ${beforeDecrement} → ${afterDecrement}`);
 
       // Also update otherVariables for Pact Magic to keep in sync
       if (slot.isPactMagic && characterData.otherVariables?.pactMagicSlots !== undefined) {
         characterData.otherVariables.pactMagicSlots = slot.current - 1;
+        debug.log(`✅ Also decremented pactMagicSlots in otherVariables`);
       }
+    } else {
+      debug.warn(`⚠️ Spell slot NOT decremented (noSlotUsed=${slot.noSlotUsed}, slotVar=${slot.slotVar})`);
     }
 
     // Deduct sorcery points for metamagic
@@ -257,6 +285,18 @@
 
     if (typeof saveCharacterData === 'function') {
       saveCharacterData();
+    }
+
+    // Mark action economy as used based on casting time
+    if (typeof window.markActionEconomyUsed === 'function') {
+      const castingTime = (spell.castingTime || '').toLowerCase();
+      if (castingTime.includes('bonus')) {
+        window.markActionEconomyUsed('bonus');
+      } else if (castingTime.includes('reaction')) {
+        window.markActionEconomyUsed('reaction');
+      } else {
+        window.markActionEconomyUsed('action');
+      }
     }
 
     let resourceText;
@@ -589,8 +629,9 @@
    * @returns {Array} Array of available metamagic options
    */
   function getAvailableMetamagic() {
-    if (typeof executorGetAvailableMetamagic === 'function') {
-      return executorGetAvailableMetamagic(characterData);
+    // Call the global getAvailableMetamagic from action-executor.js
+    if (typeof window.getAvailableMetamagic === 'function') {
+      return window.getAvailableMetamagic(characterData);
     }
     return [];
   }

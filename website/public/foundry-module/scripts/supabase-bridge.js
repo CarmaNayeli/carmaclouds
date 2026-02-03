@@ -31,7 +31,7 @@ export class SupabaseBridge {
 
       // Test connection
       const { error } = await this.supabase
-        .from('foundcloud_characters')
+        .from('clouds_characters')
         .select('count')
         .limit(1);
 
@@ -93,8 +93,9 @@ export class SupabaseBridge {
 
     try {
       const { data, error } = await this.supabase
-        .from('foundcloud_characters')
-        .select('id, dicecloud_character_id, character_name, level, race, class, updated_at')
+        .from('clouds_characters')
+        .select('id, dicecloud_character_id, character_name, level, race, class, updated_at, platform')
+        .contains('platform', ['foundcloud'])
         .order('character_name', { ascending: true });
 
       if (error) {
@@ -123,7 +124,7 @@ export class SupabaseBridge {
 
     try {
       const { data, error } = await this.supabase
-        .from('foundcloud_characters')
+        .from('clouds_characters')
         .select('*')
         .eq('dicecloud_character_id', diceCloudId)
         .single();
@@ -158,7 +159,7 @@ export class SupabaseBridge {
 
     try {
       const { data, error } = await this.supabase
-        .from('foundcloud_characters')
+        .from('clouds_characters')
         .select('*')
         .eq('id', uuid)
         .single();
@@ -192,8 +193,9 @@ export class SupabaseBridge {
 
     try {
       const { data, error } = await this.supabase
-        .from('foundcloud_characters')
-        .select('id, dicecloud_character_id, character_name, level, race, class')
+        .from('clouds_characters')
+        .select('id, dicecloud_character_id, character_name, level, race, class, platform')
+        .contains('platform', ['foundcloud'])
         .ilike('character_name', `%${searchTerm}%`)
         .order('character_name', { ascending: true });
 
@@ -229,7 +231,7 @@ export class SupabaseBridge {
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'foundcloud_characters',
+          table: 'clouds_characters',
           filter: `dicecloud_character_id=eq.${diceCloudId}`
         },
         (payload) => {
@@ -285,7 +287,7 @@ export class SupabaseBridge {
   async getLastUpdateTime(diceCloudId) {
     try {
       const { data, error } = await this.supabase
-        .from('foundcloud_characters')
+        .from('clouds_characters')
         .select('updated_at')
         .eq('dicecloud_character_id', diceCloudId)
         .single();
@@ -309,7 +311,7 @@ export class SupabaseBridge {
   async testConnection() {
     try {
       const { error } = await this.supabase
-        .from('foundcloud_characters')
+        .from('clouds_characters')
         .select('count')
         .limit(1);
 

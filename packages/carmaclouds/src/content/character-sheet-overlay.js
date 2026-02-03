@@ -2149,18 +2149,18 @@ window.browserAPI = browserAPI;
         try {
           popupWindow = window.open(popupURL, 'rollcloud-character-sheet', 'width=900,height=700,scrollbars=yes,resizable=yes,menubar=no,toolbar=no,location=no,status=no');
         } catch (error) {
-          debug.error(' Error opening popup window:', error);
+          debug.error('❌ Error opening popup window:', error);
           popupWindow = null;
         }
 
         if (!popupWindow) {
-          debug.error(' Failed to open popup window. Please allow popups for this site.');
+          debug.error('❌ Failed to open popup window. Please allow popups for this site.');
           showNotification('Popup blocked. Please allow popups for this site. Retrying...', 'error');
           window.removeEventListener('message', messageHandler);
           
           // Retry after a short delay
           setTimeout(() => {
-            debug.log(' Retrying popup window open...');
+            debug.log('🔄 Retrying popup window open...');
             showOverlay();
           }, 1000);
           return;
@@ -2170,23 +2170,20 @@ window.browserAPI = browserAPI;
         activePopupWindow = popupWindow;
 
         // Fallback: Send data after a delay if popup hasn't sent ready message
-        // This handles cases where the popup loads faster than expected
         setTimeout(() => {
           if (!messageSent && popupWindow) {
             try {
-              // Firefox can throw "dead object" error even when accessing .closed property
               if (!popupWindow.closed) {
                 debug.log('⏱️ Fallback: Sending character data after timeout...');
                 messageSent = true;
                 popupWindow.postMessage({
                   action: 'initCharacterSheet',
-                  data: response.data
+                  data: parsedData
                 }, '*');
                 debug.log('✅ Character data sent via fallback');
               }
             } catch (error) {
-              debug.warn('⚠️ Could not send fallback message to popup (Firefox security):', error.message);
-              // The popup will load data from storage if postMessage fails
+              debug.warn('⚠️ Could not send fallback message to popup:', error.message);
             }
           }
         }, 500);
@@ -2205,7 +2202,6 @@ window.browserAPI = browserAPI;
           // User clicked "Yes" - trigger GM mode via roll20.js
           debug.log('✅ User confirmed - requesting GM mode via showCharacterSheet');
           // Send message to roll20.js to open GM mode
-          // This will trigger the same flow as the popup button
           const event = new CustomEvent('openGMMode');
           document.dispatchEvent(event);
           showNotification('Opening GM mode...', 'success');
@@ -2236,10 +2232,11 @@ window.browserAPI = browserAPI;
     if (event.data.action === 'updateCharacterData') {
       debug.log('💾 Received character data update from popup:', event.data.data);
 
-      // Save updated character data to storage
+      // Save updated character data to storage with characterId to prevent duplicates
       browserAPI.runtime.sendMessage({
         action: 'storeCharacterData',
-        data: event.data.data
+        data: event.data.data,
+        slotId: event.data.characterId // Use characterId from message as slotId
       }, (response) => {
         if (response && response.success) {
           debug.log('✅ Character data updated successfully');

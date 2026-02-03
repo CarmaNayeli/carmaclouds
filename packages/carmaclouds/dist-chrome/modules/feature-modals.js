@@ -174,10 +174,10 @@
 
     modalContent.innerHTML = `
       <h3 style="margin: 0 0 20px 0; color: var(--text-primary); text-align: center;">⭐ Gain Inspiration</h3>
-      <p style="text-align: center; margin-bottom: 25px; color: #555;">
+      <p style="text-align: center; margin-bottom: 25px; color: var(--text-secondary);">
         You're about to gain Inspiration! This can be used for:
       </p>
-      <div style="margin-bottom: 25px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+      <div style="margin-bottom: 25px; padding: 15px; background: var(--bg-tertiary); border-radius: 8px;">
         <div style="margin-bottom: 12px;">
           <strong style="color: #3498db;">📖 D&D 2014:</strong> Gain advantage on an attack roll, saving throw, or ability check
         </div>
@@ -244,16 +244,16 @@
     modalContent.style.cssText = 'background: var(--bg-secondary); color: var(--text-primary); padding: 30px; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); min-width: 400px; max-width: 500px;';
 
     const lastRollInfo = characterData.lastRoll
-      ? `<div style="margin-bottom: 20px; padding: 12px; background: #e8f5e9; border-left: 4px solid #27ae60; border-radius: 4px;">
-           <strong>Last Roll:</strong> ${characterData.lastRoll.name}
+      ? `<div style="margin-bottom: 20px; padding: 12px; background: var(--bg-tertiary); border-left: 4px solid #27ae60; border-radius: 4px;">
+           <strong style="color: var(--text-primary);">Last Roll:</strong> <span style="color: var(--text-secondary);">${characterData.lastRoll.name}</span>
          </div>`
-      : `<div style="margin-bottom: 20px; padding: 12px; background: #ffebee; border-left: 4px solid #e74c3c; border-radius: 4px;">
-           <strong>⚠️ No previous roll to reroll</strong>
+      : `<div style="margin-bottom: 20px; padding: 12px; background: var(--bg-tertiary); border-left: 4px solid #e74c3c; border-radius: 4px;">
+           <strong style="color: var(--text-primary);">⚠️ No previous roll to reroll</strong>
          </div>`;
 
     modalContent.innerHTML = `
       <h3 style="margin: 0 0 20px 0; color: var(--text-primary); text-align: center;">✨ Use Inspiration</h3>
-      <p style="text-align: center; margin-bottom: 20px; color: #555;">
+      <p style="text-align: center; margin-bottom: 20px; color: var(--text-secondary);">
         How do you want to use your Inspiration?
       </p>
       ${lastRollInfo}

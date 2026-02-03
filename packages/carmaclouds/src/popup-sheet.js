@@ -48,6 +48,129 @@ var currentSlotId = null;
 // Track Feline Agility usage
 var felineAgilityUsed = false;
 
+// ===== ACTION ECONOMY TRACKING =====
+// Track combat state
+var isMyTurn = false;
+var inCombat = false;
+
+/**
+ * Toggle action economy indicator
+ * @param {string} indicatorId - ID of the indicator element
+ */
+function toggleActionEconomy(indicatorId) {
+  const indicator = document.getElementById(indicatorId);
+  if (!indicator) return;
+
+  const isUsed = indicator.dataset.used === 'true';
+  indicator.dataset.used = isUsed ? 'false' : 'true';
+
+  // Only announce if in combat, it's your turn, and manually toggled back on
+  if (inCombat && isMyTurn && !isUsed) {
+    const actionName = indicator.querySelector('.action-label').textContent;
+    showNotification(`✨ ${actionName} restored`, 'info');
+    
+    // Announce to Roll20
+    const message = `&{template:default} {{name=${getColoredBanner(characterData)}${characterData.name}}} {{${actionName}=Manually restored}}`;
+    const messageData = {
+      action: 'announceSpell',
+      message: message,
+      color: characterData.notificationColor
+    };
+
+    if (window.opener && !window.opener.closed) {
+      try {
+        window.opener.postMessage(messageData, '*');
+        debug.log(`📢 Announced ${actionName} restoration to Roll20`);
+      } catch (error) {
+        debug.warn('⚠️ Could not send action economy announcement:', error);
+      }
+    }
+  }
+
+  debug.log(`${isUsed ? '✅' : '⏸️'} ${indicatorId}: ${isUsed ? 'restored' : 'used'} (inCombat: ${inCombat}, isMyTurn: ${isMyTurn})`);
+}
+
+/**
+ * Mark action economy as used (auto-tracking during combat)
+ * @param {string} actionType - Type of action: 'action', 'bonus', 'reaction', 'movement'
+ */
+function markActionEconomyUsed(actionType) {
+  debug.log(`🎯 markActionEconomyUsed called with actionType: "${actionType}"`);
+  debug.log(`🎯 Combat state - inCombat: ${inCombat}, isMyTurn: ${isMyTurn}`);
+  
+  const indicatorMap = {
+    'action': 'action-indicator',
+    'bonus': 'bonus-action-indicator',
+    'bonus action': 'bonus-action-indicator',
+    'reaction': 'reaction-indicator',
+    'movement': 'movement-indicator'
+  };
+
+  const indicatorId = indicatorMap[actionType.toLowerCase()];
+  if (!indicatorId) {
+    debug.warn(`⚠️ No indicator mapping found for actionType: "${actionType}"`);
+    return;
+  }
+
+  debug.log(`🎯 Mapped to indicatorId: ${indicatorId}`);
+
+  const indicator = document.getElementById(indicatorId);
+  if (!indicator) {
+    debug.warn(`⚠️ Indicator element not found: ${indicatorId}`);
+    return;
+  }
+
+  debug.log(`🎯 Current indicator state: ${indicator.dataset.used}`);
+
+  // Only auto-mark as used if in combat and it's your turn
+  if (inCombat && isMyTurn) {
+    indicator.dataset.used = 'true';
+    debug.log(`⚙️ Auto-marked ${actionType} as used (combat tracking)`);
+  } else {
+    debug.log(`⏭️ Skipping auto-mark (inCombat: ${inCombat}, isMyTurn: ${isMyTurn})`);
+  }
+}
+
+/**
+ * Activate turn - enable action economy indicators
+ * Called when GM panel sends 'activateTurn' message
+ */
+function activateTurn() {
+  isMyTurn = true;
+  inCombat = true;
+  const actionIndicators = document.querySelectorAll('.action-economy-item');
+
+  actionIndicators.forEach(indicator => {
+    indicator.style.opacity = '1';
+    indicator.style.pointerEvents = 'auto';
+  });
+
+  debug.log('✅ Turn activated - action economy enabled (in combat)');
+}
+
+/**
+ * Deactivate turn - grey out action economy indicators
+ * Called when GM panel sends 'deactivateTurn' message
+ */
+function deactivateTurn() {
+  isMyTurn = false;
+  inCombat = true; // Still in combat, just not our turn
+  const actionIndicators = document.querySelectorAll('.action-economy-item');
+
+  actionIndicators.forEach(indicator => {
+    indicator.style.opacity = '0.3';
+    indicator.style.pointerEvents = 'none';
+  });
+
+  debug.log('⏸️ Turn deactivated - action economy greyed out (waiting for turn)');
+}
+
+// Export to global scope immediately so modules can use them
+window.markActionEconomyUsed = markActionEconomyUsed;
+window.toggleActionEconomy = toggleActionEconomy;
+window.activateTurn = activateTurn;
+window.deactivateTurn = deactivateTurn;
+
 // Setting: Show custom macro gear buttons on spells (disabled by default)
 let showCustomMacroButtons = false;
 
@@ -504,8 +627,25 @@ async function loadAndBuildTabs() {
   try {
     debug.log('📋 Loading character profiles for tabs...');
 
-    // Get all character profiles
-    const profilesResponse = await browserAPI.runtime.sendMessage({ action: 'getAllCharacterProfiles' });
+    // Get Supabase user ID if authenticated
+    let supabaseUserId = null;
+    if (window.supabaseClient) {
+      try {
+        const { data: { session } } = await window.supabaseClient.auth.getSession();
+        supabaseUserId = session?.user?.id;
+        if (supabaseUserId) {
+          debug.log('📋 User authenticated, will fetch from Supabase');
+        }
+      } catch (err) {
+        debug.warn('Failed to get Supabase session:', err);
+      }
+    }
+
+    // Get all character profiles (including from database if authenticated)
+    const profilesResponse = await browserAPI.runtime.sendMessage({
+      action: 'getAllCharacterProfiles',
+      supabaseUserId: supabaseUserId
+    });
     const profiles = profilesResponse.success ? profilesResponse.profiles : {};
     debug.log('📋 Profiles loaded:', Object.keys(profiles));
 
@@ -789,25 +929,17 @@ async function switchToCharacter(characterId) {
   try {
     debug.log(`🔄 Switching to character: ${characterId}`);
 
-    // Save current character data before switching to preserve local state
-    // CRITICAL: Save to BOTH cache AND browser storage to persist through refresh
+    // Don't save during tab switches - characters are already in storage
+    // Saving here can corrupt the data structure by overwriting the full character
+    // with just the rollcloud parsed format
     if (characterData && currentSlotId && currentSlotId !== characterId) {
-      debug.log('💾 Saving current character data before switching');
-      const dataToSave = JSON.parse(JSON.stringify(characterData));
-      
-      // Save to cache for immediate access
+      debug.log('💾 Switching characters (not saving to avoid data corruption)');
+
+      // Only cache in memory for quick access
       if (typeof characterCache !== 'undefined') {
-        characterCache.set(currentSlotId, dataToSave);
+        characterCache.set(currentSlotId, characterData);
         debug.log(`✅ Cached current character data: ${characterData.name}`);
       }
-
-      // Save to browser storage (persists through refresh/close) WITH slotId
-      await browserAPI.runtime.sendMessage({
-        action: 'storeCharacterData',
-        data: dataToSave,
-        slotId: currentSlotId
-      });
-      debug.log(`✅ Saved current character data to storage: ${characterData.name}`);
     }
 
     // Set as active character
@@ -1142,6 +1274,36 @@ document.addEventListener('DOMContentLoaded', () => {
   const showToGMBtn = document.getElementById('show-to-gm-btn');
   if (showToGMBtn) {
     showToGMBtn.addEventListener('click', shareCharacterWithGM);
+  }
+
+  // Action economy buttons - manual toggle
+  const actionIndicator = document.getElementById('action-indicator');
+  const bonusActionIndicator = document.getElementById('bonus-action-indicator');
+  const movementIndicator = document.getElementById('movement-indicator');
+  const reactionIndicator = document.getElementById('reaction-indicator');
+
+  if (actionIndicator) {
+    actionIndicator.addEventListener('click', () => {
+      toggleActionEconomy('action-indicator');
+    });
+  }
+
+  if (bonusActionIndicator) {
+    bonusActionIndicator.addEventListener('click', () => {
+      toggleActionEconomy('bonus-action-indicator');
+    });
+  }
+
+  if (movementIndicator) {
+    movementIndicator.addEventListener('click', () => {
+      toggleActionEconomy('movement-indicator');
+    });
+  }
+
+  if (reactionIndicator) {
+    reactionIndicator.addEventListener('click', () => {
+      toggleActionEconomy('reaction-indicator');
+    });
   }
 });
 
@@ -1555,51 +1717,14 @@ function initManualSyncButton() {
 }
 
 // ===== TURN MANAGEMENT =====
-
-/**
- * Turn state tracking
- * When false, action economy indicators should be disabled/grayed out
- */
-let isMyTurn = false;
-
-/**
- * Activate turn - enable action economy indicators
- * Called when GM panel sends 'activateTurn' message
- */
-function activateTurn() {
-  isMyTurn = true;
-  const actionIndicators = document.querySelectorAll('.action-economy-item');
-
-  actionIndicators.forEach(indicator => {
-    indicator.style.opacity = '1';
-    indicator.style.pointerEvents = 'auto';
-    indicator.style.cursor = 'pointer';
-  });
-
-  debug.log('✅ Turn activated - action economy enabled');
-}
-
-/**
- * Deactivate turn - disable action economy indicators
- * Called when GM panel sends 'deactivateTurn' message
- */
-function deactivateTurn() {
-  isMyTurn = false;
-  const actionIndicators = document.querySelectorAll('.action-economy-item');
-
-  actionIndicators.forEach(indicator => {
-    indicator.style.opacity = '0.3';
-    indicator.style.pointerEvents = 'none';
-    indicator.style.cursor = 'not-allowed';
-  });
-
-  debug.log('⏸️ Turn deactivated - action economy disabled');
-}
+// Note: Action economy functions are defined at the top of this file and exported to window
 
 // Listen for messages from GM panel (when it's your turn)
 window.addEventListener('message', (event) => {
   if (event.data && event.data.action === 'activateTurn') {
-    debug.log('🎯 Your turn! Activating action economy...');
+    debug.log(' Your turn! Activating action economy...');
+    debug.log(' Received activateTurn event:', event.data);
+    debug.log(' Your turn! Activating action economy...');
     debug.log('🎯 Received activateTurn event:', event.data);
 
     // Activate turn state

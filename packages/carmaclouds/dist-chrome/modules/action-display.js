@@ -522,7 +522,10 @@ function buildActionsDisplay(container, actions) {
           // Handle different option types
           if (option.type === 'attack') {
             // Mark action as used for attacks
-            markActionAsUsed('action');
+            const actionType = action.actionType || 'action';
+            if (typeof window.markActionEconomyUsed === 'function') {
+              window.markActionEconomyUsed(actionType);
+            }
 
             // Attack roll is just the d20 + modifiers, no damage dice
             debug.log(`🎯 Attack button clicked for "${action.name}", formula: "${option.formula}"`);
@@ -1408,16 +1411,13 @@ function buildActionsDisplay(container, actions) {
         // Announce the action AFTER all decrements (so announcement shows correct counts)
         announceAction(action);
 
-        // Mark action as used based on action type
+        // Mark action as used based on action type (auto-tracking during combat)
         const actionType = action.actionType || 'action';
         debug.log(`🎯 Action type for "${action.name}": "${actionType}"`);
 
-        if (actionType === 'bonus action' || actionType === 'bonus' || actionType === 'Bonus Action' || actionType === 'Bonus') {
-          markActionAsUsed('bonus action');
-        } else if (actionType === 'reaction' || actionType === 'Reaction') {
-          markActionAsUsed('reaction');
-        } else {
-          markActionAsUsed('action');
+        // Call global markActionEconomyUsed if available (from popup-sheet.js)
+        if (typeof window.markActionEconomyUsed === 'function') {
+          window.markActionEconomyUsed(actionType);
         }
       });
       buttonsDiv.appendChild(useBtn);

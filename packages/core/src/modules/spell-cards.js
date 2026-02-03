@@ -214,15 +214,19 @@
         }
 
         if (options.length === 0) {
-          // No rolls - announce description and cast immediately
+          // No rolls - announce description and cast immediately with base spell level
           if (typeof announceSpellDescription === 'function') {
             announceSpellDescription(spell);
           }
           if (typeof castSpell === 'function') {
-            castSpell(spell, index, null, null, [], false, true); // skipAnnouncement = true
+            // Auto-select base spell level for direct casting (so slots decrement)
+            const baseLevel = spell.level && spell.level > 0 ? parseInt(spell.level) : null;
+            castSpell(spell, index, null, baseLevel, [], false, true); // skipAnnouncement = true
           }
         } else {
           // Has rolls - show modal with options
+          debug.log(`✨ Spell "${spell.name}" has ${options.length} options, showing modal`);
+          
           // Check if concentration recast option will exist in modal
           const hasConcentrationRecast = spell.concentration && typeof concentratingSpell !== 'undefined' && concentratingSpell === spell.name;
 
@@ -230,14 +234,31 @@
             // No concentration recast option - announce description immediately
             if (typeof announceSpellDescription === 'function') {
               announceSpellDescription(spell);
+            } else {
+              debug.warn('⚠️ announceSpellDescription not available');
             }
+            
             if (typeof showSpellModal === 'function') {
-              showSpellModal(spell, index, options, true); // descriptionAnnounced = true
+              debug.log('📋 Calling showSpellModal with descriptionAnnounced=true');
+              try {
+                showSpellModal(spell, index, options, true); // descriptionAnnounced = true
+              } catch (error) {
+                debug.error('❌ Error calling showSpellModal:', error);
+              }
+            } else {
+              debug.error('❌ showSpellModal function not available!');
             }
           } else {
             // Has concentration recast - announce from modal button handlers
             if (typeof showSpellModal === 'function') {
-              showSpellModal(spell, index, options, false); // descriptionAnnounced = false
+              debug.log('📋 Calling showSpellModal with descriptionAnnounced=false (concentration recast)');
+              try {
+                showSpellModal(spell, index, options, false); // descriptionAnnounced = false
+              } catch (error) {
+                debug.error('❌ Error calling showSpellModal:', error);
+              }
+            } else {
+              debug.error('❌ showSpellModal function not available!');
             }
           }
         }
@@ -451,8 +472,14 @@
 
           // Resolve non-slot-dependent variables for display (character level, ability mods, etc.)
           // Keep slotLevel as-is since we don't know what slot will be used yet
-          let displayFormula = roll.damage;
-          let actualFormula = roll.damage; // Keep separate from display formula
+          let displayFormula = roll.damage || roll.formula || '';
+          let actualFormula = roll.damage || roll.formula || ''; // Keep separate from display formula
+
+          // Skip if no formula
+          if (!displayFormula) {
+            debug.warn(`⚠️ Skipping damage roll for "${spell.name}" - no formula found`);
+            return;
+          }
 
           // Apply warlock invocation modifications to damage
           if (typeof getActiveInvocations === 'function' && typeof applyInvocationToDamage === 'function') {
@@ -467,7 +494,7 @@
           }
 
           // Replace ~target.level with character level (for cantrips like Toll the Dead)
-          if (displayFormula.includes('~target.level') && characterData.level) {
+          if (displayFormula && displayFormula.includes('~target.level') && characterData.level) {
             displayFormula = displayFormula.replace(/~target\.level/g, characterData.level);
             actualFormula = actualFormula.replace(/~target\.level/g, characterData.level);
           }

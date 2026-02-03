@@ -23,7 +23,7 @@
     console.log("\u{1F514} Background received message:", message.type || message.action);
     if (message.action === "getCharacterData") {
       console.log("\u{1F4CB} Getting character data for Roll20...");
-      handleGetCharacterData().then((result) => {
+      handleGetCharacterData(message.characterId).then((result) => {
         console.log("\u2705 Character data retrieved:", result);
         sendResponse(result);
       }).catch((error) => {
@@ -34,7 +34,7 @@
     }
     if (message.action === "getAllCharacterProfiles") {
       console.log("\u{1F4CB} Getting all character profiles...");
-      handleGetAllCharacterProfiles().then((result) => {
+      handleGetAllCharacterProfiles(message.supabaseUserId).then((result) => {
         console.log("\u2705 Character profiles retrieved:", result);
         sendResponse(result);
       }).catch((error) => {
@@ -87,6 +87,17 @@
       });
       return true;
     }
+    if (message.action === "clearAllCloudData") {
+      console.log("\u{1F5D1}\uFE0F Clearing all cloud character data...");
+      handleClearAllCloudData().then((result) => {
+        console.log("\u2705 Cloud data cleared successfully");
+        sendResponse(result);
+      }).catch((error) => {
+        console.error("\u274C Failed to clear cloud data:", error);
+        sendResponse({ success: false, error: error.message });
+      });
+      return true;
+    }
     switch (message.type) {
       case "CHARACTER_UPDATED":
         handleCharacterUpdate(message.data);
@@ -109,25 +120,44 @@
         return false;
     }
   });
-  async function handleGetCharacterData() {
+  async function handleGetCharacterData(requestedCharacterId) {
     try {
       const result = await browserAPI.storage.local.get(["carmaclouds_characters", "activeCharacterId"]);
       const characters = result.carmaclouds_characters || [];
-      const activeCharacterId = result.activeCharacterId;
+      const activeCharacterId = requestedCharacterId || result.activeCharacterId;
       let activeCharacter = null;
       if (activeCharacterId) {
-        activeCharacter = characters.find((char) => char.id === activeCharacterId);
+        if (activeCharacterId.startsWith("slot-")) {
+          const slotIndex = parseInt(activeCharacterId.replace("slot-", "")) - 1;
+          if (slotIndex >= 0 && slotIndex < characters.length) {
+            activeCharacter = characters[slotIndex];
+          }
+        } else {
+          activeCharacter = characters.find((char) => char.id === activeCharacterId);
+        }
       }
       if (!activeCharacter && characters.length > 0) {
         activeCharacter = characters[0];
       }
       if (activeCharacter) {
+        let characterData = activeCharacter.rollcloud || activeCharacter;
+        if (activeCharacter.rollcloud && !characterData.id) {
+          characterData = {
+            ...characterData,
+            id: activeCharacter.id
+          };
+        }
         console.log("\u{1F4E4} Returning character data:", activeCharacter.name);
-        console.log("   Has hitPoints:", !!activeCharacter.hitPoints);
-        console.log("   Has raw:", !!activeCharacter.raw);
+        console.log("   Using rollcloud format:", !!activeCharacter.rollcloud);
+        console.log("   Character data keys:", Object.keys(characterData).slice(0, 25));
+        console.log("   Has hitPoints:", !!characterData.hitPoints, "=", characterData.hitPoints);
+        console.log("   Has name:", !!characterData.name, "=", characterData.name);
+        console.log("   Has id:", !!characterData.id, "=", characterData.id);
+        console.log("   Has spells:", Array.isArray(characterData.spells), characterData.spells?.length);
+        console.log("   Has actions:", Array.isArray(characterData.actions), characterData.actions?.length);
         return {
           success: true,
-          data: activeCharacter
+          data: characterData
         };
       } else {
         console.log("\u274C No character data found in storage");
@@ -151,9 +181,9 @@
       console.log("\u{1F4BE} Storing character to slot:", slotId || "default");
       const result = await browserAPI.storage.local.get("carmaclouds_characters");
       const characters = result.carmaclouds_characters || [];
-      const characterId = characterData.id || characterData.dicecloud_character_id;
+      const characterId = characterData.id || characterData.dicecloud_character_id || slotId;
       if (!characterId) {
-        throw new Error("Character data missing ID");
+        throw new Error("Character data missing ID and no slotId provided");
       }
       const existingIndex = characters.findIndex((char) => char.id === characterId);
       if (existingIndex >= 0) {
@@ -164,6 +194,8 @@
         const existingCharacter = characters[existingIndex];
         characters[existingIndex] = {
           ...characterData,
+          id: characterId,
+          // Ensure ID is always set
           raw: existingCharacter.raw || characterData.raw,
           // Keep raw if it exists
           preview: existingCharacter.preview || characterData.preview
@@ -172,7 +204,11 @@
         console.log("   Preserved raw data:", !!characters[existingIndex].raw);
       } else {
         console.log("\u2705 Adding new character:", characterData.name);
-        characters.push(characterData);
+        characters.push({
+          ...characterData,
+          id: characterId
+          // Ensure ID is always set
+        });
       }
       await browserAPI.storage.local.set({ carmaclouds_characters: characters });
       console.log("\u2705 Character data stored successfully to carmaclouds_characters");
@@ -183,10 +219,76 @@
       return { success: false, error: error.message };
     }
   }
-  async function handleGetAllCharacterProfiles() {
+  async function handleGetAllCharacterProfiles(supabaseUserId) {
     try {
       const result = await browserAPI.storage.local.get("carmaclouds_characters");
-      const characters = result.carmaclouds_characters || [];
+      let characters = result.carmaclouds_characters || [];
+      console.log("\u{1F50D} getAllCharacterProfiles - Total characters in storage:", characters.length);
+      if (supabaseUserId) {
+        console.log("\u{1F50D} Fetching characters from Supabase for user:", supabaseUserId);
+        try {
+          const dbResponse = await fetch(
+            `${SUPABASE_URL}/rest/v1/clouds_characters?select=*&supabase_user_id=eq.${supabaseUserId}`,
+            {
+              headers: {
+                "apikey": SUPABASE_ANON_KEY,
+                "Content-Type": "application/json"
+              }
+            }
+          );
+          if (dbResponse.ok) {
+            const dbCharacters = await dbResponse.json();
+            console.log("   Found", dbCharacters.length, "characters from Supabase");
+            dbCharacters.forEach((dbChar) => {
+              const existingIndex = characters.findIndex((c) => c.id === dbChar.dicecloud_character_id);
+              let rawData = dbChar.raw_dicecloud_data || {};
+              if (typeof rawData === "string") {
+                try {
+                  rawData = JSON.parse(rawData);
+                } catch (e) {
+                  console.warn("   Failed to parse raw_dicecloud_data for:", dbChar.character_name);
+                  rawData = {};
+                }
+              }
+              const characterEntry = {
+                id: dbChar.dicecloud_character_id,
+                name: dbChar.character_name || "Unknown",
+                level: dbChar.level || "?",
+                class: dbChar.class || "No Class",
+                race: dbChar.race || "Unknown",
+                raw: rawData,
+                lastSynced: dbChar.updated_at || (/* @__PURE__ */ new Date()).toISOString(),
+                rollcloud: null,
+                // Parsed on-demand when RollCloud tab is used
+                owlcloud: null,
+                // Parsed on-demand when OwlCloud tab is used
+                foundcloud: null
+                // Parsed on-demand when FoundCloud tab is used
+              };
+              if (existingIndex >= 0) {
+                characters[existingIndex] = characterEntry;
+              } else {
+                characters.push(characterEntry);
+              }
+            });
+            console.log("   Merged: now have", characters.length, "total characters");
+            await browserAPI.storage.local.set({ carmaclouds_characters: characters });
+            console.log("   \u2705 Saved merged characters to local storage");
+          }
+        } catch (dbError) {
+          console.error("   \u274C Error fetching from Supabase:", dbError);
+        }
+      }
+      characters.forEach((char, index) => {
+        console.log(`   Character ${index}:`, {
+          id: char.id,
+          name: char.name,
+          class: char.class,
+          level: char.level,
+          race: char.race,
+          hasRaw: !!char.raw
+        });
+      });
       const profiles = {};
       characters.forEach((char, index) => {
         if (char.id) {
@@ -201,8 +303,12 @@
             raw: char.raw
             // Include raw data for parsing
           };
+          console.log(`   \u2705 Created ${profileKey}:`, profiles[profileKey].name);
+        } else {
+          console.log(`   \u26A0\uFE0F Skipped character at index ${index} - no ID`);
         }
       });
+      console.log("\u{1F4CB} Returning profiles:", Object.keys(profiles));
       return {
         success: true,
         profiles
@@ -298,7 +404,7 @@
       const characters = result.carmaclouds_characters || [];
       console.log("\u2705 Step 3: Found", characters.length, "existing characters");
       console.log("\u{1F4BE} Step 4: Updating characters list...");
-      const existingIndex = characters.findIndex((c) => c.name === characterData.name);
+      const existingIndex = characters.findIndex((c) => c.id === characterData.id);
       if (existingIndex >= 0) {
         console.log("\u{1F4DD} Updating existing character at index", existingIndex);
         characters[existingIndex] = {
@@ -318,8 +424,7 @@
       console.log("\u{1F4BE} Step 5: Saving updated characters list...");
       await browserAPI.storage.local.set({ carmaclouds_characters: characters });
       console.log("\u2705 Step 5: Characters list saved");
-      const storageCheck = await browserAPI.storage.local.get("activeCharacterId");
-      if (!storageCheck.activeCharacterId && characterData.id) {
+      if (characterData.id) {
         console.log("\u{1F4BE} Step 6: Setting as active character:", characterData.id);
         await browserAPI.storage.local.set({ activeCharacterId: characterData.id });
         console.log("\u2705 Step 6: Active character ID set");
@@ -337,25 +442,59 @@
           updated_at: (/* @__PURE__ */ new Date()).toISOString()
         };
         console.log("\u{1F4E4} Sending character to Supabase:", payload.character_name);
-        const response = await fetch(
+        const checkResponse = await fetch(
           `${SUPABASE_URL}/rest/v1/clouds_characters?dicecloud_character_id=eq.${characterData.id}`,
           {
-            method: "POST",
+            method: "GET",
             headers: {
               "apikey": SUPABASE_ANON_KEY,
-              "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-              "Content-Type": "application/json",
-              "Prefer": "resolution=merge-duplicates,return=representation"
-            },
-            body: JSON.stringify(payload)
+              "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+            }
           }
         );
-        if (response.ok) {
-          const result2 = await response.json();
-          console.log("\u2705 Step 7: Character synced to Supabase:", result2);
+        let response;
+        if (checkResponse.ok) {
+          const existing = await checkResponse.json();
+          if (existing && existing.length > 0) {
+            console.log("\u{1F4DD} Updating existing character in Supabase...");
+            response = await fetch(
+              `${SUPABASE_URL}/rest/v1/clouds_characters?dicecloud_character_id=eq.${characterData.id}`,
+              {
+                method: "PATCH",
+                headers: {
+                  "apikey": SUPABASE_ANON_KEY,
+                  "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+                  "Content-Type": "application/json",
+                  "Prefer": "return=representation"
+                },
+                body: JSON.stringify(payload)
+              }
+            );
+          } else {
+            console.log("\u2795 Inserting new character to Supabase...");
+            response = await fetch(
+              `${SUPABASE_URL}/rest/v1/clouds_characters`,
+              {
+                method: "POST",
+                headers: {
+                  "apikey": SUPABASE_ANON_KEY,
+                  "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+                  "Content-Type": "application/json",
+                  "Prefer": "return=representation"
+                },
+                body: JSON.stringify(payload)
+              }
+            );
+          }
+          if (response.ok) {
+            const result2 = await response.json();
+            console.log("\u2705 Step 7: Character synced to Supabase:", result2);
+          } else {
+            const errorText = await response.text();
+            console.error("\u274C Supabase sync failed:", response.status, errorText);
+          }
         } else {
-          const errorText = await response.text();
-          console.error("\u274C Supabase sync failed:", response.status, errorText);
+          console.error("\u274C Failed to check if character exists:", checkResponse.status);
         }
       } catch (supabaseError) {
         console.error("\u274C Failed to sync to Supabase (non-fatal):", supabaseError);
@@ -384,6 +523,49 @@
         error: error.message
       };
     }
+  }
+  async function handleClearAllCloudData() {
+    try {
+      const result = await browserAPI.storage.local.get(["diceCloudUserId"]);
+      const userId = result.diceCloudUserId;
+      if (!userId) {
+        throw new Error("No DiceCloud user ID found. Please log in first.");
+      }
+      console.log("\u{1F5D1}\uFE0F Deleting all characters for user:", userId);
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/clouds_characters?user_id_dicecloud=eq.${userId}`, {
+        method: "DELETE",
+        headers: {
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+          "Content-Type": "application/json",
+          "Prefer": "return=representation"
+        }
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to delete cloud data: ${response.status} - ${errorText}`);
+      }
+      const deletedChars = await response.json();
+      const count = Array.isArray(deletedChars) ? deletedChars.length : 0;
+      console.log(`\u2705 Deleted ${count} characters from cloud`);
+      return {
+        success: true,
+        message: `Deleted ${count} character(s) from cloud storage.`
+      };
+    } catch (error) {
+      console.error("\u274C Error clearing cloud data:", error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = {
+      handleGetCharacterData,
+      handleStoreCharacterData,
+      handleClearAllCloudData
+    };
   }
   browserAPI.runtime.onInstalled.addListener((details) => {
     console.log("CarmaClouds extension installed/updated:", details.reason);

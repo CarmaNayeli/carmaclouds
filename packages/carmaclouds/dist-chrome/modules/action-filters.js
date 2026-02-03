@@ -35,14 +35,32 @@
   function categorizeAction(action) {
     const name = (action.name || '').toLowerCase();
     const damageType = (action.damageType || '').toLowerCase();
+    const actionType = (action.actionType || '').toLowerCase();
 
     // Check for healing based on damage type or name
     if (damageType.includes('heal') || name.includes('heal') || name.includes('cure')) {
       return 'healing';
     }
 
-    // Check for damage based on actual damage formula
+    // Check for damage based on:
+    // 1. Actual damage formula with dice
     if (action.damage && action.damage.includes('d')) {
+      return 'damage';
+    }
+    
+    // 2. Has attack roll (weapons, attacks)
+    if (action.attackRoll && action.attackRoll !== '(none)') {
+      return 'damage';
+    }
+    
+    // 3. Action type is explicitly 'attack'
+    if (actionType === 'attack') {
+      return 'damage';
+    }
+    
+    // 4. Name contains attack/weapon keywords
+    if (name.includes('attack') || name.includes('strike') || name.includes('bow') || 
+        name.includes('sword') || name.includes('axe') || name.includes('weapon')) {
       return 'damage';
     }
 

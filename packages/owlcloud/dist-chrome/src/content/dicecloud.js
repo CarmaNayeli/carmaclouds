@@ -5777,6 +5777,21 @@
       const notificationText = colorEmoji ? `${colorEmoji} ${characterData.name} used ${action.name}!` : `\u2728 ${characterData.name} used ${action.name}!`;
       showNotification(notificationText);
       debug.log("\u2705 Action announcement displayed");
+      const messageData = {
+        action: "announceSpell",
+        message,
+        color: characterData.notificationColor
+      };
+      if (window.opener && !window.opener.closed) {
+        try {
+          window.opener.postMessage(messageData, "*");
+          debug.log("\u{1F4E8} Action announcement sent to Roll20 via window.opener");
+        } catch (error) {
+          debug.warn("\u26A0\uFE0F Could not send via window.opener:", error.message);
+        }
+      } else {
+        debug.warn("\u26A0\uFE0F No window.opener available, action not sent to Roll20");
+      }
     }
     function postActionToChat(actionLabel, state) {
       const emoji = state === "used" ? "\u274C" : "\u2705";
@@ -6146,7 +6161,10 @@
                 actionAnnounced = true;
               }
               if (option.type === "attack") {
-                markActionAsUsed("action");
+                const actionType = action.actionType || "action";
+                if (typeof window.markActionEconomyUsed === "function") {
+                  window.markActionEconomyUsed(actionType);
+                }
                 debug.log(`\u{1F3AF} Attack button clicked for "${action.name}", formula: "${option.formula}"`);
                 console.log(`\u{1F3AF} ATTACK DEBUG: Rolling attack for ${action.name} with formula ${option.formula}`);
                 try {
@@ -6686,12 +6704,8 @@
             announceAction(action);
             const actionType = action.actionType || "action";
             debug.log(`\u{1F3AF} Action type for "${action.name}": "${actionType}"`);
-            if (actionType === "bonus action" || actionType === "bonus" || actionType === "Bonus Action" || actionType === "Bonus") {
-              markActionAsUsed("bonus action");
-            } else if (actionType === "reaction" || actionType === "Reaction") {
-              markActionAsUsed("reaction");
-            } else {
-              markActionAsUsed("action");
+            if (typeof window.markActionEconomyUsed === "function") {
+              window.markActionEconomyUsed(actionType);
             }
           });
           buttonsDiv.appendChild(useBtn);
@@ -6797,10 +6811,20 @@
     function categorizeAction2(action) {
       const name = (action.name || "").toLowerCase();
       const damageType = (action.damageType || "").toLowerCase();
+      const actionType = (action.actionType || "").toLowerCase();
       if (damageType.includes("heal") || name.includes("heal") || name.includes("cure")) {
         return "healing";
       }
       if (action.damage && action.damage.includes("d")) {
+        return "damage";
+      }
+      if (action.attackRoll && action.attackRoll !== "(none)") {
+        return "damage";
+      }
+      if (actionType === "attack") {
+        return "damage";
+      }
+      if (name.includes("attack") || name.includes("strike") || name.includes("bow") || name.includes("sword") || name.includes("axe") || name.includes("weapon")) {
         return "damage";
       }
       return "utility";
@@ -6894,12 +6918,19 @@
           color: "#e74c3c"
         });
       }
-      const isValidDiceFormula = action.damage && (/\d*d\d+/.test(action.damage) || /\d*d\d+/.test(action.damage.replace(/\s*\+\s*/g, "+")));
       debug.log(`\u{1F3B2} Action "${action.name}" damage check:`, {
         damage: action.damage,
-        isValid: isValidDiceFormula,
+        damageType: typeof action.damage,
+        damageValue: action.damage,
         attackRoll: action.attackRoll
       });
+      let damageFormula = action.damage;
+      if (typeof action.damage === "object" && action.damage !== null) {
+        damageFormula = action.damage.value || action.damage.calculation || action.damage.formula || "";
+        debug.log(`\u{1F50D} Extracted damage from object: "${damageFormula}"`);
+      }
+      const isValidDiceFormula = damageFormula && typeof damageFormula === "string" && (/\d*d\d+/.test(damageFormula) || /\d*d\d+/.test(damageFormula.replace(/\s*\+\s*/g, "+")));
+      debug.log(`\u2705 Damage validation result: isValid=${isValidDiceFormula}, formula="${damageFormula}"`);
       if (isValidDiceFormula) {
         const isHealing = action.damageType && action.damageType.toLowerCase().includes("heal");
         const isTempHP = action.damageType && (action.damageType.toLowerCase() === "temphp" || action.damageType.toLowerCase() === "temporary" || action.damageType.toLowerCase().includes("temp"));
@@ -6914,7 +6945,7 @@
         options.push({
           type: isHealing ? "healing" : isTempHP ? "temphp" : "damage",
           label: btnText,
-          formula: action.damage,
+          formula: damageFormula,
           icon: isTempHP ? "\u{1F6E1}\uFE0F" : isHealing ? "\u{1F49A}" : "\u{1F4A5}",
           color: isTempHP ? "#3498db" : isHealing ? "#27ae60" : "#e67e22"
         });
@@ -8377,24 +8408,30 @@
       debug.log("\u2705 Concentration tracker initialized");
     }
     function setConcentration(spellName) {
-      if (concentratingSpell && concentratingSpell !== spellName) {
+      debug.log(`\u{1F9E0} setConcentration called with: "${spellName}"`);
+      debug.log(`\u{1F9E0} Current concentration: "${concentratingSpell}"`);
+      const isReplacement = concentratingSpell && concentratingSpell !== spellName;
+      if (isReplacement) {
         const previousSpell = concentratingSpell;
         showNotification(`\u26A0\uFE0F Dropped concentration on ${previousSpell} to concentrate on ${spellName}`);
         debug.log(`\u{1F504} Replacing concentration: ${previousSpell} \u2192 ${spellName}`);
       }
       concentratingSpell = spellName;
+      debug.log(`\u{1F9E0} Updated concentratingSpell variable to: "${concentratingSpell}"`);
       if (characterData) {
         characterData.concentrationSpell = spellName;
+        debug.log(`\u{1F9E0} Updated characterData.concentrationSpell to: "${spellName}"`);
         saveCharacterData();
       }
       updateConcentrationDisplay();
+      debug.log(`\u{1F9E0} Called updateConcentrationDisplay()`);
       if (typeof sendStatusUpdate === "function") {
         sendStatusUpdate();
       }
-      if (!concentratingSpell || concentratingSpell === spellName) {
+      if (!isReplacement) {
         showNotification(`\u{1F9E0} Concentrating on: ${spellName}`);
       }
-      debug.log(`\u{1F9E0} Concentration set: ${spellName}`);
+      debug.log(`\u{1F9E0} Concentration set complete: ${spellName}`);
     }
     function dropConcentration() {
       if (!concentratingSpell)
@@ -8438,6 +8475,14 @@
         return;
       }
       if (typeof browserAPI !== "undefined") {
+        debug.log("\u{1F4BE} saveCharacterData called with:", {
+          hasId: !!characterData.id,
+          id: characterData.id,
+          hasDicecloudCharacterId: !!characterData.dicecloud_character_id,
+          dicecloud_character_id: characterData.dicecloud_character_id,
+          name: characterData.name,
+          currentSlotId
+        });
         browserAPI.runtime.sendMessage({
           action: "storeCharacterData",
           data: characterData,
@@ -8511,7 +8556,8 @@
       if (window.opener && !window.opener.closed) {
         window.opener.postMessage({
           action: "updateCharacterData",
-          data: characterData
+          data: characterData,
+          characterId: characterData.id || characterData.dicecloud_character_id || currentSlotId
         }, "*");
         debug.log("\u{1F4BE} Sent character data update to parent window");
       }
@@ -8757,8 +8803,12 @@
     globalThis.buildCharacterTabs = buildCharacterTabs;
     globalThis.validateCharacterData = validateCharacterData;
     Object.defineProperty(globalThis, "currentSlotId", {
-      get: () => currentSlotId,
+      get: () => {
+        debug.log(`\u{1F4CD} currentSlotId getter called, returning: ${currentSlotId}`);
+        return currentSlotId;
+      },
       set: (value) => {
+        debug.log(`\u{1F4CD} currentSlotId setter called with value: ${value}`);
         currentSlotId = value;
       }
     });
@@ -9223,6 +9273,31 @@
       };
       if (prerolledResult !== null) {
         messageData.prerolledResult = prerolledResult;
+      }
+      debug.log("\u{1F50D} Checking window.opener:", {
+        hasOpener: !!window.opener,
+        isClosed: window.opener ? window.opener.closed : "N/A"
+      });
+      if (window.opener && !window.opener.closed) {
+        try {
+          window.opener.postMessage(messageData, "*");
+          debug.log("\u{1F3B2} Roll sent to Roll20 via window.opener.postMessage:", messageData);
+          debug.log("   Target origin: * (all origins)");
+        } catch (error) {
+          debug.warn("\u26A0\uFE0F Could not send roll via window.opener:", error.message);
+          if (typeof browserAPI !== "undefined") {
+            browserAPI.runtime.sendMessage({
+              action: "rollFromPopout",
+              roll: messageData
+            }).catch((err) => {
+              debug.error("\u274C Failed to send roll via background:", err);
+            });
+          }
+        }
+      } else {
+        debug.warn("\u26A0\uFE0F No window.opener available, cannot send roll to Roll20");
+        debug.log("   window.opener:", window.opener);
+        debug.log("   window.opener.closed:", window.opener ? window.opener.closed : "N/A");
       }
       showNotification(`\u{1F3B2} Rolling ${name}...`);
       debug.log("\u2705 Roll executed");

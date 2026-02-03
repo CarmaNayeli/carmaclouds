@@ -534,7 +534,7 @@
         return field.text;
       return "";
     };
-    const spells = properties.filter((p) => p.type === "spell").map((spell) => {
+    const spells = properties.filter((p) => p.type === "spell" && !p.inactive && !p.disabled).map((spell) => {
       const spellChildren = properties.filter((p) => {
         if (p.type !== "roll" && p.type !== "damage" && p.type !== "attack")
           return false;
@@ -621,22 +621,91 @@
       };
     });
     const actions = properties.filter((p) => p.type === "action" && p.name && !p.inactive && !p.disabled).map((action) => {
+      const actionChildren = properties.filter((p) => {
+        if (p.type !== "roll" && p.type !== "damage" && p.type !== "attack")
+          return false;
+        if (p.ancestors && Array.isArray(p.ancestors)) {
+          return p.ancestors.some((ancestor) => {
+            const ancestorId = typeof ancestor === "object" ? ancestor.id : ancestor;
+            return ancestorId === action._id;
+          });
+        }
+        return false;
+      });
       let attackRoll = "";
       if (action.attackRoll) {
         attackRoll = typeof action.attackRoll === "string" ? action.attackRoll : String(action.attackRoll.value || action.attackRoll.calculation || "");
+      } else {
+        const attackChild = actionChildren.find((c) => c.type === "attack" || c.type === "roll" && c.name && c.name.toLowerCase().includes("attack"));
+        if (attackChild && attackChild.roll) {
+          if (typeof attackChild.roll === "string") {
+            attackRoll = attackChild.roll;
+          } else if (typeof attackChild.roll === "object") {
+            attackRoll = attackChild.roll.calculation || attackChild.roll.value || "";
+          }
+        }
       }
       let damage = "";
       let damageType = "";
       if (action.damage) {
         damage = typeof action.damage === "string" ? action.damage : String(action.damage.value || action.damage.calculation || "");
+      } else {
+        const damageChild = actionChildren.find((c) => c.type === "damage" || c.type === "roll" && c.name && c.name.toLowerCase().includes("damage"));
+        if (damageChild) {
+          if (damageChild.amount) {
+            if (typeof damageChild.amount === "string") {
+              damage = damageChild.amount;
+            } else if (typeof damageChild.amount === "object") {
+              damage = damageChild.amount.calculation || String(damageChild.amount.value || "");
+            }
+          } else if (damageChild.roll) {
+            if (typeof damageChild.roll === "string") {
+              damage = damageChild.roll;
+            } else if (typeof damageChild.roll === "object") {
+              damage = damageChild.roll.calculation || String(damageChild.roll.value || "");
+            }
+          } else if (damageChild.damage) {
+            if (typeof damageChild.damage === "string") {
+              damage = damageChild.damage;
+            } else if (typeof damageChild.damage === "object") {
+              damage = damageChild.damage.calculation || String(damageChild.damage.value || "");
+            }
+          }
+          if (damageChild.damageType) {
+            damageType = damageChild.damageType;
+          }
+        }
       }
-      if (action.damageType) {
+      if (!damageType && action.damageType) {
         damageType = action.damageType;
+      }
+      let actionType = "action";
+      const tags = action.tags || [];
+      const nameLower = (action.name || "").toLowerCase();
+      const summaryLower = extractText(action.summary).toLowerCase();
+      if (tags.some((t) => typeof t === "string" && t.toLowerCase().includes("bonus"))) {
+        actionType = "bonus";
+      } else if (tags.some((t) => typeof t === "string" && t.toLowerCase().includes("reaction"))) {
+        actionType = "reaction";
+      } else if (tags.some((t) => typeof t === "string" && t.toLowerCase().includes("free"))) {
+        actionType = "free";
+      } else if (tags.some((t) => typeof t === "string" && (t.toLowerCase().includes("legendary") || t.toLowerCase().includes("lair")))) {
+        actionType = "free";
+      } else if (tags.some((t) => typeof t === "string" && t.toLowerCase().includes("attack"))) {
+        actionType = "action";
+      } else if (nameLower.includes("bonus action") || summaryLower.includes("bonus action")) {
+        actionType = "bonus";
+      } else if (nameLower.includes("reaction") || summaryLower.includes("reaction")) {
+        actionType = "reaction";
+      } else if (nameLower.includes("free action") || summaryLower.includes("free action")) {
+        actionType = "free";
+      } else if (attackRoll || damage) {
+        actionType = "action";
       }
       return {
         id: action._id,
         name: action.name,
-        actionType: action.actionType || "action",
+        actionType,
         description: extractText(action.description),
         summary: extractText(action.summary),
         attackRoll,
@@ -679,6 +748,7 @@
       attuned: item.attuned || false,
       requiresAttunement: item.requiresAttunement || false
     }));
+    const companions = extractCompanions(properties);
     return {
       name: characterName,
       race,
@@ -703,298 +773,154 @@
       resources,
       inventory,
       spells,
-      actions
+      actions,
+      companions
     };
   }
-
-  // src/popup/adapters/rollcloud/raw-data-parser.js
-  function parseRawCharacterData(rawData, characterId) {
-    if (!rawData || !rawData.creature || !rawData.variables || !rawData.properties) {
-      throw new Error("Invalid raw data format: missing creature, variables, or properties");
-    }
-    const { creature, variables, properties } = rawData;
-    const name = creature.name || "Unknown Character";
-    let race = "Unknown";
-    let characterClass = "";
-    let level = 0;
-    const uniqueClasses = /* @__PURE__ */ new Set();
-    let raceFound = false;
-    for (const prop of properties) {
-      if (!prop)
-        continue;
-      if (!raceFound && prop.type === "folder" && prop.name) {
-        const commonRaces = ["half-elf", "half-orc", "dragonborn", "tiefling", "aarakocra", "lizardfolk", "warforged", "changeling", "kalashtar", "goliath", "firbolg", "genasi", "yuan-ti", "bugbear", "hobgoblin", "halfling", "tortle", "kobold", "tabaxi", "goblin", "kenku", "human", "dwarf", "gnome", "triton", "elf", "orc", "shifter"];
-        const nameMatchesRace = commonRaces.some((r) => prop.name.toLowerCase().includes(r));
-        if (nameMatchesRace) {
-          const parentDepth = prop.ancestors ? prop.ancestors.length : 0;
-          if (parentDepth <= 2) {
-            race = prop.name;
-            raceFound = true;
+  function extractCompanions(properties) {
+    console.log("\u{1F43E} Extracting companions from features...");
+    console.log("\u{1F43E} Total properties to check:", properties.length);
+    const propertyTypes = /* @__PURE__ */ new Set();
+    properties.forEach((p) => {
+      if (p && p.type)
+        propertyTypes.add(p.type);
+    });
+    console.log("\u{1F43E} Property types available:", Array.from(propertyTypes).sort());
+    const companionPatterns = [
+      /companion/i,
+      /beast of/i,
+      /familiar/i,
+      /summon/i,
+      /mount/i,
+      /steel defender/i,
+      /homunculus/i,
+      /drake/i,
+      /primal companion/i,
+      /beast master/i,
+      /ranger's companion/i
+    ];
+    const companions = [];
+    const potentialCompanions = properties.filter((p) => {
+      if (!p || !p.name || p.inactive)
+        return false;
+      return companionPatterns.some((pattern) => pattern.test(p.name));
+    });
+    console.log(`\u{1F43E} Found ${potentialCompanions.length} properties matching companion patterns`);
+    potentialCompanions.forEach((prop) => {
+      console.log(`\u{1F43E} Potential companion: "${prop.name}" (type: ${prop.type})`);
+    });
+    const seenCompanions = /* @__PURE__ */ new Set();
+    potentialCompanions.forEach((feature) => {
+      if (feature.description) {
+        console.log(`\u{1F43E} Parsing companion: ${feature.name}`);
+        const companion = parseCompanionStatBlock(feature.name, feature.description);
+        if (companion) {
+          if (!seenCompanions.has(companion.name)) {
+            companions.push(companion);
+            seenCompanions.add(companion.name);
+            console.log(`\u2705 Added companion: ${companion.name}`);
+          } else {
+            console.log(`\u23ED\uFE0F Skipping duplicate companion: ${companion.name}`);
           }
+        } else {
+          console.log(`\u26A0\uFE0F Failed to parse companion stat block for: ${feature.name}`);
         }
+      } else {
+        console.log(`\u26A0\uFE0F No description for potential companion: ${feature.name}`);
       }
-      if (!raceFound && (prop.type === "race" || prop.type === "species" || prop.type === "characterRace")) {
-        if (prop.name) {
-          race = prop.name;
-          raceFound = true;
-        }
-      }
-      if (!raceFound && prop.type === "constant" && prop.name && prop.name.toLowerCase() === "race") {
-        if (prop.value) {
-          race = prop.value;
-          raceFound = true;
-        }
-      }
-      if (prop.type === "class" && prop.name && !prop.inactive && !prop.disabled) {
-        const cleanName = prop.name.replace(/\s*\[Multiclass\]/i, "").trim();
-        if (cleanName) {
-          uniqueClasses.add(cleanName);
-          level += prop.level || 1;
-        }
-      }
+    });
+    console.log(`\u{1F43E} Total companions found: ${companions.length} (after deduplication)`);
+    return companions;
+  }
+  function parseCompanionStatBlock(name, description) {
+    let descText = typeof description === "object" ? description.value || description.text || "" : description;
+    if (!descText || descText.trim() === "")
+      return null;
+    const companion = {
+      name,
+      size: "",
+      type: "",
+      alignment: "",
+      ac: 0,
+      hp: "",
+      speed: "",
+      abilities: {},
+      senses: "",
+      languages: "",
+      proficiencyBonus: 0,
+      features: [],
+      actions: []
+    };
+    const sizeTypeMatch = descText.match(/(Tiny|Small|Medium|Large|Huge|Gargantuan)\s+(\w+),\s*(\w+)/i);
+    if (sizeTypeMatch) {
+      companion.size = sizeTypeMatch[1];
+      companion.type = sizeTypeMatch[2];
+      companion.alignment = sizeTypeMatch[3];
     }
-    characterClass = Array.from(uniqueClasses).join(" / ") || "No Class";
-    const getVar = (name2) => {
-      const varName = name2.toLowerCase();
-      return variables[varName] !== void 0 ? variables[varName] : 0;
-    };
-    const abilities = {
-      strength: getVar("strength"),
-      dexterity: getVar("dexterity"),
-      constitution: getVar("constitution"),
-      intelligence: getVar("intelligence"),
-      wisdom: getVar("wisdom"),
-      charisma: getVar("charisma")
-    };
-    const abilityMods = {
-      strengthMod: getVar("strengthMod"),
-      dexterityMod: getVar("dexterityMod"),
-      constitutionMod: getVar("constitutionMod"),
-      intelligenceMod: getVar("intelligenceMod"),
-      wisdomMod: getVar("wisdomMod"),
-      charismaMod: getVar("charismaMod")
-    };
-    const hitPoints = {
-      current: getVar("hitPoints"),
-      max: getVar("hitPoints"),
-      temp: 0
-    };
-    const armorClass = getVar("armorClass") || 10;
-    const proficiencyBonus = getVar("proficiencyBonus") || Math.floor((level - 1) / 4) + 2;
-    const initiative = getVar("initiative") || abilityMods.dexterityMod;
-    const speed = getVar("speed") || 30;
-    const hitDiceUsed = getVar("hitDiceUsed") || 0;
-    const hitDice = {
-      current: Math.max(0, level - hitDiceUsed),
-      max: level,
-      die: "d10"
-      // Default, should be extracted from class
-    };
-    const saves = {
-      strength: getVar("strengthSave"),
-      dexterity: getVar("dexteritySave"),
-      constitution: getVar("constitutionSave"),
-      intelligence: getVar("intelligenceSave"),
-      wisdom: getVar("wisdomSave"),
-      charisma: getVar("charismaSave")
-    };
-    const skills = {
-      acrobatics: getVar("acrobatics"),
-      animalHandling: getVar("animalHandling"),
-      arcana: getVar("arcana"),
-      athletics: getVar("athletics"),
-      deception: getVar("deception"),
-      history: getVar("history"),
-      insight: getVar("insight"),
-      intimidation: getVar("intimidation"),
-      investigation: getVar("investigation"),
-      medicine: getVar("medicine"),
-      nature: getVar("nature"),
-      perception: getVar("perception"),
-      performance: getVar("performance"),
-      persuasion: getVar("persuasion"),
-      religion: getVar("religion"),
-      sleightOfHand: getVar("sleightOfHand"),
-      stealth: getVar("stealth"),
-      survival: getVar("survival")
-    };
-    const findChildren = (parentId) => {
-      return properties.filter((p) => {
-        if (!p || p.inactive || p.disabled)
-          return false;
-        if (p.ancestors && Array.isArray(p.ancestors)) {
-          return p.ancestors.some((ancestor) => {
-            return ancestor.id === parentId || ancestor === parentId;
+    const acMatch = descText.match(/\*\*AC\*\*\s+(\d+)|AC\s+(\d+)/i);
+    if (acMatch)
+      companion.ac = parseInt(acMatch[1] || acMatch[2]);
+    const hpMatch = descText.match(/\*\*HP\*\*\s+(\d+\s*\([^)]+\))|HP\s+(\d+\s*\([^)]+\))/i);
+    if (hpMatch)
+      companion.hp = hpMatch[1] || hpMatch[2];
+    const speedMatch = descText.match(/Speed\s+([^•\n]+)/i);
+    if (speedMatch)
+      companion.speed = speedMatch[1].trim();
+    const abilityLine = descText.match(/\|\s*(\d+)\s*\(([+\-]\d+)\)\s*\|\s*(\d+)\s*\(([+\-]\d+)\)\s*\|\s*(\d+)\s*\(([+\-]\d+)\)\s*\|\s*(\d+)\s*\(([+\-]\d+)\)\s*\|\s*(\d+)\s*\(([+\-]\d+)\)\s*\|\s*(\d+)\s*\(([+\-]\d+)\)\s*\|/);
+    if (abilityLine) {
+      const abilities = ["str", "dex", "con", "int", "wis", "cha"];
+      abilities.forEach((ability, i) => {
+        const scoreIdx = i * 2 + 1;
+        const modIdx = i * 2 + 2;
+        if (abilityLine[scoreIdx] && abilityLine[modIdx]) {
+          companion.abilities[ability] = {
+            score: parseInt(abilityLine[scoreIdx]),
+            modifier: parseInt(abilityLine[modIdx])
+          };
+        }
+      });
+    }
+    const sensesMatch = descText.match(/Senses\s+([^•\n]+)/i);
+    if (sensesMatch)
+      companion.senses = sensesMatch[1].trim();
+    const languagesMatch = descText.match(/Languages\s+([^•\n]+)/i);
+    if (languagesMatch)
+      companion.languages = languagesMatch[1].trim();
+    const pbMatch = descText.match(/Proficiency Bonus\s+(\d+)/i);
+    if (pbMatch)
+      companion.proficiencyBonus = parseInt(pbMatch[1]);
+    const featurePattern = /\*\*\*([^*\n.]+)\.\*\*\*\s*([^*\n]+)/gi;
+    let featureMatch;
+    while ((featureMatch = featurePattern.exec(descText)) !== null) {
+      companion.features.push({
+        name: featureMatch[1].trim(),
+        description: featureMatch[2].trim()
+      });
+    }
+    const actionsMatch = descText.match(/###?\s*Actions\s+([\s\S]+)/i);
+    if (actionsMatch) {
+      const actionsText = actionsMatch[1];
+      const attackLines = actionsText.split("\n").filter((line) => line.includes("***") && line.includes("Melee Weapon Attack"));
+      attackLines.forEach((attackLine) => {
+        const nameMatch = attackLine.match(/\*\*\*(\w+)\.\*\*\*/);
+        const bonusMatch = attackLine.match(/\*\*(\+\d+)\*\*/);
+        const reachMatch = attackLine.match(/reach\s*([\d\s]+ft\.)/);
+        const damageMatch = attackLine.match(/\*?Hit:\*?\s*\*\*([^*]+?)\*\*/);
+        if (nameMatch && bonusMatch && reachMatch && damageMatch) {
+          companion.actions.push({
+            name: nameMatch[1].trim(),
+            type: "attack",
+            attackBonus: parseInt(bonusMatch[1]),
+            reach: reachMatch[1].trim(),
+            damage: damageMatch[1].trim()
           });
         }
-        return p.parent === parentId;
       });
-    };
-    const actions = [];
-    const spells = [];
-    const features = [];
-    const resources = [];
-    for (const prop of properties) {
-      if (!prop || prop.inactive || prop.disabled)
-        continue;
-      if (prop.type === "action" && prop.name) {
-        const children = findChildren(prop._id);
-        let attackBonus = prop.attackBonus;
-        const damages = [];
-        for (const child of children) {
-          if (child.type === "attack" || child.type === "roll" && child.name?.toLowerCase().includes("attack")) {
-            if (child.roll) {
-              attackBonus = typeof child.roll === "string" ? child.roll : child.roll.calculation || child.roll.value;
-            }
-          }
-          if (child.type === "damage" || child.type === "roll" && (child.name?.toLowerCase().includes("damage") || child.name?.toLowerCase().includes("heal"))) {
-            let formula = "";
-            if (child.amount) {
-              formula = typeof child.amount === "string" ? child.amount : child.amount.calculation || String(child.amount.value || "");
-            } else if (child.roll) {
-              formula = typeof child.roll === "string" ? child.roll : child.roll.calculation || String(child.roll.value || "");
-            } else if (child.damage) {
-              formula = typeof child.damage === "string" ? child.damage : child.damage.calculation || String(child.damage.value || "");
-            }
-            if (formula) {
-              damages.push({
-                formula,
-                type: child.damageType || "",
-                name: child.name || ""
-              });
-            }
-          }
-        }
-        actions.push({
-          name: prop.name,
-          description: prop.description || "",
-          actionType: prop.actionType || "action",
-          attackBonus,
-          damage: damages.length > 0 ? damages : prop.damage,
-          uses: prop.uses
-        });
-      }
-      if (prop.type === "spell" && prop.name) {
-        const children = findChildren(prop._id);
-        let attackRoll = "";
-        const damageRolls = [];
-        for (const child of children) {
-          if (child.type === "attack" || child.type === "roll" && child.name?.toLowerCase().includes("attack")) {
-            if (child.roll) {
-              attackRoll = typeof child.roll === "string" ? child.roll : child.roll.calculation || child.roll.value || "use_spell_attack_bonus";
-            }
-          }
-          if (child.type === "damage" || child.type === "roll" && (child.name?.toLowerCase().includes("damage") || child.name?.toLowerCase().includes("heal"))) {
-            let formula = "";
-            if (child.amount) {
-              formula = typeof child.amount === "string" ? child.amount : child.amount.calculation || String(child.amount.value || "");
-            } else if (child.roll) {
-              formula = typeof child.roll === "string" ? child.roll : child.roll.calculation || String(child.roll.value || "");
-            } else if (child.damage) {
-              formula = typeof child.damage === "string" ? child.damage : child.damage.calculation || String(child.damage.value || "");
-            }
-            if (formula) {
-              damageRolls.push({
-                formula,
-                type: child.damageType || "",
-                name: child.name || ""
-              });
-            }
-          }
-        }
-        spells.push({
-          name: prop.name,
-          level: prop.level || 0,
-          school: prop.school || "",
-          castingTime: prop.castingTime || "",
-          range: prop.range || "",
-          duration: prop.duration || "",
-          description: prop.description || "",
-          prepared: prop.prepared !== false,
-          attackRoll,
-          damage: damageRolls
-        });
-      }
-      if (prop.type === "feature" && prop.name) {
-        features.push({
-          name: prop.name,
-          description: prop.description || "",
-          uses: prop.uses
-        });
-      }
-      if (prop.type === "resource" && prop.name) {
-        resources.push({
-          name: prop.name,
-          value: prop.value || 0,
-          max: prop.max || 0,
-          reset: prop.reset || "longRest"
-        });
-      }
     }
-    const spellSlots = {};
-    for (let i = 1; i <= 9; i++) {
-      const maxSlots = getVar(`level${i}SpellSlots`) || 0;
-      const usedSlots = getVar(`level${i}SpellSlotsUsed`) || 0;
-      if (maxSlots > 0) {
-        spellSlots[i] = {
-          max: maxSlots,
-          used: usedSlots,
-          available: maxSlots - usedSlots
-        };
-      }
+    if (companion.ac > 0 || companion.hp || Object.keys(companion.abilities).length > 0) {
+      return companion;
     }
-    return {
-      id: characterId,
-      name,
-      character_name: name,
-      class: characterClass,
-      level,
-      race,
-      // Combat stats
-      hitPoints: hitPoints.current,
-      hit_points: hitPoints.current,
-      maxHitPoints: hitPoints.max,
-      temporaryHP: hitPoints.temp,
-      temporary_hp: hitPoints.temp,
-      armorClass,
-      armor_class: armorClass,
-      initiative,
-      speed,
-      proficiencyBonus,
-      proficiency_bonus: proficiencyBonus,
-      // Hit dice
-      hitDice: `${hitDice.current}/${hitDice.max} ${hitDice.die}`,
-      hit_dice: hitDice,
-      // Death saves
-      deathSaves: {
-        successes: 0,
-        failures: 0
-      },
-      death_saves: {
-        successes: 0,
-        failures: 0
-      },
-      // Abilities
-      abilities,
-      attributeMods: abilityMods,
-      attribute_mods: abilityMods,
-      // Saves and skills
-      saves,
-      skills,
-      // Actions, spells, features
-      actions,
-      spells,
-      features,
-      resources,
-      // Spell slots
-      spellSlots,
-      spell_slots: spellSlots,
-      // Keep raw data for reference
-      raw: rawData,
-      // Metadata
-      lastSynced: (/* @__PURE__ */ new Date()).toISOString(),
-      source: "rollcloud"
-    };
+    return null;
   }
 
   // src/popup/adapters/rollcloud/adapter.js
@@ -1006,6 +932,37 @@
       const result = await browserAPI.storage.local.get("carmaclouds_characters") || {};
       let characters = result.carmaclouds_characters || [];
       console.log("Found", characters.length, "synced characters from local storage");
+      let needsUpdate = false;
+      characters = characters.map((char) => {
+        if (char.raw && !char.rollcloud && (char.hitPoints || char.spells || char.actions)) {
+          console.log("\u{1F504} Migrating old format character:", char.name);
+          needsUpdate = true;
+          let rollcloudData = null;
+          try {
+            rollcloudData = parseForRollCloud(char.raw, char.id);
+            console.log("   \u2705 Parsed rollcloud format:", rollcloudData.spells?.length, "spells,", rollcloudData.actions?.length, "actions");
+          } catch (err) {
+            console.warn("   \u274C Failed to parse:", err);
+          }
+          return {
+            id: char.id,
+            name: char.name,
+            level: char.level,
+            class: char.class,
+            race: char.race,
+            lastSynced: char.lastSynced,
+            raw: char.raw,
+            rollcloud: rollcloudData,
+            owlcloud: null,
+            foundcloud: null
+          };
+        }
+        return char;
+      });
+      if (needsUpdate) {
+        await browserAPI.storage.local.set({ carmaclouds_characters: characters });
+        console.log("\u2705 Migrated characters saved to storage");
+      }
       const supabase = window.supabaseClient;
       let supabaseUserId = null;
       if (supabase) {
@@ -1018,6 +975,7 @@
       }
       if (supabaseUserId) {
         console.log("User authenticated to Supabase, fetching characters from database...");
+        containerEl.innerHTML = '<div class="loading">Fetching characters from database...</div>';
         try {
           const SUPABASE_URL = "https://luiesmfjdcmpywavvfqm.supabase.co";
           const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aWVzbWZqZGNtcHl3YXZ2ZnFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4ODYxNDksImV4cCI6MjA4NTQ2MjE0OX0.oqjHFf2HhCLcanh0HVryoQH7iSV7E9dHHZJdYehxZ0U";
@@ -1033,6 +991,9 @@
           if (dbResponse.ok) {
             const dbCharacters = await dbResponse.json();
             console.log("Found", dbCharacters.length, "characters from Supabase");
+            if (dbCharacters.length > 0) {
+              containerEl.innerHTML = `<div class="loading">Parsing ${dbCharacters.length} character${dbCharacters.length > 1 ? "s" : ""}...</div>`;
+            }
             dbCharacters.forEach((dbChar) => {
               const existingIndex = characters.findIndex((c) => c.id === dbChar.dicecloud_character_id);
               let rawData = dbChar.raw_dicecloud_data || {};
@@ -1058,9 +1019,22 @@
                 level: dbChar.level || "?",
                 class: dbChar.class || "No Class",
                 race: dbChar.race || "Unknown",
+                lastSynced: dbChar.updated_at || (/* @__PURE__ */ new Date()).toISOString(),
                 raw: rawData,
-                lastSynced: dbChar.updated_at || (/* @__PURE__ */ new Date()).toISOString()
+                rollcloud: null,
+                owlcloud: null,
+                foundcloud: null
               };
+              if (rawData.creature && rawData.variables && rawData.properties) {
+                try {
+                  characterEntry.rollcloud = parseForRollCloud(rawData, dbChar.dicecloud_character_id);
+                  console.log("\u2705 Parsed RollCloud format for:", characterEntry.name);
+                  console.log("   Spells:", characterEntry.rollcloud.spells?.length || 0);
+                  console.log("   Actions:", characterEntry.rollcloud.actions?.length || 0);
+                } catch (parseError) {
+                  console.warn("Failed to parse RollCloud format for:", dbChar.character_name, parseError);
+                }
+              }
               if (existingIndex >= 0) {
                 characters[existingIndex] = characterEntry;
               } else {
@@ -1068,6 +1042,8 @@
               }
             });
             console.log("Merged characters list now has", characters.length, "total characters");
+            await browserAPI.storage.local.set({ carmaclouds_characters: characters });
+            console.log("\u2705 Saved merged characters to local storage");
           }
         } catch (dbError) {
           console.warn("Failed to fetch from Supabase (non-fatal):", dbError);
@@ -1264,8 +1240,13 @@
       }
       if (loginPrompt)
         loginPrompt.classList.add("hidden");
-      if (syncBox)
-        syncBox.classList.remove("hidden");
+      if (characters.length > 0) {
+        if (syncBox)
+          syncBox.classList.remove("hidden");
+      } else {
+        if (syncBox)
+          syncBox.classList.add("hidden");
+      }
       if (pushedCharactersSection)
         pushedCharactersSection.classList.remove("hidden");
       if (result.activeCharacterId && characters.length > 0) {
@@ -1340,22 +1321,26 @@
         variables: charData.creatureVariables?.[0] || {},
         properties: charData.creatureProperties || []
       };
-      const fullCharacterData = parseRawCharacterData(rawData, activeCharacterId);
       const parsedChar = parseCharacterData(charData, activeCharacterId);
-      await browserAPI.runtime.sendMessage({
-        action: "storeCharacterData",
-        data: fullCharacterData,
-        slotId: `slot-${allCharacters.length + 1}`
-      });
       const characterEntry = {
         id: activeCharacterId,
         name: parsedChar.name || "Unknown",
         level: parsedChar.preview?.level || parsedChar.level || "?",
         class: parsedChar.preview?.class || parsedChar.class || "No Class",
         race: parsedChar.preview?.race || parsedChar.race || "Unknown",
+        lastSynced: (/* @__PURE__ */ new Date()).toISOString(),
         raw: rawData,
-        lastSynced: (/* @__PURE__ */ new Date()).toISOString()
+        rollcloud: parseForRollCloud(rawData, activeCharacterId),
+        owlcloud: null,
+        // Can be parsed later by OwlCloud adapter
+        foundcloud: null
+        // Can be parsed later by FoundCloud adapter
       };
+      await browserAPI.runtime.sendMessage({
+        action: "storeCharacterData",
+        data: characterEntry,
+        slotId: `slot-${allCharacters.length + 1}`
+      });
       const existingIndex = allCharacters.findIndex((c) => c.id === activeCharacterId);
       if (existingIndex >= 0) {
         allCharacters[existingIndex] = characterEntry;
@@ -1364,6 +1349,10 @@
       }
       pushBtn.textContent = "\u2713 Synced!";
       pushBtn.style.background = "linear-gradient(135deg, #28a745 0%, #1e7e34 100%)";
+      await browserAPI.storage.local.remove("activeCharacterId");
+      const syncBox = wrapper.querySelector("#syncBox");
+      if (syncBox)
+        syncBox.classList.add("hidden");
       displaySyncedCharacters(wrapper, allCharacters);
       setTimeout(() => {
         pushBtn.textContent = originalText;

@@ -43,6 +43,15 @@
 
     // CRITICAL: Save to browser storage to persist through refresh/close
     if (typeof browserAPI !== 'undefined') {
+      debug.log('💾 saveCharacterData called with:', {
+        hasId: !!characterData.id,
+        id: characterData.id,
+        hasDicecloudCharacterId: !!characterData.dicecloud_character_id,
+        dicecloud_character_id: characterData.dicecloud_character_id,
+        name: characterData.name,
+        currentSlotId: currentSlotId
+      });
+      
       browserAPI.runtime.sendMessage({
         action: 'storeCharacterData',
         data: characterData,
@@ -144,7 +153,8 @@
     if (window.opener && !window.opener.closed) {
       window.opener.postMessage({
         action: 'updateCharacterData',
-        data: characterData
+        data: characterData,
+        characterId: characterData.id || characterData.dicecloud_character_id || currentSlotId
       }, '*');
       debug.log('💾 Sent character data update to parent window');
 
@@ -490,8 +500,14 @@
 
   // Export state variables with getters and setters
   Object.defineProperty(globalThis, 'currentSlotId', {
-    get: () => currentSlotId,
-    set: (value) => { currentSlotId = value; }
+    get: () => {
+      debug.log(`📍 currentSlotId getter called, returning: ${currentSlotId}`);
+      return currentSlotId;
+    },
+    set: (value) => {
+      debug.log(`📍 currentSlotId setter called with value: ${value}`);
+      currentSlotId = value;
+    }
   });
 
   Object.defineProperty(globalThis, 'syncDebounceTimer', {

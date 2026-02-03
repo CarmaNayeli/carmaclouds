@@ -286,6 +286,7 @@
   }
 
   // src/content/dicecloud.js
+  var browserAPI = typeof browser !== "undefined" && browser.runtime ? browser : chrome;
   console.log("CarmaClouds: DiceCloud content script loaded");
   function waitForPageLoad() {
     if (document.readyState === "loading") {
@@ -453,7 +454,7 @@
       console.log("CarmaClouds: \u{1F4E4} Sending message to background script...");
       let response;
       try {
-        response = await chrome.runtime.sendMessage({
+        response = await browserAPI.runtime.sendMessage({
           type: "SYNC_CHARACTER_TO_CARMACLOUDS",
           data: characterData
         });
@@ -533,7 +534,7 @@
       if (!characterId) {
         throw new Error("Not on a character page. Navigate to a character sheet first.");
       }
-      const tokenResult = await chrome.storage.local.get(["dicecloud_auth_token"]);
+      const tokenResult = await browserAPI.storage.local.get(["dicecloud_auth_token"]);
       const token = tokenResult.dicecloud_auth_token;
       if (!token) {
         throw new Error("Not logged in to DiceCloud. Please login via the extension popup.");

@@ -687,6 +687,35 @@ function executeRoll(name, formula, effectNotes, prerolledResult = null) {
     messageData.prerolledResult = prerolledResult;
   }
 
+  // Send roll to Roll20 content script via window.opener
+  debug.log('🔍 Checking window.opener:', {
+    hasOpener: !!window.opener,
+    isClosed: window.opener ? window.opener.closed : 'N/A'
+  });
+  
+  if (window.opener && !window.opener.closed) {
+    try {
+      window.opener.postMessage(messageData, '*');
+      debug.log('🎲 Roll sent to Roll20 via window.opener.postMessage:', messageData);
+      debug.log('   Target origin: * (all origins)');
+    } catch (error) {
+      debug.warn('⚠️ Could not send roll via window.opener:', error.message);
+      // Fallback: try sending via background script
+      if (typeof browserAPI !== 'undefined') {
+        browserAPI.runtime.sendMessage({
+          action: 'rollFromPopout',
+          roll: messageData
+        }).catch(err => {
+          debug.error('❌ Failed to send roll via background:', err);
+        });
+      }
+    }
+  } else {
+    debug.warn('⚠️ No window.opener available, cannot send roll to Roll20');
+    debug.log('   window.opener:', window.opener);
+    debug.log('   window.opener.closed:', window.opener ? window.opener.closed : 'N/A');
+  }
+
   // TODO: Add Owlbear Rodeo integration for dice rolls
   showNotification(`🎲 Rolling ${name}...`);
   debug.log('✅ Roll executed');

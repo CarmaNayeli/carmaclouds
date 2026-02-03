@@ -1,0 +1,120 @@
+{
+  "manifest_version": 2,
+  "name": "RollCloud: Dice Cloud Integration for Roll20",
+  "version": "1.2.7",
+  "description": "Import D&D characters from DiceCloud to Roll20 with enhanced authentication, interactive character sheets, and GM combat tools",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "tabs",
+    "https://gkfpxwvmumaylahtxqrk.supabase.co/*",
+    "https://dicecloud.com/*",
+    "https://*.dicecloud.com/*",
+    "https://app.roll20.net/*",
+    "https://roll20.net/*"
+  ],
+  "background": {
+    "scripts": [
+      "src/common/debug.js",
+      "src/lib/supabase-client.js",
+      "src/background.js"
+    ],
+    "persistent": true
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://dicecloud.com/*",
+        "https://*.dicecloud.com/*"
+      ],
+      "js": [
+        "src/common/browser-polyfill.js",
+        "src/common/debug.js",
+        "src/content/dicecloud.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://app.roll20.net/*"
+      ],
+      "js": [
+        "src/common/browser-polyfill.js",
+        "src/common/debug.js",
+        "src/lib/meteor-ddp-client.js",
+        "src/lib/dicecloud-sync.js",
+        "src/content/roll20.js",
+        "src/content/character-sheet-overlay.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "browser_action": {
+    "default_popup": "src/popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "options_page": "src/options/welcome.html",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "web_accessible_resources": [
+    "src/popup-sheet.html",
+    "src/popup-sheet.js",
+    "src/common/debug.js",
+    "src/common/browser-polyfill.js",
+    "src/common/theme-manager.js",
+    "src/common/html-utils.js",
+    "src/modules/color-utils.js",
+    "src/modules/card-creator.js",
+    "src/modules/action-executor.js",
+    "src/modules/spell-edge-cases.js",
+    "src/modules/class-feature-edge-cases.js",
+    "src/modules/racial-feature-edge-cases.js",
+    "src/modules/combat-maneuver-edge-cases.js",
+    "src/modules/action-announcements.js",
+    "src/modules/action-display.js",
+    "src/modules/action-filters.js",
+    "src/modules/action-options.js",
+    "src/modules/character-trait-popups.js",
+    "src/modules/character-traits.js",
+    "src/modules/companions-manager.js",
+    "src/modules/concentration-tracker.js",
+    "src/modules/data-manager.js",
+    "src/modules/dice-roller.js",
+    "src/modules/effects-manager.js",
+    "src/modules/feature-modals.js",
+    "src/modules/formula-resolver.js",
+    "src/modules/gm-mode.js",
+    "src/modules/health-modals.js",
+    "src/modules/hp-management.js",
+    "src/modules/inventory-manager.js",
+    "src/modules/macro-system.js",
+    "src/modules/resource-manager.js",
+    "src/modules/sheet-builder.js",
+    "src/modules/spell-cards.js",
+    "src/modules/spell-casting.js",
+    "src/modules/spell-display.js",
+    "src/modules/spell-macros.js",
+    "src/modules/spell-modals.js",
+    "src/modules/spell-slots.js",
+    "src/modules/ui-utilities.js",
+    "src/modules/warlock-invocations.js",
+    "src/modules/window-management.js",
+    "src/lib/meteor-ddp-client.js",
+    "src/lib/dicecloud-sync.js"
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "rollcloud@dicecat.dev",
+      "strict_min_version": "109.0"
+    }
+  }
+}

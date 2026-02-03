@@ -24,7 +24,6 @@
     debug.warn("\u26A0\uFE0F ThemeManager not available");
   }
   var characterData = null;
-  var currentSlotId = null;
   var domReady = false;
   var pendingOperations = [];
   window.addEventListener("message", async (event) => {
@@ -50,8 +49,8 @@
           showNotification("\u26A0\uFE0F Character data incomplete. Please resync from DiceCloud.", "error");
           return;
         }
-        currentSlotId = await getActiveCharacterId();
-        debug.log("\u{1F4CB} Current slot ID set to:", currentSlotId);
+        globalThis.currentSlotId = await getActiveCharacterId();
+        debug.log("\u{1F4CB} Current slot ID set to:", globalThis.currentSlotId);
         await loadAndBuildTabs();
         buildSheet(characterData);
         initRacialTraits();
@@ -283,11 +282,11 @@
     }
     try {
       await loadAndBuildTabs();
-      currentSlotId = await getActiveCharacterId();
-      debug.log("\u{1F4CB} Current slot ID set to:", currentSlotId);
+      globalThis.currentSlotId = await getActiveCharacterId();
+      debug.log("\u{1F4CB} Current slot ID set to:", globalThis.currentSlotId);
       let activeCharacter = null;
-      if (currentSlotId && currentSlotId.startsWith("db-")) {
-        const characterId = currentSlotId.replace("db-", "");
+      if (globalThis.currentSlotId && globalThis.currentSlotId.startsWith("db-")) {
+        const characterId = globalThis.currentSlotId.replace("db-", "");
         try {
           const dbResponse = await browserAPI.runtime.sendMessage({
             action: "getCharacterDataFromDatabase",
@@ -477,15 +476,15 @@
     }
   }
   window.addEventListener("beforeunload", () => {
-    if (characterData && currentSlotId) {
+    if (characterData && globalThis.currentSlotId) {
       debug.log("\u{1F4BE} Saving character data before window closes");
       browserAPI.runtime.sendMessage({
         action: "storeCharacterData",
         data: characterData,
-        slotId: currentSlotId
+        slotId: globalThis.currentSlotId
         // CRITICAL: Pass slotId for proper persistence
       });
-      debug.log(`\u2705 Saved character data: ${characterData.name} (slotId: ${currentSlotId})`);
+      debug.log(`\u2705 Saved character data: ${characterData.name} (slotId: ${globalThis.currentSlotId})`);
     }
   });
   var isMyTurn = false;

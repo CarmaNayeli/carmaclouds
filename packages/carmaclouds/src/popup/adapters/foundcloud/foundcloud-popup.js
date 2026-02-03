@@ -12,12 +12,6 @@ const browserAPI = (typeof browser !== 'undefined' && browser.runtime) ? browser
 // Initialize Supabase client
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Storage keys
-const STORAGE_KEYS = {
-  CHARACTERS: 'rollcloud_character_cache', // Shared with rollcloud for now
-  LAST_SYNC: 'foundcloud_last_sync'
-};
-
 let characters = [];
 
 /**
@@ -26,31 +20,37 @@ let characters = [];
 export default function initFoundCloudPopup() {
   console.log('FoundCloud popup initializing...');
 
-  // Load characters from cache
+  // Load characters from unified storage
   loadCharacters();
 
   // Set up event listeners
-  document.getElementById('syncAllBtn')?.addEventListener('click', syncAllCharacters);
   document.getElementById('copyUrlBtn')?.addEventListener('click', copyModuleUrl);
 }
 
 /**
- * Load characters from local storage
+ * Load characters from unified carmaclouds_characters storage
  */
 async function loadCharacters() {
   try {
-    const storage = await browserAPI.storage.local.get(STORAGE_KEYS.CHARACTERS) || {};
-    const cachedData = storage[STORAGE_KEYS.CHARACTERS];
+    // Get all character profiles from unified storage (same as OwlCloud)
+    const profilesResponse = await browserAPI.runtime.sendMessage({ action: 'getAllCharacterProfiles' });
+    const profiles = profilesResponse.success ? profilesResponse.profiles : {};
 
-    if (cachedData && cachedData.characters) {
-      characters = cachedData.characters;
+    // Convert profiles object to array
+    characters = Object.values(profiles).filter(char => 
+      char && char.id && char.name
+    );
+
+    console.log(`FoundCloud: Loaded ${characters.length} characters from unified storage`);
+
+    if (characters.length > 0) {
       renderCharacterList();
     } else {
       showEmptyState();
     }
   } catch (error) {
     console.error('Failed to load characters:', error);
-    showError('Failed to load characters from cache');
+    showError('Failed to load characters from storage');
   }
 }
 
@@ -59,50 +59,63 @@ async function loadCharacters() {
  */
 function renderCharacterList() {
   const listEl = document.getElementById('characterList');
+  const emptyState = document.getElementById('emptyState');
+  
   if (!listEl) return;
 
   if (characters.length === 0) {
-    showEmptyState();
+    listEl.style.display = 'none';
+    if (emptyState) emptyState.style.display = 'block';
     return;
   }
 
+  listEl.style.display = 'flex';
+  if (emptyState) emptyState.style.display = 'none';
+
   listEl.innerHTML = characters.map(char => {
-    const syncStatus = char.syncedToFoundCloud ? 'synced' : 'not-synced';
-    const syncText = char.syncedToFoundCloud
-      ? `Synced ${getRelativeTime(char.lastSyncTime)}`
-      : 'Not synced';
+    const level = char.level || '?';
+    const race = char.race || 'Unknown';
+    const charClass = char.class || 'Unknown';
+    
+    // Check if synced to Foundry (has foundcloud in platform array)
+    const isSynced = char.platform && Array.isArray(char.platform) && char.platform.includes('foundcloud');
+    const syncIcon = isSynced ? '✓' : '○';
+    const syncColor = isSynced ? '#16a75a' : '#666';
 
     return `
-      <div class="character-item" data-char-id="${char.id}">
-        <div class="character-header">
-          <div class="character-info">
-            <div class="character-name">${escapeHtml(char.name)}</div>
-            <div class="character-details">
-              Level ${char.variables?.level || '?'}
-              ${char.variables?.race || 'Unknown'}
-              ${char.variables?.class || 'Unknown'}
+      <div style="background: #2a2a2a; border-radius: 8px; padding: 16px; border: 1px solid #333;">
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+          <div>
+            <div style="color: #e0e0e0; font-size: 16px; font-weight: 600; margin-bottom: 4px;">
+              ${escapeHtml(char.name)}
+            </div>
+            <div style="color: #888; font-size: 13px;">
+              Level ${level} ${charClass} • ${race}
             </div>
           </div>
-          <div class="sync-status ${syncStatus}">
-            <span class="sync-indicator"></span>
-            <span>${syncText}</span>
+          <div style="display: flex; align-items: center; gap: 6px; color: ${syncColor}; font-size: 12px;">
+            <span style="font-size: 16px;">${syncIcon}</span>
+            <span>${isSynced ? 'Synced' : 'Not synced'}</span>
           </div>
         </div>
-        <div class="character-actions">
-          <button class="btn btn-small btn-primary" onclick="window.syncCharacter('${char.id}')">
-            Sync to Cloud
-          </button>
-          <button class="btn btn-small btn-secondary" onclick="window.viewCharacter('${char.id}')">
-            View
-          </button>
-        </div>
+        <button 
+          class="sync-btn" 
+          data-char-id="${char.id}"
+          style="width: 100%; padding: 10px; background: #16a75a; color: #000; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px;"
+        >
+          ${isSynced ? '🔄 Re-sync to Cloud' : '☁️ Sync to Cloud'}
+        </button>
       </div>
     `;
   }).join('');
 
-  // Expose functions to window for onclick handlers
-  window.syncCharacter = syncCharacter;
-  window.viewCharacter = viewCharacter;
+  // Add event listeners to sync buttons
+  document.querySelectorAll('.sync-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const charId = e.target.dataset.charId;
+      await syncCharacter(charId);
+    });
+  });
 }
 
 /**
@@ -158,25 +171,53 @@ async function syncAllCharacters() {
  */
 async function syncCharacter(charId) {
   const char = characters.find(c => c.id === charId);
-  if (!char) return;
+  if (!char) {
+    console.error('Character not found:', charId);
+    return;
+  }
+
+  // Find the button and update its state
+  const btn = document.querySelector(`.sync-btn[data-char-id="${charId}"]`);
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '⏳ Syncing...';
+  }
 
   try {
     await syncCharacterToSupabase(char);
 
-    // Update local sync status
-    char.syncedToFoundCloud = true;
-    char.lastSyncTime = new Date().toISOString();
+    // Update character platform in unified storage
+    if (!char.platform) char.platform = [];
+    if (!char.platform.includes('foundcloud')) {
+      char.platform.push('foundcloud');
+    }
 
-    // Save to storage
-    await browserAPI.storage.local.set({
-      [STORAGE_KEYS.CHARACTERS]: { characters }
+    // Update via background script to ensure persistence
+    await browserAPI.runtime.sendMessage({
+      action: 'updateCharacterPlatform',
+      characterId: charId,
+      platform: char.platform
     });
 
     showSuccess(`${char.name} synced to cloud`);
-    renderCharacterList();
+    
+    // Reload characters to reflect changes
+    await loadCharacters();
+    
+    if (btn) {
+      btn.textContent = '✓ Synced!';
+      setTimeout(() => {
+        btn.disabled = false;
+      }, 1000);
+    }
   } catch (error) {
     console.error('Failed to sync character:', error);
     showError(`Failed to sync ${char.name}: ` + error.message);
+    
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '❌ Failed - Retry';
+    }
   }
 }
 
@@ -184,20 +225,34 @@ async function syncCharacter(charId) {
  * Sync character data to Supabase
  */
 async function syncCharacterToSupabase(char) {
+  // Parse character data using parseForFoundCloud
+  const parsedData = window.parseForFoundCloud ? window.parseForFoundCloud(char.raw, char.id) : null;
+  
   const characterData = {
     dicecloud_character_id: char.id,
     character_name: char.name,
-    level: char.variables?.level || 1,
-    race: char.variables?.race || 'Unknown',
-    class: char.variables?.class || 'Unknown',
-    character_data: char, // Full character object
-    platform: ['foundry'], // Platform array
+    level: parsedData?.level || char.level || 1,
+    race: parsedData?.race || char.race || 'Unknown',
+    class: parsedData?.class || char.class || 'Unknown',
+    alignment: parsedData?.alignment || '',
+    hit_points: parsedData?.hit_points || { current: 0, max: 0 },
+    armor_class: parsedData?.armor_class || 10,
+    speed: parsedData?.speed || 30,
+    initiative: parsedData?.initiative || 0,
+    proficiency_bonus: parsedData?.proficiency_bonus || 2,
+    attributes: parsedData?.attributes || {},
+    saves: parsedData?.saves || {},
+    skills: parsedData?.skills || {},
+    spell_slots: parsedData?.spell_slots || {},
+    raw_dicecloud_data: parsedData?.raw_dicecloud_data || char.raw || {},
+    platform: ['foundcloud'], // Platform identifier
+    owlbear_player_id: null, // Not used by Foundry
     updated_at: new Date().toISOString()
   };
 
-  // Upsert to foundcloud_characters table
+  // Upsert to clouds_characters table (shared with OwlCloud)
   const { error } = await supabase
-    .from('foundcloud_characters')
+    .from('clouds_characters')
     .upsert(characterData, {
       onConflict: 'dicecloud_character_id'
     });

@@ -2435,9 +2435,19 @@ function initializePopup() {
         return;
       }
 
-      // Hide login prompt, show sync box
+      // Hide login prompt
       if (loginPrompt) loginPrompt.classList.add('hidden');
-      if (syncBox) syncBox.classList.remove('hidden');
+      
+      // Only show sync box if there are characters
+      const charResult = await browserAPI.storage.local.get(['carmaclouds_characters']);
+      const characters = charResult.carmaclouds_characters || [];
+      
+      if (characters.length > 0) {
+        if (syncBox) syncBox.classList.remove('hidden');
+      } else {
+        if (syncBox) syncBox.classList.add('hidden');
+      }
+      
       if (pushedCharactersSection) pushedCharactersSection.classList.remove('hidden');
 
       // Update sync box with current character info

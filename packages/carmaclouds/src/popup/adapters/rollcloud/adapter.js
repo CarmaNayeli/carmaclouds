@@ -5,7 +5,6 @@
  */
 
 import { parseForRollCloud, parseCharacterData } from '../../../content/dicecloud-extraction.js';
-import { parseRawCharacterData } from './raw-data-parser.js';
 
 // Detect browser API (Firefox uses 'browser', Chrome uses 'chrome')
 const browserAPI = (typeof browser !== 'undefined' && browser.runtime) ? browser : chrome;
@@ -23,6 +22,48 @@ export async function init(containerEl) {
 
     console.log('Found', characters.length, 'synced characters from local storage');
 
+    // Migrate old-format characters to new VTT-specific structure
+    let needsUpdate = false;
+    characters = characters.map(char => {
+      // Check if character is in old format (has hitPoints directly but no rollcloud field)
+      if (char.raw && !char.rollcloud && (char.hitPoints || char.spells || char.actions)) {
+        console.log('🔄 Migrating old format character:', char.name);
+        needsUpdate = true;
+
+        // Parse rollcloud format from raw data
+        let rollcloudData = null;
+        try {
+          rollcloudData = parseForRollCloud(char.raw, char.id);
+          console.log('   ✅ Parsed rollcloud format:', rollcloudData.spells?.length, 'spells,', rollcloudData.actions?.length, 'actions');
+        } catch (err) {
+          console.warn('   ❌ Failed to parse:', err);
+        }
+
+        // Return new structure
+        return {
+          id: char.id,
+          name: char.name,
+          level: char.level,
+          class: char.class,
+          race: char.race,
+          lastSynced: char.lastSynced,
+          raw: char.raw,
+          rollcloud: rollcloudData,
+          owlcloud: null,
+          foundcloud: null
+        };
+      }
+
+      // Character already in new format or needs no migration
+      return char;
+    });
+
+    // Save migrated characters back to storage
+    if (needsUpdate) {
+      await browserAPI.storage.local.set({ carmaclouds_characters: characters });
+      console.log('✅ Migrated characters saved to storage');
+    }
+
     // Also fetch from Supabase if authenticated
     const supabase = window.supabaseClient;
     let supabaseUserId = null;
@@ -38,6 +79,8 @@ export async function init(containerEl) {
 
     if (supabaseUserId) {
       console.log('User authenticated to Supabase, fetching characters from database...');
+      containerEl.innerHTML = '<div class="loading">Fetching characters from database...</div>';
+
       try {
         const SUPABASE_URL = 'https://luiesmfjdcmpywavvfqm.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aWVzbWZqZGNtcHl3YXZ2ZnFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4ODYxNDksImV4cCI6MjA4NTQ2MjE0OX0.oqjHFf2HhCLcanh0HVryoQH7iSV7E9dHHZJdYehxZ0U';
@@ -55,6 +98,10 @@ export async function init(containerEl) {
         if (dbResponse.ok) {
           const dbCharacters = await dbResponse.json();
           console.log('Found', dbCharacters.length, 'characters from Supabase');
+
+          if (dbCharacters.length > 0) {
+            containerEl.innerHTML = `<div class="loading">Parsing ${dbCharacters.length} character${dbCharacters.length > 1 ? 's' : ''}...</div>`;
+          }
 
           // Merge database characters with local storage
           // Database characters take priority (more up-to-date)
@@ -82,16 +129,31 @@ export async function init(containerEl) {
               sample: rawData
             });
 
-            // Convert database format to local storage format
+            // Create character entry with raw data and VTT-specific formats
             const characterEntry = {
               id: dbChar.dicecloud_character_id,
               name: dbChar.character_name || 'Unknown',
               level: dbChar.level || '?',
               class: dbChar.class || 'No Class',
               race: dbChar.race || 'Unknown',
+              lastSynced: dbChar.updated_at || new Date().toISOString(),
               raw: rawData,
-              lastSynced: dbChar.updated_at || new Date().toISOString()
+              rollcloud: null,
+              owlcloud: null,
+              foundcloud: null
             };
+
+            // Parse for RollCloud format if raw data is valid
+            if (rawData.creature && rawData.variables && rawData.properties) {
+              try {
+                characterEntry.rollcloud = parseForRollCloud(rawData, dbChar.dicecloud_character_id);
+                console.log('✅ Parsed RollCloud format for:', characterEntry.name);
+                console.log('   Spells:', characterEntry.rollcloud.spells?.length || 0);
+                console.log('   Actions:', characterEntry.rollcloud.actions?.length || 0);
+              } catch (parseError) {
+                console.warn('Failed to parse RollCloud format for:', dbChar.character_name, parseError);
+              }
+            }
 
             if (existingIndex >= 0) {
               characters[existingIndex] = characterEntry;
@@ -101,6 +163,10 @@ export async function init(containerEl) {
           });
 
           console.log('Merged characters list now has', characters.length, 'total characters');
+
+          // Save merged list back to local storage
+          await browserAPI.storage.local.set({ carmaclouds_characters: characters });
+          console.log('✅ Saved merged characters to local storage');
         }
       } catch (dbError) {
         console.warn('Failed to fetch from Supabase (non-fatal):', dbError);
@@ -348,9 +414,16 @@ async function initializeRollCloudUI(wrapper, characters) {
       return;
     }
 
-    // User is authenticated - show sync box
+    // User is authenticated - check if there are characters
     if (loginPrompt) loginPrompt.classList.add('hidden');
-    if (syncBox) syncBox.classList.remove('hidden');
+    
+    // Only show sync box if there are characters
+    if (characters.length > 0) {
+      if (syncBox) syncBox.classList.remove('hidden');
+    } else {
+      if (syncBox) syncBox.classList.add('hidden');
+    }
+    
     if (pushedCharactersSection) pushedCharactersSection.classList.remove('hidden');
 
     // Update sync box with current character info
@@ -446,30 +519,29 @@ async function handlePushToRoll20(token, activeCharacterId, wrapper, allCharacte
       properties: charData.creatureProperties || []
     };
 
-    // Parse raw data into full character format for sheet-builder
-    const fullCharacterData = parseRawCharacterData(rawData, activeCharacterId);
-
-    // Also parse using OwlCloud's parser for preview/metadata
+    // Parse using OwlCloud's parser for preview/metadata
     const parsedChar = parseCharacterData(charData, activeCharacterId);
 
-    // Store the FULL parsed character data via background script
-    // This ensures sheet-builder gets all the data it needs (hitPoints, actions, spells, etc.)
-    await browserAPI.runtime.sendMessage({
-      action: 'storeCharacterData',
-      data: fullCharacterData,
-      slotId: `slot-${allCharacters.length + 1}`
-    });
-
-    // Create lightweight entry for the character list UI
+    // Create character entry with raw data and VTT-specific parsed formats
     const characterEntry = {
       id: activeCharacterId,
       name: parsedChar.name || 'Unknown',
       level: parsedChar.preview?.level || parsedChar.level || '?',
       class: parsedChar.preview?.class || parsedChar.class || 'No Class',
       race: parsedChar.preview?.race || parsedChar.race || 'Unknown',
+      lastSynced: new Date().toISOString(),
       raw: rawData,
-      lastSynced: new Date().toISOString()
+      rollcloud: parseForRollCloud(rawData, activeCharacterId),
+      owlcloud: null,  // Can be parsed later by OwlCloud adapter
+      foundcloud: null // Can be parsed later by FoundCloud adapter
     };
+
+    // Store the character data via background script
+    await browserAPI.runtime.sendMessage({
+      action: 'storeCharacterData',
+      data: characterEntry,
+      slotId: `slot-${allCharacters.length + 1}`
+    });
 
     // Update in the merged characters list for UI display
     const existingIndex = allCharacters.findIndex(c => c.id === activeCharacterId);
@@ -481,6 +553,13 @@ async function handlePushToRoll20(token, activeCharacterId, wrapper, allCharacte
 
     pushBtn.textContent = '✓ Synced!';
     pushBtn.style.background = 'linear-gradient(135deg, #28a745 0%, #1e7e34 100%)';
+
+    // Clear the active character after successful push
+    await browserAPI.storage.local.remove('activeCharacterId');
+    
+    // Hide the sync box since there's no active character now
+    const syncBox = wrapper.querySelector('#syncBox');
+    if (syncBox) syncBox.classList.add('hidden');
 
     // Refresh the character list with ALL characters (local + database)
     displaySyncedCharacters(wrapper, allCharacters);

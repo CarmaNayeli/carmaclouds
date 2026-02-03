@@ -68,10 +68,20 @@ export function parseRawCharacterData(rawData, characterId) {
 
   characterClass = Array.from(uniqueClasses).join(' / ') || 'No Class';
 
-  // Extract variables
+  // Extract variables - handle both plain values and calculation objects
   const getVar = (name) => {
     const varName = name.toLowerCase();
-    return variables[varName] !== undefined ? variables[varName] : 0;
+    const rawValue = variables[varName];
+
+    if (rawValue === undefined) return 0;
+
+    // If it's an object with a 'value' property, extract the numeric value
+    if (typeof rawValue === 'object' && rawValue !== null) {
+      return rawValue.value ?? 0;
+    }
+
+    // Otherwise return the raw value
+    return rawValue;
   };
 
   // Ability scores and modifiers
@@ -93,17 +103,43 @@ export function parseRawCharacterData(rawData, characterId) {
     charismaMod: getVar('charismaMod')
   };
 
-  // Combat stats
+  // Combat stats - find HP property directly from properties array
+  const hitPointsProp = properties.find(p =>
+    p && p.type === 'attribute' && (p.variableName === 'hitPoints' || p.tags?.includes('hitPoints'))
+  );
+
+  const tempHPProp = properties.find(p =>
+    p && p.type === 'attribute' && (p.variableName === 'temporaryHitPoints' || p.name === 'Temporary Hit Points')
+  );
+
+  console.log('🩺 HP Property Debug for:', name);
+  console.log('   Found HP property:', !!hitPointsProp);
+  if (hitPointsProp) {
+    console.log('   HP value:', hitPointsProp.value);
+    console.log('   HP total:', hitPointsProp.total);
+    console.log('   HP baseValue:', hitPointsProp.baseValue);
+  }
+
   const hitPoints = {
-    current: getVar('hitPoints'),
-    max: getVar('hitPoints'),
-    temp: 0
+    current: hitPointsProp?.value ?? hitPointsProp?.currentValue ?? 0,
+    max: hitPointsProp?.total ?? hitPointsProp?.max ?? 0,
+    temp: tempHPProp?.value ?? tempHPProp?.currentValue ?? 0
   };
+
+  console.log('   Extracted HP:', hitPoints);
+  console.log('   Will return hitPoints:', hitPoints.current, 'maxHitPoints:', hitPoints.max);
 
   const armorClass = getVar('armorClass') || 10;
   const proficiencyBonus = getVar('proficiencyBonus') || Math.floor((level - 1) / 4) + 2;
   const initiative = getVar('initiative') || abilityMods.dexterityMod;
   const speed = getVar('speed') || 30;
+
+  // Debug: Check if these values are objects
+  console.log('🔍 Combat stats debug for:', name);
+  console.log('   armorClass:', armorClass, 'type:', typeof armorClass);
+  console.log('   initiative:', initiative, 'type:', typeof initiative);
+  console.log('   speed:', speed, 'type:', typeof speed);
+  console.log('   proficiencyBonus:', proficiencyBonus, 'type:', typeof proficiencyBonus);
 
   // Hit dice
   const hitDiceUsed = getVar('hitDiceUsed') || 0;
@@ -304,8 +340,13 @@ export function parseRawCharacterData(rawData, characterId) {
     level,
     race,
 
-    // Combat stats
-    hitPoints: hitPoints.current,
+    // Combat stats - hitPoints must be an object for sheet-builder
+    hitPoints: {
+      current: hitPoints.current,
+      max: hitPoints.max,
+      temp: hitPoints.temp
+    },
+    // Legacy fields for compatibility
     hit_points: hitPoints.current,
     maxHitPoints: hitPoints.max,
     temporaryHP: hitPoints.temp,

@@ -2,6 +2,12 @@
   // src/content/roll20.js
   (function() {
     "use strict";
+    const browserAPI = typeof browser !== "undefined" && browser.runtime ? browser : chrome;
+    const debug = {
+      log: (...args) => console.log("[RollCloud]", ...args),
+      warn: (...args) => console.warn("[RollCloud]", ...args),
+      error: (...args) => console.error("[RollCloud]", ...args)
+    };
     debug.log("RollCloud: Roll20 content script loaded");
     function postChatMessage(message) {
       try {
@@ -927,6 +933,9 @@
       }
     });
     window.addEventListener("message", (event) => {
+      if (event.data && event.data.action) {
+        debug.log("\u{1F4E8} [Roll20] Received message with action:", event.data.action, event.data);
+      }
       if (event.data.action === "postRollToChat") {
         handleDiceCloudRoll(event.data.roll);
       } else if (event.data.action === "postChat") {
@@ -967,6 +976,10 @@
           }
         }
       } else if (event.data.action === "announceSpell") {
+        if (silentRollsEnabled) {
+          debug.log("\u{1F507} Silent rolls active - suppressing spell/action announcement");
+          return;
+        }
         if (event.data.spellData) {
           debug.log("\u{1F52E} Received structured spell data from popup:", event.data);
           const normalizedSpellData = normalizePopupSpellData(event.data);
@@ -1111,10 +1124,27 @@
     `;
       addFormSection.appendChild(addFormHeader);
       addFormSection.appendChild(addForm);
+      const endCombatBtn = document.createElement("button");
+      endCombatBtn.id = "end-combat-btn";
+      endCombatBtn.style.cssText = `
+      padding: 12px;
+      background: #e74c3c;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 1em;
+      margin-top: 15px;
+      box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+      display: none;
+    `;
+      endCombatBtn.textContent = "\u{1F6D1} End Combat";
       initiativeTab.appendChild(controls);
       initiativeTab.appendChild(roundDisplay);
       initiativeTab.appendChild(initiativeList);
       initiativeTab.appendChild(addFormSection);
+      initiativeTab.appendChild(endCombatBtn);
       hiddenRollsTab.innerHTML = `
       <div style="text-align: center; padding: 20px; color: #888;">
         <div style="font-size: 3em; margin-bottom: 10px;">\u{1F3B2}</div>
@@ -1127,7 +1157,7 @@
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
         <h3 style="margin: 0; font-size: 1.2em; color: #FC57F9;">Party Overview</h3>
         <div style="display: flex; gap: 8px;">
-          <button id="import-players-btn" style="padding: 8px 14px; background: #c2185b; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 0.95em; font-weight: bold;">\u{1F4E5} Import</button>
+          <!-- <button id="import-players-btn" style="padding: 8px 14px; background: #c2185b; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 0.95em; font-weight: bold;">\u{1F4E5} Import</button> -->
           <button id="refresh-players-btn" style="padding: 8px 14px; background: #9b59b6; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 0.95em; font-weight: bold;">\u{1F504} Refresh</button>
         </div>
       </div>
@@ -1376,11 +1406,13 @@
       const nextBtn = document.getElementById("next-turn-btn");
       const prevBtn = document.getElementById("prev-turn-btn");
       const clearAllBtn = document.getElementById("clear-all-btn");
+      const endCombatBtn = document.getElementById("end-combat-btn");
       debug.log("\u{1F50D} GM Panel controls found:", {
         startCombatBtn: !!startCombatBtn,
         nextBtn: !!nextBtn,
         prevBtn: !!prevBtn,
-        clearAllBtn: !!clearAllBtn
+        clearAllBtn: !!clearAllBtn,
+        endCombatBtn: !!endCombatBtn
       });
       if (startCombatBtn)
         startCombatBtn.addEventListener("click", startCombat);
@@ -1390,6 +1422,8 @@
         prevBtn.addEventListener("click", prevTurn);
       if (clearAllBtn)
         clearAllBtn.addEventListener("click", clearAllCombatants);
+      if (endCombatBtn)
+        endCombatBtn.addEventListener("click", endCombat);
       const addFormHeader = gmPanel.querySelector('div[style*="cursor: pointer"]');
       const addForm = document.getElementById("add-combatant-form");
       const addFormToggle = document.getElementById("add-form-toggle");
@@ -2082,10 +2116,13 @@ ${player.deathSaves ? `Death Saves: \u2713${player.deathSaves.successes || 0} / 
       debug.log(`\u{1F451} GM Mode ${gmModeEnabled ? "enabled" : "disabled"}`);
     }
     function addCombatant(name, initiative, source = "chat") {
+      debug.log(`\u{1F3B2} addCombatant called: name="${name}", initiative=${initiative}, source=${source}`);
+      debug.log(`\u{1F3B2} Current combatants:`, initiativeTracker.combatants.map((c) => c.name));
       const exists = initiativeTracker.combatants.find((c) => c.name === name);
       if (exists) {
-        debug.log(`\u26A0\uFE0F Combatant ${name} already in tracker, updating initiative`);
+        debug.log(`\u26A0\uFE0F Combatant "${name}" already in tracker, updating initiative from ${exists.initiative} to ${initiative}`);
         exists.initiative = initiative;
+        initiativeTracker.combatants.sort((a, b) => b.initiative - a.initiative);
         updateInitiativeDisplay();
         return;
       }
@@ -2096,7 +2133,8 @@ ${player.deathSaves ? `Death Saves: \u2713${player.deathSaves.successes || 0} / 
       });
       initiativeTracker.combatants.sort((a, b) => b.initiative - a.initiative);
       updateInitiativeDisplay();
-      debug.log(`\u2705 Added combatant: ${name} (Init: ${initiative})`);
+      debug.log(`\u2705 Added combatant: "${name}" (Init: ${initiative})`);
+      debug.log(`\u2705 Total combatants now: ${initiativeTracker.combatants.length}`);
     }
     function removeCombatant(name) {
       const index = initiativeTracker.combatants.findIndex((c) => c.name === name);
@@ -2141,6 +2179,7 @@ ${player.deathSaves ? `Death Saves: \u2713${player.deathSaves.successes || 0} / 
       const startBtn = document.getElementById("start-combat-btn");
       const prevBtn = document.getElementById("prev-turn-btn");
       const nextBtn = document.getElementById("next-turn-btn");
+      const endBtn = document.getElementById("end-combat-btn");
       if (startBtn) {
         startBtn.style.display = "none";
       }
@@ -2148,11 +2187,52 @@ ${player.deathSaves ? `Death Saves: \u2713${player.deathSaves.successes || 0} / 
         prevBtn.style.display = "block";
       if (nextBtn)
         nextBtn.style.display = "block";
+      if (endBtn)
+        endBtn.style.display = "block";
       updateInitiativeDisplay();
       notifyCurrentTurn();
       postChatMessage("\u2694\uFE0F Combat has begun! Round 1 starts!");
       announceTurn();
       debug.log("\u2694\uFE0F Combat started!");
+    }
+    function endCombat() {
+      if (!combatStarted) {
+        debug.warn("\u26A0\uFE0F Combat is not active");
+        return;
+      }
+      combatStarted = false;
+      initiativeTracker.currentTurnIndex = 0;
+      initiativeTracker.round = 1;
+      const startBtn = document.getElementById("start-combat-btn");
+      const prevBtn = document.getElementById("prev-turn-btn");
+      const nextBtn = document.getElementById("next-turn-btn");
+      const endBtn = document.getElementById("end-combat-btn");
+      if (startBtn)
+        startBtn.style.display = "block";
+      if (prevBtn)
+        prevBtn.style.display = "none";
+      if (nextBtn)
+        nextBtn.style.display = "none";
+      if (endBtn)
+        endBtn.style.display = "none";
+      document.getElementById("round-display").textContent = "Round 1";
+      Object.keys(characterPopups).forEach((characterName) => {
+        const popup = characterPopups[characterName];
+        if (popup && !popup.closed) {
+          try {
+            popup.postMessage({
+              action: "deactivateTurn",
+              combatant: characterName
+            }, "*");
+            debug.log(`\u{1F4E4} Sent deactivateTurn to "${characterName}" (combat ended)`);
+          } catch (error) {
+            debug.warn(`\u26A0\uFE0F Could not send deactivateTurn to ${characterName}:`, error);
+          }
+        }
+      });
+      updateInitiativeDisplay();
+      postChatMessage("\u{1F6D1} Combat has ended!");
+      debug.log("\u{1F6D1} Combat ended - combatants preserved for next encounter");
     }
     function nextTurn() {
       if (initiativeTracker.combatants.length === 0)
@@ -2430,13 +2510,18 @@ ${player.deathSaves ? `Death Saves: \u2713${player.deathSaves.successes || 0} / 
       const innerHTML = messageNode.innerHTML || "";
       debug.log("\u{1F4E8} Chat message (text):", text);
       debug.log("\u{1F4E8} Chat message (html):", innerHTML);
-      const ownAnnouncementPrefixes = ["\u{1F3AF}", "\u2694\uFE0F", "\u{1F451}"];
+      const ownAnnouncementPrefixes = ["\u{1F3AF}", "\u2694\uFE0F", "\u{1F451} GM Mode"];
       const trimmedText = text.trim();
       for (const prefix of ownAnnouncementPrefixes) {
-        if (trimmedText.includes(prefix)) {
+        if (trimmedText.startsWith(prefix)) {
           debug.log("\u23ED\uFE0F Skipping own announcement message");
           return;
         }
+      }
+      if (trimmedText.includes("\u{1F451}[ROLLCLOUD:CHARACTER:") && trimmedText.includes("]\u{1F451}")) {
+        debug.log("\u{1F451} Detected character broadcast in chat");
+        parseCharacterBroadcast(trimmedText);
+        return;
       }
       const inlineRolls = messageNode.querySelectorAll(".inlinerollresult");
       if (inlineRolls.length > 0) {
@@ -2630,6 +2715,10 @@ ${player.deathSaves ? `Death Saves: \u2713${player.deathSaves.successes || 0} / 
         try {
           postChatMessage(event.data.message);
           debug.log("\u2705 Character broadcast posted to chat");
+          if (gmPanel && event.data.message) {
+            debug.log("\u{1F451} GM panel is open, parsing broadcast directly");
+            parseCharacterBroadcast(event.data.message);
+          }
         } catch (error) {
           debug.error("\u274C Error posting character broadcast:", error);
         }

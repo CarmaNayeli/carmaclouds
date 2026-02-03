@@ -198,6 +198,16 @@
    * @returns {string} Category: 'damage', 'healing', or 'utility'
    */
   function categorizeSpell(spell) {
+    const spellName = (spell.name || '').toLowerCase();
+    
+    // Check spell name for common healing keywords first (most reliable)
+    const healingKeywords = ['cure', 'heal', 'regenerat', 'revivif', 'raise', 'resurrection', 'aid', 'prayer of healing', 'mass healing'];
+    const isHealingSpell = healingKeywords.some(keyword => spellName.includes(keyword));
+    
+    if (isHealingSpell) {
+      return 'healing';
+    }
+    
     // Use actual spell data instead of string matching in description
     // Check damageRolls array to determine if it's damage or healing
     if (spell.damageRolls && Array.isArray(spell.damageRolls) && spell.damageRolls.length > 0) {
@@ -216,6 +226,13 @@
         return 'healing';
       } else if (hasDamage) {
         return 'damage';
+      }
+    }
+    
+    // Check legacy damage field with damageType
+    if (spell.damage && spell.damageType) {
+      if (spell.damageType.toLowerCase() === 'healing') {
+        return 'healing';
       }
     }
 

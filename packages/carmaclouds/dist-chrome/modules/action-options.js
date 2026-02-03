@@ -38,12 +38,22 @@
     }
 
     // Check for damage/healing rolls
-    const isValidDiceFormula = action.damage && (/\d*d\d+/.test(action.damage) || /\d*d\d+/.test(action.damage.replace(/\s*\+\s*/g, '+')));
     debug.log(`🎲 Action "${action.name}" damage check:`, {
       damage: action.damage,
-      isValid: isValidDiceFormula,
+      damageType: typeof action.damage,
+      damageValue: action.damage,
       attackRoll: action.attackRoll
     });
+    
+    // Handle damage as string or extract from object
+    let damageFormula = action.damage;
+    if (typeof action.damage === 'object' && action.damage !== null) {
+      damageFormula = action.damage.value || action.damage.calculation || action.damage.formula || '';
+      debug.log(`🔍 Extracted damage from object: "${damageFormula}"`);
+    }
+    
+    const isValidDiceFormula = damageFormula && typeof damageFormula === 'string' && (/\d*d\d+/.test(damageFormula) || /\d*d\d+/.test(damageFormula.replace(/\s*\+\s*/g, '+')));
+    debug.log(`✅ Damage validation result: isValid=${isValidDiceFormula}, formula="${damageFormula}"`);
     if (isValidDiceFormula) {
       const isHealing = action.damageType && action.damageType.toLowerCase().includes('heal');
       const isTempHP = action.damageType && (
@@ -65,7 +75,7 @@
       options.push({
         type: isHealing ? 'healing' : (isTempHP ? 'temphp' : 'damage'),
         label: btnText,
-        formula: action.damage,
+        formula: damageFormula,
         icon: isTempHP ? '🛡️' : (isHealing ? '💚' : '💥'),
         color: isTempHP ? '#3498db' : (isHealing ? '#27ae60' : '#e67e22')
       });

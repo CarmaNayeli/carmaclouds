@@ -40,7 +40,8 @@ if (typeof ThemeManager !== 'undefined') {
 var characterData = null;
 
 // Track current character slot ID (e.g., "slot-1") for persistence
-var currentSlotId = null;
+// NOTE: This is now managed by data-manager.js via globalThis.currentSlotId
+// Keep this comment for reference but don't declare a local variable
 
 
 // Note: activeBuffs and activeConditions are now in effects-manager.js
@@ -95,8 +96,8 @@ window.addEventListener('message', async (event) => {
       }
 
       // Get and store current slot ID for persistence
-      currentSlotId = await getActiveCharacterId();
-      debug.log('📋 Current slot ID set to:', currentSlotId);
+      globalThis.currentSlotId = await getActiveCharacterId();
+      debug.log('📋 Current slot ID set to:', globalThis.currentSlotId);
 
       // Build tabs first (need to load profiles from storage)
       await loadAndBuildTabs();
@@ -425,16 +426,16 @@ async function loadCharacterWithTabs() {
     await loadAndBuildTabs();
 
     // Get and store current slot ID for persistence
-    currentSlotId = await getActiveCharacterId();
-    debug.log('📋 Current slot ID set to:', currentSlotId);
+    globalThis.currentSlotId = await getActiveCharacterId();
+    debug.log('📋 Current slot ID set to:', globalThis.currentSlotId);
 
     // Get active character data
     let activeCharacter = null;
     
     // Check if this is a database character
-    if (currentSlotId && currentSlotId.startsWith('db-')) {
+    if (globalThis.currentSlotId && globalThis.currentSlotId.startsWith('db-')) {
       // Load from database
-      const characterId = currentSlotId.replace('db-', '');
+      const characterId = globalThis.currentSlotId.replace('db-', '');
       try {
         const dbResponse = await browserAPI.runtime.sendMessage({ 
           action: 'getCharacterDataFromDatabase', 
@@ -591,13 +592,13 @@ async function switchToCharacter(characterId) {
 
     // Save current character data before switching to preserve local state
     // CRITICAL: Save to BOTH cache AND browser storage to persist through refresh
-    if (characterData && currentSlotId && currentSlotId !== characterId) {
+    if (characterData && globalThis.currentSlotId && globalThis.currentSlotId !== characterId) {
       debug.log('💾 Saving current character data before switching');
       const dataToSave = JSON.parse(JSON.stringify(characterData));
       
       // Save to cache for immediate access
       if (typeof characterCache !== 'undefined') {
-        characterCache.set(currentSlotId, dataToSave);
+        characterCache.set(globalThis.currentSlotId, dataToSave);
         debug.log(`✅ Cached current character data: ${characterData.name}`);
       }
 
@@ -605,14 +606,14 @@ async function switchToCharacter(characterId) {
       await browserAPI.runtime.sendMessage({
         action: 'storeCharacterData',
         data: dataToSave,
-        slotId: currentSlotId
+        slotId: globalThis.currentSlotId
       });
       debug.log(`✅ Saved current character data to storage: ${characterData.name}`);
     }
 
     // Set as active character
     await setActiveCharacter(characterId);
-    currentSlotId = characterId;
+    globalThis.currentSlotId = characterId;
 
     // Load the new character data
     let newCharacterData = null;
@@ -853,9 +854,9 @@ function showClearCharacterOptions(slotId, slotNum, characterName) {
 async function clearCharacterSlot(slotId, slotNum) {
   try {
     // Clear in-memory state if this is the current character
-    if (currentSlotId === slotId) {
+    if (globalThis.currentSlotId === slotId) {
       characterData = null;
-      currentSlotId = null;
+      globalThis.currentSlotId = null;
     }
 
     await browserAPI.runtime.sendMessage({
@@ -877,9 +878,9 @@ async function clearCharacterSlot(slotId, slotNum) {
 async function deleteCharacterFromCloud(slotId, slotNum) {
   try {
     // Clear in-memory state if this is the current character
-    if (currentSlotId === slotId) {
+    if (globalThis.currentSlotId === slotId) {
       characterData = null;
-      currentSlotId = null;
+      globalThis.currentSlotId = null;
     }
 
     // First delete from cloud
@@ -1147,15 +1148,15 @@ function calculateMetamagicCost(metamagicName, spellLevel) {
 // Save character data when window is about to close/refresh
 // This ensures local modifications persist through browser refresh
 window.addEventListener('beforeunload', () => {
-  if (characterData && currentSlotId) {
+  if (characterData && globalThis.currentSlotId) {
     debug.log('💾 Saving character data before window closes');
     // Use sendMessage synchronously during unload
     browserAPI.runtime.sendMessage({
       action: 'storeCharacterData',
       data: characterData,
-      slotId: currentSlotId  // CRITICAL: Pass slotId for proper persistence
+      slotId: globalThis.currentSlotId  // CRITICAL: Pass slotId for proper persistence
     });
-    debug.log(`✅ Saved character data: ${characterData.name} (slotId: ${currentSlotId})`);
+    debug.log(`✅ Saved character data: ${characterData.name} (slotId: ${globalThis.currentSlotId})`);
   }
 });
 

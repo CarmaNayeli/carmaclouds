@@ -11527,73 +11527,83 @@ ${suffix}`;
   // src/popup/adapters/foundcloud/foundcloud-popup.js
   var browserAPI = typeof browser !== "undefined" && browser.runtime ? browser : chrome;
   var supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  var STORAGE_KEYS = {
-    CHARACTERS: "rollcloud_character_cache",
-    // Shared with rollcloud for now
-    LAST_SYNC: "foundcloud_last_sync"
-  };
   var characters = [];
   function initFoundCloudPopup() {
     console.log("FoundCloud popup initializing...");
     loadCharacters();
-    document.getElementById("syncAllBtn")?.addEventListener("click", syncAllCharacters);
     document.getElementById("copyUrlBtn")?.addEventListener("click", copyModuleUrl);
   }
   async function loadCharacters() {
     try {
-      const storage = await browserAPI.storage.local.get(STORAGE_KEYS.CHARACTERS) || {};
-      const cachedData = storage[STORAGE_KEYS.CHARACTERS];
-      if (cachedData && cachedData.characters) {
-        characters = cachedData.characters;
+      const profilesResponse = await browserAPI.runtime.sendMessage({ action: "getAllCharacterProfiles" });
+      const profiles = profilesResponse.success ? profilesResponse.profiles : {};
+      characters = Object.values(profiles).filter(
+        (char) => char && char.id && char.name
+      );
+      console.log(`FoundCloud: Loaded ${characters.length} characters from unified storage`);
+      if (characters.length > 0) {
         renderCharacterList();
       } else {
         showEmptyState();
       }
     } catch (error) {
       console.error("Failed to load characters:", error);
-      showError("Failed to load characters from cache");
+      showError("Failed to load characters from storage");
     }
   }
   function renderCharacterList() {
     const listEl = document.getElementById("characterList");
+    const emptyState = document.getElementById("emptyState");
     if (!listEl)
       return;
     if (characters.length === 0) {
-      showEmptyState();
+      listEl.style.display = "none";
+      if (emptyState)
+        emptyState.style.display = "block";
       return;
     }
+    listEl.style.display = "flex";
+    if (emptyState)
+      emptyState.style.display = "none";
     listEl.innerHTML = characters.map((char) => {
-      const syncStatus = char.syncedToFoundCloud ? "synced" : "not-synced";
-      const syncText = char.syncedToFoundCloud ? `Synced ${getRelativeTime(char.lastSyncTime)}` : "Not synced";
+      const level = char.level || "?";
+      const race = char.race || "Unknown";
+      const charClass = char.class || "Unknown";
+      const isSynced = char.platform && Array.isArray(char.platform) && char.platform.includes("foundcloud");
+      const syncIcon = isSynced ? "\u2713" : "\u25CB";
+      const syncColor = isSynced ? "#16a75a" : "#666";
       return `
-      <div class="character-item" data-char-id="${char.id}">
-        <div class="character-header">
-          <div class="character-info">
-            <div class="character-name">${escapeHtml(char.name)}</div>
-            <div class="character-details">
-              Level ${char.variables?.level || "?"}
-              ${char.variables?.race || "Unknown"}
-              ${char.variables?.class || "Unknown"}
+      <div style="background: #2a2a2a; border-radius: 8px; padding: 16px; border: 1px solid #333;">
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+          <div>
+            <div style="color: #e0e0e0; font-size: 16px; font-weight: 600; margin-bottom: 4px;">
+              ${escapeHtml(char.name)}
+            </div>
+            <div style="color: #888; font-size: 13px;">
+              Level ${level} ${charClass} \u2022 ${race}
             </div>
           </div>
-          <div class="sync-status ${syncStatus}">
-            <span class="sync-indicator"></span>
-            <span>${syncText}</span>
+          <div style="display: flex; align-items: center; gap: 6px; color: ${syncColor}; font-size: 12px;">
+            <span style="font-size: 16px;">${syncIcon}</span>
+            <span>${isSynced ? "Synced" : "Not synced"}</span>
           </div>
         </div>
-        <div class="character-actions">
-          <button class="btn btn-small btn-primary" onclick="window.syncCharacter('${char.id}')">
-            Sync to Cloud
-          </button>
-          <button class="btn btn-small btn-secondary" onclick="window.viewCharacter('${char.id}')">
-            View
-          </button>
-        </div>
+        <button 
+          class="sync-btn" 
+          data-char-id="${char.id}"
+          style="width: 100%; padding: 10px; background: #16a75a; color: #000; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px;"
+        >
+          ${isSynced ? "\u{1F504} Re-sync to Cloud" : "\u2601\uFE0F Sync to Cloud"}
+        </button>
       </div>
     `;
     }).join("");
-    window.syncCharacter = syncCharacter;
-    window.viewCharacter = viewCharacter;
+    document.querySelectorAll(".sync-btn").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        const charId = e.target.dataset.charId;
+        await syncCharacter(charId);
+      });
+    });
   }
   function showEmptyState() {
     const listEl = document.getElementById("characterList");
@@ -11609,70 +11619,77 @@ ${suffix}`;
     </div>
   `;
   }
-  async function syncAllCharacters() {
-    const btn = document.getElementById("syncAllBtn");
-    if (!btn)
-      return;
-    btn.disabled = true;
-    btn.textContent = "Syncing...";
-    try {
-      let syncedCount = 0;
-      for (const char of characters) {
-        await syncCharacterToSupabase(char);
-        syncedCount++;
-      }
-      showSuccess(`Successfully synced ${syncedCount} character(s) to cloud`);
-      await loadCharacters();
-    } catch (error) {
-      console.error("Failed to sync all characters:", error);
-      showError("Failed to sync characters: " + error.message);
-    } finally {
-      btn.disabled = false;
-      btn.textContent = "Sync All";
-    }
-  }
   async function syncCharacter(charId) {
     const char = characters.find((c) => c.id === charId);
-    if (!char)
+    if (!char) {
+      console.error("Character not found:", charId);
       return;
+    }
+    const btn = document.querySelector(`.sync-btn[data-char-id="${charId}"]`);
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "\u23F3 Syncing...";
+    }
     try {
       await syncCharacterToSupabase(char);
-      char.syncedToFoundCloud = true;
-      char.lastSyncTime = (/* @__PURE__ */ new Date()).toISOString();
-      await browserAPI.storage.local.set({
-        [STORAGE_KEYS.CHARACTERS]: { characters }
+      if (!char.platform)
+        char.platform = [];
+      if (!char.platform.includes("foundcloud")) {
+        char.platform.push("foundcloud");
+      }
+      await browserAPI.runtime.sendMessage({
+        action: "updateCharacterPlatform",
+        characterId: charId,
+        platform: char.platform
       });
       showSuccess(`${char.name} synced to cloud`);
-      renderCharacterList();
+      await loadCharacters();
+      if (btn) {
+        btn.textContent = "\u2713 Synced!";
+        setTimeout(() => {
+          btn.disabled = false;
+        }, 1e3);
+      }
     } catch (error) {
       console.error("Failed to sync character:", error);
       showError(`Failed to sync ${char.name}: ` + error.message);
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "\u274C Failed - Retry";
+      }
     }
   }
   async function syncCharacterToSupabase(char) {
+    const parsedData = window.parseForFoundCloud ? window.parseForFoundCloud(char.raw, char.id) : null;
     const characterData = {
       dicecloud_character_id: char.id,
       character_name: char.name,
-      level: char.variables?.level || 1,
-      race: char.variables?.race || "Unknown",
-      class: char.variables?.class || "Unknown",
-      character_data: char,
-      // Full character object
-      platform: ["foundry"],
-      // Platform array
+      level: parsedData?.level || char.level || 1,
+      race: parsedData?.race || char.race || "Unknown",
+      class: parsedData?.class || char.class || "Unknown",
+      alignment: parsedData?.alignment || "",
+      hit_points: parsedData?.hit_points || { current: 0, max: 0 },
+      armor_class: parsedData?.armor_class || 10,
+      speed: parsedData?.speed || 30,
+      initiative: parsedData?.initiative || 0,
+      proficiency_bonus: parsedData?.proficiency_bonus || 2,
+      attributes: parsedData?.attributes || {},
+      saves: parsedData?.saves || {},
+      skills: parsedData?.skills || {},
+      spell_slots: parsedData?.spell_slots || {},
+      raw_dicecloud_data: parsedData?.raw_dicecloud_data || char.raw || {},
+      platform: ["foundcloud"],
+      // Platform identifier
+      owlbear_player_id: null,
+      // Not used by Foundry
       updated_at: (/* @__PURE__ */ new Date()).toISOString()
     };
-    const { error } = await supabase.from("foundcloud_characters").upsert(characterData, {
+    const { error } = await supabase.from("clouds_characters").upsert(characterData, {
       onConflict: "dicecloud_character_id"
     });
     if (error) {
       throw new Error(error.message);
     }
-  }
-  function viewCharacter(charId) {
-    browserAPI.tabs.create({
-      url: `https://dicecloud.com/character/${charId}`
-    });
   }
   async function copyModuleUrl() {
     const input = document.getElementById("moduleUrl");
@@ -11708,23 +11725,6 @@ ${suffix}`;
     setTimeout(() => {
       statusEl.classList.add("hidden");
     }, 5e3);
-  }
-  function getRelativeTime(timestamp) {
-    if (!timestamp)
-      return "never";
-    const now = /* @__PURE__ */ new Date();
-    const then = new Date(timestamp);
-    const diffMs = now - then;
-    const diffMins = Math.floor(diffMs / 6e4);
-    if (diffMins < 1)
-      return "just now";
-    if (diffMins < 60)
-      return `${diffMins} min ago`;
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24)
-      return `${diffHours} hr ago`;
-    const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
   }
   function escapeHtml(str) {
     const div = document.createElement("div");

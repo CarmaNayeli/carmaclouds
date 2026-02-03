@@ -2109,8 +2109,15 @@ Local data will also be removed.`)) {
           }
           if (loginPrompt)
             loginPrompt.classList.add("hidden");
-          if (syncBox)
-            syncBox.classList.remove("hidden");
+          const charResult = await browserAPI.storage.local.get(["carmaclouds_characters"]);
+          const characters = charResult.carmaclouds_characters || [];
+          if (characters.length > 0) {
+            if (syncBox)
+              syncBox.classList.remove("hidden");
+          } else {
+            if (syncBox)
+              syncBox.classList.add("hidden");
+          }
           if (pushedCharactersSection)
             pushedCharactersSection.classList.remove("hidden");
           await updateSyncBoxCharacter();

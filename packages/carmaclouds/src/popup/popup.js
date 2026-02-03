@@ -132,6 +132,68 @@ function closeSettingsModal() {
   modal.classList.remove('active');
 }
 
+// Clear local character data
+async function handleClearLocalData() {
+  const confirmed = confirm(
+    '⚠️ Clear Local Data?\n\n' +
+    'This will delete all character data stored locally in this browser.\n' +
+    'Cloud data will NOT be affected.\n\n' +
+    'Are you sure you want to continue?'
+  );
+  
+  if (!confirmed) return;
+  
+  try {
+    // Clear local storage
+    await browserAPI.storage.local.remove(['carmaclouds_characters', 'characterProfiles', 'activeCharacterId']);
+    
+    alert('✅ Local data cleared successfully!\n\nThe popup will now reload.');
+    
+    // Reload the popup to show empty state
+    window.location.reload();
+  } catch (error) {
+    console.error('Error clearing local data:', error);
+    alert('❌ Failed to clear local data: ' + error.message);
+  }
+}
+
+// Clear cloud character data
+async function handleClearCloudData() {
+  const confirmed = confirm(
+    '⚠️ Clear Cloud Data?\n\n' +
+    'This will delete ALL character data from the cloud (Supabase).\n' +
+    'Local data will NOT be affected.\n\n' +
+    'This action CANNOT be undone!\n\n' +
+    'Are you sure you want to continue?'
+  );
+  
+  if (!confirmed) return;
+  
+  const doubleConfirm = confirm(
+    '🚨 FINAL WARNING 🚨\n\n' +
+    'You are about to permanently delete all cloud character data.\n\n' +
+    'Type your confirmation by clicking OK.'
+  );
+  
+  if (!doubleConfirm) return;
+  
+  try {
+    // Send message to background to clear cloud data
+    const response = await browserAPI.runtime.sendMessage({
+      action: 'clearAllCloudData'
+    });
+    
+    if (response && response.success) {
+      alert('✅ Cloud data cleared successfully!\n\n' + (response.message || ''));
+    } else {
+      throw new Error(response?.error || 'Unknown error');
+    }
+  } catch (error) {
+    console.error('Error clearing cloud data:', error);
+    alert('❌ Failed to clear cloud data: ' + error.message);
+  }
+}
+
 // DiceCloud Auth modal functions
 function openAuthModal() {
   const modal = document.getElementById('dicecloud-auth-modal');
@@ -732,6 +794,10 @@ async function init() {
     e.stopPropagation();
     closeSettingsModal();
   });
+
+  // Set up data management buttons
+  document.getElementById('clear-local-data-btn').addEventListener('click', handleClearLocalData);
+  document.getElementById('clear-cloud-data-btn').addEventListener('click', handleClearCloudData);
 
   // Set up refresh button
   document.getElementById('refresh-button').addEventListener('click', async () => {

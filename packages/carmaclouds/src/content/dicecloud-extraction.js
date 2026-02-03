@@ -663,9 +663,9 @@ export function parseForRollCloud(rawData) {
     return '';
   };
 
-  // Parse spells from properties with child attack/damage extraction
+  // Parse spells from properties with child attack/damage extraction (exclude inactive/disabled)
   const spells = properties
-    .filter(p => p.type === 'spell')
+    .filter(p => p.type === 'spell' && !p.inactive && !p.disabled)
     .map(spell => {
       // Find child properties (attack rolls, damage) for this spell
       const spellChildren = properties.filter(p => {
@@ -785,25 +785,115 @@ export function parseForRollCloud(rawData) {
   const actions = properties
     .filter(p => p.type === 'action' && p.name && !p.inactive && !p.disabled)
     .map(action => {
-      // Extract attack roll and damage from the action
+      // Find child properties (attack rolls, damage) for this action
+      const actionChildren = properties.filter(p => {
+        if (p.type !== 'roll' && p.type !== 'damage' && p.type !== 'attack') return false;
+        if (p.ancestors && Array.isArray(p.ancestors)) {
+          return p.ancestors.some(ancestor => {
+            const ancestorId = typeof ancestor === 'object' ? ancestor.id : ancestor;
+            return ancestorId === action._id;
+          });
+        }
+        return false;
+      });
+
+      // Extract attack roll from action or children
       let attackRoll = '';
       if (action.attackRoll) {
         attackRoll = typeof action.attackRoll === 'string' ? action.attackRoll : String(action.attackRoll.value || action.attackRoll.calculation || '');
+      } else {
+        // Check children for attack roll
+        const attackChild = actionChildren.find(c => c.type === 'attack' || (c.type === 'roll' && c.name && c.name.toLowerCase().includes('attack')));
+        if (attackChild && attackChild.roll) {
+          if (typeof attackChild.roll === 'string') {
+            attackRoll = attackChild.roll;
+          } else if (typeof attackChild.roll === 'object') {
+            attackRoll = attackChild.roll.calculation || attackChild.roll.value || '';
+          }
+        }
       }
 
+      // Extract damage from action or children
       let damage = '';
       let damageType = '';
       if (action.damage) {
         damage = typeof action.damage === 'string' ? action.damage : String(action.damage.value || action.damage.calculation || '');
+      } else {
+        // Check children for damage
+        const damageChild = actionChildren.find(c => c.type === 'damage' || (c.type === 'roll' && c.name && c.name.toLowerCase().includes('damage')));
+        if (damageChild) {
+          // Try amount field first (standard damage property)
+          if (damageChild.amount) {
+            if (typeof damageChild.amount === 'string') {
+              damage = damageChild.amount;
+            } else if (typeof damageChild.amount === 'object') {
+              damage = damageChild.amount.calculation || String(damageChild.amount.value || '');
+            }
+          }
+          // Fallback to roll field
+          else if (damageChild.roll) {
+            if (typeof damageChild.roll === 'string') {
+              damage = damageChild.roll;
+            } else if (typeof damageChild.roll === 'object') {
+              damage = damageChild.roll.calculation || String(damageChild.roll.value || '');
+            }
+          }
+          // Fallback to damage field
+          else if (damageChild.damage) {
+            if (typeof damageChild.damage === 'string') {
+              damage = damageChild.damage;
+            } else if (typeof damageChild.damage === 'object') {
+              damage = damageChild.damage.calculation || String(damageChild.damage.value || '');
+            }
+          }
+          
+          // Extract damage type from child
+          if (damageChild.damageType) {
+            damageType = damageChild.damageType;
+          }
+        }
       }
-      if (action.damageType) {
+      
+      // Fallback to action's damageType if not found in child
+      if (!damageType && action.damageType) {
         damageType = action.damageType;
+      }
+
+      // Determine action type from tags or name
+      // Valid values: 'action', 'bonus', 'reaction', 'free' (must match filter buttons)
+      let actionType = 'action'; // default
+      const tags = action.tags || [];
+      const nameLower = (action.name || '').toLowerCase();
+      const summaryLower = extractText(action.summary).toLowerCase();
+      
+      // Check tags first (most reliable)
+      if (tags.some(t => typeof t === 'string' && t.toLowerCase().includes('bonus'))) {
+        actionType = 'bonus';
+      } else if (tags.some(t => typeof t === 'string' && t.toLowerCase().includes('reaction'))) {
+        actionType = 'reaction';
+      } else if (tags.some(t => typeof t === 'string' && t.toLowerCase().includes('free'))) {
+        actionType = 'free';
+      } else if (tags.some(t => typeof t === 'string' && (t.toLowerCase().includes('legendary') || t.toLowerCase().includes('lair')))) {
+        actionType = 'free'; // Legendary actions shown as free actions
+      } else if (tags.some(t => typeof t === 'string' && t.toLowerCase().includes('attack'))) {
+        actionType = 'action'; // Attacks are actions
+      }
+      // Check name/summary if tags didn't match
+      else if (nameLower.includes('bonus action') || summaryLower.includes('bonus action')) {
+        actionType = 'bonus';
+      } else if (nameLower.includes('reaction') || summaryLower.includes('reaction')) {
+        actionType = 'reaction';
+      } else if (nameLower.includes('free action') || summaryLower.includes('free action')) {
+        actionType = 'free';
+      } else if (attackRoll || damage) {
+        // Has attack or damage, likely an attack action
+        actionType = 'action';
       }
 
       return {
         id: action._id,
         name: action.name,
-        actionType: action.actionType || 'action',
+        actionType: actionType,
         description: extractText(action.description),
         summary: extractText(action.summary),
         attackRoll: attackRoll,
@@ -858,6 +948,9 @@ export function parseForRollCloud(rawData) {
       requiresAttunement: item.requiresAttunement || false
     }));
 
+  // Extract companions from features
+  const companions = extractCompanions(properties);
+
   return {
     name: characterName,
     race,
@@ -882,8 +975,191 @@ export function parseForRollCloud(rawData) {
     resources,
     inventory,
     spells,
-    actions
+    actions,
+    companions
   };
+}
+
+/**
+ * Extract companions from properties (features with companion patterns)
+ */
+function extractCompanions(properties) {
+  console.log('🐾 Extracting companions from features...');
+  console.log('🐾 Total properties to check:', properties.length);
+  
+  // Debug: Check what types of properties we have
+  const propertyTypes = new Set();
+  properties.forEach(p => {
+    if (p && p.type) propertyTypes.add(p.type);
+  });
+  console.log('🐾 Property types available:', Array.from(propertyTypes).sort());
+  
+  const companionPatterns = [
+    /companion/i,
+    /beast of/i,
+    /familiar/i,
+    /summon/i,
+    /mount/i,
+    /steel defender/i,
+    /homunculus/i,
+    /drake/i,
+    /primal companion/i,
+    /beast master/i,
+    /ranger's companion/i
+  ];
+
+  const companions = [];
+  
+  // Check all properties, not just features - companions might be stored as actions, notes, or other types
+  const potentialCompanions = properties.filter(p => {
+    if (!p || !p.name || p.inactive) return false;
+    return companionPatterns.some(pattern => pattern.test(p.name));
+  });
+
+  console.log(`🐾 Found ${potentialCompanions.length} properties matching companion patterns`);
+  potentialCompanions.forEach(prop => {
+    console.log(`🐾 Potential companion: "${prop.name}" (type: ${prop.type})`);
+  });
+
+  const seenCompanions = new Set();
+  
+  potentialCompanions.forEach(feature => {
+    if (feature.description) {
+      console.log(`🐾 Parsing companion: ${feature.name}`);
+      const companion = parseCompanionStatBlock(feature.name, feature.description);
+      if (companion) {
+        // Deduplicate by companion name
+        if (!seenCompanions.has(companion.name)) {
+          companions.push(companion);
+          seenCompanions.add(companion.name);
+          console.log(`✅ Added companion: ${companion.name}`);
+        } else {
+          console.log(`⏭️ Skipping duplicate companion: ${companion.name}`);
+        }
+      } else {
+        console.log(`⚠️ Failed to parse companion stat block for: ${feature.name}`);
+      }
+    } else {
+      console.log(`⚠️ No description for potential companion: ${feature.name}`);
+    }
+  });
+
+  console.log(`🐾 Total companions found: ${companions.length} (after deduplication)`);
+  return companions;
+}
+
+/**
+ * Parse companion stat block from description text
+ */
+function parseCompanionStatBlock(name, description) {
+  let descText = typeof description === 'object' ? (description.value || description.text || '') : description;
+  
+  if (!descText || descText.trim() === '') return null;
+
+  const companion = {
+    name,
+    size: '',
+    type: '',
+    alignment: '',
+    ac: 0,
+    hp: '',
+    speed: '',
+    abilities: {},
+    senses: '',
+    languages: '',
+    proficiencyBonus: 0,
+    features: [],
+    actions: []
+  };
+
+  // Parse size/type (e.g., "Small beast, neutral")
+  const sizeTypeMatch = descText.match(/(Tiny|Small|Medium|Large|Huge|Gargantuan)\s+(\w+),\s*(\w+)/i);
+  if (sizeTypeMatch) {
+    companion.size = sizeTypeMatch[1];
+    companion.type = sizeTypeMatch[2];
+    companion.alignment = sizeTypeMatch[3];
+  }
+
+  // Parse AC
+  const acMatch = descText.match(/\*\*AC\*\*\s+(\d+)|AC\s+(\d+)/i);
+  if (acMatch) companion.ac = parseInt(acMatch[1] || acMatch[2]);
+
+  // Parse HP
+  const hpMatch = descText.match(/\*\*HP\*\*\s+(\d+\s*\([^)]+\))|HP\s+(\d+\s*\([^)]+\))/i);
+  if (hpMatch) companion.hp = hpMatch[1] || hpMatch[2];
+
+  // Parse Speed
+  const speedMatch = descText.match(/Speed\s+([^•\n]+)/i);
+  if (speedMatch) companion.speed = speedMatch[1].trim();
+
+  // Parse Abilities from markdown table
+  const abilityLine = descText.match(/\|\s*(\d+)\s*\(([+\-]\d+)\)\s*\|\s*(\d+)\s*\(([+\-]\d+)\)\s*\|\s*(\d+)\s*\(([+\-]\d+)\)\s*\|\s*(\d+)\s*\(([+\-]\d+)\)\s*\|\s*(\d+)\s*\(([+\-]\d+)\)\s*\|\s*(\d+)\s*\(([+\-]\d+)\)\s*\|/);
+  if (abilityLine) {
+    const abilities = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+    abilities.forEach((ability, i) => {
+      const scoreIdx = (i * 2) + 1;
+      const modIdx = (i * 2) + 2;
+      if (abilityLine[scoreIdx] && abilityLine[modIdx]) {
+        companion.abilities[ability] = {
+          score: parseInt(abilityLine[scoreIdx]),
+          modifier: parseInt(abilityLine[modIdx])
+        };
+      }
+    });
+  }
+
+  // Parse Senses
+  const sensesMatch = descText.match(/Senses\s+([^•\n]+)/i);
+  if (sensesMatch) companion.senses = sensesMatch[1].trim();
+
+  // Parse Languages
+  const languagesMatch = descText.match(/Languages\s+([^•\n]+)/i);
+  if (languagesMatch) companion.languages = languagesMatch[1].trim();
+
+  // Parse Proficiency Bonus
+  const pbMatch = descText.match(/Proficiency Bonus\s+(\d+)/i);
+  if (pbMatch) companion.proficiencyBonus = parseInt(pbMatch[1]);
+
+  // Parse Features (e.g., "***Flyby.*** Description")
+  const featurePattern = /\*\*\*([^*\n.]+)\.\*\*\*\s*([^*\n]+)/gi;
+  let featureMatch;
+  while ((featureMatch = featurePattern.exec(descText)) !== null) {
+    companion.features.push({
+      name: featureMatch[1].trim(),
+      description: featureMatch[2].trim()
+    });
+  }
+
+  // Parse Actions
+  const actionsMatch = descText.match(/###?\s*Actions\s+([\s\S]+)/i);
+  if (actionsMatch) {
+    const actionsText = actionsMatch[1];
+    const attackLines = actionsText.split('\n').filter(line => line.includes('***') && line.includes('Melee Weapon Attack'));
+    
+    attackLines.forEach(attackLine => {
+      const nameMatch = attackLine.match(/\*\*\*(\w+)\.\*\*\*/);
+      const bonusMatch = attackLine.match(/\*\*(\+\d+)\*\*/);
+      const reachMatch = attackLine.match(/reach\s*([\d\s]+ft\.)/);
+      const damageMatch = attackLine.match(/\*?Hit:\*?\s*\*\*([^*]+?)\*\*/);
+      
+      if (nameMatch && bonusMatch && reachMatch && damageMatch) {
+        companion.actions.push({
+          name: nameMatch[1].trim(),
+          type: 'attack',
+          attackBonus: parseInt(bonusMatch[1]),
+          reach: reachMatch[1].trim(),
+          damage: damageMatch[1].trim()
+        });
+      }
+    });
+  }
+
+  // Only return if we found at least some stats
+  if (companion.ac > 0 || companion.hp || Object.keys(companion.abilities).length > 0) {
+    return companion;
+  }
+
+  return null;
 }
 
 /**
@@ -897,10 +1173,123 @@ export function parseForOwlCloud(rawData) {
 
 /**
  * Parse raw DiceCloud data into Foundry VTT-specific format
- * Called by FoundCloud adapter when tab is loaded
+ * Maps to Foundry's D&D 5e system structure
  */
-export function parseForFoundCloud(rawData) {
-  // For now, use same format as Roll20
-  // TODO: Customize for Foundry VTT's data structure
-  return parseForRollCloud(rawData);
+export function parseForFoundCloud(rawData, characterId = null) {
+  console.log('🎲 Parsing character for Foundry VTT...');
+
+  // First parse using RollCloud format to get standardized data
+  const rollCloudData = parseForRollCloud(rawData, characterId);
+
+  // Map to Foundry D&D 5e actor structure
+  const foundryData = {
+    // Basic info
+    id: characterId || rollCloudData.id,
+    name: rollCloudData.name,
+    type: 'character',
+    
+    // Attributes (abilities)
+    attributes: {
+      strength: rollCloudData.attributes?.strength || 10,
+      dexterity: rollCloudData.attributes?.dexterity || 10,
+      constitution: rollCloudData.attributes?.constitution || 10,
+      intelligence: rollCloudData.attributes?.intelligence || 10,
+      wisdom: rollCloudData.attributes?.wisdom || 10,
+      charisma: rollCloudData.attributes?.charisma || 10,
+      STR: rollCloudData.attributes?.strength || 10,
+      DEX: rollCloudData.attributes?.dexterity || 10,
+      CON: rollCloudData.attributes?.constitution || 10,
+      INT: rollCloudData.attributes?.intelligence || 10,
+      WIS: rollCloudData.attributes?.wisdom || 10,
+      CHA: rollCloudData.attributes?.charisma || 10
+    },
+
+    // Hit points
+    hit_points: {
+      current: rollCloudData.hitPoints?.current || 0,
+      max: rollCloudData.hitPoints?.max || 0
+    },
+
+    // Core stats
+    armor_class: rollCloudData.armorClass || 10,
+    speed: rollCloudData.speed || 30,
+    initiative: rollCloudData.initiative || 0,
+    proficiency_bonus: rollCloudData.proficiencyBonus || 2,
+
+    // Character details
+    level: rollCloudData.level || 1,
+    race: rollCloudData.race || 'Unknown',
+    class: rollCloudData.class || 'Unknown',
+    alignment: rollCloudData.alignment || '',
+    background: rollCloudData.background || '',
+
+    // Skills (map to Foundry format)
+    skills: rollCloudData.skills || {},
+
+    // Saves
+    saves: rollCloudData.saves || {},
+
+    // Death saves
+    death_saves: rollCloudData.deathSaves || { successes: 0, failures: 0 },
+
+    // Inspiration
+    inspiration: rollCloudData.inspiration || false,
+
+    // Temporary HP
+    temporary_hp: rollCloudData.hitPoints?.temp || 0,
+
+    // Spells (keep full spell data)
+    spells: rollCloudData.spells || [],
+    spell_slots: rollCloudData.spellSlots || {},
+
+    // Actions (keep full action data)
+    actions: rollCloudData.actions || [],
+
+    // Inventory
+    inventory: rollCloudData.inventory || [],
+
+    // Resources
+    resources: rollCloudData.resources || [],
+
+    // Companions
+    companions: rollCloudData.companions || [],
+
+    // Raw DiceCloud data for advanced features
+    raw_dicecloud_data: {
+      creature: rawData.creature || {},
+      variables: rawData.variables || {},
+      properties: rawData.properties || [],
+      picture: rawData.creature?.picture,
+      description: rawData.creature?.description,
+      flySpeed: extractVariable(rawData.variables, 'flySpeed'),
+      swimSpeed: extractVariable(rawData.variables, 'swimSpeed'),
+      climbSpeed: extractVariable(rawData.variables, 'climbSpeed'),
+      damageImmunities: extractVariable(rawData.variables, 'damageImmunities'),
+      damageResistances: extractVariable(rawData.variables, 'damageResistances'),
+      damageVulnerabilities: extractVariable(rawData.variables, 'damageVulnerabilities'),
+      conditionImmunities: extractVariable(rawData.variables, 'conditionImmunities'),
+      languages: extractVariable(rawData.variables, 'languages'),
+      size: extractVariable(rawData.variables, 'size') || 'medium',
+      currency: {
+        pp: extractVariable(rawData.variables, 'pp') || 0,
+        gp: extractVariable(rawData.variables, 'gp') || 0,
+        ep: extractVariable(rawData.variables, 'ep') || 0,
+        sp: extractVariable(rawData.variables, 'sp') || 0,
+        cp: extractVariable(rawData.variables, 'cp') || 0
+      },
+      experiencePoints: extractVariable(rawData.variables, 'experiencePoints') || 0
+    }
+  };
+
+  console.log('✅ Parsed for Foundry VTT:', foundryData.name);
+  return foundryData;
+}
+
+/**
+ * Helper to extract variable value from DiceCloud variables
+ */
+function extractVariable(variables, varName) {
+  if (!variables || !variables[varName]) return null;
+  const varData = variables[varName];
+  return varData.value !== undefined ? varData.value : varData;
 }

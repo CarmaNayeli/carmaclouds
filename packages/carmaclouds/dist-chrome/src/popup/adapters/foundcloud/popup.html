@@ -6,42 +6,16 @@
 </head>
 <body>
   <div class="foundcloud-container">
-    <!-- Header -->
-    <div class="header">
-      <h2><img src="../../images/foundcloud-logo.png" alt="FoundCloud" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 8px;">FoundCloud</h2>
-      <p class="subtitle">DiceCloud → Foundry VTT via Cloud Sync</p>
+    <!-- Character List -->
+    <div id="characterList" style="display: flex; flex-direction: column; gap: 10px; padding: 12px;">
+      <!-- Characters will be rendered here -->
     </div>
 
-    <!-- Status Section -->
-    <div id="status" class="status-section" style="background: transparent; padding: 12px; margin: 12px; text-align: left;">
-      <div class="status-indicator" style="display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 8px; background: rgba(22, 167, 90, 0.15); border: 1px solid rgba(22, 167, 90, 0.3);">
-        <span id="statusIcon" style="font-size: 20px;">⏳</span>
-        <span id="statusText" style="color: #16a75a; font-weight: 500;">No character data synced</span>
-      </div>
-    </div>
-
-    <!-- Character Info Card -->
-    <div id="characterInfo" class="character-info hidden" style="background: #2a2a2a; padding: 16px; margin: 12px; border-radius: 8px; border: 1px solid #16a75a;">
-      <h3 style="color: #16a75a; margin-top: 0;">Synced Character</h3>
-      <div class="info-row" style="display: flex; justify-content: space-between; margin: 8px 0;">
-        <span class="label" style="color: #888;">Name:</span>
-        <span id="charName">-</span>
-      </div>
-      <div class="info-row" style="display: flex; justify-content: space-between; margin: 8px 0;">
-        <span class="label" style="color: #888;">Level:</span>
-        <span id="charLevel">-</span>
-      </div>
-      <div class="info-row" style="display: flex; justify-content: space-between; margin: 8px 0;">
-        <span class="label" style="color: #888;">Class:</span>
-        <span id="charClass">-</span>
-      </div>
-      <div class="info-row" style="display: flex; justify-content: space-between; margin: 8px 0;">
-        <span class="label" style="color: #888;">Race:</span>
-        <span id="charRace">-</span>
-      </div>
-      <button id="pushToVttBtn" class="btn btn-primary" style="margin-top: 12px; width: 100%;">
-        ⚔️ Push to Foundry VTT
-      </button>
+    <!-- Empty State -->
+    <div id="emptyState" class="empty-state" style="display: none; text-align: center; padding: 40px 20px; color: #888;">
+      <div style="font-size: 3em; margin-bottom: 10px;">📚</div>
+      <p style="margin: 0; font-size: 1.1em;">No characters synced yet</p>
+      <p style="font-size: 0.9em; margin-top: 8px;">Characters synced from DiceCloud will appear here</p>
     </div>
 
     <!-- Foundry Module Setup Section -->

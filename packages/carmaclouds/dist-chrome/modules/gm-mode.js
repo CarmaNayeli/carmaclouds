@@ -107,6 +107,12 @@
         }
 
         try {
+          debug.log('👑 Preparing character data for GM share...', {
+            hasCharacterData: !!characterData,
+            characterName: characterData?.name,
+            characterKeys: characterData ? Object.keys(characterData) : []
+          });
+          
           // Create character broadcast message with ENTIRE sheet data
           const broadcastData = {
             type: 'OWLCLOUD_CHARACTER_BROADCAST',
@@ -172,10 +178,16 @@
             });
           } else {
             showNotification('⚠️ Unable to share with GM (no connection)', 'warning');
+            debug.warn('⚠️ No window.opener or browserAPI available for GM share');
           }
         } catch (error) {
           debug.error('❌ Error creating character broadcast:', error);
-          showNotification('❌ Failed to prepare character data', 'error');
+          debug.error('❌ Error details:', {
+            message: error.message,
+            stack: error.stack,
+            characterDataKeys: characterData ? Object.keys(characterData) : 'no data'
+          });
+          showNotification(`❌ Failed to prepare character data: ${error.message}`, 'error');
         }
       });
 

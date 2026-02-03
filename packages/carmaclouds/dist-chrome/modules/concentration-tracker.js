@@ -98,19 +98,30 @@
    * @param {string} spellName - Name of the spell to concentrate on
    */
   function setConcentration(spellName) {
+    debug.log(`🧠 setConcentration called with: "${spellName}"`);
+    debug.log(`🧠 Current concentration: "${concentratingSpell}"`);
+    
+    // Track if this is a replacement
+    const isReplacement = concentratingSpell && concentratingSpell !== spellName;
+    
     // If already concentrating on a different spell, notify that it's being dropped
-    if (concentratingSpell && concentratingSpell !== spellName) {
+    if (isReplacement) {
       const previousSpell = concentratingSpell;
       showNotification(`⚠️ Dropped concentration on ${previousSpell} to concentrate on ${spellName}`);
       debug.log(`🔄 Replacing concentration: ${previousSpell} → ${spellName}`);
     }
 
     concentratingSpell = spellName;
+    debug.log(`🧠 Updated concentratingSpell variable to: "${concentratingSpell}"`);
+    
     if (characterData) {
       characterData.concentrationSpell = spellName;
+      debug.log(`🧠 Updated characterData.concentrationSpell to: "${spellName}"`);
       saveCharacterData();
     }
+    
     updateConcentrationDisplay();
+    debug.log(`🧠 Called updateConcentrationDisplay()`);
 
     // Update status bar if available
     if (typeof sendStatusUpdate === 'function') {
@@ -118,10 +129,10 @@
     }
 
     // Only show "Concentrating on" notification if this is a new concentration (not replacement)
-    if (!concentratingSpell || concentratingSpell === spellName) {
+    if (!isReplacement) {
       showNotification(`🧠 Concentrating on: ${spellName}`);
     }
-    debug.log(`🧠 Concentration set: ${spellName}`);
+    debug.log(`🧠 Concentration set complete: ${spellName}`);
   }
 
   /**
