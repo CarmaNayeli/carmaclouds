@@ -59,7 +59,7 @@ export default function OwlCloudTab() {
             </a>
           </div>
           <p className="text-gray-500 text-sm">
-            Current version: <span className="text-[#a855f7] font-semibold">v2.1.0</span> - Includes Dice+ 3D dice integration!
+            Current version: <span className="text-[#a855f7] font-semibold">v2.2.1</span> - HP management, formula evaluation, and enhanced character sync!
           </p>
         </div>
       </section>
