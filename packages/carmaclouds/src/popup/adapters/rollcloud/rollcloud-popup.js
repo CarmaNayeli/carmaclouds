@@ -2423,8 +2423,9 @@ function initializePopup() {
       const pushedCharactersSection = document.getElementById('pushedCharactersSection');
 
       // Check if user is logged in to DiceCloud (has auth token)
-      const result = await browserAPI.storage.local.get(['diceCloudToken', 'activeCharacterId']);
-      const hasDiceCloudToken = !!result.diceCloudToken;
+      // Check both storage keys for compatibility
+      const result = await browserAPI.storage.local.get(['diceCloudToken', 'dicecloud_auth_token', 'activeCharacterId']);
+      const hasDiceCloudToken = !!(result.diceCloudToken || result.dicecloud_auth_token);
 
       if (!hasDiceCloudToken) {
         // Show login prompt
@@ -2548,8 +2549,9 @@ function initializePopup() {
       syncCurrentBtn.textContent = '⏳ Syncing...';
 
       // Get DiceCloud auth token and active character ID
-      const result = await browserAPI.storage.local.get(['diceCloudToken', 'diceCloudUserId', 'activeCharacterId']);
-      const token = result.diceCloudToken;
+      // Check both storage keys for compatibility
+      const result = await browserAPI.storage.local.get(['diceCloudToken', 'dicecloud_auth_token', 'diceCloudUserId', 'activeCharacterId']);
+      const token = result.diceCloudToken || result.dicecloud_auth_token;
       const activeCharacterId = result.activeCharacterId;
 
       if (!token) {
@@ -2664,8 +2666,9 @@ function initializePopup() {
       syncAllBtn.textContent = '⏳ Syncing...';
 
       // Get DiceCloud auth token
-      const result = await browserAPI.storage.local.get(['diceCloudToken', 'diceCloudUserId']);
-      const token = result.diceCloudToken;
+      // Check both storage keys for compatibility
+      const result = await browserAPI.storage.local.get(['diceCloudToken', 'dicecloud_auth_token', 'diceCloudUserId']);
+      const token = result.diceCloudToken || result.dicecloud_auth_token;
       const userId = result.diceCloudUserId;
 
       if (!token) {
