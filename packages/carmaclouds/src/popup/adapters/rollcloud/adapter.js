@@ -228,8 +228,7 @@ async function initializeRollCloudUI(wrapper, characters) {
     const loginPrompt = wrapper.querySelector('#loginPrompt');
     const syncBox = wrapper.querySelector('#syncBox');
     const pushedCharactersSection = wrapper.querySelector('#pushedCharactersSection');
-    const syncCurrentBtn = wrapper.querySelector('#syncCurrentBtn');
-    const syncAllBtn = wrapper.querySelector('#syncAllBtn');
+    const pushToRoll20Btn = wrapper.querySelector('#pushToRoll20Btn');
     const openAuthModalBtn = wrapper.querySelector('#openAuthModalBtn');
 
     // Check if user is authenticated to DiceCloud
@@ -275,12 +274,9 @@ async function initializeRollCloudUI(wrapper, characters) {
       if (syncCharRace) syncCharRace.textContent = activeChar.race || 'Unknown';
     }
 
-    // Add sync button handlers
-    if (syncCurrentBtn) {
-      syncCurrentBtn.addEventListener('click', () => handleSyncCurrent(token, result.activeCharacterId, wrapper));
-    }
-    if (syncAllBtn) {
-      syncAllBtn.addEventListener('click', () => handleSyncAll(token, wrapper));
+    // Add push button handler
+    if (pushToRoll20Btn) {
+      pushToRoll20Btn.addEventListener('click', () => handlePushToRoll20(token, result.activeCharacterId, wrapper));
     }
 
     // Display synced characters
@@ -292,17 +288,17 @@ async function initializeRollCloudUI(wrapper, characters) {
 }
 
 /**
- * Handle syncing current character
+ * Handle pushing character to Roll20
  */
-async function handleSyncCurrent(token, activeCharacterId, wrapper) {
-  const syncCurrentBtn = wrapper.querySelector('#syncCurrentBtn');
-  if (!syncCurrentBtn) return;
+async function handlePushToRoll20(token, activeCharacterId, wrapper) {
+  const pushBtn = wrapper.querySelector('#pushToRoll20Btn');
+  if (!pushBtn) return;
 
-  const originalText = syncCurrentBtn.textContent;
+  const originalText = pushBtn.textContent;
 
   try {
-    syncCurrentBtn.disabled = true;
-    syncCurrentBtn.textContent = '⏳ Syncing...';
+    pushBtn.disabled = true;
+    pushBtn.textContent = '⏳ Syncing...';
 
     if (!activeCharacterId) {
       throw new Error('No active character selected');
@@ -345,126 +341,25 @@ async function handleSyncCurrent(token, activeCharacterId, wrapper) {
 
     await browserAPI.storage.local.set({ carmaclouds_characters: characters });
 
-    syncCurrentBtn.textContent = '✓ Synced!';
-    syncCurrentBtn.style.background = 'linear-gradient(135deg, #28a745 0%, #1e7e34 100%)';
+    pushBtn.textContent = '✓ Synced!';
+    pushBtn.style.background = 'linear-gradient(135deg, #28a745 0%, #1e7e34 100%)';
 
     // Refresh the character list
     displaySyncedCharacters(wrapper, characters);
 
     setTimeout(() => {
-      syncCurrentBtn.textContent = originalText;
-      syncCurrentBtn.style.background = '';
-      syncCurrentBtn.disabled = false;
+      pushBtn.textContent = originalText;
+      pushBtn.style.background = '';
+      pushBtn.disabled = false;
     }, 2000);
 
   } catch (error) {
     console.error('Sync current error:', error);
-    syncCurrentBtn.textContent = '❌ Failed';
+    pushBtn.textContent = '❌ Failed';
     alert(`Sync failed: ${error.message}`);
     setTimeout(() => {
-      syncCurrentBtn.textContent = originalText;
-      syncCurrentBtn.disabled = false;
-    }, 2000);
-  }
-}
-
-/**
- * Handle syncing all characters
- */
-async function handleSyncAll(token, wrapper) {
-  const syncAllBtn = wrapper.querySelector('#syncAllBtn');
-  if (!syncAllBtn) return;
-
-  const originalText = syncAllBtn.textContent;
-
-  try {
-    syncAllBtn.disabled = true;
-    syncAllBtn.textContent = '⏳ Syncing...';
-
-    // Fetch user's character list
-    const userResponse = await fetch('https://dicecloud.com/api/user', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-
-    if (!userResponse.ok) throw new Error(`Failed to fetch user data: ${userResponse.status}`);
-
-    const userData = await userResponse.json();
-    let characterIds = [];
-    if (Array.isArray(userData.characters)) {
-      characterIds = userData.characters;
-    } else if (userData.user && Array.isArray(userData.user.characters)) {
-      characterIds = userData.user.characters;
-    }
-
-    if (characterIds.length === 0) {
-      throw new Error('No characters found');
-    }
-
-    // Fetch each character
-    const existingChars = await browserAPI.storage.local.get('carmaclouds_characters');
-    const characters = existingChars.carmaclouds_characters || [];
-    let newCount = 0;
-    let updatedCount = 0;
-
-    for (const charId of characterIds) {
-      try {
-        const charResponse = await fetch(`https://dicecloud.com/api/creature/${charId}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (!charResponse.ok) continue;
-
-        const charData = await charResponse.json();
-        const rawData = {
-          creature: charData.creatures?.[0] || {},
-          variables: charData.creatureVariables?.[0] || {},
-          properties: charData.creatureProperties || []
-        };
-
-        const characterEntry = {
-          id: charId,
-          name: rawData.creature.name || 'Unknown',
-          level: extractLevel(rawData),
-          class: extractClass(rawData),
-          race: extractRace(rawData),
-          raw: rawData,
-          lastSynced: new Date().toISOString()
-        };
-
-        const existingIndex = characters.findIndex(c => c.id === charId);
-        if (existingIndex >= 0) {
-          characters[existingIndex] = characterEntry;
-          updatedCount++;
-        } else {
-          characters.push(characterEntry);
-          newCount++;
-        }
-      } catch (error) {
-        console.error(`Error fetching character ${charId}:`, error);
-      }
-    }
-
-    await browserAPI.storage.local.set({ carmaclouds_characters: characters });
-
-    syncAllBtn.textContent = '✓ Synced!';
-    syncAllBtn.style.background = 'linear-gradient(135deg, #28a745 0%, #1e7e34 100%)';
-
-    // Refresh the character list
-    displaySyncedCharacters(wrapper, characters);
-
-    setTimeout(() => {
-      syncAllBtn.textContent = originalText;
-      syncAllBtn.style.background = '';
-      syncAllBtn.disabled = false;
-    }, 2000);
-
-  } catch (error) {
-    console.error('Sync all error:', error);
-    syncAllBtn.textContent = '❌ Failed';
-    alert(`Sync failed: ${error.message}`);
-    setTimeout(() => {
-      syncAllBtn.textContent = originalText;
-      syncAllBtn.disabled = false;
+      pushBtn.textContent = originalText;
+      pushBtn.disabled = false;
     }, 2000);
   }
 }
