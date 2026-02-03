@@ -845,6 +845,30 @@ async function init() {
     return 'Authentication failed. Please try again.';
   }
 
+  // Show success message that fades out after 2 seconds
+  function showSuccessMessage(message) {
+    const successDiv = document.getElementById('supabase-auth-success');
+    const errorDiv = document.getElementById('supabase-auth-error');
+
+    if (!successDiv) return;
+
+    // Hide error message
+    errorDiv.classList.add('hidden');
+
+    // Show success message
+    successDiv.textContent = message;
+    successDiv.classList.remove('hidden');
+    successDiv.style.opacity = '1';
+
+    // Fade out after 2 seconds
+    setTimeout(() => {
+      successDiv.style.opacity = '0';
+      setTimeout(() => {
+        successDiv.classList.add('hidden');
+      }, 300); // Wait for fade animation to complete
+    }, 2000);
+  }
+
   // Supabase auth handlers
   const supabase = window.supabaseClient;
   if (supabase) {
@@ -875,6 +899,7 @@ async function init() {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         errorDiv.classList.add('hidden');
+        showSuccessMessage('✅ Signed in successfully!');
       } catch (error) {
         errorDiv.textContent = formatAuthError(error);
         errorDiv.classList.remove('hidden');
@@ -924,7 +949,7 @@ async function init() {
         const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
         errorDiv.classList.add('hidden');
-        alert('Account created! Please check your email to verify your account.');
+        showSuccessMessage('✅ Account created successfully!');
       } catch (error) {
         errorDiv.textContent = formatAuthError(error);
         errorDiv.classList.remove('hidden');

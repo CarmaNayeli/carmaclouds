@@ -1575,6 +1575,22 @@
       }
       return "Authentication failed. Please try again.";
     }
+    function showSuccessMessage(message) {
+      const successDiv = document.getElementById("supabase-auth-success");
+      const errorDiv = document.getElementById("supabase-auth-error");
+      if (!successDiv)
+        return;
+      errorDiv.classList.add("hidden");
+      successDiv.textContent = message;
+      successDiv.classList.remove("hidden");
+      successDiv.style.opacity = "1";
+      setTimeout(() => {
+        successDiv.style.opacity = "0";
+        setTimeout(() => {
+          successDiv.classList.add("hidden");
+        }, 300);
+      }, 2e3);
+    }
     const supabase = window.supabaseClient;
     if (supabase) {
       const { data: { session } } = await supabase.auth.getSession();
@@ -1597,6 +1613,7 @@
           if (error)
             throw error;
           errorDiv.classList.add("hidden");
+          showSuccessMessage("\u2705 Signed in successfully!");
         } catch (error) {
           errorDiv.textContent = formatAuthError(error);
           errorDiv.classList.remove("hidden");
@@ -1637,7 +1654,7 @@
           if (error)
             throw error;
           errorDiv.classList.add("hidden");
-          alert("Account created! Please check your email to verify your account.");
+          showSuccessMessage("\u2705 Account created successfully!");
         } catch (error) {
           errorDiv.textContent = formatAuthError(error);
           errorDiv.classList.remove("hidden");

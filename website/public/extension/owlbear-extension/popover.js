@@ -1054,6 +1054,7 @@
             New? Click <strong>Sign Up</strong> to create an account
           </div>
           <div id="auth-error" style="color: #EF4444; font-size: 12px; margin-top: 4px; display: none;"></div>
+          <div id="auth-success" style="color: #10B981; font-size: 12px; margin-top: 4px; padding: 8px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 4px; display: none; transition: opacity 0.3s ease-out;"></div>
         </form>
       </div>
     `;
@@ -1086,6 +1087,23 @@
       return "Network error. Please check your connection and try again.";
     }
     return "Authentication failed. Please try again.";
+  }
+  function showAuthSuccess(message) {
+    const successDiv = document.getElementById("auth-success");
+    const errorDiv = document.getElementById("auth-error");
+    if (!successDiv)
+      return;
+    if (errorDiv)
+      errorDiv.style.display = "none";
+    successDiv.textContent = message;
+    successDiv.style.display = "block";
+    successDiv.style.opacity = "1";
+    setTimeout(() => {
+      successDiv.style.opacity = "0";
+      setTimeout(() => {
+        successDiv.style.display = "none";
+      }, 300);
+    }, 2e3);
   }
   window.togglePasswordVisibility = function(passwordFieldId, toggleButtonId) {
     const passwordField = document.getElementById(passwordFieldId);
@@ -1128,6 +1146,7 @@
       errorDiv.style.display = "block";
     } else {
       errorDiv.style.display = "none";
+      showAuthSuccess("\u2705 Signed in successfully!");
     }
   };
   window.handleSignUp = async function() {
@@ -1165,9 +1184,8 @@
       errorDiv.textContent = formatAuthError(result);
       errorDiv.style.display = "block";
     } else {
-      errorDiv.textContent = "Check your email to confirm your account!";
-      errorDiv.style.color = "#10B981";
-      errorDiv.style.display = "block";
+      errorDiv.style.display = "none";
+      showAuthSuccess("\u2705 Account created successfully!");
     }
   };
   window.handleFetchCharacter = async function() {
