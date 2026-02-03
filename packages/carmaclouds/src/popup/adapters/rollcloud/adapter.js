@@ -4,7 +4,7 @@
  * Loads the full RollCloud popup UI
  */
 
-import { parseForRollCloud } from '../../../content/dicecloud-extraction.js';
+import { parseForRollCloud, parseCharacterData } from '../../../content/dicecloud-extraction.js';
 
 // Detect browser API (Firefox uses 'browser', Chrome uses 'chrome')
 const browserAPI = (typeof browser !== 'undefined' && browser.runtime) ? browser : chrome;
@@ -318,6 +318,9 @@ async function handlePushToRoll20(token, activeCharacterId, wrapper) {
       properties: charData.creatureProperties || []
     };
 
+    // Parse using OwlCloud's parser for consistency
+    const parsedChar = parseCharacterData(charData, activeCharacterId);
+
     // Store in local storage
     const existingChars = await browserAPI.storage.local.get('carmaclouds_characters');
     const characters = existingChars.carmaclouds_characters || [];
@@ -325,10 +328,10 @@ async function handlePushToRoll20(token, activeCharacterId, wrapper) {
     const existingIndex = characters.findIndex(c => c.id === activeCharacterId);
     const characterEntry = {
       id: activeCharacterId,
-      name: rawData.creature.name || 'Unknown',
-      level: extractLevel(rawData),
-      class: extractClass(rawData),
-      race: extractRace(rawData),
+      name: parsedChar.name || 'Unknown',
+      level: parsedChar.preview?.level || parsedChar.level || '?',
+      class: parsedChar.preview?.class || parsedChar.class || 'No Class',
+      race: parsedChar.preview?.race || parsedChar.race || 'Unknown',
       raw: rawData,
       lastSynced: new Date().toISOString()
     };
@@ -406,105 +409,3 @@ function displaySyncedCharacters(wrapper, characters) {
   });
 }
 
-/**
- * Extract character level from raw DiceCloud data
- */
-function extractLevel(raw) {
-  if (!raw) return '?';
-  if (raw.creature && raw.creature.level) return raw.creature.level;
-
-  // Try to calculate from class levels
-  if (raw.properties) {
-    let totalLevel = 0;
-    raw.properties.forEach(prop => {
-      if (prop.type === 'class' && prop.level) {
-        totalLevel += prop.level;
-      }
-    });
-    if (totalLevel > 0) return totalLevel;
-  }
-
-  return '?';
-}
-
-/**
- * Extract character class from raw DiceCloud data
- */
-function extractClass(raw) {
-  if (!raw) return 'No Class';
-  if (raw.creature && raw.creature.class) return raw.creature.class;
-
-  // Try to get from properties
-  if (raw.properties) {
-    const classes = raw.properties
-      .filter(prop => prop.type === 'class' && prop.name)
-      .map(prop => prop.name);
-    if (classes.length > 0) return classes.join(', ');
-  }
-
-  return 'No Class';
-}
-
-/**
- * Extract character race from raw DiceCloud data
- */
-function extractRace(raw) {
-  if (!raw) return 'Unknown';
-
-  // Check creature directly
-  if (raw.creature && raw.creature.race) return raw.creature.race;
-
-  // Check denormalizedStats
-  if (raw.creature && raw.creature.denormalizedStats && raw.creature.denormalizedStats.race) {
-    return raw.creature.denormalizedStats.race;
-  }
-
-  // Check properties
-  if (raw.properties) {
-    // Check for race property types
-    const raceProp = raw.properties.find(prop =>
-      prop.type === 'race' || prop.type === 'species' || prop.type === 'characterRace'
-    );
-    if (raceProp && raceProp.name) return raceProp.name;
-
-    // Check for race as a constant
-    const raceConstant = raw.properties.find(prop =>
-      prop.type === 'constant' && prop.name && prop.name.toLowerCase() === 'race'
-    );
-    if (raceConstant && raceConstant.value) return raceConstant.value;
-
-    // Check for race as a folder with common race names (sorted longest first)
-    const commonRaces = ['half-elf', 'half-orc', 'dragonborn', 'tiefling', 'aarakocra', 'lizardfolk', 'warforged', 'changeling', 'kalashtar', 'goliath', 'firbolg', 'genasi', 'yuan-ti', 'bugbear', 'hobgoblin', 'halfling', 'tortle', 'kobold', 'tabaxi', 'goblin', 'kenku', 'human', 'dwarf', 'gnome', 'triton', 'elf', 'orc', 'shifter'];
-
-    for (const prop of raw.properties) {
-      if (prop.type === 'folder' && prop.name) {
-        const propNameLower = prop.name.toLowerCase();
-        const matchedRace = commonRaces.find(race => propNameLower.includes(race));
-        if (matchedRace) {
-          const parentDepth = prop.ancestors ? prop.ancestors.length : 0;
-          if (parentDepth <= 2) {
-            return prop.name;
-          }
-        }
-      }
-    }
-  }
-
-  // Check variables
-  if (raw.variables) {
-    const raceVars = Object.keys(raw.variables).filter(key =>
-      key.toLowerCase().includes('race') || key.toLowerCase().includes('species')
-    );
-
-    if (raceVars.length > 0) {
-      for (const varName of raceVars) {
-        const value = raw.variables[varName];
-        if (typeof value === 'string' && value.length > 0) {
-          return value;
-        }
-      }
-    }
-  }
-
-  return 'Unknown';
-}
