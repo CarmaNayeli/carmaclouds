@@ -340,14 +340,21 @@ async function autoConnect() {
     }
 
     // First, try to get auth data from content script via message (more reliable in Chrome 144+)
-    console.log('Requesting auth data from DiceCloud content script...');
+    console.log('🔍 Requesting auth data from DiceCloud content script...');
+    console.log('📍 Tab URL:', tabs[0].url);
+    console.log('📍 Tab ID:', tabs[0].id);
     let authData = null;
     
     try {
+      // Wait a moment for content script to be ready
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       authData = await browserAPI.tabs.sendMessage(tabs[0].id, { action: 'getAuthData' });
       console.log('✅ Auth data received from content script:', authData);
     } catch (messageError) {
-      console.warn('⚠️ Could not get auth data from content script, trying script injection:', messageError);
+      console.warn('⚠️ Could not get auth data from content script:', messageError);
+      console.warn('⚠️ Error details:', messageError.message, messageError.stack);
+      console.log('🔄 Trying script injection fallback...');
       
       // Fallback: Try to inject a script to get auth data from the page
       try {

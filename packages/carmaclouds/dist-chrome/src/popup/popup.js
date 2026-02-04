@@ -14157,13 +14157,18 @@ This cannot be undone.`)) {
         btn.textContent = "\u{1F510} Connect with DiceCloud";
         return;
       }
-      console.log("Requesting auth data from DiceCloud content script...");
+      console.log("\u{1F50D} Requesting auth data from DiceCloud content script...");
+      console.log("\u{1F4CD} Tab URL:", tabs[0].url);
+      console.log("\u{1F4CD} Tab ID:", tabs[0].id);
       let authData = null;
       try {
+        await new Promise((resolve) => setTimeout(resolve, 100));
         authData = await browserAPI5.tabs.sendMessage(tabs[0].id, { action: "getAuthData" });
         console.log("\u2705 Auth data received from content script:", authData);
       } catch (messageError) {
-        console.warn("\u26A0\uFE0F Could not get auth data from content script, trying script injection:", messageError);
+        console.warn("\u26A0\uFE0F Could not get auth data from content script:", messageError);
+        console.warn("\u26A0\uFE0F Error details:", messageError.message, messageError.stack);
+        console.log("\u{1F504} Trying script injection fallback...");
         try {
           console.log("Attempting to inject script into DiceCloud tab...");
           let results;
