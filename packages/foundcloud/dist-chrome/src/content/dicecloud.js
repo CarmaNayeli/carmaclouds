@@ -4624,6 +4624,20 @@ JSON file will download shortly.`);
                       }
                       try {
                         browserAPI.runtime.sendMessage({
+                          action: "clearCharacterData",
+                          characterId: characterData.id || characterData.dicecloud_character_id
+                        }, (clearResponse) => {
+                          if (browserAPI.runtime.lastError) {
+                            debug.log("Cache clear failed (non-critical):", browserAPI.runtime.lastError);
+                          } else {
+                            debug.log("\u{1F9F9} Local cache cleared after sync to prevent storage buildup");
+                          }
+                        });
+                      } catch (clearError) {
+                        debug.log("Could not clear cache (non-critical):", clearError);
+                      }
+                      try {
+                        browserAPI.runtime.sendMessage({
                           action: "dataSynced",
                           slotId,
                           characterName: characterData.name
@@ -4650,6 +4664,20 @@ JSON file will download shortly.`);
                   setTimeout(() => {
                     button.innerHTML = "\u{1F504} Sync to FoundCloud";
                   }, 2e3);
+                }
+                try {
+                  browserAPI.runtime.sendMessage({
+                    action: "clearCharacterData",
+                    characterId: characterData.id || characterData.dicecloud_character_id
+                  }, (clearResponse) => {
+                    if (browserAPI.runtime.lastError) {
+                      debug.log("Cache clear failed (non-critical):", browserAPI.runtime.lastError);
+                    } else {
+                      debug.log("\u{1F9F9} Local cache cleared after sync to prevent storage buildup");
+                    }
+                  });
+                } catch (clearError) {
+                  debug.log("Could not clear cache (non-critical):", clearError);
                 }
                 resolve();
               }

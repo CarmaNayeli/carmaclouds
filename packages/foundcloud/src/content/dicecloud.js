@@ -5292,6 +5292,22 @@ const debug = window.debug || {
                         }, 2000);
                       }
                       
+                      // Clear character from local cache to prevent storage buildup
+                      try {
+                        browserAPI.runtime.sendMessage({
+                          action: 'clearCharacterData',
+                          characterId: characterData.id || characterData.dicecloud_character_id
+                        }, (clearResponse) => {
+                          if (browserAPI.runtime.lastError) {
+                            debug.log('Cache clear failed (non-critical):', browserAPI.runtime.lastError);
+                          } else {
+                            debug.log('🧹 Local cache cleared after sync to prevent storage buildup');
+                          }
+                        });
+                      } catch (clearError) {
+                        debug.log('Could not clear cache (non-critical):', clearError);
+                      }
+                      
                       // Notify popup to refresh its data
                       try {
                         browserAPI.runtime.sendMessage({
@@ -5324,6 +5340,23 @@ const debug = window.debug || {
                     button.innerHTML = '🔄 Sync to FoundCloud';
                   }, 2000);
                 }
+                
+                // Clear character from local cache to prevent storage buildup
+                try {
+                  browserAPI.runtime.sendMessage({
+                    action: 'clearCharacterData',
+                    characterId: characterData.id || characterData.dicecloud_character_id
+                  }, (clearResponse) => {
+                    if (browserAPI.runtime.lastError) {
+                      debug.log('Cache clear failed (non-critical):', browserAPI.runtime.lastError);
+                    } else {
+                      debug.log('🧹 Local cache cleared after sync to prevent storage buildup');
+                    }
+                  });
+                } catch (clearError) {
+                  debug.log('Could not clear cache (non-critical):', clearError);
+                }
+                
                 resolve();
               }
             });
