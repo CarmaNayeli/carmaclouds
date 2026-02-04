@@ -34,6 +34,7 @@ await buildExtension({
     'src/popup-sheet.html',
     'src/status-bar.html',
     'src/options/welcome.html',
+    'src/modules',
   ],
   watch,
   minify
@@ -72,6 +73,7 @@ await buildExtension({
     'src/popup-sheet.html',
     'src/status-bar.html',
     'src/options/welcome.html',
+    'src/modules',
   ],
   watch,
   minify
