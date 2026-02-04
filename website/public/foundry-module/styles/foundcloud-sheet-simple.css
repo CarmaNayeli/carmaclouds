@@ -1,0 +1,713 @@
+/**
+ * FoundCloud Simplified Character Sheet Styles
+ * Based on RollCloud structure with orange theme
+ */
+
+/* CSS Variables for Theming */
+:root {
+  /* Light theme (default) */
+  --bg-primary: #f5f5f5;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f0f0f0;
+  --bg-card: #fff7f0;
+  --bg-card-hover: #ffe8d5;
+  --bg-spell: #fff3cd;
+  --bg-action: #e3f2fd;
+  --bg-resource: #f3e5f5;
+  --bg-feature: #fef5e7;
+
+  --text-primary: #2C3E50;
+  --text-secondary: #666666;
+  --text-muted: #999999;
+  --text-inverse: #ffffff;
+
+  --border-color: #ddd;
+  --border-card: #FF6400;
+  --border-spell: #f39c12;
+  --border-action: #2196f3;
+
+  --accent-primary: #FF6400;
+  --accent-success: #c2185b;
+  --accent-danger: #E74C3C;
+  --accent-warning: #f39c12;
+  --accent-info: #2196f3;
+  --accent-purple: #9b59b6;
+  --accent-purple-dark: #8e44ad;
+
+  --shadow: rgba(0,0,0,0.1);
+  --shadow-hover: rgba(0,0,0,0.15);
+}
+
+/* Dark theme */
+.foundcloud-simple[data-theme="dark"] {
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2d2d2d;
+  --bg-tertiary: #3a3a3a;
+  --bg-card: #3a2e1e;
+  --bg-card-hover: #4a3a28;
+  --bg-spell: #3d3520;
+  --bg-action: #1e2f3d;
+  --bg-resource: #2e1f33;
+  --bg-feature: #3d3620;
+
+  --text-primary: #e0e0e0;
+  --text-secondary: #b0b0b0;
+  --text-muted: #808080;
+  --text-inverse: #1a1a1a;
+
+  --border-color: #444;
+  --border-card: #FF6400;
+  --border-spell: #f5a623;
+  --border-action: #42a5f5;
+
+  --accent-primary: #FF6400;
+  --accent-success: #ec407a;
+  --accent-danger: #e74c3c;
+  --accent-warning: #f5a623;
+  --accent-info: #42a5f5;
+  --accent-purple: #b19cd9;
+  --accent-purple-dark: #9b7fc8;
+
+  --shadow: rgba(0,0,0,0.3);
+  --shadow-hover: rgba(0,0,0,0.4);
+}
+
+/* Base Sheet Styles */
+.foundcloud-simple {
+  font-family: 'Roboto', 'Signika', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.foundcloud-simple .systems-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 15px;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+  gap: 10px;
+}
+
+.foundcloud-simple .theme-switcher {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.foundcloud-simple .theme-btn {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8em;
+  transition: all 0.2s;
+}
+
+.foundcloud-simple .theme-btn:hover {
+  background: var(--accent-primary);
+  color: var(--text-inverse);
+  border-color: var(--accent-primary);
+}
+
+.foundcloud-simple .theme-btn.active {
+  background: var(--accent-primary);
+  color: var(--text-inverse);
+  border-color: var(--accent-primary);
+}
+
+.foundcloud-simple .settings-btn,
+.foundcloud-simple .close-btn {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85em;
+  transition: all 0.2s;
+}
+
+.foundcloud-simple .close-btn {
+  background: var(--accent-danger);
+  color: var(--text-inverse);
+  border: none;
+}
+
+.foundcloud-simple .close-btn:hover {
+  background: #c0392b;
+}
+
+.foundcloud-simple .content-area {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.foundcloud-simple .header {
+  text-align: center;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--accent-primary);
+}
+
+.foundcloud-simple .char-name-section {
+  text-align: center;
+  margin-bottom: 15px;
+  font-size: 1.5em;
+  font-weight: bold;
+  color: var(--text-primary);
+}
+
+.foundcloud-simple .char-info-layer {
+  display: grid;
+  gap: 10px;
+  text-align: center;
+  margin-bottom: 12px;
+  color: var(--text-primary);
+}
+
+.foundcloud-simple .layer-1 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.foundcloud-simple .layer-2 {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.foundcloud-simple .layer-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  max-width: 600px;
+  margin: 0 auto 12px auto;
+}
+
+.foundcloud-simple .stat-box {
+  padding: 10px;
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+}
+
+.foundcloud-simple .stat-box.clickable {
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.foundcloud-simple .stat-box.clickable:hover {
+  background: var(--bg-card-hover);
+  transform: translateY(-2px);
+}
+
+.foundcloud-simple .stat-label {
+  font-size: 0.8em;
+  color: var(--text-secondary);
+  margin-bottom: 3px;
+}
+
+.foundcloud-simple .stat-value {
+  font-size: 1.3em;
+  font-weight: bold;
+  color: var(--text-primary);
+}
+
+.foundcloud-simple .hp-box,
+.foundcloud-simple .initiative-box {
+  padding: 15px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.foundcloud-simple .hp-box {
+  background: var(--accent-danger);
+  color: var(--text-inverse);
+}
+
+.foundcloud-simple .initiative-box {
+  background: var(--accent-info);
+  color: var(--text-inverse);
+}
+
+.foundcloud-simple .rest-buttons {
+  display: flex;
+  gap: 15px;
+  margin-top: 12px;
+  margin-bottom: 10px;
+  justify-content: center;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.foundcloud-simple .rest-btn {
+  background: var(--accent-info);
+  color: var(--text-inverse);
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 0.95em;
+  transition: all 0.2s;
+}
+
+.foundcloud-simple .rest-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.foundcloud-simple .rest-btn.short {
+  background: var(--accent-warning);
+}
+
+.foundcloud-simple .rest-btn.long {
+  background: var(--accent-success);
+}
+
+.foundcloud-simple .advantage-toggle {
+  flex: 1;
+  padding: 10px;
+  border: 2px solid transparent;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.foundcloud-simple .advantage-toggle[data-state="advantage"] {
+  border-color: var(--accent-success);
+  color: var(--accent-success);
+}
+
+.foundcloud-simple .advantage-toggle[data-state="normal"] {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.foundcloud-simple .advantage-toggle[data-state="disadvantage"] {
+  border-color: var(--accent-danger);
+  color: var(--accent-danger);
+}
+
+.foundcloud-simple .advantage-toggle.active {
+  background: var(--accent-primary);
+  color: var(--text-inverse);
+  border-color: var(--accent-primary);
+}
+
+/* Combat Section */
+.foundcloud-simple .combat-section {
+  background: var(--bg-secondary);
+  padding: 15px;
+  border-radius: 8px;
+  margin: 15px 0;
+  border: 2px solid var(--border-color);
+}
+
+.foundcloud-simple .action-economy {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.foundcloud-simple .action-economy-item {
+  flex: 1;
+  min-width: 70px;
+  padding: 10px;
+  border-radius: 8px;
+  text-align: center;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: 2px solid var(--accent-primary);
+}
+
+.foundcloud-simple .action-economy-item[data-used="false"] {
+  background: var(--accent-primary);
+  opacity: 1;
+  box-shadow: 0 0 10px rgba(255, 100, 0, 0.5);
+}
+
+.foundcloud-simple .action-economy-item[data-used="true"] {
+  background: var(--bg-tertiary);
+  opacity: 0.4;
+  box-shadow: none;
+  border-color: var(--border-color);
+}
+
+.foundcloud-simple .action-economy-item:hover {
+  transform: translateY(-2px);
+}
+
+.foundcloud-simple .action-icon {
+  font-size: 1.5em;
+  margin-bottom: 4px;
+}
+
+.foundcloud-simple .action-label {
+  font-size: 0.75em;
+  font-weight: bold;
+  color: var(--text-inverse);
+}
+
+.foundcloud-simple .action-economy-item[data-used="true"] .action-label {
+  color: var(--text-muted);
+}
+
+.foundcloud-simple .combat-reset-btn {
+  padding: 8px 12px;
+  background: var(--accent-warning);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85em;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.foundcloud-simple .combat-reset-btn:hover {
+  background: var(--accent-danger);
+  transform: scale(1.05);
+}
+
+.foundcloud-simple .combat-status-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.foundcloud-simple .concentration-indicator {
+  flex: 1;
+  min-width: 200px;
+  padding: 8px 12px;
+  background: var(--bg-spell);
+  border: 2px solid var(--border-spell);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.foundcloud-simple .concentration-drop-btn {
+  background: var(--accent-danger);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.foundcloud-simple .conditions-manager {
+  flex: 1;
+  min-width: 200px;
+  position: relative;
+}
+
+.foundcloud-simple .conditions-btn {
+  padding: 8px 16px;
+  background: var(--accent-purple);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 0.9em;
+  transition: all 0.2s;
+  width: 100%;
+}
+
+.foundcloud-simple .conditions-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 5px;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px var(--shadow-hover);
+  z-index: 1000;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.foundcloud-simple .condition-option {
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.foundcloud-simple .condition-option:hover {
+  background: var(--bg-card-hover);
+}
+
+.foundcloud-simple .active-conditions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.foundcloud-simple .condition-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--accent-purple);
+  color: var(--text-inverse);
+  border-radius: 20px;
+  font-size: 0.85em;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.foundcloud-simple .condition-badge:hover {
+  background: var(--accent-danger);
+  transform: scale(1.05);
+}
+
+/* Sections */
+.foundcloud-simple .section {
+  margin-bottom: 25px;
+}
+
+.foundcloud-simple .section h3 {
+  color: var(--text-primary);
+  margin-bottom: 10px;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.foundcloud-simple .section h3:hover {
+  background: var(--bg-tertiary);
+}
+
+.foundcloud-simple .section-content {
+  overflow: hidden;
+  transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+  max-height: 5000px;
+  opacity: 1;
+}
+
+.foundcloud-simple .grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+}
+
+.foundcloud-simple .card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: 4px;
+  padding: 15px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.foundcloud-simple .card:hover {
+  background: var(--bg-card-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px var(--shadow-hover);
+}
+
+.foundcloud-simple .bonus {
+  color: var(--accent-primary);
+  font-weight: bold;
+}
+
+.foundcloud-simple .spell-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.foundcloud-simple .spell-slot-card {
+  background: var(--bg-action);
+  border: 2px solid var(--accent-info);
+  border-radius: 6px;
+  padding: 10px;
+  text-align: center;
+  font-size: 0.9em;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.foundcloud-simple .spell-slot-card:hover {
+  transform: translateY(-2px);
+}
+
+.foundcloud-simple .spell-slot-card.empty {
+  opacity: 0.5;
+  border-color: var(--border-color);
+  background: var(--bg-tertiary);
+}
+
+.foundcloud-simple .spell-card,
+.foundcloud-simple .action-card {
+  background: var(--bg-spell);
+  border: 1px solid var(--border-spell);
+  margin-bottom: 10px;
+  padding: 10px;
+  border-radius: 4px;
+}
+
+.foundcloud-simple .action-card {
+  background: var(--bg-action);
+  border-color: var(--accent-danger);
+}
+
+.foundcloud-simple .spell-header,
+.foundcloud-simple .action-header {
+  display: flex;
+  justify-content: space-between;
+  cursor: pointer;
+  padding: 5px;
+  align-items: flex-start;
+}
+
+.foundcloud-simple .spell-header:hover,
+.foundcloud-simple .action-header:hover {
+  background: var(--bg-feature);
+}
+
+.foundcloud-simple .spell-description,
+.foundcloud-simple .action-description {
+  display: none;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-spell);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.foundcloud-simple .spell-description.expanded,
+.foundcloud-simple .action-description.expanded {
+  display: block;
+}
+
+.foundcloud-simple .cast-btn,
+.foundcloud-simple .attack-btn,
+.foundcloud-simple .damage-btn,
+.foundcloud-simple .use-btn {
+  color: var(--text-inverse);
+  border: none;
+  padding: 5px 12px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.9em;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.foundcloud-simple .cast-btn {
+  background: var(--accent-purple);
+}
+
+.foundcloud-simple .attack-btn {
+  background: var(--accent-danger);
+}
+
+.foundcloud-simple .damage-btn {
+  background: var(--accent-warning);
+}
+
+.foundcloud-simple .use-btn {
+  background: var(--accent-purple);
+}
+
+.foundcloud-simple .cast-btn:hover,
+.foundcloud-simple .attack-btn:hover,
+.foundcloud-simple .damage-btn:hover,
+.foundcloud-simple .use-btn:hover {
+  transform: translateY(-1px);
+}
+
+.foundcloud-simple .concentration-tag,
+.foundcloud-simple .ritual-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75em;
+  margin-left: 8px;
+  font-weight: bold;
+  color: var(--text-inverse);
+}
+
+.foundcloud-simple .concentration-tag {
+  background: var(--accent-info);
+}
+
+.foundcloud-simple .ritual-tag {
+  background: var(--accent-purple);
+}
+
+/* Filter Buttons */
+.foundcloud-simple .filter-btn {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85em;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.foundcloud-simple .filter-btn:hover {
+  background: var(--bg-card-hover);
+  transform: translateY(-1px);
+}
+
+.foundcloud-simple .filter-btn.active {
+  background: var(--accent-primary);
+  color: var(--text-inverse);
+  border-color: var(--accent-primary);
+  font-weight: bold;
+}
+
+/* Scrollbar */
+.foundcloud-simple .content-area::-webkit-scrollbar {
+  width: 10px;
+}
+
+.foundcloud-simple .content-area::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+}
+
+.foundcloud-simple .content-area::-webkit-scrollbar-thumb {
+  background: var(--accent-primary);
+  border-radius: 5px;
+}
+
+.foundcloud-simple .content-area::-webkit-scrollbar-thumb:hover {
+  background: #ff8c5a;
+}

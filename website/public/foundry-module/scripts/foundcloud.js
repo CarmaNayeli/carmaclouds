@@ -12,6 +12,7 @@ import { SupabaseBridge } from './supabase-bridge.js';
 import { DiceCloudImporter } from './dicecloud-importer.js';
 import { FoundCloudUI } from './ui.js';
 import { FoundCloudSheet } from './foundcloud-sheet.js';
+import { FoundCloudSheetSimple } from './foundcloud-sheet-simple.js';
 
 /**
  * Main FoundCloud module class
@@ -162,14 +163,20 @@ Hooks.once('init', async () => {
   // Make FoundCloud API available globally
   game.foundcloud = window.FoundCloud;
 
-  // Register the FoundCloud character sheet
+  // Register the FoundCloud character sheets
   Actors.registerSheet('foundcloud', FoundCloudSheet, {
+    types: ['character'],
+    makeDefault: false,
+    label: 'FoundCloud Sheet (Legacy)'
+  });
+
+  Actors.registerSheet('foundcloud', FoundCloudSheetSimple, {
     types: ['character'],
     makeDefault: false,
     label: 'FoundCloud Sheet'
   });
 
-  console.log('FoundCloud | Custom character sheet registered');
+  console.log('FoundCloud | Custom character sheets registered');
 
   // Register Handlebars helpers
   Handlebars.registerHelper('eq', function(a, b) {
@@ -182,7 +189,8 @@ Hooks.once('init', async () => {
 
   // Preload handlebars templates
   await loadTemplates([
-    'modules/foundcloud/templates/foundcloud-sheet.hbs'
+    'modules/foundcloud/templates/foundcloud-sheet.hbs',
+    'modules/foundcloud/templates/foundcloud-sheet-simple.hbs'
   ]);
 
   console.log('FoundCloud | Templates preloaded');
