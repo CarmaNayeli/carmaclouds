@@ -228,21 +228,13 @@ async function syncCharacterToSupabase(char) {
   // Parse character data using parseForFoundCloud
   const parsedData = window.parseForFoundCloud ? window.parseForFoundCloud(char.raw, char.id) : null;
   
+  // Only use fields that exist in the actual table
   const characterData = {
     dicecloud_character_id: char.id,
     character_name: char.name,
     level: parsedData?.level || char.level || 1,
     race: parsedData?.race || char.race || 'Unknown',
     class: parsedData?.class || char.class || 'Unknown',
-    hit_points: parsedData?.hit_points || { current: 0, max: 0 },
-    armor_class: parsedData?.armor_class || 10,
-    speed: parsedData?.speed || 30,
-    initiative: parsedData?.initiative || 0,
-    proficiency_bonus: parsedData?.proficiency_bonus || 2,
-    attributes: parsedData?.attributes || {},
-    saves: parsedData?.saves || {},
-    skills: parsedData?.skills || {},
-    spell_slots: parsedData?.spell_slots || {},
     raw_dicecloud_data: parsedData?.raw_dicecloud_data || char.raw || {}
   };
 
