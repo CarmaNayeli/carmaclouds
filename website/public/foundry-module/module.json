@@ -2,7 +2,7 @@
   "id": "foundcloud",
   "title": "FoundCloud",
   "description": "Sync DiceCloud V2 characters to Foundry VTT via Supabase cloud sync. Import your DiceCloud characters directly into Foundry with all stats, skills, and abilities. Works with the CarmaClouds browser extension.",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "authors": [
     {
       "name": "CarmaNayeli",
