@@ -113,10 +113,11 @@ export class DiceCloudImporter {
    * @returns {object} Foundry actor data
    */
   mapSupabaseToFoundryActor(sb) {
+    const parsed = sb.foundcloud_parsed_data || {};
     return {
       name: sb.character_name || 'Unnamed Character',
       type: 'character',
-      img: sb.raw_dicecloud_data?.picture || 'icons/svg/mystery-man.svg',
+      img: parsed.raw_dicecloud_data?.picture || 'icons/svg/mystery-man.svg',
       system: {
         abilities: this.mapAbilitiesFromSupabase(sb),
         attributes: this.mapAttributesFromSupabase(sb),
@@ -179,7 +180,11 @@ export class DiceCloudImporter {
         success: parsed.death_saves?.successes || 0,
         failure: parsed.death_saves?.failures || 0
       },
-      inspiration: parsed.inspiration || false
+      inspiration: parsed.inspiration || false,
+      hd: {
+        value: parsed.level || 1,
+        max: parsed.level || 1
+      }
     };
   }
 
@@ -189,17 +194,18 @@ export class DiceCloudImporter {
    * @returns {object}
    */
   mapDetailsFromSupabase(sb) {
+    const parsed = sb.foundcloud_parsed_data || {};
     return {
       biography: {
-        value: sb.raw_dicecloud_data?.description || '',
+        value: parsed.raw_dicecloud_data?.description || '',
         public: ''
       },
-      alignment: sb.alignment || '',
-      race: sb.race || '',
-      background: sb.raw_dicecloud_data?.background || '',
-      level: sb.level || 1,
+      alignment: parsed.alignment || sb.alignment || '',
+      race: parsed.race || sb.race || '',
+      background: parsed.background || '',
+      level: parsed.level || sb.level || 1,
       xp: {
-        value: sb.raw_dicecloud_data?.experiencePoints || 0
+        value: parsed.raw_dicecloud_data?.experiencePoints || 0
       }
     };
   }
