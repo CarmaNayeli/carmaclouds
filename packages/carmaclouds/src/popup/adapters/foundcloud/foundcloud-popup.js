@@ -234,7 +234,6 @@ async function syncCharacterToSupabase(char) {
     level: parsedData?.level || char.level || 1,
     race: parsedData?.race || char.race || 'Unknown',
     class: parsedData?.class || char.class || 'Unknown',
-    alignment: parsedData?.alignment || '',
     hit_points: parsedData?.hit_points || { current: 0, max: 0 },
     armor_class: parsedData?.armor_class || 10,
     speed: parsedData?.speed || 30,
@@ -244,10 +243,7 @@ async function syncCharacterToSupabase(char) {
     saves: parsedData?.saves || {},
     skills: parsedData?.skills || {},
     spell_slots: parsedData?.spell_slots || {},
-    raw_dicecloud_data: parsedData?.raw_dicecloud_data || char.raw || {},
-    platform: ['foundcloud'], // Platform identifier
-    owlbear_player_id: null, // Not used by Foundry
-    updated_at: new Date().toISOString()
+    raw_dicecloud_data: parsedData?.raw_dicecloud_data || char.raw || {}
   };
 
   // Upsert to clouds_characters table (shared with OwlCloud)

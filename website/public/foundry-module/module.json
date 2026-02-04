@@ -2,7 +2,7 @@
   "id": "foundcloud",
   "title": "FoundCloud",
   "description": "Sync DiceCloud V2 characters to Foundry VTT via Supabase cloud sync. Includes a custom character sheet with combat tracking, action economy, and more. Works with the FoundCloud browser extension.",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "authors": [
     {
       "name": "CarmaNayeli",
