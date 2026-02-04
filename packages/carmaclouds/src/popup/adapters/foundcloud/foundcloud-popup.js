@@ -200,7 +200,9 @@ async function syncCharacter(charId) {
  */
 async function syncCharacterToSupabase(char) {
   // Parse character data using parseForFoundCloud
+  console.log('🔍 Checking for parseForFoundCloud:', typeof window.parseForFoundCloud);
   const parsedData = window.parseForFoundCloud ? window.parseForFoundCloud(char.raw, char.id) : null;
+  console.log('📊 Parsed data:', parsedData ? 'Available' : 'NULL');
   
   // Build character data with basic fields and parsed data in single JSON column
   const characterData = {
@@ -213,6 +215,13 @@ async function syncCharacterToSupabase(char) {
     raw_dicecloud_data: char.raw || {},
     platform: ['foundcloud']
   };
+  
+  console.log('💾 Syncing to Supabase:', {
+    id: characterData.dicecloud_character_id,
+    name: characterData.character_name,
+    hasParsedData: !!parsedData,
+    parsedDataKeys: parsedData ? Object.keys(parsedData) : []
+  });
 
   // Check if character already exists
   const { data: existing } = await supabase

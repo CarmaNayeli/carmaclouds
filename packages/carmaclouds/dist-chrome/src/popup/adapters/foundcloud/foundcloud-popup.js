@@ -11641,7 +11641,9 @@ ${suffix}`;
     }
   }
   async function syncCharacterToSupabase(char) {
+    console.log("\u{1F50D} Checking for parseForFoundCloud:", typeof window.parseForFoundCloud);
     const parsedData = window.parseForFoundCloud ? window.parseForFoundCloud(char.raw, char.id) : null;
+    console.log("\u{1F4CA} Parsed data:", parsedData ? "Available" : "NULL");
     const characterData = {
       dicecloud_character_id: char.id,
       character_name: char.name,
@@ -11652,6 +11654,12 @@ ${suffix}`;
       raw_dicecloud_data: char.raw || {},
       platform: ["foundcloud"]
     };
+    console.log("\u{1F4BE} Syncing to Supabase:", {
+      id: characterData.dicecloud_character_id,
+      name: characterData.character_name,
+      hasParsedData: !!parsedData,
+      parsedDataKeys: parsedData ? Object.keys(parsedData) : []
+    });
     const { data: existing } = await supabase.from("clouds_characters").select("id").eq("dicecloud_character_id", char.id).single();
     if (existing) {
       const { error } = await supabase.from("clouds_characters").update(characterData).eq("dicecloud_character_id", char.id);
