@@ -29,7 +29,7 @@ export default function RollCloudTab() {
           </p>
           <div className="flex gap-4">
             <a
-              href="https://github.com/CarmaNayeli/carmaclouds/releases"
+              href="https://github.com/CarmaNayeli/carmaclouds/releases/latest/download/carmaclouds-chrome.zip"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-block bg-[#e91e8c] hover:bg-[#ff2ea0] text-white font-medium px-6 py-3 rounded-lg transition-colors"
@@ -37,10 +37,10 @@ export default function RollCloudTab() {
               Download for Chrome/Edge
             </a>
             <a
-              href="https://github.com/CarmaNayeli/carmaclouds/releases"
+              href="https://github.com/CarmaNayeli/carmaclouds/releases/latest/download/carmaclouds-firefox.zip"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block bg-gray-700 hover:bg-gray-600 text-white font-medium px-6 py-3 rounded-lg transition-colors"
+              className="inline-block bg-[#e91e8c] hover:bg-[#ff2ea0] text-white font-medium px-6 py-3 rounded-lg transition-colors"
             >
               Download for Firefox
             </a>
