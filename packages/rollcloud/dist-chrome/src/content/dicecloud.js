@@ -603,6 +603,8 @@
         id: creature._id || getCharacterIdFromUrl(),
         // CRITICAL: Store character ID for proper persistence
         name: creature.name || "",
+        picture: creature.picture || creature.avatarPicture || null,
+        // Character portrait URL
         race: "",
         class: "",
         level: 0,
