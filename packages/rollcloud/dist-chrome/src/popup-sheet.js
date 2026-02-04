@@ -92,32 +92,6 @@
         } else {
           debug.warn("\u26A0\uFE0F buildSheet function not available");
         }
-        const portraitElement = document.getElementById("char-portrait");
-        debug.log("\u{1F5BC}\uFE0F Portrait element found:", portraitElement);
-        debug.log("\u{1F5BC}\uFE0F Character data for portrait:", characterData?.picture, characterData?.avatarPicture);
-        if (portraitElement && characterData) {
-          const portraitUrl = characterData.picture || characterData.avatarPicture;
-          if (portraitUrl) {
-            debug.log("\u{1F5BC}\uFE0F Cropping portrait from URL:", portraitUrl);
-            cropToCircle(portraitUrl, 120).then((croppedUrl) => {
-              portraitElement.src = croppedUrl;
-              portraitElement.style.display = "block";
-              debug.log("\u2705 Portrait displayed successfully");
-            }).catch((err) => {
-              debug.warn("\u26A0\uFE0F Failed to crop portrait:", err);
-              portraitElement.src = portraitUrl;
-              portraitElement.style.display = "block";
-              debug.log("\u2705 Portrait displayed (uncropped fallback)");
-            });
-          } else {
-            debug.log("\u2139\uFE0F No portrait URL available in character data");
-          }
-        } else {
-          if (!portraitElement)
-            debug.warn("\u26A0\uFE0F Portrait element not found");
-          if (!characterData)
-            debug.warn("\u26A0\uFE0F No character data for portrait");
-        }
         initRacialTraits();
         initFeatTraits();
         initClassFeatures();

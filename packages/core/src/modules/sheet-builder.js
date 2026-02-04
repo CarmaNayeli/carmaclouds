@@ -137,6 +137,36 @@
     const characterName = data.name || 'Character';
     charNameEl.textContent = characterName;
 
+    // Display character portrait if available
+    const portraitElement = document.getElementById('char-portrait');
+    if (portraitElement && data) {
+      const portraitUrl = data.picture || data.avatarPicture;
+      if (portraitUrl) {
+        debug.log('🖼️ Displaying portrait from URL:', portraitUrl);
+        // Use cropToCircle if available, otherwise display directly
+        if (typeof cropToCircle === 'function') {
+          cropToCircle(portraitUrl, 120).then(croppedUrl => {
+            portraitElement.src = croppedUrl;
+            portraitElement.style.display = 'block';
+            debug.log('✅ Portrait displayed (cropped)');
+          }).catch(err => {
+            debug.warn('⚠️ Failed to crop portrait:', err);
+            // Fallback to original image
+            portraitElement.src = portraitUrl;
+            portraitElement.style.display = 'block';
+            debug.log('✅ Portrait displayed (uncropped fallback)');
+          });
+        } else {
+          // No cropToCircle function available, display directly
+          portraitElement.src = portraitUrl;
+          portraitElement.style.display = 'block';
+          debug.log('✅ Portrait displayed (no crop function available)');
+        }
+      } else {
+        debug.log('ℹ️ No portrait URL in character data');
+      }
+    }
+
     // Update color picker emoji in systems bar
     const currentColorEmoji = getColorEmoji(data.notificationColor || '#3498db');
     const colorEmojiEl = document.getElementById('color-emoji');
