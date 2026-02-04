@@ -32,7 +32,7 @@ export default function CookieBanner() {
         </div>
         <button
           onClick={handleDismiss}
-          className="bg-[#e91e8c] hover:bg-[#ff2ea0] text-white font-medium px-6 py-2 rounded-lg transition-colors whitespace-nowrap"
+          className="bg-[#16a75a] hover:bg-[#1bc76a] text-white font-medium px-6 py-2 rounded-lg transition-colors whitespace-nowrap"
         >
           Got it!
         </button>
