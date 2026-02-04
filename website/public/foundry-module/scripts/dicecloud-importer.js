@@ -129,12 +129,13 @@ export class DiceCloudImporter {
   }
 
   /**
-   * Map abilities from Supabase attributes JSONB
+   * Map abilities from foundcloud_parsed_data
    * @param {object} sb - Supabase data
    * @returns {object}
    */
   mapAbilitiesFromSupabase(sb) {
-    const attrs = sb.attributes || {};
+    const parsed = sb.foundcloud_parsed_data || {};
+    const attrs = parsed.attributes || {};
 
     return {
       str: { value: attrs.strength || attrs.STR || 10 },
@@ -147,36 +148,37 @@ export class DiceCloudImporter {
   }
 
   /**
-   * Map attributes (HP, AC, etc.) from Supabase
+   * Map attributes (HP, AC, etc.) from foundcloud_parsed_data
    * @param {object} sb - Supabase data
    * @returns {object}
    */
   mapAttributesFromSupabase(sb) {
-    const hp = sb.hit_points || {};
+    const parsed = sb.foundcloud_parsed_data || {};
+    const hp = parsed.hit_points || {};
 
     return {
       hp: {
         value: hp.current || 0,
         max: hp.max || 0,
-        temp: sb.temporary_hp || 0
+        temp: parsed.temporary_hp || 0
       },
       ac: {
-        value: sb.armor_class || 10
+        value: parsed.armor_class || 10
       },
       init: {
-        bonus: sb.initiative || 0
+        bonus: parsed.initiative || 0
       },
       movement: {
-        walk: sb.speed || 30,
-        fly: sb.raw_dicecloud_data?.flySpeed || 0,
-        swim: sb.raw_dicecloud_data?.swimSpeed || 0,
-        climb: sb.raw_dicecloud_data?.climbSpeed || 0
+        walk: parsed.speed || 30,
+        fly: parsed.flySpeed || 0,
+        swim: parsed.swimSpeed || 0,
+        climb: parsed.climbSpeed || 0
       },
       death: {
-        success: sb.death_saves?.successes || 0,
-        failure: sb.death_saves?.failures || 0
+        success: parsed.death_saves?.successes || 0,
+        failure: parsed.death_saves?.failures || 0
       },
-      inspiration: sb.inspiration || false
+      inspiration: parsed.inspiration || false
     };
   }
 
@@ -256,13 +258,14 @@ export class DiceCloudImporter {
   }
 
   /**
-   * Map skills from Supabase
+   * Map skills from foundcloud_parsed_data
    * @param {object} sb - Supabase data
    * @returns {object}
    */
   mapSkillsFromSupabase(sb) {
+    const parsed = sb.foundcloud_parsed_data || {};
     const skills = {};
-    const skillData = sb.skills || {};
+    const skillData = parsed.skills || {};
     const skillList = [
       'acr', 'ani', 'arc', 'ath', 'dec', 'his', 'ins',
       'itm', 'inv', 'med', 'nat', 'prc', 'prf', 'per',
@@ -300,8 +303,9 @@ export class DiceCloudImporter {
    * @returns {object}
    */
   mapSpellSlotsFromSupabase(sb) {
+    const parsed = sb.foundcloud_parsed_data || {};
     const spells = {};
-    const spellSlots = sb.spell_slots || {};
+    const spellSlots = parsed.spell_slots || {};
 
     for (let i = 1; i <= 9; i++) {
       const levelKey = `level${i}`;
