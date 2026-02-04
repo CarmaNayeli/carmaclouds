@@ -31,186 +31,78 @@ export default function OwlCloudTab() {
             OwlCloud
           </h2>
           <p className="text-gray-400 text-lg leading-relaxed">
-            Browser extension that integrates DiceCloud character sheets with Owlbear Rodeo,
-            bringing your D&D characters to life in your favorite virtual tabletop.
+            The Owlbear Rodeo tab in CarmaClouds extension. Sync your DiceCloud V2 characters to Owlbear Rodeo with one click.
           </p>
         </div>
       </section>
 
       <section className="bg-black border border-[#a855f7] rounded-lg p-6">
-        <h3 className="text-2xl font-semibold mb-4 text-[#a855f7]">Download Browser Extension</h3>
+        <h3 className="text-2xl font-semibold mb-4 text-[#a855f7]">Download CarmaClouds</h3>
         <div className="space-y-4">
+          <p className="text-gray-400 mb-4">
+            OwlCloud is included in the unified CarmaClouds extension. Install once, use everywhere.
+          </p>
           <div className="flex gap-4">
             <a
-              href="https://github.com/CarmaNayeli/carmaclouds/releases/download/owlcloud-v2.1.0/owlcloud-v2.1.0-firefox.zip"
+              href="https://github.com/CarmaNayeli/carmaclouds/releases"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-block bg-[#a855f7] hover:bg-[#c084fc] text-white font-medium px-6 py-3 rounded-lg transition-colors"
             >
-              📥 Download Firefox Extension
+              Download for Chrome/Edge
             </a>
             <a
-              href="https://github.com/CarmaNayeli/carmaclouds/releases/tag/owlcloud-v2.1.0"
+              href="https://github.com/CarmaNayeli/carmaclouds/releases"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-block bg-gray-700 hover:bg-gray-600 text-white font-medium px-6 py-3 rounded-lg transition-colors"
             >
-              📋 View Release Notes
+              Download for Firefox
             </a>
           </div>
-          <p className="text-gray-500 text-sm">
-            Current version: <span className="text-[#a855f7] font-semibold">v2.2.1</span> - HP management, formula evaluation, and enhanced character sync!
-          </p>
         </div>
       </section>
 
       <section>
-        <h3 className="text-2xl font-semibold mb-4 text-white">Features</h3>
-        <div className="grid md:grid-cols-2 gap-4">
-          <div className="bg-black border border-gray-800 rounded-lg p-4 hover:border-[#a855f7] transition-colors">
-            <h4 className="font-semibold text-[#a855f7] mb-2">🎲 3D Dice Integration</h4>
-            <p className="text-gray-400 text-sm">
-              Beautiful physics-based 3D dice with{' '}
-              <a
-                href="https://extensions.owlbear.rodeo/dice-plus"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[#a855f7] hover:text-[#c084fc] underline"
-              >
-                Dice+
-              </a>
-              {' '}extension support. If you enjoy Dice+, support the developer:{' '}
-              <a
-                href="https://www.patreon.com/c/MissingLinkDev"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[#a855f7] hover:text-[#c084fc] underline"
-              >
-                Missing Link Dev on Patreon
-              </a>
-            </p>
-          </div>
-          <div className="bg-black border border-gray-800 rounded-lg p-4 hover:border-[#a855f7] transition-colors">
-            <h4 className="font-semibold text-[#a855f7] mb-2">📜 DiceCloud Integration</h4>
-            <p className="text-gray-400 text-sm">
-              Access your DiceCloud character sheets from Owlbear Rodeo
-            </p>
-          </div>
-          <div className="bg-black border border-gray-800 rounded-lg p-4 hover:border-[#a855f7] transition-colors">
-            <h4 className="font-semibold text-[#a855f7] mb-2">🦉 Owlbear Extension</h4>
-            <p className="text-gray-400 text-sm">
-              Native Owlbear Rodeo extension for in-game character management
-            </p>
-          </div>
-          <div className="bg-black border border-gray-800 rounded-lg p-4 hover:border-[#a855f7] transition-colors">
-            <h4 className="font-semibold text-[#a855f7] mb-2">💬 Persistent Chat</h4>
-            <p className="text-gray-400 text-sm">
-              Session-long chat history with all rolls, spells, and actions
-            </p>
-          </div>
-          <div className="bg-black border border-gray-800 rounded-lg p-4 hover:border-[#a855f7] transition-colors">
-            <h4 className="font-semibold text-[#a855f7] mb-2">⚔️ Combat Tools</h4>
-            <p className="text-gray-400 text-sm">
-              Attack rolls, damage, death saves, and advantage/disadvantage
-            </p>
-          </div>
-          <div className="bg-black border border-gray-800 rounded-lg p-4 hover:border-[#a855f7] transition-colors">
-            <h4 className="font-semibold text-[#a855f7] mb-2">📊 Character State</h4>
-            <p className="text-gray-400 text-sm">
-              Track HP, spell slots, and other resources in real-time
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section>
-        <h3 className="text-2xl font-semibold mb-4 text-white">Setup Guide</h3>
-
-        <div className="bg-black border border-gray-800 rounded-lg p-6 mb-6">
-          <h4 className="text-xl font-semibold mb-3 text-[#a855f7]">Step 1: Install Browser Extension</h4>
-          <ol className="space-y-3 text-gray-400">
-            <li className="flex items-start">
-              <span className="text-[#a855f7] font-semibold mr-3">1.</span>
-              <span>Download the extension from GitHub</span>
-            </li>
-            <li className="flex items-start">
-              <span className="text-[#a855f7] font-semibold mr-3">2.</span>
-              <span>Open your browser's extension management page</span>
-            </li>
-            <li className="flex items-start">
-              <span className="text-[#a855f7] font-semibold mr-3">3.</span>
-              <span>Enable "Developer mode"</span>
-            </li>
-            <li className="flex items-start">
-              <span className="text-[#a855f7] font-semibold mr-3">4.</span>
-              <span>Click "Load unpacked" and select the OwlCloud dist directory</span>
-            </li>
-          </ol>
-        </div>
-
-        <div className="bg-black border border-yellow-500 rounded-lg p-6 mb-6">
-          <h4 className="text-xl font-semibold mb-3 text-yellow-500">Step 2: Create CarmaClouds Account</h4>
-          <div className="bg-yellow-900 border border-yellow-500 rounded-lg p-4 mb-4">
-            <p className="text-white font-semibold mb-2">⚠️ IMPORTANT SECURITY NOTICE</p>
-            <p className="text-gray-300 text-sm leading-relaxed">
-              Your CarmaClouds login is <span className="text-yellow-400 font-bold">NOT</span> your DiceCloud password!
-              Create a <span className="text-[#a855f7] font-semibold">new, separate account</span> for CarmaClouds.
-              Never use your DiceCloud credentials here.
-            </p>
-          </div>
-          <ol className="space-y-3 text-gray-400">
-            <li className="flex items-start">
-              <span className="text-[#a855f7] font-semibold mr-3">1.</span>
-              <span>Open the browser extension and click the OwlCloud tab</span>
-            </li>
-            <li className="flex items-start">
-              <span className="text-[#a855f7] font-semibold mr-3">2.</span>
-              <span>Expand the "Character Sync" section</span>
-            </li>
-            <li className="flex items-start">
-              <span className="text-[#a855f7] font-semibold mr-3">3.</span>
-              <span>Enter a <span className="text-[#a855f7]">new email and password</span> (not your DiceCloud credentials)</span>
-            </li>
-            <li className="flex items-start">
-              <span className="text-[#a855f7] font-semibold mr-3">4.</span>
-              <span>Click "Sign Up" to create your account</span>
-            </li>
-            <li className="flex items-start">
-              <span className="text-[#a855f7] font-semibold mr-3">5.</span>
-              <span>Once signed in, your DiceCloud characters will be synced automatically</span>
-            </li>
-          </ol>
-          <div className="mt-4 p-3 bg-gray-900 border border-gray-700 rounded-lg">
-            <p className="text-gray-400 text-sm">
-              <span className="text-[#a855f7] font-semibold">Why a separate account?</span> CarmaClouds stores character sync data
-              in a secure database. We never ask for or store your DiceCloud password. This keeps your DiceCloud account
-              completely separate and secure.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-black border border-gray-800 rounded-lg p-6">
-        <h3 className="text-xl font-semibold mb-4 text-[#a855f7]">Step 3: Install Owlbear Extension</h3>
-        <ol className="space-y-3 text-gray-400 mb-6">
+        <h3 className="text-2xl font-semibold mb-4 text-white">How to Use OwlCloud</h3>
+        <ol className="space-y-4 text-gray-400">
           <li className="flex items-start">
-            <span className="text-[#a855f7] font-semibold mr-3">1.</span>
-            <span>Open your Owlbear Rodeo room</span>
+            <span className="text-[#a855f7] font-semibold mr-3 text-xl">1.</span>
+            <div>
+              <strong className="text-white">Install Owlbear Extension</strong>
+              <p className="mt-1">In Owlbear Rodeo, add the OwlCloud extension using manifest URL: <code className="bg-gray-800 px-2 py-1 rounded text-sm">https://carmaclouds.vercel.app/extension/owlbear-extension/manifest.json</code></p>
+            </div>
           </li>
           <li className="flex items-start">
-            <span className="text-[#a855f7] font-semibold mr-3">2.</span>
-            <span>Navigate to Extensions in the room settings</span>
+            <span className="text-[#a855f7] font-semibold mr-3 text-xl">2.</span>
+            <div>
+              <strong className="text-white">Sync from DiceCloud</strong>
+              <p className="mt-1">Go to dicecloud.com, open your character, and click "Sync to CarmaClouds"</p>
+            </div>
           </li>
           <li className="flex items-start">
-            <span className="text-[#a855f7] font-semibold mr-3">3.</span>
-            <span>Click "Add Extension" and paste the manifest URL below</span>
+            <span className="text-[#a855f7] font-semibold mr-3 text-xl">3.</span>
+            <div>
+              <strong className="text-white">Open Owlbear Rodeo</strong>
+              <p className="mt-1">Navigate to owlbear.rodeo and open your room</p>
+            </div>
           </li>
           <li className="flex items-start">
-            <span className="text-[#a855f7] font-semibold mr-3">4.</span>
-            <span>Enable the extension and reload your room</span>
+            <span className="text-[#a855f7] font-semibold mr-3 text-xl">4.</span>
+            <div>
+              <strong className="text-white">Done!</strong>
+              <p className="mt-1">Open the OwlCloud popover to access your character sheet with rolls, spells, and abilities</p>
+            </div>
           </li>
         </ol>
-        
+      </section>
+
+      <section className="bg-black border border-[#a855f7] rounded-lg p-6">
+        <h3 className="text-2xl font-semibold mb-4 text-[#a855f7]">Owlbear Extension Installation</h3>
+        <p className="text-gray-400 mb-6">
+          Copy the manifest URL below to install the OwlCloud extension in Owlbear Rodeo.
+        </p>
+
         <div className="bg-gray-900 border border-gray-700 rounded-lg p-4">
           <label className="block text-sm font-medium text-gray-300 mb-2">
             Extension Manifest URL
@@ -232,47 +124,33 @@ export default function OwlCloudTab() {
         </div>
       </section>
 
-      <section className="bg-black border border-gray-800 rounded-lg p-6">
-        <h3 className="text-xl font-semibold mb-4 text-[#a855f7]">Step 4: Using OwlCloud in Owlbear Rodeo</h3>
-        <ol className="space-y-3 text-gray-400 mb-4">
-          <li className="flex items-start">
-            <span className="text-[#a855f7] font-semibold mr-3">1.</span>
-            <span>Open the OwlCloud extension popover in your Owlbear room</span>
-          </li>
-          <li className="flex items-start">
-            <span className="text-[#a855f7] font-semibold mr-3">2.</span>
-            <span>Your active DiceCloud character will appear automatically</span>
-          </li>
-          <li className="flex items-start">
-            <span className="text-[#a855f7] font-semibold mr-3">3.</span>
-            <span>Use the "Switch Character" section to select different characters</span>
-          </li>
-          <li className="flex items-start">
-            <span className="text-[#a855f7] font-semibold mr-3">4.</span>
-            <span>Click through the tabs (Stats, Spells, Actions, etc.) to access your character sheet</span>
-          </li>
-          <li className="flex items-start">
-            <span className="text-[#a855f7] font-semibold mr-3">5.</span>
-            <span>Roll abilities, cast spells, and track resources directly from the extension</span>
-          </li>
-          <li className="flex items-start">
-            <span className="text-[#a855f7] font-semibold mr-3">6.</span>
-            <span>Open the chat window to see your complete session history</span>
-          </li>
-        </ol>
-        <div className="p-3 bg-gray-900 border border-gray-700 rounded-lg">
-          <p className="text-gray-400 text-sm">
-            <span className="text-[#a855f7] font-semibold">Pro Tip:</span> Install the{' '}
-            <a
-              href="https://extensions.owlbear.rodeo/dice-plus"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[#a855f7] hover:text-[#c084fc] underline"
-            >
-              Dice+ extension
-            </a>
-            {' '}for beautiful 3D dice rolls that automatically sync with OwlCloud!
-          </p>
+      <section>
+        <h3 className="text-2xl font-semibold mb-4 text-white">Features</h3>
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="bg-black border border-gray-800 rounded-lg p-4 hover:border-[#a855f7] transition-colors">
+            <h4 className="font-semibold text-[#a855f7] mb-2">One-Click Push</h4>
+            <p className="text-gray-400 text-sm">
+              Send your entire character sheet to Owlbear Rodeo instantly
+            </p>
+          </div>
+          <div className="bg-black border border-gray-800 rounded-lg p-4 hover:border-[#a855f7] transition-colors">
+            <h4 className="font-semibold text-[#a855f7] mb-2">Full Character Data</h4>
+            <p className="text-gray-400 text-sm">
+              Attributes, skills, saves, spells, inventory - everything syncs
+            </p>
+          </div>
+          <div className="bg-black border border-gray-800 rounded-lg p-4 hover:border-[#a855f7] transition-colors">
+            <h4 className="font-semibold text-[#a855f7] mb-2">3D Dice Integration</h4>
+            <p className="text-gray-400 text-sm">
+              Beautiful physics-based 3D dice with Dice+ extension support
+            </p>
+          </div>
+          <div className="bg-black border border-gray-800 rounded-lg p-4 hover:border-[#a855f7] transition-colors">
+            <h4 className="font-semibold text-[#a855f7] mb-2">Persistent Chat</h4>
+            <p className="text-gray-400 text-sm">
+              Session-long chat history with all rolls, spells, and actions
+            </p>
+          </div>
         </div>
       </section>
     </div>
