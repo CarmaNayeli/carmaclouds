@@ -197,9 +197,33 @@ export class DiceCloudImporter {
       inspiration: parsed.inspiration || false,
       hd: {
         value: parsed.level || 1,
-        max: parsed.level || 1
+        max: parsed.level || 1,
+        denomination: this.getHitDieDenomination(parsed.class || sb.class)
       }
     };
+  }
+
+  /**
+   * Get hit die denomination based on class
+   * @param {string} className - Character class name
+   * @returns {number}
+   */
+  getHitDieDenomination(className) {
+    const hitDice = {
+      'barbarian': 12,
+      'fighter': 10,
+      'paladin': 10,
+      'ranger': 10,
+      'bard': 8,
+      'cleric': 8,
+      'druid': 8,
+      'monk': 8,
+      'rogue': 8,
+      'warlock': 8,
+      'sorcerer': 6,
+      'wizard': 6
+    };
+    return hitDice[className?.toLowerCase()] || 8;
   }
 
   /**
@@ -220,7 +244,8 @@ export class DiceCloudImporter {
       level: parsed.level || sb.level || 1,
       xp: {
         value: parsed.raw_dicecloud_data?.experiencePoints || 0
-      }
+      },
+      species: parsed.race || sb.race || ''
     };
   }
 
