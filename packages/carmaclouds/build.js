@@ -53,6 +53,8 @@ await buildExtension({
     { from: '../core/src/common', to: 'common' },
     { from: '../core/src/modules', to: 'modules' },
     { from: '../core/src/supabase/client.js', to: 'common/supabase-client.js' },
+    // Copy CarmaClouds-specific modules if they exist
+    'src/modules',
   ],
   watch,
   minify
@@ -111,6 +113,8 @@ await buildExtension({
     { from: '../core/src/common', to: 'common' },
     { from: '../core/src/modules', to: 'modules' },
     { from: '../core/src/supabase/client.js', to: 'common/supabase-client.js' },
+    // Copy CarmaClouds-specific modules if they exist
+    'src/modules',
   ],
   watch,
   minify
