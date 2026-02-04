@@ -6,42 +6,59 @@
 // Make buildSheet available globally
 window.buildSheet = function(characterData) {
   if (!characterData) {
-    console.warn('No character data provided to buildSheet');
+    console.warn('⚠️ No character data provided to buildSheet');
     return;
   }
 
   console.log('🎨 Building character sheet for:', characterData.name);
+  console.log('📊 Character data:', characterData);
 
   // Update character name (without Local/Cloud badge)
   const nameElement = document.getElementById('char-name');
+  console.log('📝 Name element:', nameElement);
   if (nameElement) {
     nameElement.textContent = characterData.name || 'Unknown Character';
+    console.log('✅ Set name to:', nameElement.textContent);
+  } else {
+    console.warn('⚠️ Could not find char-name element');
   }
 
   // Update character portrait
   const portraitElement = document.getElementById('char-portrait');
+  console.log('🖼️ Portrait element:', portraitElement);
+  console.log('🖼️ Portrait URL from data:', characterData.picture, characterData.avatarPicture);
+  
   if (portraitElement && characterData) {
     const portraitUrl = characterData.picture || characterData.avatarPicture;
     if (portraitUrl) {
+      console.log('🖼️ Using portrait URL:', portraitUrl);
       // Use the cropToCircle function if available
       if (typeof cropToCircle === 'function') {
+        console.log('✂️ cropToCircle function available, cropping...');
         cropToCircle(portraitUrl, 120).then(croppedUrl => {
           portraitElement.src = croppedUrl;
           portraitElement.style.display = 'block';
+          console.log('✅ Portrait cropped and displayed');
         }).catch(err => {
-          console.warn('Failed to crop portrait:', err);
+          console.warn('⚠️ Failed to crop portrait:', err);
           // Fallback to original image
           portraitElement.src = portraitUrl;
           portraitElement.style.display = 'block';
+          console.log('✅ Portrait displayed (uncropped fallback)');
         });
       } else {
+        console.log('ℹ️ cropToCircle not available, displaying directly');
         // Direct display if cropToCircle not available
         portraitElement.src = portraitUrl;
         portraitElement.style.display = 'block';
+        console.log('✅ Portrait displayed directly');
       }
     } else {
+      console.log('ℹ️ No portrait URL found, hiding portrait element');
       portraitElement.style.display = 'none';
     }
+  } else {
+    if (!portraitElement) console.warn('⚠️ Could not find char-portrait element');
   }
 
   // Update class
@@ -59,7 +76,7 @@ window.buildSheet = function(characterData) {
   // Update race
   const raceElement = document.getElementById('char-race');
   if (raceElement) {
-    classElement.textContent = characterData.race || 'Unknown';
+    raceElement.textContent = characterData.race || 'Unknown';
   }
 
   // Update hit dice
