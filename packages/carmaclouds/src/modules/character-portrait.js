@@ -105,23 +105,37 @@
     
     debug.log('🖼️ Displaying portrait from URL:', portraitUrl);
     
+    // Clear any existing content
+    portraitElement.innerHTML = '';
+    
+    // Create img element
+    const img = document.createElement('img');
+    img.style.width = '100%';
+    img.style.height = '100%';
+    img.style.objectFit = 'cover';
+    img.style.borderRadius = '50%';
+    img.alt = `${characterData.name || 'Character'} portrait`;
+    
     try {
       // Try to crop to circle if cropToCircle is available
       if (typeof cropToCircle === 'function') {
         const croppedUrl = await cropToCircle(portraitUrl, size);
-        portraitElement.src = croppedUrl;
+        img.src = croppedUrl;
+        portraitElement.appendChild(img);
         portraitElement.style.display = 'block';
         debug.log('✅ Portrait displayed (cropped)');
       } else {
         // Fallback: display directly without cropping
-        portraitElement.src = portraitUrl;
+        img.src = portraitUrl;
+        portraitElement.appendChild(img);
         portraitElement.style.display = 'block';
         debug.log('✅ Portrait displayed (uncropped)');
       }
     } catch (error) {
       debug.warn('⚠️ Failed to crop portrait:', error);
       // Fallback to original image
-      portraitElement.src = portraitUrl;
+      img.src = portraitUrl;
+      portraitElement.appendChild(img);
       portraitElement.style.display = 'block';
       debug.log('✅ Portrait displayed (uncropped fallback)');
     }
