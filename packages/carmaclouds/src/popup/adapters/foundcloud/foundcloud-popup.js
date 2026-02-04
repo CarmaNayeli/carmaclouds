@@ -235,7 +235,8 @@ async function syncCharacterToSupabase(char) {
     level: parsedData?.level || char.level || 1,
     race: parsedData?.race || char.race || 'Unknown',
     class: parsedData?.class || char.class || 'Unknown',
-    raw_dicecloud_data: parsedData?.raw_dicecloud_data || char.raw || {}
+    raw_dicecloud_data: parsedData?.raw_dicecloud_data || char.raw || {},
+    platform: ['foundcloud']
   };
 
   // Check if character already exists

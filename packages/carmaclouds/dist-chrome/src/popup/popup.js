@@ -11935,7 +11935,8 @@ ${suffix}`;
       level: parsedData?.level || char.level || 1,
       race: parsedData?.race || char.race || "Unknown",
       class: parsedData?.class || char.class || "Unknown",
-      raw_dicecloud_data: parsedData?.raw_dicecloud_data || char.raw || {}
+      raw_dicecloud_data: parsedData?.raw_dicecloud_data || char.raw || {},
+      platform: ["foundcloud"]
     };
     const { data: existing } = await supabase.from("clouds_characters").select("id").eq("dicecloud_character_id", char.id).single();
     if (existing) {
