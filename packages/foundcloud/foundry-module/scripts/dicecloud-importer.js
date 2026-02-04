@@ -58,6 +58,9 @@ export class DiceCloudImporter {
     // Create the actor
     const actor = await Actor.create(actorData);
 
+    // Set the FoundCloud custom sheet
+    await actor.setFlag('core', 'sheetClass', 'foundcloud.FoundCloudSheetSimple');
+
     // Set flags
     await actor.setFlag('foundcloud', 'diceCloudId', supabaseData.dicecloud_character_id);
     await actor.setFlag('foundcloud', 'supabaseId', supabaseData.id);
