@@ -84,7 +84,9 @@
                      || characterData.avatarPicture 
                      || characterData.avatar
                      || characterData.image
-                     || (characterData.raw_dicecloud_data && characterData.raw_dicecloud_data.picture)
+                     || (characterData.rawDiceCloudData && characterData.rawDiceCloudData.creature && characterData.rawDiceCloudData.creature.picture)
+                     || (characterData.raw && characterData.raw.creature && characterData.raw.creature.picture)
+                     || (characterData.raw && characterData.raw.picture)
                      || (characterData.creature && characterData.creature.picture)
                      || null;
     
