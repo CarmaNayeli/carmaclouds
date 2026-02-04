@@ -160,17 +160,8 @@
             characterName: characterData.name
           }, "*");
           debug.log(`\u2705 Sent registration message for: ${characterData.name}`);
-          setTimeout(() => {
-            if (window.opener && !window.opener.closed) {
-              window.opener.postMessage({
-                action: "checkCurrentTurn",
-                characterName: characterData.name
-              }, "*");
-              debug.log(`\u{1F3AF} Checking current turn for: ${characterData.name}`);
-            }
-          }, 500);
         } else {
-          debug.warn(`\u26A0\uFE0F No window.opener available for: ${characterData.name}`);
+          debug.log(`\u2139\uFE0F Standalone sheet (no window.opener) for: ${characterData.name}`);
         }
       };
       if (domReady) {

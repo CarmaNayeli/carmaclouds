@@ -3620,6 +3620,21 @@ How many do you want to spend?`);
       }
     }
   }, 1e3);
+  var noticeDismissed = localStorage.getItem("owlcloud-notice-dismissed");
+  var extensionNotice = document.getElementById("extension-notice");
+  var dismissButton = document.getElementById("dismiss-notice");
+  if (!noticeDismissed && extensionNotice) {
+    extensionNotice.style.display = "block";
+  }
+  if (dismissButton) {
+    dismissButton.addEventListener("click", () => {
+      if (extensionNotice) {
+        extensionNotice.style.display = "none";
+      }
+      localStorage.setItem("owlcloud-notice-dismissed", "true");
+      console.log("\u{1F4E6} Extension notice dismissed permanently");
+    });
+  }
   console.log("\u{1F3B2} OwlCloud popover initialized");
 })();
 //# sourceMappingURL=popover.js.map

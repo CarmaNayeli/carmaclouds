@@ -1151,8 +1151,9 @@
     </div>
 
     <!-- Browser Extension Notice -->
-    <div style="padding: 12px; background: rgba(139, 92, 246, 0.15); border-radius: 8px; border: 1px solid rgba(139, 92, 246, 0.3); margin-bottom: 16px;">
-      <div style="font-weight: 600; color: var(--theme-primary-light); font-size: 13px; margin-bottom: 6px;">
+    <div id="extension-notice" style="padding: 12px; background: rgba(139, 92, 246, 0.15); border-radius: 8px; border: 1px solid rgba(139, 92, 246, 0.3); margin-bottom: 16px; position: relative; display: none;">
+      <button id="dismiss-notice" style="position: absolute; top: 8px; right: 8px; background: none; border: none; color: #c0c0c0; cursor: pointer; font-size: 18px; line-height: 1; padding: 4px 8px; border-radius: 4px; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff';" onmouseout="this.style.background='none'; this.style.color='#c0c0c0';">✕</button>
+      <div style="font-weight: 600; color: var(--theme-primary-light); font-size: 13px; margin-bottom: 6px; padding-right: 24px;">
         📦 Browser Extension Required
       </div>
       <div style="color: #c0c0c0; font-size: 12px; line-height: 1.4; margin-bottom: 8px;">

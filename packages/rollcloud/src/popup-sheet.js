@@ -275,6 +275,7 @@ window.addEventListener('message', async (event) => {
       }
 
       // Register this popup with GM Initiative Tracker for turn notifications
+      // Only register if window.opener exists (opened from Roll20 page)
       if (window.opener) {
         window.opener.postMessage({
           action: 'registerPopup',
@@ -282,18 +283,10 @@ window.addEventListener('message', async (event) => {
         }, '*');
         debug.log(`✅ Sent registration message for: ${characterData.name}`);
 
-        // Check if it's currently this character's turn
-        setTimeout(() => {
-          if (window.opener && !window.opener.closed) {
-            window.opener.postMessage({
-              action: 'checkCurrentTurn',
-              characterName: characterData.name
-            }, '*');
-            debug.log(`🎯 Checking current turn for: ${characterData.name}`);
-          }
-        }, 500);
+        // Don't automatically check turn - let GM panel notify us when it's our turn
+        // This prevents false "Your turn!" notifications when not in combat
       } else {
-        debug.warn(`⚠️ No window.opener available for: ${characterData.name}`);
+        debug.log(`ℹ️ Standalone sheet (no window.opener) for: ${characterData.name}`);
       }
     };
 

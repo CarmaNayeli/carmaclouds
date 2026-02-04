@@ -4980,4 +4980,28 @@ setTimeout(() => {
   }
 }, 1000);
 
+// ============== Extension Notice Dismissal ==============
+
+// Check if notice has been dismissed
+const noticeDismissed = localStorage.getItem('owlcloud-notice-dismissed');
+const extensionNotice = document.getElementById('extension-notice');
+const dismissButton = document.getElementById('dismiss-notice');
+
+if (!noticeDismissed && extensionNotice) {
+  // Show the notice if not dismissed
+  extensionNotice.style.display = 'block';
+}
+
+if (dismissButton) {
+  dismissButton.addEventListener('click', () => {
+    // Hide the notice
+    if (extensionNotice) {
+      extensionNotice.style.display = 'none';
+    }
+    // Store dismissal in localStorage
+    localStorage.setItem('owlcloud-notice-dismissed', 'true');
+    console.log('📦 Extension notice dismissed permanently');
+  });
+}
+
 console.log('🎲 OwlCloud popover initialized');
