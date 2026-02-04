@@ -903,6 +903,11 @@ async function finishLoadingCharacter() {
       }
 
       buildSheet(characterData);
+      
+      // Display character portrait after sheet is built
+      if (typeof displayCharacterPortrait === 'function') {
+        displayCharacterPortrait('char-portrait', characterData, 120);
+      }
 
       // Initialize racial traits based on character data
       initRacialTraits();
