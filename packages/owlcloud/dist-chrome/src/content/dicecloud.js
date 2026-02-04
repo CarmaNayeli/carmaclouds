@@ -12177,7 +12177,11 @@ JSON file will download shortly.`);
             sendResponse({ success: true });
           }).catch((error) => {
             debug2.error("Error syncing character:", error);
-            sendResponse({ success: false, error: error.message });
+            let errorMessage = error.message;
+            if (error.name === "QuotaExceededError" || errorMessage.includes("quota") || errorMessage.includes("storage") || errorMessage.includes("QUOTA_BYTES")) {
+              errorMessage = "Browser storage is full. Try clearing your local cache in the extension settings.";
+            }
+            sendResponse({ success: false, error: errorMessage });
           });
           return true;
         case "rollInDiceCloud":

@@ -3537,7 +3537,17 @@ import '../../../core/src/browser.js';
           })
           .catch((error) => {
             debug.error('Error syncing character:', error);
-            sendResponse({ success: false, error: error.message });
+            
+            // Check for storage quota errors
+            let errorMessage = error.message;
+            if (error.name === 'QuotaExceededError' || 
+                errorMessage.includes('quota') || 
+                errorMessage.includes('storage') ||
+                errorMessage.includes('QUOTA_BYTES')) {
+              errorMessage = 'Browser storage is full. Try clearing your local cache in the extension settings.';
+            }
+            
+            sendResponse({ success: false, error: errorMessage });
           });
         return true; // Keep channel open for async response
 

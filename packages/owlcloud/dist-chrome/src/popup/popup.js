@@ -10349,9 +10349,11 @@
           const selectedId = characterSelect.value;
           const characterName = charName.textContent || "this character";
           if (selectedId) {
-            if (!confirm(`Clear local data for ${characterName}?
+            if (!confirm(`Clear local cache for ${characterName}?
 
-This removes the character from this browser only. Cloud data will not be affected.`)) {
+This removes the character from this browser's cache only. Cloud data will not be affected.
+
+Use this if you're experiencing sync issues.`)) {
               return;
             }
             clearLocalBtn.disabled = true;
@@ -10359,14 +10361,14 @@ This removes the character from this browser only. Cloud data will not be affect
               action: "clearCharacterData",
               characterId: selectedId
             });
-            showSuccess("Local character data cleared");
+            showSuccess(`Local cache cleared for ${characterName}`);
           } else {
-            if (!confirm("Clear ALL local character data?\n\nThis removes all characters from this browser. Cloud data will not be affected.")) {
+            if (!confirm("Clear ALL local character cache?\n\nThis removes all characters from this browser's cache. Cloud data will not be affected.\n\nUse this if you're experiencing sync issues or storage quota errors.")) {
               return;
             }
             clearLocalBtn.disabled = true;
             await browserAPI3.runtime.sendMessage({ action: "clearCharacterData" });
-            showSuccess("All local character data cleared");
+            showSuccess("All local cache cleared. Try syncing your characters again.");
           }
           await loadCharacterData();
         } catch (error) {
