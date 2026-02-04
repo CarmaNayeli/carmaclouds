@@ -435,5 +435,63 @@ new MutationObserver(() => {
   }
 }).observe(document, { subtree: true, childList: true });
 
+// Listen for auth data requests from popup
+browserAPI.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'getAuthData') {
+    console.log('CarmaClouds: Auth data requested from popup');
+    
+    // Extract auth data from localStorage
+    const authData = {
+      localStorage: {},
+      meteor: null
+    };
+    
+    // Get all localStorage items
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        authData.localStorage[key] = localStorage.getItem(key);
+      }
+    } catch (e) {
+      console.warn('Could not access localStorage:', e);
+    }
+    
+    // Check for Meteor auth specifically
+    const meteorUserId = localStorage.getItem('Meteor.userId');
+    const meteorLoginToken = localStorage.getItem('Meteor.loginToken');
+    
+    if (meteorUserId || meteorLoginToken) {
+      authData.meteor = {
+        userId: meteorUserId,
+        loginToken: meteorLoginToken
+      };
+      
+      // Try to get username from Meteor if available
+      if (typeof Meteor !== 'undefined' && Meteor.user) {
+        try {
+          const user = Meteor.user();
+          if (user) {
+            authData.meteor.username = user.username ||
+                                       user.emails?.[0]?.address ||
+                                       user.profile?.username ||
+                                       user.profile?.name ||
+                                       null;
+          }
+        } catch (e) {
+          console.warn('Could not get Meteor user:', e);
+        }
+      }
+    }
+    
+    console.log('CarmaClouds: Sending auth data:', {
+      hasMeteorAuth: !!authData.meteor,
+      localStorageKeys: Object.keys(authData.localStorage).length
+    });
+    
+    sendResponse(authData);
+    return true; // Keep channel open for async response
+  }
+});
+
 // Initialize when page loads
 waitForPageLoad();

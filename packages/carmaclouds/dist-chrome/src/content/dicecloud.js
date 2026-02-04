@@ -619,6 +619,47 @@
       }, 1500);
     }
   }).observe(document, { subtree: true, childList: true });
+  browserAPI.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === "getAuthData") {
+      console.log("CarmaClouds: Auth data requested from popup");
+      const authData = {
+        localStorage: {},
+        meteor: null
+      };
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          authData.localStorage[key] = localStorage.getItem(key);
+        }
+      } catch (e) {
+        console.warn("Could not access localStorage:", e);
+      }
+      const meteorUserId = localStorage.getItem("Meteor.userId");
+      const meteorLoginToken = localStorage.getItem("Meteor.loginToken");
+      if (meteorUserId || meteorLoginToken) {
+        authData.meteor = {
+          userId: meteorUserId,
+          loginToken: meteorLoginToken
+        };
+        if (typeof Meteor !== "undefined" && Meteor.user) {
+          try {
+            const user = Meteor.user();
+            if (user) {
+              authData.meteor.username = user.username || user.emails?.[0]?.address || user.profile?.username || user.profile?.name || null;
+            }
+          } catch (e) {
+            console.warn("Could not get Meteor user:", e);
+          }
+        }
+      }
+      console.log("CarmaClouds: Sending auth data:", {
+        hasMeteorAuth: !!authData.meteor,
+        localStorageKeys: Object.keys(authData.localStorage).length
+      });
+      sendResponse(authData);
+      return true;
+    }
+  });
   waitForPageLoad();
 })();
 //# sourceMappingURL=dicecloud.js.map
