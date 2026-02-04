@@ -13966,6 +13966,20 @@ JSON file will download shortly.`);
                       }
                       try {
                         browserAPI.runtime.sendMessage({
+                          action: "clearCharacterData",
+                          characterId: characterData2.id || characterData2.dicecloud_character_id
+                        }, (clearResponse) => {
+                          if (browserAPI.runtime.lastError) {
+                            debug2.log("Cache clear failed (non-critical):", browserAPI.runtime.lastError);
+                          } else {
+                            debug2.log("\u{1F9F9} Local cache cleared after sync to prevent storage buildup");
+                          }
+                        });
+                      } catch (clearError) {
+                        debug2.log("Could not clear cache (non-critical):", clearError);
+                      }
+                      try {
+                        browserAPI.runtime.sendMessage({
                           action: "dataSynced",
                           slotId,
                           characterName: characterData2.name
@@ -13992,6 +14006,20 @@ JSON file will download shortly.`);
                   setTimeout(() => {
                     button.innerHTML = "\u{1F504} Sync to OwlCloud";
                   }, 2e3);
+                }
+                try {
+                  browserAPI.runtime.sendMessage({
+                    action: "clearCharacterData",
+                    characterId: characterData2.id || characterData2.dicecloud_character_id
+                  }, (clearResponse) => {
+                    if (browserAPI.runtime.lastError) {
+                      debug2.log("Cache clear failed (non-critical):", browserAPI.runtime.lastError);
+                    } else {
+                      debug2.log("\u{1F9F9} Local cache cleared after sync to prevent storage buildup");
+                    }
+                  });
+                } catch (clearError) {
+                  debug2.log("Could not clear cache (non-critical):", clearError);
                 }
                 resolve();
               }
