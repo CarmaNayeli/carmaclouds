@@ -238,15 +238,32 @@ async function syncCharacterToSupabase(char) {
     raw_dicecloud_data: parsedData?.raw_dicecloud_data || char.raw || {}
   };
 
-  // Upsert to clouds_characters table (shared with OwlCloud)
-  const { error } = await supabase
+  // Check if character already exists
+  const { data: existing } = await supabase
     .from('clouds_characters')
-    .upsert(characterData, {
-      onConflict: 'dicecloud_character_id'
-    });
+    .select('id')
+    .eq('dicecloud_character_id', char.id)
+    .single();
 
-  if (error) {
-    throw new Error(error.message);
+  if (existing) {
+    // Update existing record
+    const { error } = await supabase
+      .from('clouds_characters')
+      .update(characterData)
+      .eq('dicecloud_character_id', char.id);
+    
+    if (error) {
+      throw new Error(error.message);
+    }
+  } else {
+    // Insert new record
+    const { error } = await supabase
+      .from('clouds_characters')
+      .insert(characterData);
+    
+    if (error) {
+      throw new Error(error.message);
+    }
   }
 }
 

@@ -11937,11 +11937,17 @@ ${suffix}`;
       class: parsedData?.class || char.class || "Unknown",
       raw_dicecloud_data: parsedData?.raw_dicecloud_data || char.raw || {}
     };
-    const { error } = await supabase.from("clouds_characters").upsert(characterData, {
-      onConflict: "dicecloud_character_id"
-    });
-    if (error) {
-      throw new Error(error.message);
+    const { data: existing } = await supabase.from("clouds_characters").select("id").eq("dicecloud_character_id", char.id).single();
+    if (existing) {
+      const { error } = await supabase.from("clouds_characters").update(characterData).eq("dicecloud_character_id", char.id);
+      if (error) {
+        throw new Error(error.message);
+      }
+    } else {
+      const { error } = await supabase.from("clouds_characters").insert(characterData);
+      if (error) {
+        throw new Error(error.message);
+      }
     }
   }
   async function copyModuleUrl() {
