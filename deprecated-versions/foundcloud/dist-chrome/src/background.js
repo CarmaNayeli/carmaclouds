@@ -1,5 +1,5 @@
 (() => {
-  // ../core/src/supabase/config.js
+  // ../../packages/core/src/supabase/config.js
   var SUPABASE_URL = "https://luiesmfjdcmpywavvfqm.supabase.co";
   var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aWVzbWZqZGNtcHl3YXZ2ZnFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4ODYxNDksImV4cCI6MjA4NTQ2MjE0OX0.oqjHFf2HhCLcanh0HVryoQH7iSV7E9dHHZJdYehxZ0U";
   var TABLES = {

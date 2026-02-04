@@ -8114,6 +8114,11 @@ function initColorPalette() {
       // Close the palette
       palette.style.display = 'none';
 
+      // Refresh the portrait with the new color
+      if (typeof displayCharacterPortrait === 'function') {
+        displayCharacterPortrait('char-portrait', characterData, 120);
+      }
+
       // Save to storage
       saveCharacterData();
       

@@ -25,9 +25,9 @@
     mod
   ));
 
-  // ../core/src/common/theme-manager.js
+  // ../../packages/core/src/common/theme-manager.js
   var require_theme_manager = __commonJS({
-    "../core/src/common/theme-manager.js"(exports, module) {
+    "../../packages/core/src/common/theme-manager.js"(exports, module) {
       "use strict";
       function createThemeManager(config = {}) {
         const storageKey = config.storageKey || "theme";
@@ -232,7 +232,7 @@
     }
   });
 
-  // ../core/src/common/browser-polyfill.js
+  // ../../packages/core/src/common/browser-polyfill.js
   console.log("\u{1F310} Loading browser polyfill...");
   var globalScope = typeof window !== "undefined" ? window : self;
   var browserAPI2;
@@ -6207,6 +6207,9 @@ Choose which spell slot to recover:
           colorEmojiEl.textContent = newEmoji;
         }
         palette.style.display = "none";
+        if (typeof displayCharacterPortrait === "function") {
+          displayCharacterPortrait("char-portrait", characterData, 120);
+        }
         saveCharacterData();
         syncColorToSupabase(newColor);
         showNotification(`\u{1F3A8} Notification color changed to ${e.target.title}!`);

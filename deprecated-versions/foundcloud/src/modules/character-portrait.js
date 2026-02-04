@@ -9,12 +9,14 @@
   'use strict';
 
   /**
-   * Crop an image to a circle
+   * Crop an image to a circle with optional colored border
    * @param {string} imageUrl - URL of the image to crop
    * @param {number} size - Size of the output image (default: 200)
+   * @param {string} borderColor - Color of the border (default: null for no border)
+   * @param {number} borderWidth - Width of the border in pixels (default: 4)
    * @returns {Promise<string>} - Data URL of the cropped circular image
    */
-  function cropToCircle(imageUrl, size = 200) {
+  function cropToCircle(imageUrl, size = 200, borderColor = null, borderWidth = 4) {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.crossOrigin = 'anonymous'; // Handle CORS
@@ -27,14 +29,18 @@
           canvas.height = size;
           const ctx = canvas.getContext('2d');
           
-          // Draw circular clip path
+          // Calculate the radius for the image circle (accounting for border)
+          const imageRadius = borderColor ? (size / 2) - borderWidth : (size / 2);
+          
+          // Draw circular clip path for the image
+          ctx.save();
           ctx.beginPath();
-          ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+          ctx.arc(size / 2, size / 2, imageRadius, 0, Math.PI * 2);
           ctx.closePath();
           ctx.clip();
           
           // Calculate scaling to cover the circle (crop to fit)
-          const scale = Math.max(size / img.width, size / img.height);
+          const scale = Math.max((imageRadius * 2) / img.width, (imageRadius * 2) / img.height);
           const scaledWidth = img.width * scale;
           const scaledHeight = img.height * scale;
           
@@ -44,6 +50,16 @@
           
           // Draw image
           ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
+          ctx.restore();
+          
+          // Draw border if color is provided
+          if (borderColor) {
+            ctx.beginPath();
+            ctx.arc(size / 2, size / 2, imageRadius, 0, Math.PI * 2);
+            ctx.strokeStyle = borderColor;
+            ctx.lineWidth = borderWidth;
+            ctx.stroke();
+          }
           
           // Convert to data URL
           resolve(canvas.toDataURL('image/png'));
@@ -105,23 +121,41 @@
     
     debug.log('🖼️ Displaying portrait from URL:', portraitUrl);
     
+    // Get the character's notification color for the border
+    const borderColor = characterData.notificationColor || '#3498db';
+    const borderWidth = 4;
+    
+    // Clear any existing content
+    portraitElement.innerHTML = '';
+    
+    // Create img element
+    const img = document.createElement('img');
+    img.style.width = '100%';
+    img.style.height = '100%';
+    img.style.objectFit = 'cover';
+    img.style.borderRadius = '50%';
+    img.alt = `${characterData.name || 'Character'} portrait`;
+    
     try {
       // Try to crop to circle if cropToCircle is available
       if (typeof cropToCircle === 'function') {
-        const croppedUrl = await cropToCircle(portraitUrl, size);
-        portraitElement.src = croppedUrl;
+        const croppedUrl = await cropToCircle(portraitUrl, size, borderColor, borderWidth);
+        img.src = croppedUrl;
+        portraitElement.appendChild(img);
         portraitElement.style.display = 'block';
-        debug.log('✅ Portrait displayed (cropped)');
+        debug.log('✅ Portrait displayed (cropped with border)');
       } else {
         // Fallback: display directly without cropping
-        portraitElement.src = portraitUrl;
+        img.src = portraitUrl;
+        portraitElement.appendChild(img);
         portraitElement.style.display = 'block';
         debug.log('✅ Portrait displayed (uncropped)');
       }
     } catch (error) {
       debug.warn('⚠️ Failed to crop portrait:', error);
       // Fallback to original image
-      portraitElement.src = portraitUrl;
+      img.src = portraitUrl;
+      portraitElement.appendChild(img);
       portraitElement.style.display = 'block';
       debug.log('✅ Portrait displayed (uncropped fallback)');
     }

@@ -1,5 +1,5 @@
 (() => {
-  // ../core/src/common/browser-polyfill.js
+  // ../../packages/core/src/common/browser-polyfill.js
   console.log("\u{1F310} Loading browser polyfill...");
   var globalScope = typeof window !== "undefined" ? window : self;
   var browserAPI2;

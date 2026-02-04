@@ -1,5 +1,5 @@
 (() => {
-  // ../core/src/common/browser-polyfill.js
+  // ../../packages/core/src/common/browser-polyfill.js
   console.log("\u{1F310} Loading browser polyfill...");
   var globalScope = typeof window !== "undefined" ? window : self;
   var browserAPI2;
@@ -294,7 +294,7 @@
   }
   console.log("\u2705 Browser API ready:", typeof browser !== "undefined" && browserAPI2 === browser ? "Firefox" : "Chrome");
 
-  // ../core/src/supabase/config.js
+  // ../../packages/core/src/supabase/config.js
   var TABLES = {
     // Shared tables
     AUTH_TOKENS: "auth_tokens",
