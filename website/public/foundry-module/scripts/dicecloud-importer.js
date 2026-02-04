@@ -128,7 +128,7 @@ export class DiceCloudImporter {
    */
   mapSupabaseToFoundryActor(sb) {
     const parsed = sb.foundcloud_parsed_data || {};
-    return {
+    const actorData = {
       name: sb.character_name || 'Unnamed Character',
       type: 'character',
       img: parsed.raw_dicecloud_data?.picture || 'icons/svg/mystery-man.svg',
@@ -142,6 +142,16 @@ export class DiceCloudImporter {
         spells: this.mapSpellSlotsFromSupabase(sb)
       }
     };
+    
+    console.log('FoundCloud | Complete actor data structure:', {
+      name: actorData.name,
+      'system.attributes.hd': actorData.system.attributes.hd,
+      'system.details.race': actorData.system.details.race,
+      'system.details.species': actorData.system.details.species,
+      'system.details.background': actorData.system.details.background
+    });
+    
+    return actorData;
   }
 
   /**
