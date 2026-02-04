@@ -92,6 +92,11 @@
         } else {
           debug.warn("\u26A0\uFE0F buildSheet function not available");
         }
+        if (typeof displayCharacterPortrait === "function") {
+          displayCharacterPortrait("char-portrait", characterData, 120);
+        } else {
+          debug.warn("\u26A0\uFE0F displayCharacterPortrait function not available");
+        }
         initRacialTraits();
         initFeatTraits();
         initClassFeatures();

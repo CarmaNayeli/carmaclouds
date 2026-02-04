@@ -606,6 +606,9 @@
         debug2.log("\u{1F4CB} Current slot ID set to:", currentSlotId);
         await loadAndBuildTabs();
         buildSheet(characterData);
+        if (typeof displayCharacterPortrait === "function") {
+          displayCharacterPortrait("char-portrait", characterData, 120);
+        }
         initRacialTraits();
         initFeatTraits();
         initClassFeatures();
@@ -742,6 +745,9 @@
       if (activeCharacter) {
         characterData = activeCharacter;
         buildSheet(characterData);
+        if (typeof displayCharacterPortrait === "function") {
+          displayCharacterPortrait("char-portrait", characterData, 120);
+        }
         initRacialTraits();
         initFeatTraits();
         initClassFeatures();
@@ -906,6 +912,9 @@
           characterCache.set(characterId, characterData);
         }
         buildSheet(characterData);
+        if (typeof displayCharacterPortrait === "function") {
+          displayCharacterPortrait("char-portrait", characterData, 120);
+        }
         initRacialTraits();
         initFeatTraits();
         initClassFeatures();

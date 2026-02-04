@@ -152,6 +152,11 @@ window.addEventListener('message', async (event) => {
       // Then build the sheet with character data
       buildSheet(characterData);
       
+      // Display character portrait after sheet is built
+      if (typeof displayCharacterPortrait === 'function') {
+        displayCharacterPortrait('char-portrait', characterData, 120);
+      }
+      
       // Initialize racial traits based on character data
       initRacialTraits();
 
@@ -359,6 +364,11 @@ async function loadCharacterWithTabs() {
     if (activeCharacter) {
       characterData = activeCharacter;
       buildSheet(characterData);
+      
+      // Display character portrait after sheet is built
+      if (typeof displayCharacterPortrait === 'function') {
+        displayCharacterPortrait('char-portrait', characterData, 120);
+      }
       
       // Initialize racial traits based on character data
       initRacialTraits();
@@ -594,6 +604,11 @@ async function switchToCharacter(characterId) {
 
       // Build the character sheet
       buildSheet(characterData);
+      
+      // Display character portrait after sheet is built
+      if (typeof displayCharacterPortrait === 'function') {
+        displayCharacterPortrait('char-portrait', characterData, 120);
+      }
       
       // Initialize racial traits based on character data
       initRacialTraits();

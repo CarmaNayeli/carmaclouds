@@ -137,11 +137,6 @@
     const characterName = data.name || 'Character';
     charNameEl.textContent = characterName;
 
-    // Display character portrait using dedicated module
-    if (typeof displayCharacterPortrait === 'function') {
-      displayCharacterPortrait('char-portrait', data, 120);
-    }
-
     // Update color picker emoji in systems bar
     const currentColorEmoji = getColorEmoji(data.notificationColor || '#3498db');
     const colorEmojiEl = document.getElementById('color-emoji');

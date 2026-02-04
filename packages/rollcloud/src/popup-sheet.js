@@ -160,11 +160,18 @@ window.addEventListener('message', async (event) => {
       // Build tabs first (need to load profiles from storage)
       await loadAndBuildTabs();
 
-      // Then build the sheet with character data (includes portrait display)
+      // Then build the sheet with character data
       if (typeof buildSheet === 'function') {
         buildSheet(characterData);
       } else {
         debug.warn('⚠️ buildSheet function not available');
+      }
+      
+      // Display character portrait after sheet is built
+      if (typeof displayCharacterPortrait === 'function') {
+        displayCharacterPortrait('char-portrait', characterData, 120);
+      } else {
+        debug.warn('⚠️ displayCharacterPortrait function not available');
       }
       
       // Initialize racial traits based on character data
