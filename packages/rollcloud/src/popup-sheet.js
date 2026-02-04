@@ -167,6 +167,33 @@ window.addEventListener('message', async (event) => {
         debug.warn('⚠️ buildSheet function not available');
       }
       
+      // Display character portrait if available
+      const portraitElement = document.getElementById('char-portrait');
+      debug.log('🖼️ Portrait element found:', portraitElement);
+      debug.log('🖼️ Character data for portrait:', characterData?.picture, characterData?.avatarPicture);
+      if (portraitElement && characterData) {
+        const portraitUrl = characterData.picture || characterData.avatarPicture;
+        if (portraitUrl) {
+          debug.log('🖼️ Cropping portrait from URL:', portraitUrl);
+          cropToCircle(portraitUrl, 120).then(croppedUrl => {
+            portraitElement.src = croppedUrl;
+            portraitElement.style.display = 'block';
+            debug.log('✅ Portrait displayed successfully');
+          }).catch(err => {
+            debug.warn('⚠️ Failed to crop portrait:', err);
+            // Fallback to original image
+            portraitElement.src = portraitUrl;
+            portraitElement.style.display = 'block';
+            debug.log('✅ Portrait displayed (uncropped fallback)');
+          });
+        } else {
+          debug.log('ℹ️ No portrait URL available in character data');
+        }
+      } else {
+        if (!portraitElement) debug.warn('⚠️ Portrait element not found');
+        if (!characterData) debug.warn('⚠️ No character data for portrait');
+      }
+      
       // Initialize racial traits based on character data
       initRacialTraits();
 
