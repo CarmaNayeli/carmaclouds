@@ -133,38 +133,9 @@
       }
     }
 
-    // Character name with source badge
+    // Character name (without source badge)
     const characterName = data.name || 'Character';
-    const isCloudCharacter = data.source === 'database' ||
-                             data.hasCloudVersion === true ||
-                             (typeof currentSlotId !== 'undefined' && currentSlotId && currentSlotId.startsWith('db-')) ||
-                             data.id?.startsWith('db-');
-
-    if (isCloudCharacter) {
-      charNameEl.innerHTML = `${characterName} <span style="
-        background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
-        color: white;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 0.7em;
-        font-weight: bold;
-        margin-left: 8px;
-        vertical-align: middle;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-      ">☁️ Cloud</span>`;
-    } else {
-      charNameEl.innerHTML = `${characterName} <span style="
-        background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
-        color: white;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 0.7em;
-        font-weight: bold;
-        margin-left: 8px;
-        vertical-align: middle;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-      ">💾 Local</span>`;
-    }
+    charNameEl.textContent = characterName;
 
     // Update color picker emoji in systems bar
     const currentColorEmoji = getColorEmoji(data.notificationColor || '#3498db');
