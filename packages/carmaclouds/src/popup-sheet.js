@@ -227,6 +227,11 @@ window.addEventListener('message', async (event) => {
       // Then build the sheet with character data
       buildSheet(characterData);
       
+      // Display character portrait after sheet is built
+      if (typeof displayCharacterPortrait === 'function') {
+        displayCharacterPortrait('char-portrait', characterData, 120);
+      }
+      
       // Initialize racial traits based on character data
       initRacialTraits();
 
@@ -312,6 +317,11 @@ window.addEventListener('message', async (event) => {
 
       // Build the sheet directly with character data
       buildSheet(characterData);
+      
+      // Display character portrait after sheet is built
+      if (typeof displayCharacterPortrait === 'function') {
+        displayCharacterPortrait('char-portrait', characterData, 120);
+      }
 
       // Initialize racial traits based on character data
       initRacialTraits();
@@ -400,6 +410,11 @@ window.addEventListener('message', async (event) => {
 
       // Build the sheet with updated character data
       buildSheet(characterData);
+      
+      // Display character portrait after sheet is built
+      if (typeof displayCharacterPortrait === 'function') {
+        displayCharacterPortrait('char-portrait', characterData, 120);
+      }
 
       // Initialize racial traits based on updated character data
       initRacialTraits();
@@ -504,6 +519,12 @@ setTimeout(() => {
           
           // Build the sheet with the received data
           buildSheet(characterData);
+          
+          // Display character portrait after sheet is built
+          if (typeof displayCharacterPortrait === 'function') {
+            displayCharacterPortrait('char-portrait', characterData, 120);
+          }
+          
           initRacialTraits();
           initFeatTraits();
           initClassFeatures();
@@ -996,6 +1017,11 @@ async function switchToCharacter(characterId) {
 
       // Build the character sheet
       buildSheet(characterData);
+      
+      // Display character portrait after sheet is built
+      if (typeof displayCharacterPortrait === 'function') {
+        displayCharacterPortrait('char-portrait', characterData, 120);
+      }
       
       // Initialize racial traits based on character data
       initRacialTraits();
