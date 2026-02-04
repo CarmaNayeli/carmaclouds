@@ -1,0 +1,1032 @@
+/**
+ * FoundCloud Character Sheet Styles
+ * Custom D&D 5e character sheet for Foundry VTT
+ */
+
+/* CSS Variables for Theming */
+:root {
+  --fc-bg-primary: #1a1a1a;
+  --fc-bg-secondary: #2d2d2d;
+  --fc-bg-tertiary: #3a3a3a;
+  --fc-bg-card: #1e3a33;
+  --fc-bg-card-hover: #2a4940;
+  --fc-bg-spell: #3d3520;
+  --fc-bg-action: #1e2f3d;
+  --fc-bg-resource: #2e1f33;
+
+  --fc-text-primary: #e0e0e0;
+  --fc-text-secondary: #b0b0b0;
+  --fc-text-muted: #808080;
+  --fc-text-inverse: #1a1a1a;
+
+  --fc-border-color: #444;
+  --fc-border-card: #3ea895;
+  --fc-border-spell: #f5a623;
+  --fc-border-action: #42a5f5;
+
+  --fc-accent-primary: #3ea895;
+  --fc-accent-success: #2ecc71;
+  --fc-accent-danger: #e74c3c;
+  --fc-accent-warning: #f5a623;
+  --fc-accent-info: #42a5f5;
+  --fc-accent-purple: #b19cd9;
+
+  --fc-shadow: rgba(0,0,0,0.3);
+  --fc-shadow-hover: rgba(0,0,0,0.4);
+}
+
+/* Light theme */
+.foundcloud-sheet[data-theme="light"] {
+  --fc-bg-primary: #f5f5f5;
+  --fc-bg-secondary: #ffffff;
+  --fc-bg-tertiary: #f0f0f0;
+  --fc-bg-card: #f0fff4;
+  --fc-bg-card-hover: #e8f5e8;
+  --fc-bg-spell: #fff3cd;
+  --fc-bg-action: #e3f2fd;
+  --fc-bg-resource: #f3e5f5;
+
+  --fc-text-primary: #2C3E50;
+  --fc-text-secondary: #666666;
+  --fc-text-muted: #999999;
+  --fc-text-inverse: #ffffff;
+
+  --fc-border-color: #ddd;
+  --fc-border-card: #2D8B83;
+  --fc-shadow: rgba(0,0,0,0.1);
+}
+
+/* Base Sheet Styles */
+.foundcloud-sheet {
+  font-family: 'Roboto', 'Signika', sans-serif;
+  background: var(--fc-bg-primary);
+  color: var(--fc-text-primary);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Systems Bar / Header */
+.foundcloud-sheet .systems-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 15px;
+  background: var(--fc-bg-tertiary);
+  border-bottom: 2px solid var(--fc-accent-primary);
+  flex-shrink: 0;
+}
+
+.foundcloud-sheet .header-left,
+.foundcloud-sheet .header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.foundcloud-sheet .header-center {
+  flex: 1;
+  text-align: center;
+}
+
+.foundcloud-sheet .char-name {
+  margin: 0;
+  font-size: 1.4em;
+  color: var(--fc-accent-primary);
+}
+
+.foundcloud-sheet .theme-btn,
+.foundcloud-sheet .settings-btn,
+.foundcloud-sheet .close-btn {
+  background: var(--fc-bg-secondary);
+  color: var(--fc-text-primary);
+  border: 1px solid var(--fc-border-color);
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.foundcloud-sheet .theme-btn:hover,
+.foundcloud-sheet .settings-btn:hover {
+  background: var(--fc-accent-primary);
+  color: var(--fc-text-inverse);
+}
+
+.foundcloud-sheet .close-btn {
+  background: var(--fc-accent-danger);
+  color: white;
+  border: none;
+}
+
+.foundcloud-sheet .close-btn:hover {
+  background: #c0392b;
+}
+
+.foundcloud-sheet .theme-btn.active {
+  background: var(--fc-accent-primary);
+  color: var(--fc-text-inverse);
+}
+
+/* Character Header */
+.foundcloud-sheet .character-header {
+  padding: 15px;
+  background: var(--fc-bg-secondary);
+  border-bottom: 1px solid var(--fc-border-color);
+  flex-shrink: 0;
+}
+
+.foundcloud-sheet .char-info-layer {
+  display: grid;
+  gap: 10px;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.foundcloud-sheet .layer-1 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.foundcloud-sheet .layer-2 {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.foundcloud-sheet .layer-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  max-width: 600px;
+  margin: 0 auto 12px;
+}
+
+.foundcloud-sheet .info-box {
+  display: flex;
+  flex-direction: column;
+}
+
+.foundcloud-sheet .info-label {
+  font-size: 0.75em;
+  color: var(--fc-text-muted);
+  text-transform: uppercase;
+}
+
+.foundcloud-sheet .info-value {
+  font-weight: bold;
+  color: var(--fc-text-primary);
+}
+
+.foundcloud-sheet .stat-box {
+  padding: 10px;
+  background: var(--fc-bg-tertiary);
+  border-radius: 6px;
+}
+
+.foundcloud-sheet .stat-box.clickable {
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.foundcloud-sheet .stat-box.clickable:hover {
+  background: var(--fc-bg-card-hover);
+  transform: translateY(-2px);
+}
+
+.foundcloud-sheet .stat-label {
+  font-size: 0.8em;
+  color: var(--fc-text-secondary);
+  margin-bottom: 3px;
+}
+
+.foundcloud-sheet .stat-value {
+  font-size: 1.3em;
+  font-weight: bold;
+}
+
+.foundcloud-sheet .death-saves .success {
+  color: var(--fc-accent-success);
+}
+
+.foundcloud-sheet .death-saves .failure {
+  color: var(--fc-accent-danger);
+}
+
+.foundcloud-sheet .has-inspiration .stat-value {
+  color: var(--fc-accent-warning);
+}
+
+/* HP and Initiative Boxes */
+.foundcloud-sheet .hp-box {
+  padding: 15px 20px;
+  background: var(--fc-accent-danger);
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.foundcloud-sheet .hp-box:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px var(--fc-shadow-hover);
+}
+
+.foundcloud-sheet .initiative-box {
+  padding: 15px 20px;
+  background: var(--fc-accent-info);
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.foundcloud-sheet .initiative-box:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px var(--fc-shadow-hover);
+}
+
+.foundcloud-sheet .box-label {
+  font-size: 0.8em;
+  margin-bottom: 5px;
+  opacity: 0.9;
+}
+
+.foundcloud-sheet .box-value {
+  font-size: 1.5em;
+}
+
+.foundcloud-sheet .temp-hp {
+  font-size: 0.75em;
+  opacity: 0.8;
+  margin-top: 4px;
+}
+
+/* Rest Buttons */
+.foundcloud-sheet .rest-buttons {
+  display: flex;
+  gap: 15px;
+  margin-top: 12px;
+  justify-content: center;
+}
+
+.foundcloud-sheet .rest-btn {
+  background: var(--fc-accent-info);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.foundcloud-sheet .rest-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px var(--fc-shadow-hover);
+}
+
+.foundcloud-sheet .rest-btn.short {
+  background: var(--fc-accent-warning);
+}
+
+.foundcloud-sheet .rest-btn.long {
+  background: var(--fc-accent-success);
+}
+
+/* Advantage Toggle */
+.foundcloud-sheet .advantage-toggle-container {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  justify-content: center;
+}
+
+.foundcloud-sheet .advantage-toggle {
+  flex: 1;
+  max-width: 150px;
+  padding: 10px;
+  border: 2px solid var(--fc-border-color);
+  background: transparent;
+  color: var(--fc-text-primary);
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.foundcloud-sheet #advantage-btn {
+  border-color: var(--fc-accent-success);
+  color: var(--fc-accent-success);
+}
+
+.foundcloud-sheet #advantage-btn.active {
+  background: var(--fc-accent-success);
+  color: white;
+}
+
+.foundcloud-sheet #normal-btn.active {
+  background: var(--fc-accent-info);
+  color: white;
+  border-color: var(--fc-accent-info);
+}
+
+.foundcloud-sheet #disadvantage-btn {
+  border-color: var(--fc-accent-danger);
+  color: var(--fc-accent-danger);
+}
+
+.foundcloud-sheet #disadvantage-btn.active {
+  background: var(--fc-accent-danger);
+  color: white;
+}
+
+/* Combat Section */
+.foundcloud-sheet .combat-section {
+  background: var(--fc-bg-secondary);
+  padding: 15px;
+  border-bottom: 1px solid var(--fc-border-color);
+  flex-shrink: 0;
+}
+
+.foundcloud-sheet .action-economy {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.foundcloud-sheet .action-economy-item {
+  flex: 1;
+  min-width: 70px;
+  padding: 10px;
+  border-radius: 8px;
+  text-align: center;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: 2px solid var(--fc-accent-primary);
+  background: var(--fc-accent-primary);
+  color: white;
+}
+
+.foundcloud-sheet .action-economy-item.used,
+.foundcloud-sheet .action-economy-item[data-used="true"] {
+  background: var(--fc-bg-tertiary);
+  opacity: 0.4;
+  border-color: var(--fc-border-color);
+  color: var(--fc-text-muted);
+}
+
+.foundcloud-sheet .action-economy-item:hover {
+  transform: translateY(-2px);
+}
+
+.foundcloud-sheet .action-icon {
+  font-size: 1.5em;
+  margin-bottom: 4px;
+}
+
+.foundcloud-sheet .action-label {
+  font-size: 0.75em;
+  font-weight: bold;
+}
+
+.foundcloud-sheet .combat-reset-btn {
+  padding: 8px 12px;
+  background: var(--fc-accent-warning);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85em;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.foundcloud-sheet .combat-reset-btn:hover {
+  background: var(--fc-accent-danger);
+  transform: scale(1.05);
+}
+
+/* Concentration & Conditions */
+.foundcloud-sheet .combat-status-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.foundcloud-sheet .concentration-indicator {
+  flex: 1;
+  min-width: 200px;
+  padding: 8px 12px;
+  background: var(--fc-bg-spell);
+  border: 2px solid var(--fc-border-spell);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.foundcloud-sheet .concentration-drop-btn {
+  background: var(--fc-accent-danger);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.foundcloud-sheet .conditions-manager {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+}
+
+.foundcloud-sheet .conditions-btn {
+  width: 100%;
+  padding: 8px 16px;
+  background: var(--fc-accent-purple);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.foundcloud-sheet .conditions-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 5px;
+  background: var(--fc-bg-secondary);
+  border: 2px solid var(--fc-border-color);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px var(--fc-shadow-hover);
+  z-index: 1000;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.foundcloud-sheet .condition-option {
+  padding: 10px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--fc-border-color);
+}
+
+.foundcloud-sheet .condition-option:hover {
+  background: var(--fc-bg-card-hover);
+}
+
+.foundcloud-sheet .active-conditions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.foundcloud-sheet .condition-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--fc-accent-purple);
+  color: white;
+  border-radius: 20px;
+  font-size: 0.85em;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.foundcloud-sheet .condition-badge:hover {
+  background: var(--fc-accent-danger);
+}
+
+/* Content Area */
+.foundcloud-sheet .content-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 15px;
+}
+
+/* Sections */
+.foundcloud-sheet .section {
+  margin-bottom: 25px;
+}
+
+.foundcloud-sheet .section-header {
+  color: var(--fc-text-primary);
+  margin-bottom: 10px;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  border-radius: 4px;
+  background: var(--fc-bg-tertiary);
+  border-left: 3px solid var(--fc-accent-primary);
+}
+
+.foundcloud-sheet .section-header:hover {
+  background: var(--fc-bg-card-hover);
+}
+
+.foundcloud-sheet .section-header::after {
+  content: '\f078';
+  font-family: 'Font Awesome 5 Free';
+  font-weight: 900;
+  font-size: 0.8em;
+  transition: transform 0.3s;
+}
+
+.foundcloud-sheet .section-header.collapsed::after {
+  transform: rotate(-90deg);
+}
+
+.foundcloud-sheet .section-content {
+  overflow: hidden;
+  transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+}
+
+.foundcloud-sheet .section-content.collapsed {
+  max-height: 0;
+  opacity: 0;
+}
+
+/* Grid */
+.foundcloud-sheet .grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+}
+
+/* Cards */
+.foundcloud-sheet .card {
+  background: var(--fc-bg-card);
+  border: 1px solid var(--fc-border-card);
+  border-radius: 4px;
+  padding: 15px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.foundcloud-sheet .card:hover {
+  background: var(--fc-bg-card-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px var(--fc-shadow-hover);
+}
+
+.foundcloud-sheet .card .bonus {
+  color: var(--fc-accent-primary);
+  font-weight: bold;
+  font-size: 1.2em;
+}
+
+/* Ability Cards */
+.foundcloud-sheet .ability-card .ability-name {
+  font-weight: bold;
+  font-size: 0.9em;
+  color: var(--fc-text-secondary);
+}
+
+.foundcloud-sheet .ability-card .ability-score {
+  font-size: 1.4em;
+  font-weight: bold;
+  margin: 5px 0;
+}
+
+/* Save Cards */
+.foundcloud-sheet .save-card.proficient {
+  border-color: var(--fc-accent-success);
+}
+
+.foundcloud-sheet .proficiency-indicator {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  color: var(--fc-accent-success);
+  font-size: 0.6em;
+}
+
+.foundcloud-sheet .save-card,
+.foundcloud-sheet .skill-card {
+  position: relative;
+}
+
+/* Skill Cards */
+.foundcloud-sheet .skill-card .skill-name {
+  font-size: 0.85em;
+  font-weight: bold;
+}
+
+.foundcloud-sheet .skill-card .skill-ability {
+  font-size: 0.7em;
+  color: var(--fc-text-muted);
+}
+
+.foundcloud-sheet .skill-card.expertise {
+  border-color: var(--fc-accent-warning);
+}
+
+.foundcloud-sheet .expertise-indicator {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  color: var(--fc-accent-warning);
+  font-size: 0.6em;
+}
+
+/* Spell Slots */
+.foundcloud-sheet .spell-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: 8px;
+}
+
+.foundcloud-sheet .spell-slot-card {
+  background: var(--fc-bg-action);
+  border: 2px solid var(--fc-accent-info);
+  border-radius: 6px;
+  padding: 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.foundcloud-sheet .spell-slot-card:hover {
+  transform: translateY(-2px);
+}
+
+.foundcloud-sheet .spell-slot-card.empty {
+  opacity: 0.5;
+  border-color: var(--fc-border-color);
+  background: var(--fc-bg-tertiary);
+}
+
+.foundcloud-sheet .spell-slot-level {
+  font-weight: bold;
+  font-size: 0.85em;
+}
+
+.foundcloud-sheet .spell-slot-count {
+  font-size: 1.3em;
+  font-weight: bold;
+  color: var(--fc-accent-info);
+}
+
+.foundcloud-sheet .spell-slot-card.empty .spell-slot-count {
+  color: var(--fc-text-muted);
+}
+
+/* Resources */
+.foundcloud-sheet .resources-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.foundcloud-sheet .resource-card {
+  background: var(--fc-bg-resource);
+  border: 1px solid var(--fc-accent-purple);
+  border-radius: 6px;
+  padding: 12px;
+  text-align: center;
+}
+
+.foundcloud-sheet .resource-name {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.foundcloud-sheet .resource-uses {
+  font-size: 1.2em;
+  color: var(--fc-accent-purple);
+  font-weight: bold;
+}
+
+.foundcloud-sheet .resource-recovery {
+  font-size: 0.75em;
+  color: var(--fc-text-muted);
+  text-transform: uppercase;
+}
+
+.foundcloud-sheet .resource-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.foundcloud-sheet .resource-use-btn,
+.foundcloud-sheet .resource-restore-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.foundcloud-sheet .resource-use-btn {
+  background: var(--fc-accent-danger);
+  color: white;
+}
+
+.foundcloud-sheet .resource-restore-btn {
+  background: var(--fc-accent-success);
+  color: white;
+}
+
+/* Filters */
+.foundcloud-sheet .filters-container {
+  margin-bottom: 15px;
+}
+
+.foundcloud-sheet .search-row {
+  margin-bottom: 10px;
+}
+
+.foundcloud-sheet .search-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--fc-border-color);
+  border-radius: 4px;
+  background: var(--fc-bg-secondary);
+  color: var(--fc-text-primary);
+}
+
+.foundcloud-sheet .filter-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.foundcloud-sheet .filter-btn {
+  background: var(--fc-bg-tertiary);
+  color: var(--fc-text-primary);
+  border: 1px solid var(--fc-border-color);
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85em;
+  transition: all 0.2s;
+}
+
+.foundcloud-sheet .filter-btn:hover {
+  background: var(--fc-bg-card-hover);
+}
+
+.foundcloud-sheet .filter-btn.active {
+  background: var(--fc-accent-primary);
+  color: white;
+  border-color: var(--fc-accent-primary);
+}
+
+/* Action Cards */
+.foundcloud-sheet .action-card,
+.foundcloud-sheet .spell-card {
+  background: var(--fc-bg-action);
+  border: 1px solid var(--fc-accent-danger);
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.foundcloud-sheet .action-header,
+.foundcloud-sheet .spell-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.foundcloud-sheet .action-img,
+.foundcloud-sheet .spell-img {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+}
+
+.foundcloud-sheet .action-name,
+.foundcloud-sheet .spell-name {
+  flex: 1;
+  font-weight: bold;
+  font-size: 1.1em;
+}
+
+.foundcloud-sheet .action-type-badge,
+.foundcloud-sheet .casting-time-badge {
+  font-size: 1.2em;
+}
+
+.foundcloud-sheet .uses-badge {
+  background: var(--fc-accent-success);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.8em;
+  font-weight: bold;
+}
+
+.foundcloud-sheet .action-buttons,
+.foundcloud-sheet .spell-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.foundcloud-sheet .attack-btn {
+  background: var(--fc-accent-danger);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.foundcloud-sheet .damage-btn {
+  background: var(--fc-accent-warning);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.foundcloud-sheet .use-btn,
+.foundcloud-sheet .cast-btn {
+  background: var(--fc-accent-purple);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.foundcloud-sheet .action-description,
+.foundcloud-sheet .spell-description {
+  display: none;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--fc-border-color);
+  font-size: 0.9em;
+  color: var(--fc-text-secondary);
+}
+
+.foundcloud-sheet .action-description.expanded,
+.foundcloud-sheet .spell-description.expanded {
+  display: block;
+}
+
+/* Spell Cards specific */
+.foundcloud-sheet .spell-card {
+  background: var(--fc-bg-spell);
+  border-color: var(--fc-border-spell);
+}
+
+.foundcloud-sheet .concentration-tag,
+.foundcloud-sheet .ritual-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75em;
+  font-weight: bold;
+}
+
+.foundcloud-sheet .concentration-tag {
+  background: var(--fc-accent-info);
+  color: white;
+}
+
+.foundcloud-sheet .ritual-tag {
+  background: var(--fc-accent-purple);
+  color: white;
+}
+
+.foundcloud-sheet .spell-level-header {
+  color: var(--fc-accent-primary);
+  margin: 15px 0 10px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--fc-border-card);
+}
+
+.foundcloud-sheet .save-info {
+  color: var(--fc-text-secondary);
+  font-size: 0.85em;
+  font-style: italic;
+}
+
+/* Inventory */
+.foundcloud-sheet .inventory-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: var(--fc-bg-tertiary);
+  border-radius: 6px;
+  margin-bottom: 8px;
+  border-left: 3px solid var(--fc-border-color);
+}
+
+.foundcloud-sheet .inventory-item[data-equipped="true"] {
+  border-left-color: var(--fc-accent-success);
+}
+
+.foundcloud-sheet .inventory-item[data-attuned="true"] {
+  border-left-color: var(--fc-accent-warning);
+}
+
+.foundcloud-sheet .item-img {
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+}
+
+.foundcloud-sheet .item-info {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.foundcloud-sheet .item-name {
+  font-weight: bold;
+}
+
+.foundcloud-sheet .item-quantity {
+  color: var(--fc-text-muted);
+  font-size: 0.85em;
+}
+
+.foundcloud-sheet .equipped-badge,
+.foundcloud-sheet .attuned-badge {
+  font-size: 0.85em;
+}
+
+.foundcloud-sheet .equipped-badge {
+  color: var(--fc-accent-success);
+}
+
+.foundcloud-sheet .attuned-badge {
+  color: var(--fc-accent-warning);
+}
+
+.foundcloud-sheet .item-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.foundcloud-sheet .item-buttons button {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  background: var(--fc-bg-secondary);
+  color: var(--fc-text-primary);
+  transition: all 0.2s;
+}
+
+.foundcloud-sheet .item-buttons button:hover {
+  background: var(--fc-accent-primary);
+  color: white;
+}
+
+.foundcloud-sheet .item-delete-btn:hover {
+  background: var(--fc-accent-danger) !important;
+}
+
+/* Scrollbar styling */
+.foundcloud-sheet .content-area::-webkit-scrollbar {
+  width: 8px;
+}
+
+.foundcloud-sheet .content-area::-webkit-scrollbar-track {
+  background: var(--fc-bg-secondary);
+}
+
+.foundcloud-sheet .content-area::-webkit-scrollbar-thumb {
+  background: var(--fc-accent-primary);
+  border-radius: 4px;
+}
+
+.foundcloud-sheet .content-area::-webkit-scrollbar-thumb:hover {
+  background: var(--fc-accent-success);
+}

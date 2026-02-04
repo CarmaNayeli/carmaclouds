@@ -1,0 +1,379 @@
+<form class="{{cssClass}} foundcloud-sheet-simple" autocomplete="off">
+  <!-- Systems Bar -->
+  <div class="systems-bar">
+    <div class="theme-switcher">
+      <button type="button" class="theme-btn {{#if isLightTheme}}active{{/if}}" data-theme="light">Light</button>
+      <button type="button" class="theme-btn {{#unless isLightTheme}}active{{/unless}}" data-theme="dark">Dark</button>
+    </div>
+    <button type="button" class="settings-btn" id="settings-btn" title="Settings">⚙️</button>
+    <button type="button" class="close-btn" id="close-btn">✕</button>
+  </div>
+
+  <!-- Content Area -->
+  <div class="content-area">
+    <div class="header">
+      <!-- Character Portrait -->
+      <div style="text-align: center; margin-bottom: 15px;">
+        <img id="char-portrait" src="{{actor.img}}" alt="Character Portrait" style="width: 120px; height: 120px; border-radius: 50%; border: 4px solid var(--accent-primary); object-fit: cover; {{#unless actor.img}}display: none;{{/unless}} box-shadow: 0 4px 12px var(--shadow-hover);">
+      </div>
+
+      <!-- Character Name -->
+      <div class="char-name-section">
+        {{actor.name}}
+      </div>
+
+      <!-- Layer 1: Class, Level, Race, Hit Dice -->
+      <div class="char-info-layer layer-1">
+        <div><strong>Class:</strong> <span>{{characterClass}}</span></div>
+        <div><strong>Level:</strong> <span>{{characterLevel}}</span></div>
+        <div><strong>Race:</strong> <span>{{characterRace}}</span></div>
+        <div><strong>Hit Dice:</strong> <span>{{hitDice}}</span></div>
+      </div>
+
+      <!-- Layer 2: AC, Speed, Proficiency, Death Saves, Inspiration -->
+      <div class="char-info-layer layer-2">
+        <div class="stat-box">
+          <div class="stat-label">Armor Class</div>
+          <div class="stat-value">{{armorClass}}</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Speed</div>
+          <div class="stat-value">{{speed}} ft</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Proficiency</div>
+          <div class="stat-value">+{{proficiencyBonus}}</div>
+        </div>
+        <div class="stat-box clickable" id="death-saves-display">
+          <div class="stat-label">Death Saves</div>
+          <div style="font-size: 0.9em; font-weight: bold;">
+            <span style="color: var(--accent-success);">✓{{deathSaves.successes}}</span> /
+            <span style="color: var(--accent-danger);">✗{{deathSaves.failures}}</span>
+          </div>
+        </div>
+        <div class="stat-box clickable" id="inspiration-display">
+          <div class="stat-label">Inspiration</div>
+          <div style="font-size: 1.1em; font-weight: bold;">{{#if inspiration}}★ Yes{{else}}☆ None{{/if}}</div>
+        </div>
+      </div>
+
+      <!-- Layer 3: Hit Points, Initiative -->
+      <div class="layer-3">
+        <div class="hp-box clickable" id="hp-display">
+          <div style="font-size: 0.8em; margin-bottom: 5px;">Hit Points</div>
+          <div style="font-size: 1.5em;">{{hp.current}} / {{hp.max}}</div>
+          {{#if hp.temp}}
+          <div style="font-size: 0.9em; margin-top: 5px;">+{{hp.temp}} temp</div>
+          {{/if}}
+        </div>
+        <div class="initiative-box clickable" id="initiative-button">
+          <div style="font-size: 0.8em; margin-bottom: 5px;">Initiative</div>
+          <div style="font-size: 1.5em;">{{initiative}}</div>
+        </div>
+      </div>
+
+      <!-- Layer 4: Rest Buttons & Advantage Toggle -->
+      <div class="rest-buttons">
+        <button type="button" class="rest-btn short" id="short-rest-btn">☕ Short Rest</button>
+        <button type="button" class="rest-btn long" id="long-rest-btn">🌙 Long Rest</button>
+      </div>
+
+      <!-- Advantage Toggle -->
+      <div style="display: flex; gap: 8px; margin-top: 12px; justify-content: center;">
+        <button type="button" id="advantage-btn" class="advantage-toggle {{#if isAdvantage}}active{{/if}}" data-state="advantage">
+          ⚡ Advantage
+        </button>
+        <button type="button" id="normal-btn" class="advantage-toggle {{#if isNormal}}active{{/if}}" data-state="normal">
+          ⚖️ Normal
+        </button>
+        <button type="button" id="disadvantage-btn" class="advantage-toggle {{#if isDisadvantage}}active{{/if}}" data-state="disadvantage">
+          ⚠️ Disadvantage
+        </button>
+      </div>
+    </div>
+
+    <!-- Combat Mechanics Section -->
+    <div class="combat-section">
+      <!-- Action Economy Tracker -->
+      <div class="action-economy">
+        <div class="action-economy-item" id="action-indicator" data-used="{{combatState.actionUsed}}">
+          <div class="action-icon">⚔️</div>
+          <div class="action-label">Action</div>
+        </div>
+        <div class="action-economy-item" id="bonus-action-indicator" data-used="{{combatState.bonusActionUsed}}">
+          <div class="action-icon">⚡</div>
+          <div class="action-label">Bonus</div>
+        </div>
+        <div class="action-economy-item" id="movement-indicator" data-used="{{combatState.movementUsed}}">
+          <div class="action-icon">👟</div>
+          <div class="action-label">Movement</div>
+        </div>
+        <div class="action-economy-item" id="reaction-indicator" data-used="{{combatState.reactionUsed}}">
+          <div class="action-icon">🛡️</div>
+          <div class="action-label">Reaction</div>
+        </div>
+        <button type="button" class="combat-reset-btn" id="turn-reset-btn" title="Reset turn (Action/Bonus/Movement)">↻ Turn</button>
+        <button type="button" class="combat-reset-btn" id="round-reset-btn" title="Reset round (includes Reaction)">↻ Round</button>
+      </div>
+
+      <!-- Conditions & Concentration Row -->
+      <div class="combat-status-row">
+        <!-- Concentration Indicator -->
+        {{#if combatState.concentration}}
+        <div class="concentration-indicator" id="concentration-indicator">
+          <span class="concentration-icon">🧠</span>
+          <span class="concentration-text">Concentrating on: <strong>{{combatState.concentration}}</strong></span>
+          <button type="button" class="concentration-drop-btn" id="drop-concentration-btn" title="Drop concentration">✕</button>
+        </div>
+        {{/if}}
+
+        <!-- Conditions Manager -->
+        <div class="conditions-manager">
+          <button type="button" class="conditions-btn" id="add-condition-btn">
+            <span>🎭</span> Add Effect
+          </button>
+          <div class="conditions-dropdown" id="conditions-dropdown" style="display: none;">
+            {{#each conditionsList}}
+            <div class="condition-option" data-condition="{{this.id}}">
+              <span class="condition-icon">{{{this.icon}}}</span>
+              <span class="condition-name">{{this.name}}</span>
+            </div>
+            {{/each}}
+          </div>
+          <div class="active-conditions" id="active-conditions">
+            {{#each combatState.conditions}}
+            <span class="condition-badge" data-condition="{{this}}">
+              {{this}} <span class="condition-badge-remove">✕</span>
+            </span>
+            {{/each}}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resources & Spell Slots -->
+    <div class="section">
+      <h3>💎 Resources</h3>
+      <div class="section-content">
+        <div id="resources-container">
+          {{#if resources.length}}
+          {{#each resources}}
+          <div class="resource-card" data-resource-id="{{this.id}}">
+            <div class="resource-name">{{this.name}}</div>
+            <div class="resource-uses">{{this.current}} / {{this.max}}</div>
+            <div class="resource-recovery">{{this.recovery}}</div>
+          </div>
+          {{/each}}
+          {{else}}
+          <div style="text-align: center; color: var(--text-muted); padding: 20px;">No resources</div>
+          {{/if}}
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>✨ Spell Slots</h3>
+      <div class="section-content">
+        <div class="spell-slots-grid" id="spell-slots-container">
+          {{#each spellSlots}}
+          <div class="spell-slot-card {{#if this.isEmpty}}empty{{/if}}" data-level="{{this.level}}">
+            <div class="spell-slot-level">{{this.levelLabel}}</div>
+            <div class="spell-slot-count">{{this.current}} / {{this.max}}</div>
+          </div>
+          {{/each}}
+        </div>
+      </div>
+    </div>
+
+    <!-- Abilities, Saves, Skills -->
+    <div class="section">
+      <h3>⚡ Abilities</h3>
+      <div class="section-content">
+        <div class="grid" id="abilities-grid">
+          {{#each abilities}}
+          <div class="card ability-card" data-ability="{{this.key}}">
+            <div style="font-weight: bold; font-size: 0.9em;">{{this.abbr}}</div>
+            <div style="font-size: 0.85em; color: var(--text-secondary);">{{this.value}}</div>
+            <div class="bonus">{{this.mod}}</div>
+          </div>
+          {{/each}}
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>🛡️ Saving Throws</h3>
+      <div class="section-content">
+        <div class="grid" id="saves-grid">
+          {{#each saves}}
+          <div class="card save-card {{#if this.proficient}}proficient{{/if}}" data-ability="{{this.key}}">
+            <div style="font-weight: bold; font-size: 0.9em;">{{this.abbr}}</div>
+            <div class="bonus">{{this.mod}}</div>
+            {{#if this.proficient}}<div style="position: absolute; top: 4px; right: 4px; color: var(--accent-success);">●</div>{{/if}}
+          </div>
+          {{/each}}
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>🎯 Skills</h3>
+      <div class="section-content">
+        <div class="grid" id="skills-grid">
+          {{#each skills}}
+          <div class="card skill-card {{#if this.proficient}}proficient{{/if}} {{#if this.expertise}}expertise{{/if}}" data-skill="{{this.key}}">
+            <div style="font-weight: bold; font-size: 0.85em;">{{this.name}}</div>
+            <div style="font-size: 0.75em; color: var(--text-secondary);">({{this.ability}})</div>
+            <div class="bonus">{{this.mod}}</div>
+            {{#if this.expertise}}<div style="position: absolute; top: 4px; right: 4px; color: var(--accent-warning);">★</div>{{/if}}
+            {{#if this.proficient}}<div style="position: absolute; top: 4px; right: 4px; color: var(--accent-success);">●</div>{{/if}}
+          </div>
+          {{/each}}
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions & Spells -->
+    <div class="section">
+      <h3>⚔️ Actions & Attacks</h3>
+      <div class="section-content">
+        <div id="actions-filters" style="margin-bottom: 15px;">
+          <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 10px;">
+            <input type="text" id="actions-search" placeholder="🔍 Search actions..." style="flex: 1; min-width: 200px; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-secondary); color: var(--text-primary);">
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button type="button" class="filter-btn active" data-filter="all" data-type="action-type">All</button>
+            <button type="button" class="filter-btn" data-filter="action" data-type="action-type">⚔️ Action</button>
+            <button type="button" class="filter-btn" data-filter="bonus" data-type="action-type">⚡ Bonus</button>
+            <button type="button" class="filter-btn" data-filter="reaction" data-type="action-type">🛡️ Reaction</button>
+            <button type="button" class="filter-btn" data-filter="free" data-type="action-type">🆓 Free</button>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
+            <button type="button" class="filter-btn active" data-filter="all" data-type="action-category">All Types</button>
+            <button type="button" class="filter-btn" data-filter="damage" data-type="action-category">💥 Damage</button>
+            <button type="button" class="filter-btn" data-filter="healing" data-type="action-category">💚 Healing</button>
+            <button type="button" class="filter-btn" data-filter="utility" data-type="action-category">🔧 Utility</button>
+          </div>
+        </div>
+        <div id="actions-container">
+          {{#each actions}}
+          <div class="action-card" data-item-id="{{this.id}}" data-name="{{this.name}}" data-action-type="{{this.actionType}}" data-category="{{this.category}}">
+            <div class="action-header">
+              <div class="action-name">{{this.name}}</div>
+              <div class="action-buttons">
+                {{#if this.hasAttack}}
+                <button type="button" class="attack-btn" data-item-id="{{this.id}}">🎲 {{this.attackBonus}}</button>
+                {{/if}}
+                {{#if this.hasDamage}}
+                <button type="button" class="damage-btn" data-item-id="{{this.id}}">💥 {{this.damage}}</button>
+                {{/if}}
+                {{#unless this.hasAttack}}
+                {{#unless this.hasDamage}}
+                <button type="button" class="use-btn" data-item-id="{{this.id}}">Use</button>
+                {{/unless}}
+                {{/unless}}
+              </div>
+            </div>
+            <div class="action-description" data-item-id="{{this.id}}">
+              {{{this.description}}}
+            </div>
+          </div>
+          {{/each}}
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>🔮 Spells</h3>
+      <div class="section-content">
+        <div id="spells-filters" style="margin-bottom: 15px;">
+          <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 10px;">
+            <input type="text" id="spells-search" placeholder="🔍 Search spells..." style="flex: 1; min-width: 200px; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-secondary); color: var(--text-primary);">
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button type="button" class="filter-btn active" data-filter="all" data-type="spell-level">All Levels</button>
+            <button type="button" class="filter-btn" data-filter="0" data-type="spell-level">Cantrips</button>
+            <button type="button" class="filter-btn" data-filter="1" data-type="spell-level">1st</button>
+            <button type="button" class="filter-btn" data-filter="2" data-type="spell-level">2nd</button>
+            <button type="button" class="filter-btn" data-filter="3" data-type="spell-level">3rd</button>
+            <button type="button" class="filter-btn" data-filter="4" data-type="spell-level">4th</button>
+            <button type="button" class="filter-btn" data-filter="5" data-type="spell-level">5th</button>
+            <button type="button" class="filter-btn" data-filter="6" data-type="spell-level">6th</button>
+            <button type="button" class="filter-btn" data-filter="7" data-type="spell-level">7th</button>
+            <button type="button" class="filter-btn" data-filter="8" data-type="spell-level">8th</button>
+            <button type="button" class="filter-btn" data-filter="9" data-type="spell-level">9th</button>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
+            <button type="button" class="filter-btn active" data-filter="all" data-type="spell-category">All Types</button>
+            <button type="button" class="filter-btn" data-filter="damage" data-type="spell-category">💥 Damage</button>
+            <button type="button" class="filter-btn" data-filter="healing" data-type="spell-category">💚 Healing</button>
+            <button type="button" class="filter-btn" data-filter="utility" data-type="spell-category">🔧 Utility</button>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
+            <button type="button" class="filter-btn active" data-filter="all" data-type="spell-casting-time">All Times</button>
+            <button type="button" class="filter-btn" data-filter="action" data-type="spell-casting-time">⚔️ Action</button>
+            <button type="button" class="filter-btn" data-filter="bonus" data-type="spell-casting-time">⚡ Bonus Action</button>
+            <button type="button" class="filter-btn" data-filter="reaction" data-type="spell-casting-time">🛡️ Reaction</button>
+          </div>
+        </div>
+        <div id="spells-container">
+          {{#each spells}}
+          <div class="spell-card" data-item-id="{{this.id}}" data-name="{{this.name}}" data-level="{{this.level}}" data-category="{{this.category}}" data-casting-time="{{this.castingTime}}">
+            <div class="spell-header">
+              <div>
+                <strong>{{this.name}}</strong>
+                {{#if this.concentration}}<span class="concentration-tag">🧠 C</span>{{/if}}
+                {{#if this.ritual}}<span class="ritual-tag">📖 R</span>{{/if}}
+              </div>
+              <div class="action-buttons">
+                <button type="button" class="cast-btn" data-item-id="{{this.id}}">Cast</button>
+                {{#if this.hasAttack}}
+                <button type="button" class="attack-btn" data-item-id="{{this.id}}">🎲 Attack</button>
+                {{/if}}
+                {{#if this.hasDamage}}
+                <button type="button" class="damage-btn" data-item-id="{{this.id}}">💥 {{this.damage}}</button>
+                {{/if}}
+              </div>
+            </div>
+            <div class="spell-description" data-item-id="{{this.id}}">
+              {{{this.description}}}
+            </div>
+          </div>
+          {{/each}}
+        </div>
+      </div>
+    </div>
+
+    <!-- Inventory & Equipment -->
+    <div class="section" id="inventory-section">
+      <h3>🎒 Inventory & Equipment</h3>
+      <div class="section-content">
+        <div id="inventory-filters" style="margin-bottom: 15px;">
+          <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 10px;">
+            <input type="text" id="inventory-search" placeholder="🔍 Search inventory..." style="flex: 1; min-width: 200px; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-secondary); color: var(--text-primary);">
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button type="button" class="filter-btn" data-filter="all" data-type="inventory-filter">All Items</button>
+            <button type="button" class="filter-btn active" data-filter="equipped" data-type="inventory-filter">⚔️ Equipped</button>
+            <button type="button" class="filter-btn" data-filter="attuned" data-type="inventory-filter">✨ Attuned</button>
+            <button type="button" class="filter-btn" data-filter="container" data-type="inventory-filter">📦 Containers</button>
+          </div>
+        </div>
+        <div id="inventory-container">
+          {{#each inventory}}
+          <div class="inventory-item" data-item-id="{{this.id}}" data-name="{{this.name}}" data-equipped="{{this.equipped}}" data-attuned="{{this.attuned}}">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 4px; margin-bottom: 8px;">
+              <div>
+                <strong>{{this.name}}</strong>
+                {{#if this.equipped}}<span style="color: var(--accent-success); margin-left: 8px;">⚔️</span>{{/if}}
+                {{#if this.attuned}}<span style="color: var(--accent-warning); margin-left: 8px;">✨</span>{{/if}}
+                <div style="font-size: 0.85em; color: var(--text-secondary);">Qty: {{this.quantity}}</div>
+              </div>
+            </div>
+          </div>
+          {{/each}}
+        </div>
+      </div>
+    </div>
+  </div>
+</form>

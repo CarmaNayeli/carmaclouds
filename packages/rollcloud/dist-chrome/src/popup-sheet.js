@@ -1,6 +1,41 @@
 (() => {
   // src/popup-sheet.js
   debug.log("\u2705 Popup HTML loaded");
+  function cropToCircle(imageUrl, size = 200) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const borderWidth = Math.max(8, size * 0.04);
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        ctx.save();
+        const radius = size / 2 - borderWidth / 2;
+        ctx.beginPath();
+        ctx.arc(size / 2, size / 2, radius, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        const scale = Math.max(size / img.width, size / img.height);
+        const x = size / 2 - img.width / 2 * scale;
+        const y = size / 2 - img.height / 2 * scale;
+        ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+        ctx.restore();
+        ctx.beginPath();
+        ctx.arc(size / 2, size / 2, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = "#FC57F9";
+        ctx.lineWidth = borderWidth;
+        ctx.stroke();
+        resolve(canvas.toDataURL("image/png"));
+      };
+      img.onerror = () => {
+        debug.warn("Failed to load image for circular crop, using original");
+        resolve(imageUrl);
+      };
+      img.src = imageUrl;
+    });
+  }
   if (typeof ThemeManager !== "undefined") {
     ThemeManager.init().then(() => {
       debug.log("\u{1F3A8} Theme system initialized");
@@ -345,6 +380,20 @@
           return;
         }
         buildSheet(characterData);
+        const portraitElement = document.getElementById("char-portrait");
+        if (portraitElement && characterData) {
+          const portraitUrl = characterData.picture || characterData.avatarPicture;
+          if (portraitUrl) {
+            cropToCircle(portraitUrl, 120).then((croppedUrl) => {
+              portraitElement.src = croppedUrl;
+              portraitElement.style.display = "block";
+            }).catch((err) => {
+              debug.warn("Failed to crop portrait:", err);
+              portraitElement.src = portraitUrl;
+              portraitElement.style.display = "block";
+            });
+          }
+        }
         initRacialTraits();
         initFeatTraits();
         initClassFeatures();

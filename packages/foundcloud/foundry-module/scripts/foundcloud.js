@@ -208,45 +208,164 @@ Hooks.once('ready', async () => {
 });
 
 /**
- * Hook: Render Actor Directory
- * Add FoundCloud import button to Actors sidebar
+ * Hook: Ready
+ * Add FoundCloud collapsible side tab
  */
-Hooks.on('renderActorDirectory', (app, html, data) => {
-  // Always add the button, even if not fully initialized
+Hooks.once('ready', () => {
   if (!game.foundcloud) return;
 
-  // Ensure html is a jQuery object (Foundry v13 compatibility)
-  const $html = html instanceof jQuery ? html : $(html);
+  // Check if tab already exists (prevents duplicates)
+  if (document.getElementById('foundcloud-side-tab')) return;
 
-  // Check if button already exists (prevents duplicates)
-  if ($html.find('.foundcloud-import-btn').length > 0) return;
+  // Create the side tab
+  const sideTab = document.createElement('div');
+  sideTab.id = 'foundcloud-side-tab';
+  sideTab.className = 'foundcloud-side-tab';
+  sideTab.innerHTML = `
+    <div class="foundcloud-tab-content">
+      <img src="modules/foundcloud/foundcloud-logo.png" alt="FoundCloud" class="foundcloud-logo">
+      <span class="foundcloud-tab-text">Import from FoundCloud</span>
+    </div>
+  `;
 
-  // Add import button to the sidebar
-  const importButton = $(`
-    <button class="foundcloud-import-btn" style="margin: 5px; flex: 0 0 100%; background: #ff6b35; color: white; border: none; padding: 8px; border-radius: 4px; font-weight: 600; cursor: pointer;">
-      <i class="fas fa-cloud-download-alt"></i> Import from DiceCloud
-    </button>
-  `);
+  // Add to body
+  document.body.appendChild(sideTab);
 
-  importButton.on('click', () => {
+  // Create the popup menu
+  const popupMenu = document.createElement('div');
+  popupMenu.id = 'foundcloud-popup-menu';
+  popupMenu.className = 'foundcloud-popup-menu';
+  popupMenu.style.display = 'none';
+  popupMenu.innerHTML = `
+    <div class="foundcloud-menu-header">
+      <h3>FoundCloud Characters</h3>
+      <button class="foundcloud-menu-close" title="Close">✕</button>
+    </div>
+    <div class="foundcloud-menu-content">
+      <div class="foundcloud-character-list" id="foundcloud-character-list">
+        <div class="foundcloud-loading">Loading characters...</div>
+      </div>
+      <div class="foundcloud-menu-actions">
+        <button class="foundcloud-btn foundcloud-open-sheet" id="foundcloud-open-sheet">
+          <i class="fas fa-file-alt"></i> Open Character Sheet
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(popupMenu);
+
+  // Click handler for side tab
+  sideTab.addEventListener('click', async () => {
     if (!game.foundcloud.initialized) {
       ui.notifications.error('FoundCloud is still initializing. Please wait...');
       return;
     }
-    if (!game.foundcloud.ui) {
-      ui.notifications.error('FoundCloud UI not loaded. Try refreshing the page.');
-      return;
+
+    // Toggle menu visibility
+    const menu = document.getElementById('foundcloud-popup-menu');
+    if (menu.style.display === 'none') {
+      menu.style.display = 'block';
+      await loadCharacterList();
+    } else {
+      menu.style.display = 'none';
     }
-    game.foundcloud.ui.showImportDialog();
   });
 
-  // Try multiple possible locations for the button
-  const header = $html.find('.directory-header .action-buttons');
-  if (header.length) {
-    header.append(importButton);
-  } else {
-    $html.find('.directory-header').append(importButton);
+  // Close button handler
+  popupMenu.querySelector('.foundcloud-menu-close').addEventListener('click', () => {
+    popupMenu.style.display = 'none';
+  });
+
+  // Open sheet button handler
+  popupMenu.querySelector('#foundcloud-open-sheet').addEventListener('click', () => {
+    const selected = popupMenu.querySelector('.foundcloud-character-item.selected');
+    if (!selected) {
+      ui.notifications.warn('Please select a character first');
+      return;
+    }
+    const characterId = selected.dataset.characterId;
+    openCharacterSheet(characterId);
+  });
+
+  // Load character list function
+  async function loadCharacterList() {
+    const listContainer = document.getElementById('foundcloud-character-list');
+    listContainer.innerHTML = '<div class="foundcloud-loading">Loading characters...</div>';
+
+    try {
+      const characters = await game.foundcloud.getAvailableCharacters();
+      
+      if (!characters || characters.length === 0) {
+        listContainer.innerHTML = '<div class="foundcloud-empty">No characters found. Sync your characters using the browser extension first.</div>';
+        return;
+      }
+
+      listContainer.innerHTML = '';
+      characters.forEach(char => {
+        const item = document.createElement('div');
+        item.className = 'foundcloud-character-item';
+        item.dataset.characterId = char.dicecloud_character_id;
+        item.innerHTML = `
+          <div class="foundcloud-char-name">${char.character_name}</div>
+          <div class="foundcloud-char-details">Level ${char.level || 1} ${char.character_class || 'Unknown'}</div>
+        `;
+        
+        item.addEventListener('click', () => {
+          // Remove selection from all items
+          listContainer.querySelectorAll('.foundcloud-character-item').forEach(i => i.classList.remove('selected'));
+          // Select this item
+          item.classList.add('selected');
+        });
+
+        // Double-click to import
+        item.addEventListener('dblclick', () => {
+          game.foundcloud.ui.showImportDialog();
+          popupMenu.style.display = 'none';
+        });
+
+        listContainer.appendChild(item);
+      });
+    } catch (error) {
+      console.error('FoundCloud | Failed to load characters:', error);
+      listContainer.innerHTML = '<div class="foundcloud-error">Failed to load characters. Check console for details.</div>';
+    }
   }
+
+  // Open character sheet function
+  async function openCharacterSheet(characterId) {
+    try {
+      // Check if actor already exists
+      const existingActor = game.actors.find(a => 
+        a.getFlag('foundcloud', 'diceCloudId') === characterId
+      );
+
+      if (existingActor) {
+        existingActor.sheet.render(true);
+        popupMenu.style.display = 'none';
+      } else {
+        // Import first, then open
+        ui.notifications.info('Importing character...');
+        const actor = await game.foundcloud.importCharacter(characterId);
+        if (actor) {
+          actor.sheet.render(true);
+          popupMenu.style.display = 'none';
+        }
+      }
+    } catch (error) {
+      console.error('FoundCloud | Failed to open character sheet:', error);
+      ui.notifications.error('Failed to open character sheet: ' + error.message);
+    }
+  }
+
+  // Close menu when clicking outside
+  document.addEventListener('click', (e) => {
+    const menu = document.getElementById('foundcloud-popup-menu');
+    const tab = document.getElementById('foundcloud-side-tab');
+    if (menu && tab && !menu.contains(e.target) && !tab.contains(e.target)) {
+      menu.style.display = 'none';
+    }
+  });
 });
 
 /**
