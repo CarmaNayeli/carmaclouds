@@ -366,34 +366,16 @@ async function autoConnect() {
         results = await browserAPI.scripting.executeScript({
           target: { tabId: tabs[0].id },
           func: () => {
-            // Try to get auth data from localStorage, sessionStorage, or window object
+            // Directly read Meteor auth tokens (Chrome 144 compatible)
+            const meteorUserId = localStorage.getItem('Meteor.userId');
+            const meteorLoginToken = localStorage.getItem('Meteor.loginToken');
+            
             const authData = {
               localStorage: {},
               sessionStorage: {},
               meteor: null,
               authToken: null
             };
-            
-            // Check localStorage
-            for (let i = 0; i < localStorage.length; i++) {
-              const key = localStorage.key(i);
-              if (key && (key.includes('auth') || key.includes('token') || key.includes('meteor') || key.includes('login'))) {
-                authData.localStorage[key] = localStorage.getItem(key);
-              }
-            }
-            
-            // Check sessionStorage
-            for (let i = 0; i < sessionStorage.length; i++) {
-              const key = sessionStorage.key(i);
-              if (key && (key.includes('auth') || key.includes('token') || key.includes('meteor') || key.includes('login'))) {
-                authData.sessionStorage[key] = sessionStorage.getItem(key);
-              }
-            }
-            
-            // Check for Meteor/MongoDB auth (common in DiceCloud)
-            // Meteor stores auth data in localStorage with specific keys
-            const meteorUserId = localStorage.getItem('Meteor.userId');
-            const meteorLoginToken = localStorage.getItem('Meteor.loginToken');
 
             if (meteorUserId || meteorLoginToken) {
               authData.meteor = {

@@ -14176,26 +14176,14 @@ This cannot be undone.`)) {
             results = await browserAPI5.scripting.executeScript({
               target: { tabId: tabs[0].id },
               func: () => {
+                const meteorUserId = localStorage.getItem("Meteor.userId");
+                const meteorLoginToken = localStorage.getItem("Meteor.loginToken");
                 const authData2 = {
                   localStorage: {},
                   sessionStorage: {},
                   meteor: null,
                   authToken: null
                 };
-                for (let i = 0; i < localStorage.length; i++) {
-                  const key = localStorage.key(i);
-                  if (key && (key.includes("auth") || key.includes("token") || key.includes("meteor") || key.includes("login"))) {
-                    authData2.localStorage[key] = localStorage.getItem(key);
-                  }
-                }
-                for (let i = 0; i < sessionStorage.length; i++) {
-                  const key = sessionStorage.key(i);
-                  if (key && (key.includes("auth") || key.includes("token") || key.includes("meteor") || key.includes("login"))) {
-                    authData2.sessionStorage[key] = sessionStorage.getItem(key);
-                  }
-                }
-                const meteorUserId = localStorage.getItem("Meteor.userId");
-                const meteorLoginToken = localStorage.getItem("Meteor.loginToken");
                 if (meteorUserId || meteorLoginToken) {
                   authData2.meteor = {
                     userId: meteorUserId,
