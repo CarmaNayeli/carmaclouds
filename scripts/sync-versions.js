@@ -33,7 +33,7 @@ const manifests = [
   { path: 'packages/owlcloud/manifest_firefox.json', type: 'Firefox MV2' },
   { path: 'packages/rollcloud/manifest.json', type: 'Chrome MV3' },
   { path: 'packages/rollcloud/manifest_firefox.json', type: 'Firefox MV2' },
-  { path: 'packages/foundcloud/foundry-module/module.json', type: 'Foundry Module' }
+  { path: 'packages/carmaclouds/foundry-module/module.json', type: 'Foundry Module' }
 ];
 
 let updatedCount = 0;

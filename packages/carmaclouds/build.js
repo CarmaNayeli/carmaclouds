@@ -123,3 +123,21 @@ await buildExtension({
 console.log('✅ Both builds complete!');
 console.log('   - Firefox (MV2): dist/');
 console.log('   - Chrome (MV3):  dist-chrome/');
+
+// Sync Foundry module to website directory
+console.log('\n📋 Syncing Foundry module to website...');
+const foundryModuleSource = path.join('.', 'foundry-module');
+const foundryModuleDest = path.join('..', '..', 'website', 'public', 'foundry-module');
+
+if (fs.existsSync(foundryModuleSource)) {
+  // Remove existing destination if it exists
+  if (fs.existsSync(foundryModuleDest)) {
+    fs.rmSync(foundryModuleDest, { recursive: true, force: true });
+  }
+  
+  // Copy foundry module to website
+  fs.cpSync(foundryModuleSource, foundryModuleDest, { recursive: true });
+  console.log('✅ Synced Foundry module to website/public/foundry-module/');
+} else {
+  console.log('⚠️  Foundry module not found at foundry-module/');
+}
