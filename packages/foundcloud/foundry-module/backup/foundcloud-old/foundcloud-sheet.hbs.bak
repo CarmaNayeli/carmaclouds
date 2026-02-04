@@ -1,0 +1,447 @@
+<form class="{{cssClass}} foundcloud-sheet" autocomplete="off">
+  {{!-- Systems Bar --}}
+  <header class="systems-bar">
+    <div class="header-left">
+      <div class="theme-switcher">
+        <button type="button" class="theme-btn" data-theme="light" title="Light Theme">Light</button>
+        <button type="button" class="theme-btn active" data-theme="dark" title="Dark Theme">Dark</button>
+      </div>
+    </div>
+
+    <div class="header-center">
+      <h1 class="char-name">{{actor.name}}</h1>
+    </div>
+
+    <div class="header-right">
+      <button type="button" class="settings-btn" id="settings-btn" title="Settings">
+        <i class="fas fa-cog"></i>
+      </button>
+      <button type="button" class="close-btn" id="close-btn" title="Close">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+  </header>
+
+  {{!-- Character Info Header --}}
+  <section class="character-header">
+    {{!-- Layer 1: Class, Level, Race, Hit Dice --}}
+    <div class="char-info-layer layer-1">
+      <div class="info-box">
+        <span class="info-label">Class</span>
+        <span class="info-value">{{foundcloud.characterClass}}</span>
+      </div>
+      <div class="info-box">
+        <span class="info-label">Level</span>
+        <span class="info-value">{{foundcloud.characterLevel}}</span>
+      </div>
+      <div class="info-box">
+        <span class="info-label">Race</span>
+        <span class="info-value">{{foundcloud.characterRace}}</span>
+      </div>
+      <div class="info-box">
+        <span class="info-label">Hit Dice</span>
+        <span class="info-value">{{foundcloud.hitDice}}</span>
+      </div>
+    </div>
+
+    {{!-- Layer 2: AC, Speed, Proficiency, Death Saves, Inspiration --}}
+    <div class="char-info-layer layer-2">
+      <div class="stat-box">
+        <div class="stat-label">Armor Class</div>
+        <div class="stat-value">{{foundcloud.armorClass}}</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Speed</div>
+        <div class="stat-value">{{foundcloud.speed}} ft</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Proficiency</div>
+        <div class="stat-value">+{{foundcloud.proficiencyBonus}}</div>
+      </div>
+      <div class="stat-box clickable" id="death-saves-display" title="Click to roll death save">
+        <div class="stat-label">Death Saves</div>
+        <div class="stat-value death-saves">
+          <span class="success">{{foundcloud.deathSaves.successes}}</span> /
+          <span class="failure">{{foundcloud.deathSaves.failures}}</span>
+        </div>
+      </div>
+      <div class="stat-box clickable {{#if foundcloud.inspiration}}has-inspiration{{/if}}" id="inspiration-display" title="Click to toggle inspiration">
+        <div class="stat-label">Inspiration</div>
+        <div class="stat-value">{{#if foundcloud.inspiration}}&#x2B50; Yes{{else}}&#x2606; None{{/if}}</div>
+      </div>
+    </div>
+
+    {{!-- Layer 3: Hit Points and Initiative --}}
+    <div class="char-info-layer layer-3">
+      <div class="hp-box clickable" id="hp-display" title="Click to modify HP">
+        <div class="box-label">Hit Points</div>
+        <div class="box-value">{{foundcloud.hp.current}} / {{foundcloud.hp.max}}</div>
+        {{#if foundcloud.hp.temp}}
+        <div class="temp-hp">+{{foundcloud.hp.temp}} temp</div>
+        {{/if}}
+      </div>
+      <div class="initiative-box clickable" id="initiative-button" title="Click to roll initiative">
+        <div class="box-label">Initiative</div>
+        <div class="box-value">{{foundcloud.initiative}}</div>
+      </div>
+    </div>
+
+    {{!-- Layer 4: Rest Buttons --}}
+    <div class="rest-buttons">
+      <button type="button" class="rest-btn short" id="short-rest-btn">
+        <i class="fas fa-coffee"></i> Short Rest
+      </button>
+      <button type="button" class="rest-btn long" id="long-rest-btn">
+        <i class="fas fa-moon"></i> Long Rest
+      </button>
+    </div>
+
+    {{!-- Advantage Toggle --}}
+    <div class="advantage-toggle-container">
+      <button type="button" id="advantage-btn" class="advantage-toggle {{#if foundcloud.isAdvantage}}active{{/if}}" data-state="advantage">
+        <i class="fas fa-angle-double-up"></i> Advantage
+      </button>
+      <button type="button" id="normal-btn" class="advantage-toggle {{#if foundcloud.isNormal}}active{{/if}}" data-state="normal">
+        <i class="fas fa-minus"></i> Normal
+      </button>
+      <button type="button" id="disadvantage-btn" class="advantage-toggle {{#if foundcloud.isDisadvantage}}active{{/if}}" data-state="disadvantage">
+        <i class="fas fa-angle-double-down"></i> Disadvantage
+      </button>
+    </div>
+  </section>
+
+  {{!-- Combat Mechanics Section --}}
+  <section class="combat-section">
+    <div class="action-economy">
+      <div class="action-economy-item {{#if foundcloud.combatState.actionUsed}}used{{/if}}" id="action-indicator" data-used="{{foundcloud.combatState.actionUsed}}">
+        <div class="action-icon"><i class="fas fa-fist-raised"></i></div>
+        <div class="action-label">Action</div>
+      </div>
+      <div class="action-economy-item {{#if foundcloud.combatState.bonusActionUsed}}used{{/if}}" id="bonus-action-indicator" data-used="{{foundcloud.combatState.bonusActionUsed}}">
+        <div class="action-icon"><i class="fas fa-bolt"></i></div>
+        <div class="action-label">Bonus</div>
+      </div>
+      <div class="action-economy-item {{#if foundcloud.combatState.movementUsed}}used{{/if}}" id="movement-indicator" data-used="{{foundcloud.combatState.movementUsed}}">
+        <div class="action-icon"><i class="fas fa-shoe-prints"></i></div>
+        <div class="action-label">Movement</div>
+      </div>
+      <div class="action-economy-item {{#if foundcloud.combatState.reactionUsed}}used{{/if}}" id="reaction-indicator" data-used="{{foundcloud.combatState.reactionUsed}}">
+        <div class="action-icon"><i class="fas fa-shield-alt"></i></div>
+        <div class="action-label">Reaction</div>
+      </div>
+      <button type="button" class="combat-reset-btn" id="turn-reset-btn" title="Reset turn">
+        <i class="fas fa-redo"></i> Turn
+      </button>
+      <button type="button" class="combat-reset-btn" id="round-reset-btn" title="Reset round">
+        <i class="fas fa-sync"></i> Round
+      </button>
+    </div>
+
+    {{!-- Concentration & Conditions --}}
+    <div class="combat-status-row">
+      {{#if foundcloud.combatState.concentration}}
+      <div class="concentration-indicator" id="concentration-indicator">
+        <span class="concentration-icon"><i class="fas fa-brain"></i></span>
+        <span class="concentration-text">Concentrating on: <strong id="concentration-spell">{{foundcloud.combatState.concentration}}</strong></span>
+        <button type="button" class="concentration-drop-btn" id="drop-concentration-btn" title="Drop concentration">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      {{/if}}
+
+      <div class="conditions-manager">
+        <button type="button" class="conditions-btn" id="add-condition-btn">
+          <i class="fas fa-theater-masks"></i> Add Effect
+        </button>
+        <div class="conditions-dropdown" style="display: none;">
+          {{#each foundcloud.conditionsList}}
+          <div class="condition-option" data-condition="{{this.id}}">
+            <span class="condition-icon">{{{this.icon}}}</span>
+            <span class="condition-name">{{this.name}}</span>
+          </div>
+          {{/each}}
+        </div>
+        <div class="active-conditions" id="active-conditions">
+          {{#each foundcloud.combatState.conditions}}
+          <span class="condition-badge" data-condition="{{this}}">
+            {{this}} <i class="fas fa-times"></i>
+          </span>
+          {{/each}}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {{!-- Main Content Area --}}
+  <div class="content-area">
+    {{!-- Resources Section --}}
+    <section class="section">
+      <h3 class="section-header"><i class="fas fa-gem"></i> Resources</h3>
+      <div class="section-content">
+        <div class="resources-grid" id="resources-container">
+          {{#each foundcloud.resources}}
+          <div class="resource-card" data-item-id="{{this.id}}">
+            <div class="resource-name">{{this.name}}</div>
+            <div class="resource-uses">{{this.current}} / {{this.max}}</div>
+            <div class="resource-recovery">{{this.recovery}}</div>
+            <div class="resource-buttons">
+              <button type="button" class="resource-use-btn" title="Use">-</button>
+              <button type="button" class="resource-restore-btn" title="Restore">+</button>
+            </div>
+          </div>
+          {{/each}}
+        </div>
+      </div>
+    </section>
+
+    {{!-- Spell Slots Section --}}
+    <section class="section">
+      <h3 class="section-header"><i class="fas fa-star"></i> Spell Slots</h3>
+      <div class="section-content">
+        <div class="spell-slots-grid" id="spell-slots-container">
+          {{#each foundcloud.spellSlots}}
+          <div class="spell-slot-card {{#if this.isEmpty}}empty{{/if}}" data-level="{{this.level}}" title="Click to use, right-click to restore">
+            <div class="spell-slot-level">{{this.levelLabel}}</div>
+            <div class="spell-slot-count">{{this.current}} / {{this.max}}</div>
+          </div>
+          {{/each}}
+        </div>
+      </div>
+    </section>
+
+    {{!-- Abilities Section --}}
+    <section class="section">
+      <h3 class="section-header"><i class="fas fa-bolt"></i> Abilities</h3>
+      <div class="section-content">
+        <div class="abilities-grid grid" id="abilities-grid">
+          {{#each foundcloud.abilities}}
+          <div class="card ability-card" data-ability="{{this.key}}" title="Click to roll {{this.name}} check">
+            <div class="ability-name">{{this.abbr}}</div>
+            <div class="ability-score">{{this.value}}</div>
+            <div class="ability-mod bonus">{{this.mod}}</div>
+          </div>
+          {{/each}}
+        </div>
+      </div>
+    </section>
+
+    {{!-- Saving Throws Section --}}
+    <section class="section">
+      <h3 class="section-header"><i class="fas fa-shield-alt"></i> Saving Throws</h3>
+      <div class="section-content">
+        <div class="saves-grid grid" id="saves-grid">
+          {{#each foundcloud.saves}}
+          <div class="card save-card {{#if this.proficient}}proficient{{/if}}" data-ability="{{this.key}}" title="Click to roll {{this.name}} save">
+            <div class="save-name">{{this.abbr}}</div>
+            <div class="save-mod bonus">{{this.mod}}</div>
+            {{#if this.proficient}}<div class="proficiency-indicator"><i class="fas fa-circle"></i></div>{{/if}}
+          </div>
+          {{/each}}
+        </div>
+      </div>
+    </section>
+
+    {{!-- Skills Section --}}
+    <section class="section">
+      <h3 class="section-header"><i class="fas fa-bullseye"></i> Skills</h3>
+      <div class="section-content">
+        <div class="skills-grid grid" id="skills-grid">
+          {{#each foundcloud.skills}}
+          <div class="card skill-card {{#if this.proficient}}proficient{{/if}} {{#if this.expertise}}expertise{{/if}}" data-skill="{{this.key}}" title="Click to roll {{this.name}}">
+            <div class="skill-name">{{this.name}}</div>
+            <div class="skill-ability">({{this.ability}})</div>
+            <div class="skill-mod bonus">{{this.mod}}</div>
+            {{#if this.expertise}}<div class="expertise-indicator"><i class="fas fa-star"></i></div>{{/if}}
+            {{#if this.proficient}}<div class="proficiency-indicator"><i class="fas fa-circle"></i></div>{{/if}}
+          </div>
+          {{/each}}
+        </div>
+      </div>
+    </section>
+
+    {{!-- Actions & Attacks Section --}}
+    <section class="section">
+      <h3 class="section-header"><i class="fas fa-fist-raised"></i> Actions & Attacks</h3>
+      <div class="section-content">
+        {{!-- Filters --}}
+        <div class="filters-container" id="actions-filters">
+          <div class="search-row">
+            <input type="text" id="actions-search" placeholder="Search actions..." class="search-input" />
+          </div>
+          <div class="filter-row">
+            <button type="button" class="filter-btn active" data-filter="all" data-type="action-type">All</button>
+            <button type="button" class="filter-btn" data-filter="action" data-type="action-type"><i class="fas fa-fist-raised"></i> Action</button>
+            <button type="button" class="filter-btn" data-filter="bonus" data-type="action-type"><i class="fas fa-bolt"></i> Bonus</button>
+            <button type="button" class="filter-btn" data-filter="reaction" data-type="action-type"><i class="fas fa-shield-alt"></i> Reaction</button>
+            <button type="button" class="filter-btn" data-filter="free" data-type="action-type"><i class="fas fa-check"></i> Free</button>
+          </div>
+          <div class="filter-row">
+            <button type="button" class="filter-btn active" data-filter="all" data-type="action-category">All Types</button>
+            <button type="button" class="filter-btn" data-filter="damage" data-type="action-category"><i class="fas fa-fire"></i> Damage</button>
+            <button type="button" class="filter-btn" data-filter="healing" data-type="action-category"><i class="fas fa-heart"></i> Healing</button>
+            <button type="button" class="filter-btn" data-filter="utility" data-type="action-category"><i class="fas fa-wrench"></i> Utility</button>
+          </div>
+        </div>
+
+        <div class="actions-list" id="actions-container">
+          {{#each foundcloud.actions}}
+          <div class="action-card" data-item-id="{{this.id}}" data-name="{{this.name}}" data-action-type="{{this.actionType}}" data-category="{{this.category}}">
+            <div class="action-header">
+              <img class="action-img" src="{{this.img}}" alt="{{this.name}}" />
+              <span class="action-name">{{this.name}}</span>
+              <span class="action-type-badge">{{{this.actionTypeIcon}}}</span>
+              {{#if this.uses}}
+              <span class="uses-badge">{{this.uses.current}}/{{this.uses.max}}</span>
+              {{/if}}
+            </div>
+            <div class="action-buttons">
+              {{#if this.hasAttack}}
+              <button type="button" class="attack-btn">
+                <i class="fas fa-dice-d20"></i> {{this.attackBonus}}
+              </button>
+              {{/if}}
+              {{#if this.hasDamage}}
+              <button type="button" class="damage-btn">
+                <i class="fas fa-tint"></i> {{this.damage}}
+              </button>
+              {{/if}}
+              {{#unless this.hasAttack}}
+              {{#unless this.hasDamage}}
+              <button type="button" class="use-btn">
+                <i class="fas fa-play"></i> Use
+              </button>
+              {{/unless}}
+              {{/unless}}
+            </div>
+            <div class="action-description">
+              {{{this.description}}}
+            </div>
+          </div>
+          {{/each}}
+        </div>
+      </div>
+    </section>
+
+    {{!-- Spells Section --}}
+    <section class="section">
+      <h3 class="section-header"><i class="fas fa-magic"></i> Spells</h3>
+      <div class="section-content">
+        {{!-- Filters --}}
+        <div class="filters-container" id="spells-filters">
+          <div class="search-row">
+            <input type="text" id="spells-search" placeholder="Search spells..." class="search-input" />
+          </div>
+          <div class="filter-row">
+            <button type="button" class="filter-btn active" data-filter="all" data-type="spell-level">All Levels</button>
+            <button type="button" class="filter-btn" data-filter="0" data-type="spell-level">Cantrips</button>
+            {{#each foundcloud.spellSlots}}
+            <button type="button" class="filter-btn" data-filter="{{this.level}}" data-type="spell-level">{{this.levelLabel}}</button>
+            {{/each}}
+          </div>
+          <div class="filter-row">
+            <button type="button" class="filter-btn active" data-filter="all" data-type="spell-category">All Types</button>
+            <button type="button" class="filter-btn" data-filter="damage" data-type="spell-category"><i class="fas fa-fire"></i> Damage</button>
+            <button type="button" class="filter-btn" data-filter="healing" data-type="spell-category"><i class="fas fa-heart"></i> Healing</button>
+            <button type="button" class="filter-btn" data-filter="utility" data-type="spell-category"><i class="fas fa-wrench"></i> Utility</button>
+          </div>
+          <div class="filter-row">
+            <button type="button" class="filter-btn active" data-filter="all" data-type="spell-casting-time">All Times</button>
+            <button type="button" class="filter-btn" data-filter="action" data-type="spell-casting-time"><i class="fas fa-fist-raised"></i> Action</button>
+            <button type="button" class="filter-btn" data-filter="bonus" data-type="spell-casting-time"><i class="fas fa-bolt"></i> Bonus</button>
+            <button type="button" class="filter-btn" data-filter="reaction" data-type="spell-casting-time"><i class="fas fa-shield-alt"></i> Reaction</button>
+          </div>
+        </div>
+
+        <div class="spells-list" id="spells-container">
+          {{#each foundcloud.spells}}
+          {{#if this.spells.length}}
+          <div class="spell-level-group">
+            <h4 class="spell-level-header">{{this.levelLabel}}</h4>
+            {{#each this.spells}}
+            <div class="spell-card" data-item-id="{{this.id}}" data-name="{{this.name}}" data-level="{{this.level}}" data-category="{{this.category}}" data-casting-time="{{this.castingTime}}">
+              <div class="spell-header">
+                <img class="spell-img" src="{{this.img}}" alt="{{this.name}}" />
+                <span class="spell-name">{{this.name}}</span>
+                {{#if this.concentration}}
+                <span class="concentration-tag"><i class="fas fa-brain"></i> C</span>
+                {{/if}}
+                {{#if this.ritual}}
+                <span class="ritual-tag"><i class="fas fa-book"></i> R</span>
+                {{/if}}
+                <span class="casting-time-badge">{{{this.castingTimeIcon}}}</span>
+              </div>
+              <div class="spell-buttons">
+                <button type="button" class="cast-btn">
+                  <i class="fas fa-hat-wizard"></i> Cast
+                </button>
+                {{#if this.hasAttack}}
+                <button type="button" class="attack-btn">
+                  <i class="fas fa-dice-d20"></i> Attack
+                </button>
+                {{/if}}
+                {{#if this.hasDamage}}
+                <button type="button" class="damage-btn">
+                  <i class="fas fa-tint"></i> {{this.damage}}
+                </button>
+                {{/if}}
+                {{#if this.save}}
+                <span class="save-info">{{this.save}}</span>
+                {{/if}}
+              </div>
+              <div class="spell-description">
+                {{{this.description}}}
+              </div>
+            </div>
+            {{/each}}
+          </div>
+          {{/if}}
+          {{/each}}
+        </div>
+      </div>
+    </section>
+
+    {{!-- Inventory Section --}}
+    <section class="section" id="inventory-section">
+      <h3 class="section-header"><i class="fas fa-backpack"></i> Inventory & Equipment</h3>
+      <div class="section-content">
+        {{!-- Filters --}}
+        <div class="filters-container" id="inventory-filters">
+          <div class="search-row">
+            <input type="text" id="inventory-search" placeholder="Search inventory..." class="search-input" />
+          </div>
+          <div class="filter-row">
+            <button type="button" class="filter-btn" data-filter="all" data-type="inventory-filter">All Items</button>
+            <button type="button" class="filter-btn active" data-filter="equipped" data-type="inventory-filter"><i class="fas fa-fist-raised"></i> Equipped</button>
+            <button type="button" class="filter-btn" data-filter="attuned" data-type="inventory-filter"><i class="fas fa-star"></i> Attuned</button>
+            <button type="button" class="filter-btn" data-filter="container" data-type="inventory-filter"><i class="fas fa-box"></i> Containers</button>
+          </div>
+        </div>
+
+        <div class="inventory-list" id="inventory-container">
+          {{#each foundcloud.inventory}}
+          <div class="inventory-item" data-item-id="{{this.id}}" data-name="{{this.name}}" data-equipped="{{this.equipped}}" data-attuned="{{this.attuned}}" data-is-container="{{this.isContainer}}">
+            <img class="item-img" src="{{this.img}}" alt="{{this.name}}" />
+            <div class="item-info">
+              <span class="item-name">{{this.name}}</span>
+              <span class="item-quantity">x{{this.quantity}}</span>
+              {{#if this.equipped}}<span class="equipped-badge"><i class="fas fa-check"></i></span>{{/if}}
+              {{#if this.attuned}}<span class="attuned-badge"><i class="fas fa-star"></i></span>{{/if}}
+            </div>
+            <div class="item-buttons">
+              <button type="button" class="item-equip-btn" title="{{#if this.equipped}}Unequip{{else}}Equip{{/if}}">
+                <i class="fas fa-{{#if this.equipped}}times{{else}}hand-paper{{/if}}"></i>
+              </button>
+              <button type="button" class="item-edit-btn" title="Edit">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button type="button" class="item-delete-btn" title="Delete">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>
+          {{/each}}
+        </div>
+      </div>
+    </section>
+  </div>
+</form>
