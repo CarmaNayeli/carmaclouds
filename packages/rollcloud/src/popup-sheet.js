@@ -1240,6 +1240,28 @@ function calculateMetamagicCost(metamagicName, spellLevel) {
 // announceAction now in modules/action-announcements.js
 
 
+/**
+ * Save character data to local storage
+ * Called when character data changes (e.g., color selection, HP changes, etc.)
+ */
+async function saveCharacterData() {
+  if (characterData && globalThis.currentSlotId) {
+    try {
+      await browserAPI.runtime.sendMessage({
+        action: 'storeCharacterData',
+        data: characterData,
+        slotId: globalThis.currentSlotId
+      });
+      debug.log(`💾 Character data saved: ${characterData.name} (slotId: ${globalThis.currentSlotId})`);
+    } catch (error) {
+      debug.warn('⚠️ Failed to save character data:', error);
+    }
+  }
+}
+
+// Export to global scope for use by modules
+globalThis.saveCharacterData = saveCharacterData;
+
 // Save character data when window is about to close/refresh
 // This ensures local modifications persist through browser refresh
 window.addEventListener('beforeunload', () => {

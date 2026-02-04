@@ -539,6 +539,21 @@
       });
     }
   }
+  async function saveCharacterData() {
+    if (characterData && globalThis.currentSlotId) {
+      try {
+        await browserAPI.runtime.sendMessage({
+          action: "storeCharacterData",
+          data: characterData,
+          slotId: globalThis.currentSlotId
+        });
+        debug.log(`\u{1F4BE} Character data saved: ${characterData.name} (slotId: ${globalThis.currentSlotId})`);
+      } catch (error) {
+        debug.warn("\u26A0\uFE0F Failed to save character data:", error);
+      }
+    }
+  }
+  globalThis.saveCharacterData = saveCharacterData;
   window.addEventListener("beforeunload", () => {
     if (characterData && globalThis.currentSlotId) {
       debug.log("\u{1F4BE} Saving character data before window closes");
