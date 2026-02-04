@@ -1,6 +1,6 @@
 {
   "name": "@carmaclouds/core",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": "Core utilities and types shared across CarmaClouds packages",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

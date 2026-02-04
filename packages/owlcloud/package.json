@@ -1,6 +1,6 @@
 {
   "name": "@carmaclouds/owlcloud",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": "OwlCloud - Browser extension for DiceCloud with Owlbear Rodeo integration",
   "type": "module",
   "scripts": {

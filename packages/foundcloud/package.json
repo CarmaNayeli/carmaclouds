@@ -1,6 +1,6 @@
 {
   "name": "@carmaclouds/foundcloud",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": "FoundCloud: Foundry VTT + DiceCloud + Discord Integration",
   "type": "module",
   "scripts": {
