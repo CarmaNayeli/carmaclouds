@@ -201,6 +201,13 @@ export class DiceCloudImporter {
         denomination: this.getHitDieDenomination(parsed.class || sb.class)
       }
     };
+    console.log('FoundCloud | Mapped attributes - Hit Dice:', {
+      value: parsed.level || 1,
+      max: parsed.level || 1,
+      denomination: this.getHitDieDenomination(parsed.class || sb.class),
+      class: parsed.class || sb.class
+    });
+    return attributes;
   }
 
   /**
@@ -233,7 +240,7 @@ export class DiceCloudImporter {
    */
   mapDetailsFromSupabase(sb) {
     const parsed = sb.foundcloud_parsed_data || {};
-    return {
+    const details = {
       biography: {
         value: parsed.raw_dicecloud_data?.description || '',
         public: ''
@@ -247,6 +254,13 @@ export class DiceCloudImporter {
       },
       species: parsed.race || sb.race || ''
     };
+    console.log('FoundCloud | Mapped details:', {
+      race: details.race,
+      species: details.species,
+      background: details.background,
+      level: details.level
+    });
+    return details;
   }
 
   /**
