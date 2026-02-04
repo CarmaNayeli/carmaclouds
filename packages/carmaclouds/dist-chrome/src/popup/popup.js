@@ -14157,57 +14157,65 @@ This cannot be undone.`)) {
         btn.textContent = "\u{1F510} Connect with DiceCloud";
         return;
       }
+      console.log("Requesting auth data from DiceCloud content script...");
+      let authData = null;
       try {
-        let results;
-        if (typeof chrome !== "undefined" && browserAPI5.scripting) {
-          results = await browserAPI5.scripting.executeScript({
-            target: { tabId: tabs[0].id },
-            func: () => {
-              const authData2 = {
-                localStorage: {},
-                sessionStorage: {},
-                meteor: null,
-                authToken: null
-              };
-              for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key && (key.includes("auth") || key.includes("token") || key.includes("meteor") || key.includes("login"))) {
-                  authData2.localStorage[key] = localStorage.getItem(key);
-                }
-              }
-              for (let i = 0; i < sessionStorage.length; i++) {
-                const key = sessionStorage.key(i);
-                if (key && (key.includes("auth") || key.includes("token") || key.includes("meteor") || key.includes("login"))) {
-                  authData2.sessionStorage[key] = sessionStorage.getItem(key);
-                }
-              }
-              const meteorUserId = localStorage.getItem("Meteor.userId");
-              const meteorLoginToken = localStorage.getItem("Meteor.loginToken");
-              if (meteorUserId || meteorLoginToken) {
-                authData2.meteor = {
-                  userId: meteorUserId,
-                  loginToken: meteorLoginToken
+        authData = await browserAPI5.tabs.sendMessage(tabs[0].id, { action: "getAuthData" });
+        console.log("\u2705 Auth data received from content script:", authData);
+      } catch (messageError) {
+        console.warn("\u26A0\uFE0F Could not get auth data from content script, trying script injection:", messageError);
+        try {
+          console.log("Attempting to inject script into DiceCloud tab...");
+          let results;
+          if (typeof chrome !== "undefined" && browserAPI5.scripting) {
+            results = await browserAPI5.scripting.executeScript({
+              target: { tabId: tabs[0].id },
+              func: () => {
+                const authData2 = {
+                  localStorage: {},
+                  sessionStorage: {},
+                  meteor: null,
+                  authToken: null
                 };
-                if (window.Meteor && window.Meteor.user) {
-                  try {
-                    const user = window.Meteor.user();
-                    if (user) {
-                      authData2.meteor.username = user.username || user.emails?.[0]?.address || user.profile?.username || user.profile?.name || null;
-                    }
-                  } catch (e) {
+                for (let i = 0; i < localStorage.length; i++) {
+                  const key = localStorage.key(i);
+                  if (key && (key.includes("auth") || key.includes("token") || key.includes("meteor") || key.includes("login"))) {
+                    authData2.localStorage[key] = localStorage.getItem(key);
                   }
                 }
+                for (let i = 0; i < sessionStorage.length; i++) {
+                  const key = sessionStorage.key(i);
+                  if (key && (key.includes("auth") || key.includes("token") || key.includes("meteor") || key.includes("login"))) {
+                    authData2.sessionStorage[key] = sessionStorage.getItem(key);
+                  }
+                }
+                const meteorUserId = localStorage.getItem("Meteor.userId");
+                const meteorLoginToken = localStorage.getItem("Meteor.loginToken");
+                if (meteorUserId || meteorLoginToken) {
+                  authData2.meteor = {
+                    userId: meteorUserId,
+                    loginToken: meteorLoginToken
+                  };
+                  if (window.Meteor && window.Meteor.user) {
+                    try {
+                      const user = window.Meteor.user();
+                      if (user) {
+                        authData2.meteor.username = user.username || user.emails?.[0]?.address || user.profile?.username || user.profile?.name || null;
+                      }
+                    } catch (e) {
+                    }
+                  }
+                }
+                if (window.authToken)
+                  authData2.authToken = window.authToken;
+                if (window.token)
+                  authData2.authToken = window.token;
+                return authData2;
               }
-              if (window.authToken)
-                authData2.authToken = window.authToken;
-              if (window.token)
-                authData2.authToken = window.token;
-              return authData2;
-            }
-          });
-        } else if (typeof browser !== "undefined" && browser.tabs) {
-          results = await browser.tabs.executeScript(tabs[0].id, {
-            code: `
+            });
+          } else if (typeof browser !== "undefined" && browser.tabs) {
+            results = await browser.tabs.executeScript(tabs[0].id, {
+              code: `
             (() => {
               // Try to get auth data from localStorage, sessionStorage, or window object
               const authData = {
@@ -14271,42 +14279,43 @@ This cannot be undone.`)) {
               return authData;
             })();
           `
-          });
-        } else {
-          throw new Error("No scripting API available");
+            });
+          } else {
+            throw new Error("No scripting API available");
+          }
+          authData = typeof chrome !== "undefined" && browserAPI5.scripting ? results[0]?.result : results[0];
+          console.log("Auth data from script injection:", authData);
+        } catch (scriptError) {
+          console.warn("\u274C Script injection also failed:", scriptError);
         }
-        const authData = typeof chrome !== "undefined" && browserAPI5.scripting ? results[0]?.result : results[0];
-        console.log("Auth data from DiceCloud page:", authData);
-        let token = null;
-        let userId = null;
-        let username = null;
-        if (authData?.meteor?.loginToken) {
-          token = authData.meteor.loginToken;
-          userId = authData.meteor.userId;
-          username = authData.meteor.username;
-        } else if (authData?.authToken) {
-          token = authData.authToken;
-        } else {
-          for (const [key, value] of Object.entries(authData?.localStorage || {})) {
-            if (value && value.length > 10) {
-              token = value;
-              break;
-            }
+      }
+      let token = null;
+      let userId = null;
+      let username = null;
+      if (authData?.meteor?.loginToken) {
+        token = authData.meteor.loginToken;
+        userId = authData.meteor.userId;
+        username = authData.meteor.username;
+      } else if (authData?.authToken) {
+        token = authData.authToken;
+      } else {
+        for (const [key, value] of Object.entries(authData?.localStorage || {})) {
+          if (value && value.length > 10) {
+            token = value;
+            break;
           }
         }
-        console.log("\u{1F511} Extracted from DiceCloud:", {
-          hasToken: !!token,
-          userId: userId || "not found",
-          username: username || "not found"
-        });
-        if (token) {
-          await saveAuthToken(token, userId, username);
-          errorDiv.classList.add("hidden");
-          closeAuthModal();
-          return;
-        }
-      } catch (scriptError) {
-        console.warn("Could not inject script:", scriptError);
+      }
+      console.log("\u{1F511} Extracted from DiceCloud:", {
+        hasToken: !!token,
+        userId: userId || "not found",
+        username: username || "not found"
+      });
+      if (token) {
+        await saveAuthToken(token, userId, username);
+        errorDiv.classList.add("hidden");
+        closeAuthModal();
+        return;
       }
       const cookies = await browserAPI5.cookies.getAll({ domain: ".dicecloud.com" });
       console.log("Available DiceCloud cookies:", cookies.map((c) => ({ name: c.name, domain: c.domain, value: c.value ? "***" : "empty" })));

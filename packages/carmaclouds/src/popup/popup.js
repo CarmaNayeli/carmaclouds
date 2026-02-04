@@ -339,12 +339,22 @@ async function autoConnect() {
       return;
     }
 
-    // Try to inject a content script to get auth data from the page
+    // First, try to get auth data from content script via message (more reliable in Chrome 144+)
+    console.log('Requesting auth data from DiceCloud content script...');
+    let authData = null;
+    
     try {
-      // Use different APIs for Chrome vs Firefox
-      let results;
+      authData = await browserAPI.tabs.sendMessage(tabs[0].id, { action: 'getAuthData' });
+      console.log('✅ Auth data received from content script:', authData);
+    } catch (messageError) {
+      console.warn('⚠️ Could not get auth data from content script, trying script injection:', messageError);
       
-      if (typeof chrome !== 'undefined' && browserAPI.scripting) {
+      // Fallback: Try to inject a script to get auth data from the page
+      try {
+        console.log('Attempting to inject script into DiceCloud tab...');
+        let results;
+        
+        if (typeof chrome !== 'undefined' && browserAPI.scripting) {
         // Chrome (Manifest V3) - use browserAPI.scripting
         results = await browserAPI.scripting.executeScript({
           target: { tabId: tabs[0].id },
@@ -484,11 +494,15 @@ async function autoConnect() {
         throw new Error('No scripting API available');
       }
 
-      // Firefox returns results directly in array, Chrome wraps in .result property
-      const authData = (typeof chrome !== 'undefined' && browserAPI.scripting)
-        ? results[0]?.result
-        : results[0];
-      console.log('Auth data from DiceCloud page:', authData);
+        // Firefox returns results directly in array, Chrome wraps in .result property
+        authData = (typeof chrome !== 'undefined' && browserAPI.scripting)
+          ? results[0]?.result
+          : results[0];
+        console.log('Auth data from script injection:', authData);
+      } catch (scriptError) {
+        console.warn('❌ Script injection also failed:', scriptError);
+      }
+    }
 
       // Try to extract a token and user info from the collected data
       let token = null;
@@ -523,10 +537,6 @@ async function autoConnect() {
         closeAuthModal();
         return;
       }
-      
-    } catch (scriptError) {
-      console.warn('Could not inject script:', scriptError);
-    }
 
     // Fallback to cookie method if script injection fails
     const cookies = await browserAPI.cookies.getAll({ domain: '.dicecloud.com' });
