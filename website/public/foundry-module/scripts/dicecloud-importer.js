@@ -64,6 +64,20 @@ export class DiceCloudImporter {
     await actor.setFlag('foundcloud', 'lastSync', Date.now());
     await actor.setFlag('foundcloud', 'discordEnabled', !!supabaseData.discord_user_id);
 
+    // Import items if enabled (using foundcloud_parsed_data)
+    const parsedData = supabaseData.foundcloud_parsed_data || {};
+    if (parsedData && Object.keys(parsedData).length > 0) {
+      if (game.settings.get('foundcloud', 'importFeatures')) {
+        await this.syncItems(actor, parsedData, 'feat');
+      }
+      if (game.settings.get('foundcloud', 'importSpells')) {
+        await this.syncItems(actor, parsedData, 'spell');
+      }
+      if (game.settings.get('foundcloud', 'importItems')) {
+        await this.syncItems(actor, parsedData, 'equipment');
+      }
+    }
+
     console.log(`FoundCloud | Created actor: ${actor.name}`);
     return actor;
   }
