@@ -186,29 +186,14 @@ async function syncCharacter(charId) {
   try {
     await syncCharacterToSupabase(char);
 
-    // Update character platform in unified storage
-    if (!char.platform) char.platform = [];
-    if (!char.platform.includes('foundcloud')) {
-      char.platform.push('foundcloud');
-    }
-
-    // Update via background script to ensure persistence
-    await browserAPI.runtime.sendMessage({
-      action: 'updateCharacterPlatform',
-      characterId: charId,
-      platform: char.platform
-    });
-
     showSuccess(`${char.name} synced to cloud`);
-    
-    // Reload characters to reflect changes
-    await loadCharacters();
     
     if (btn) {
       btn.textContent = '✓ Synced!';
       setTimeout(() => {
         btn.disabled = false;
-      }, 1000);
+        btn.textContent = '🔄 Re-sync to Cloud';
+      }, 2000);
     }
   } catch (error) {
     console.error('Failed to sync character:', error);

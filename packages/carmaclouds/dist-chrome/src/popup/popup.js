@@ -11900,23 +11900,13 @@ ${suffix}`;
     }
     try {
       await syncCharacterToSupabase(char);
-      if (!char.platform)
-        char.platform = [];
-      if (!char.platform.includes("foundcloud")) {
-        char.platform.push("foundcloud");
-      }
-      await browserAPI.runtime.sendMessage({
-        action: "updateCharacterPlatform",
-        characterId: charId,
-        platform: char.platform
-      });
       showSuccess(`${char.name} synced to cloud`);
-      await loadCharacters();
       if (btn) {
         btn.textContent = "\u2713 Synced!";
         setTimeout(() => {
           btn.disabled = false;
-        }, 1e3);
+          btn.textContent = "\u{1F504} Re-sync to Cloud";
+        }, 2e3);
       }
     } catch (error) {
       console.error("Failed to sync character:", error);
