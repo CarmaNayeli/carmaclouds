@@ -336,18 +336,22 @@ export class DiceCloudImporter {
    */
   async syncItems(actor, parsedData, type) {
     console.log(`FoundCloud | Syncing ${type} items for ${actor.name}...`);
+    console.log(`FoundCloud | Parsed data keys:`, Object.keys(parsedData));
 
     // Get items from parsed data based on type
     let diceCloudItems = [];
     if (type === 'feat') {
       // Features come from actions array
       diceCloudItems = parsedData.actions || [];
+      console.log(`FoundCloud | Found ${diceCloudItems.length} actions in parsed data`);
     } else if (type === 'spell') {
       // Spells come from spells array
       diceCloudItems = parsedData.spells || [];
+      console.log(`FoundCloud | Found ${diceCloudItems.length} spells in parsed data`);
     } else if (type === 'equipment') {
       // Equipment comes from inventory array
       diceCloudItems = parsedData.inventory || [];
+      console.log(`FoundCloud | Found ${diceCloudItems.length} inventory items in parsed data`);
     }
 
     // Get existing items from actor
