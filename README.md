@@ -2,7 +2,7 @@
 
 **Unified DiceCloud integration for your favorite VTT platforms**
 
-One extension. Multiple VTT platforms. Seamless character sync from DiceCloud V2 to Roll20, Owlbear Rodeo, and Foundry VTT (coming soon).
+One extension. Multiple VTT platforms. Seamless character sync from DiceCloud V2 to Roll20, Owlbear Rodeo, and Foundry VTT.
 
 ## [Visit the Website →](https://carmaclouds.vercel.app)
 
@@ -16,7 +16,7 @@ CarmaClouds is a browser extension that syncs your DiceCloud V2 characters to vi
 
 ### Features
 
-- **One Extension, Three Platforms** - RollCloud (Roll20), OwlCloud (Owlbear Rodeo), FoundCloud (Foundry VTT - coming soon)
+- **One Extension, Three Platforms** - RollCloud (Roll20), OwlCloud (Owlbear Rodeo), FoundCloud (Foundry VTT)
 - **Seamless Sync** - Click "Sync to CarmaClouds" on any DiceCloud character page
 - **Push to VTT** - Send your character data directly to your active VTT tab
 - **Cloud Storage** - Characters stored in Supabase for access across devices
@@ -75,7 +75,15 @@ CarmaClouds is a browser extension that syncs your DiceCloud V2 characters to vi
 
 #### Foundry VTT (FoundCloud)
 
-*Coming soon! Check the FoundCloud tab for updates.*
+1. Install the FoundCloud module in Foundry VTT:
+   - Manifest URL: `https://carmaclouds.vercel.app/foundry-module/module.json`
+2. Click the CarmaClouds extension icon
+3. Go to the **FoundCloud** tab
+4. Click **"☁️ Sync to Cloud"** on any character
+5. In Foundry, click **"Import from DiceCloud"** in the Actors sidebar
+6. Select your character and import!
+
+Your character appears in Foundry with stats, skills, spells, features, and inventory!
 
 ---
 

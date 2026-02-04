@@ -1,6 +1,6 @@
 {
   "name": "rollcloud",
-  "version": "2.2.2",
+  "version": "2.3.0",
   "description": "RollCloud: DiceCloud + Roll20 + Discord Integration",
   "type": "module",
   "scripts": {

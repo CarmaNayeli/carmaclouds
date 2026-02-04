@@ -2,27 +2,27 @@
 
 Companion module for the FoundCloud browser extension. Syncs DiceCloud V2 characters to Foundry VTT with Discord integration.
 
-**Version:** 1.2.3
-**Compatibility:** Foundry VTT v11-v12
+**Version:** 2.3.0
+**Compatibility:** Foundry VTT v11-v13
 **System:** D&D 5e
 
 ## Overview
 
-FoundCloud uses a **hybrid architecture** to bring your DiceCloud characters into Foundry VTT:
+FoundCloud uses **cloud sync** to bring your DiceCloud characters into Foundry VTT:
 
-- **Browser Extension**: Handles DiceCloud authentication and data fetching
-- **Foundry Module**: Imports character data and integrates with Foundry's systems
+- **Browser Extension**: Syncs DiceCloud characters to Supabase cloud storage
+- **Foundry Module**: Imports character data from Supabase into Foundry actors
 
 ## Features
 
-- ✅ **One-Click Import**: Import DiceCloud characters directly into Foundry
-- ✅ **Auto-Sync**: Keep characters synchronized with DiceCloud
-- ✅ **Complete Character Data**: Abilities, skills, saves, HP, AC, and more
-- ✅ **Spell Import**: Automatically import spell lists and slots
-- ✅ **Equipment Import**: Import weapons, armor, and items
-- ✅ **Class Features**: Import special abilities and features
-- ✅ **Discord Integration**: Send rolls and turn notifications to Discord (via Pip Bot)
-- ✅ **Native Foundry Integration**: Uses Foundry's actor system and APIs
+- ✅ **Cloud Sync**: Characters synced from DiceCloud via Supabase
+- ✅ **One-Click Import**: Import characters directly into Foundry
+- ✅ **Complete Character Data**: Abilities, skills, saves, HP, AC, initiative, and more
+- ✅ **Spell Import**: Automatically import all spells with full details
+- ✅ **Equipment Import**: Import weapons, armor, and items with quantities
+- ✅ **Class Features**: Import actions and special abilities
+- ✅ **Portrait Support**: Character images imported automatically
+- ✅ **Race/Species**: Character race information preserved
 
 ## Installation
 
@@ -40,7 +40,7 @@ FoundCloud uses a **hybrid architecture** to bring your DiceCloud characters int
 3. Click **Install Module**
 4. Paste this manifest URL:
    ```
-   https://raw.githubusercontent.com/CarmaNayeli/foundCloud/main/foundry-module/module.json
+   https://carmaclouds.vercel.app/foundry-module/module.json
    ```
 5. Click **Install**
 
@@ -52,10 +52,11 @@ FoundCloud uses a **hybrid architecture** to bring your DiceCloud characters int
 
 ### Install the Browser Extension
 
-1. Download from [GitHub Repository](https://github.com/CarmaNayeli/foundCloud)
-2. Install in Chrome/Firefox/Edge
+1. Download from [carmaclouds.vercel.app](https://carmaclouds.vercel.app)
+2. Install CarmaClouds in Chrome/Firefox/Edge
 3. Login to DiceCloud via the extension
-4. Your characters will be available for import
+4. Sync your characters to the cloud
+5. Your characters will be available for import in Foundry
 
 ## Usage
 
@@ -67,16 +68,17 @@ FoundCloud uses a **hybrid architecture** to bring your DiceCloud characters int
 
 ### Importing Characters
 
-1. Open the **Actors** sidebar in Foundry
-2. Click the **Import from DiceCloud** button at the top
-3. Select your character from the list
-4. Choose import options:
+1. **Sync in Extension**: Open CarmaClouds extension → FoundCloud tab → Click "☁️ Sync to Cloud" on your character
+2. **Import in Foundry**: Open the **Actors** sidebar
+3. Click the orange **"Import from DiceCloud"** button
+4. Select your character from the list
+5. Choose import options:
    - ☑️ Import Spells
-   - ☑️ Import Equipment
+   - ☑️ Import Equipment  
    - ☑️ Import Class Features
-5. Click **Import**
+6. Click **Import**
 
-Your character will be created as a Foundry actor with all data imported!
+Your character will be created as a Foundry actor with stats, skills, spells, features, and inventory!
 
 ### Syncing Characters
 
