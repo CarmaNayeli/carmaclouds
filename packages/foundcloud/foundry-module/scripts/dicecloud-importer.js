@@ -129,54 +129,56 @@ export class DiceCloudImporter {
   }
 
   /**
-   * Map abilities from Supabase attributes JSONB
+   * Map abilities from Supabase raw_dicecloud_data
    * @param {object} sb - Supabase data
    * @returns {object}
    */
   mapAbilitiesFromSupabase(sb) {
-    const attrs = sb.attributes || {};
+    const raw = sb.raw_dicecloud_data || {};
+    const attrs = raw.attributes || raw.stats || {};
 
     return {
-      str: { value: attrs.strength || attrs.STR || 10 },
-      dex: { value: attrs.dexterity || attrs.DEX || 10 },
-      con: { value: attrs.constitution || attrs.CON || 10 },
-      int: { value: attrs.intelligence || attrs.INT || 10 },
-      wis: { value: attrs.wisdom || attrs.WIS || 10 },
-      cha: { value: attrs.charisma || attrs.CHA || 10 }
+      str: { value: attrs.strength?.value || attrs.STR || 10 },
+      dex: { value: attrs.dexterity?.value || attrs.DEX || 10 },
+      con: { value: attrs.constitution?.value || attrs.CON || 10 },
+      int: { value: attrs.intelligence?.value || attrs.INT || 10 },
+      wis: { value: attrs.wisdom?.value || attrs.WIS || 10 },
+      cha: { value: attrs.charisma?.value || attrs.CHA || 10 }
     };
   }
 
   /**
-   * Map attributes (HP, AC, etc.) from Supabase
+   * Map attributes (HP, AC, etc.) from Supabase raw_dicecloud_data
    * @param {object} sb - Supabase data
    * @returns {object}
    */
   mapAttributesFromSupabase(sb) {
-    const hp = sb.hit_points || {};
+    const raw = sb.raw_dicecloud_data || {};
+    const hp = raw.hitPoints || raw.hp || {};
 
     return {
       hp: {
-        value: hp.current || 0,
-        max: hp.max || 0,
-        temp: sb.temporary_hp || 0
+        value: hp.current || hp.value || 0,
+        max: hp.max || hp.maximum || 0,
+        temp: hp.temp || raw.temporaryHitPoints || 0
       },
       ac: {
-        value: sb.armor_class || 10
+        value: raw.armorClass || raw.ac || 10
       },
       init: {
-        bonus: sb.initiative || 0
+        bonus: raw.initiative || 0
       },
       movement: {
-        walk: sb.speed || 30,
-        fly: sb.raw_dicecloud_data?.flySpeed || 0,
-        swim: sb.raw_dicecloud_data?.swimSpeed || 0,
-        climb: sb.raw_dicecloud_data?.climbSpeed || 0
+        walk: raw.speed || raw.walkSpeed || 30,
+        fly: raw.flySpeed || 0,
+        swim: raw.swimSpeed || 0,
+        climb: raw.climbSpeed || 0
       },
       death: {
-        success: sb.death_saves?.successes || 0,
-        failure: sb.death_saves?.failures || 0
+        success: raw.deathSaves?.successes || 0,
+        failure: raw.deathSaves?.failures || 0
       },
-      inspiration: sb.inspiration || false
+      inspiration: raw.inspiration || false
     };
   }
 
