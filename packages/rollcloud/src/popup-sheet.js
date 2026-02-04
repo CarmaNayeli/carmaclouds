@@ -4,6 +4,64 @@ debug.log('✅ Popup HTML loaded');
 // They export their functions to globalThis, making them globally available without needing to import.
 // Functions like isEdgeCase, getEdgeCase, resolveSpellCast, etc. are already available globally.
 
+/**
+ * Crop image to circular format with colored border
+ * @param {string} imageUrl - URL of the image to crop
+ * @param {number} size - Size of the output image (default: 200)
+ * @returns {Promise<string>} - Data URL of the cropped circular image
+ */
+function cropToCircle(imageUrl, size = 200) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous'; // Handle CORS
+
+    img.onload = () => {
+      // Create canvas with extra space for border
+      const borderWidth = Math.max(8, size * 0.04); // 4% of size, minimum 8px
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+
+      // Save context before clipping
+      ctx.save();
+
+      // Draw circular clip (slightly smaller to account for border)
+      const radius = (size / 2) - (borderWidth / 2);
+      ctx.beginPath();
+      ctx.arc(size / 2, size / 2, radius, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+
+      // Draw image centered and scaled to fill circle
+      const scale = Math.max(size / img.width, size / img.height);
+      const x = (size / 2) - (img.width / 2) * scale;
+      const y = (size / 2) - (img.height / 2) * scale;
+      ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+
+      // Restore context to remove clipping
+      ctx.restore();
+
+      // Draw pink border (matching RollCloud theme)
+      ctx.beginPath();
+      ctx.arc(size / 2, size / 2, radius, 0, Math.PI * 2);
+      ctx.strokeStyle = '#FC57F9'; // Pink accent color
+      ctx.lineWidth = borderWidth;
+      ctx.stroke();
+
+      // Convert to data URL
+      resolve(canvas.toDataURL('image/png'));
+    };
+
+    img.onerror = () => {
+      debug.warn('Failed to load image for circular crop, using original');
+      resolve(imageUrl); // Fallback to original if loading fails
+    };
+
+    img.src = imageUrl;
+  });
+}
+
 // Initialize theme manager
 if (typeof ThemeManager !== 'undefined') {
   ThemeManager.init().then(() => {
@@ -504,6 +562,23 @@ async function loadCharacterWithTabs() {
       }
 
       buildSheet(characterData);
+
+      // Display character portrait if available
+      const portraitElement = document.getElementById('char-portrait');
+      if (portraitElement && characterData) {
+        const portraitUrl = characterData.picture || characterData.avatarPicture;
+        if (portraitUrl) {
+          cropToCircle(portraitUrl, 120).then(croppedUrl => {
+            portraitElement.src = croppedUrl;
+            portraitElement.style.display = 'block';
+          }).catch(err => {
+            debug.warn('Failed to crop portrait:', err);
+            // Fallback to original image
+            portraitElement.src = portraitUrl;
+            portraitElement.style.display = 'block';
+          });
+        }
+      }
 
       // Initialize racial traits based on character data
       initRacialTraits();
