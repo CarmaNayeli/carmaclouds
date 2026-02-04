@@ -11569,23 +11569,14 @@ ${suffix}`;
       const level = char.level || "?";
       const race = char.race || "Unknown";
       const charClass = char.class || "Unknown";
-      const isSynced = char.platform && Array.isArray(char.platform) && char.platform.includes("foundcloud");
-      const syncIcon = isSynced ? "\u2713" : "\u25CB";
-      const syncColor = isSynced ? "#16a75a" : "#666";
       return `
       <div style="background: #2a2a2a; border-radius: 8px; padding: 16px; border: 1px solid #333;">
-        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
-          <div>
-            <div style="color: #e0e0e0; font-size: 16px; font-weight: 600; margin-bottom: 4px;">
-              ${escapeHtml(char.name)}
-            </div>
-            <div style="color: #888; font-size: 13px;">
-              Level ${level} ${charClass} \u2022 ${race}
-            </div>
+        <div style="margin-bottom: 12px;">
+          <div style="color: #e0e0e0; font-size: 16px; font-weight: 600; margin-bottom: 4px;">
+            ${escapeHtml(char.name)}
           </div>
-          <div style="display: flex; align-items: center; gap: 6px; color: ${syncColor}; font-size: 12px;">
-            <span style="font-size: 16px;">${syncIcon}</span>
-            <span>${isSynced ? "Synced" : "Not synced"}</span>
+          <div style="color: #888; font-size: 13px;">
+            Level ${level} ${charClass} \u2022 ${race}
           </div>
         </div>
         <button 
@@ -11593,7 +11584,7 @@ ${suffix}`;
           data-char-id="${char.id}"
           style="width: 100%; padding: 10px; background: #16a75a; color: #000; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px;"
         >
-          ${isSynced ? "\u{1F504} Re-sync to Cloud" : "\u2601\uFE0F Sync to Cloud"}
+          \u2601\uFE0F Sync to Cloud
         </button>
       </div>
     `;
