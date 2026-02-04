@@ -223,7 +223,7 @@ Hooks.on('renderActorDirectory', (app, html, data) => {
 
   // Add import button to the sidebar
   const importButton = $(`
-    <button class="foundcloud-import-btn" style="margin: 5px; flex: 0 0 100%;">
+    <button class="foundcloud-import-btn" style="margin: 5px; flex: 0 0 100%; background: #ff6b35; color: white; border: none; padding: 8px; border-radius: 4px; font-weight: 600; cursor: pointer;">
       <i class="fas fa-cloud-download-alt"></i> Import from DiceCloud
     </button>
   `);
