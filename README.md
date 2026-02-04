@@ -4,9 +4,16 @@
 
 One extension. Multiple VTT platforms. Seamless character sync from DiceCloud V2 to Roll20, Owlbear Rodeo, and Foundry VTT.
 
+## Quick Downloads
+
+**Latest Release (v2.3.0):**
+- [Chrome/Edge Extension](https://github.com/CarmaNayeli/carmaclouds/releases/latest/download/carmaclouds-chrome.zip)
+- [Firefox Extension](https://github.com/CarmaNayeli/carmaclouds/releases/latest/download/carmaclouds-firefox.zip)
+- [Foundry VTT Module](https://github.com/CarmaNayeli/carmaclouds/releases/latest/download/foundcloud-foundry.zip)
+
 ## [Visit the Website →](https://carmaclouds.vercel.app)
 
-Get started with downloads, installation guides, and documentation.
+Get started with installation guides and documentation.
 
 ---
 

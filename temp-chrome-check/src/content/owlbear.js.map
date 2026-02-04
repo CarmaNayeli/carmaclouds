@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["../../../src/content/owlbear.js"],
-  "sourcesContent": ["/**\r\n * Owlbear Rodeo Content Script\r\n * OwlCloud functionality in unified extension\r\n */\r\n\r\nconsole.log('CarmaClouds: Owlbear content script loaded');\r\n\r\n// TODO: Import Owlbear integration from owlcloud\r\n// TODO: Owlbear extension loading (only when on OwlCloud tab)\r\n// TODO: Character sync\r\n"],
-  "mappings": ";;AAKA,UAAQ,IAAI,4CAA4C;",
-  "names": []
-}
