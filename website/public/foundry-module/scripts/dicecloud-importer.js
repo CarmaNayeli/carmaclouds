@@ -172,7 +172,7 @@ export class DiceCloudImporter {
     const parsed = sb.foundcloud_parsed_data || {};
     const hp = parsed.hit_points || {};
 
-    return {
+    const attributes = {
       hp: {
         value: hp.current || 0,
         max: hp.max || 0,
@@ -201,12 +201,14 @@ export class DiceCloudImporter {
         denomination: this.getHitDieDenomination(parsed.class || sb.class)
       }
     };
+    
     console.log('FoundCloud | Mapped attributes - Hit Dice:', {
       value: parsed.level || 1,
       max: parsed.level || 1,
       denomination: this.getHitDieDenomination(parsed.class || sb.class),
       class: parsed.class || sb.class
     });
+    
     return attributes;
   }
 
