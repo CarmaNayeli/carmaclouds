@@ -12933,9 +12933,7 @@ ${suffix}`;
     }
   }
   async function syncCharacterToSupabase(char) {
-    console.log("\u{1F50D} Parsing character data for Foundry...");
     const parsedData = parseForFoundCloud(char.raw, char.id);
-    console.log("\u{1F4CA} Parsed data:", parsedData ? Object.keys(parsedData).length + " fields" : "NULL");
     const characterData = {
       dicecloud_character_id: char.id,
       character_name: char.name,
@@ -12946,12 +12944,6 @@ ${suffix}`;
       raw_dicecloud_data: char.raw || {},
       platform: ["foundcloud"]
     };
-    console.log("\u{1F4BE} Syncing to Supabase:", {
-      id: characterData.dicecloud_character_id,
-      name: characterData.character_name,
-      hasParsedData: !!parsedData,
-      parsedDataKeys: parsedData ? Object.keys(parsedData) : []
-    });
     const { data: existing } = await supabase.from("clouds_characters").select("id").eq("dicecloud_character_id", char.id).single();
     if (existing) {
       const { error } = await supabase.from("clouds_characters").update(characterData).eq("dicecloud_character_id", char.id);

@@ -128,7 +128,7 @@ export class DiceCloudImporter {
    */
   mapSupabaseToFoundryActor(sb) {
     const parsed = sb.foundcloud_parsed_data || {};
-    const actorData = {
+    return {
       name: sb.character_name || 'Unnamed Character',
       type: 'character',
       img: parsed.raw_dicecloud_data?.picture || 'icons/svg/mystery-man.svg',
@@ -142,16 +142,6 @@ export class DiceCloudImporter {
         spells: this.mapSpellSlotsFromSupabase(sb)
       }
     };
-    
-    console.log('FoundCloud | Complete actor data structure:', {
-      name: actorData.name,
-      'system.attributes.hd': actorData.system.attributes.hd,
-      'system.details.race': actorData.system.details.race,
-      'system.details.species': actorData.system.details.species,
-      'system.details.background': actorData.system.details.background
-    });
-    
-    return actorData;
   }
 
   /**
@@ -212,13 +202,6 @@ export class DiceCloudImporter {
       }
     };
     
-    console.log('FoundCloud | Mapped attributes - Hit Dice:', {
-      value: parsed.level || 1,
-      max: parsed.level || 1,
-      denomination: this.getHitDieDenomination(parsed.class || sb.class),
-      class: parsed.class || sb.class
-    });
-    
     return attributes;
   }
 
@@ -266,12 +249,6 @@ export class DiceCloudImporter {
       },
       species: parsed.race || sb.race || ''
     };
-    console.log('FoundCloud | Mapped details:', {
-      race: details.race,
-      species: details.species,
-      background: details.background,
-      level: details.level
-    });
     return details;
   }
 
@@ -401,22 +378,18 @@ export class DiceCloudImporter {
    */
   async syncItems(actor, parsedData, type) {
     console.log(`FoundCloud | Syncing ${type} items for ${actor.name}...`);
-    console.log(`FoundCloud | Parsed data keys:`, Object.keys(parsedData));
 
     // Get items from parsed data based on type
     let diceCloudItems = [];
     if (type === 'feat') {
       // Features come from actions array
       diceCloudItems = parsedData.actions || [];
-      console.log(`FoundCloud | Found ${diceCloudItems.length} actions in parsed data`);
     } else if (type === 'spell') {
       // Spells come from spells array
       diceCloudItems = parsedData.spells || [];
-      console.log(`FoundCloud | Found ${diceCloudItems.length} spells in parsed data`);
     } else if (type === 'equipment') {
       // Equipment comes from inventory array
       diceCloudItems = parsedData.inventory || [];
-      console.log(`FoundCloud | Found ${diceCloudItems.length} inventory items in parsed data`);
     }
 
     // Get existing items from actor
