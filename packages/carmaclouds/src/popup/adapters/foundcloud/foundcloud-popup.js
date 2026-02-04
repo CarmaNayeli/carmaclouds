@@ -5,6 +5,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@carmaclouds/core/supabase/config.js';
+import { parseForFoundCloud } from '../../../content/dicecloud-extraction.js';
 
 // Detect browser API (Firefox uses 'browser', Chrome uses 'chrome')
 const browserAPI = (typeof browser !== 'undefined' && browser.runtime) ? browser : chrome;
@@ -199,10 +200,10 @@ async function syncCharacter(charId) {
  * Sync character data to Supabase
  */
 async function syncCharacterToSupabase(char) {
-  // Parse character data using parseForFoundCloud
-  console.log('🔍 Checking for parseForFoundCloud:', typeof window.parseForFoundCloud);
-  const parsedData = window.parseForFoundCloud ? window.parseForFoundCloud(char.raw, char.id) : null;
-  console.log('📊 Parsed data:', parsedData ? 'Available' : 'NULL');
+  // Parse character data using imported parseForFoundCloud
+  console.log('🔍 Parsing character data for Foundry...');
+  const parsedData = parseForFoundCloud(char.raw, char.id);
+  console.log('📊 Parsed data:', parsedData ? Object.keys(parsedData).length + ' fields' : 'NULL');
   
   // Build character data with basic fields and parsed data in single JSON column
   const characterData = {
