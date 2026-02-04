@@ -215,8 +215,11 @@ Hooks.on('renderActorDirectory', (app, html, data) => {
   // Always add the button, even if not fully initialized
   if (!game.foundcloud) return;
 
+  // Ensure html is a jQuery object (Foundry v13 compatibility)
+  const $html = html instanceof jQuery ? html : $(html);
+
   // Check if button already exists (prevents duplicates)
-  if (html.find('.foundcloud-import-btn').length > 0) return;
+  if ($html.find('.foundcloud-import-btn').length > 0) return;
 
   // Add import button to the sidebar
   const importButton = $(`
@@ -238,11 +241,11 @@ Hooks.on('renderActorDirectory', (app, html, data) => {
   });
 
   // Try multiple possible locations for the button
-  const header = html.find('.directory-header .action-buttons');
+  const header = $html.find('.directory-header .action-buttons');
   if (header.length) {
     header.append(importButton);
   } else {
-    html.find('.directory-header').append(importButton);
+    $html.find('.directory-header').append(importButton);
   }
 });
 
