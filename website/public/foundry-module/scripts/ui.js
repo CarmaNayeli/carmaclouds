@@ -107,7 +107,12 @@ export class FoundCloudUI {
         <p><i class="fas fa-exclamation-triangle" style="font-size: 3em; color: #ff6400;"></i></p>
         <h2>Supabase Connection Failed</h2>
         <p>FoundCloud could not connect to the Supabase database.</p>
-        <h3>Possible Solutions:</h3>
+        <div style="background: rgba(255, 100, 0, 0.1); border: 1px solid rgba(255, 100, 0, 0.3); border-radius: 8px; padding: 12px; margin: 16px 0;">
+          <h3 style="margin-top: 0;">📦 Browser Extension Required</h3>
+          <p style="text-align: left;">FoundCloud is not standalone. You need the CarmaClouds browser extension to sync your DiceCloud characters.</p>
+          <p><a href="https://github.com/CarmaNayeli/carmaclouds/releases/latest" target="_blank" style="color: #ff6400; font-weight: bold;">Download CarmaClouds Extension →</a></p>
+        </div>
+        <h3>Troubleshooting:</h3>
         <ol style="text-align: left;">
           <li>Check your internet connection</li>
           <li>Verify Supabase service is online</li>
@@ -116,12 +121,12 @@ export class FoundCloudUI {
         </ol>
         <h3>Once Connected:</h3>
         <ol style="text-align: left;">
-          <li>Install the FoundCloud browser extension</li>
-          <li>Login to DiceCloud in the extension</li>
-          <li>Characters will sync to Supabase automatically</li>
+          <li>Install the CarmaClouds browser extension</li>
+          <li>Open the FoundCloud tab in the extension</li>
+          <li>Click "☁️ Sync to Cloud" on your characters</li>
           <li>Import them here in Foundry</li>
         </ol>
-        <p><strong>Help:</strong> <a href="https://github.com/CarmaNayeli/foundCloud" target="_blank">GitHub Repository</a></p>
+        <p><strong>Help:</strong> <a href="https://carmaclouds.vercel.app" target="_blank">CarmaClouds Website</a></p>
       </div>
     `;
 
