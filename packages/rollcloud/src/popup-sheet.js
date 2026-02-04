@@ -161,7 +161,11 @@ window.addEventListener('message', async (event) => {
       await loadAndBuildTabs();
 
       // Then build the sheet with character data
-      buildSheet(characterData);
+      if (typeof buildSheet === 'function') {
+        buildSheet(characterData);
+      } else {
+        debug.warn('⚠️ buildSheet function not available');
+      }
       
       // Initialize racial traits based on character data
       initRacialTraits();
@@ -247,7 +251,11 @@ window.addEventListener('message', async (event) => {
       }
 
       // Build the sheet directly with character data
-      buildSheet(characterData);
+      if (typeof buildSheet === 'function') {
+        buildSheet(characterData);
+      } else {
+        debug.warn('⚠️ buildSheet function not available');
+      }
 
       // Initialize racial traits based on character data
       initRacialTraits();
@@ -554,7 +562,12 @@ async function loadCharacterWithTabs() {
         return;
       }
 
-      buildSheet(characterData);
+      // Call buildSheet if available
+      if (typeof buildSheet === 'function') {
+        buildSheet(characterData);
+      } else {
+        debug.warn('⚠️ buildSheet function not available');
+      }
 
       // Display character portrait if available
       const portraitElement = document.getElementById('char-portrait');
@@ -732,7 +745,11 @@ async function switchToCharacter(characterId) {
       }
 
       // Build the character sheet
-      buildSheet(characterData);
+      if (typeof buildSheet === 'function') {
+        buildSheet(characterData);
+      } else {
+        debug.warn('⚠️ buildSheet function not available');
+      }
       
       // Initialize racial traits based on character data
       initRacialTraits();

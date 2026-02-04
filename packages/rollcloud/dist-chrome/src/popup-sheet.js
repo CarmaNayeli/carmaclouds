@@ -87,7 +87,11 @@
         globalThis.currentSlotId = await getActiveCharacterId();
         debug.log("\u{1F4CB} Current slot ID set to:", globalThis.currentSlotId);
         await loadAndBuildTabs();
-        buildSheet(characterData);
+        if (typeof buildSheet === "function") {
+          buildSheet(characterData);
+        } else {
+          debug.warn("\u26A0\uFE0F buildSheet function not available");
+        }
         initRacialTraits();
         initFeatTraits();
         initClassFeatures();
@@ -139,7 +143,11 @@
           tabsContainer.style.display = "none";
           debug.log("\u{1F512} Hidden character tabs for standalone GM view");
         }
-        buildSheet(characterData);
+        if (typeof buildSheet === "function") {
+          buildSheet(characterData);
+        } else {
+          debug.warn("\u26A0\uFE0F buildSheet function not available");
+        }
         initRacialTraits();
         initFeatTraits();
         initClassFeatures();
@@ -370,7 +378,11 @@
           }
           return;
         }
-        buildSheet(characterData);
+        if (typeof buildSheet === "function") {
+          buildSheet(characterData);
+        } else {
+          debug.warn("\u26A0\uFE0F buildSheet function not available");
+        }
         const portraitElement = document.getElementById("char-portrait");
         if (portraitElement && characterData) {
           const portraitUrl = characterData.picture || characterData.avatarPicture;
