@@ -85,16 +85,17 @@ export class DiceCloudImporter {
       system: actorData.system
     });
 
-    // Update items if enabled (using raw_dicecloud_data if available)
-    if (supabaseData.raw_dicecloud_data) {
+    // Update items if enabled (using foundcloud_parsed_data)
+    const parsedData = supabaseData.foundcloud_parsed_data || {};
+    if (parsedData && Object.keys(parsedData).length > 0) {
+      if (game.settings.get('foundcloud', 'importFeatures')) {
+        await this.syncItems(actor, parsedData, 'feat');
+      }
       if (game.settings.get('foundcloud', 'importSpells')) {
-        await this.syncItems(actor, supabaseData.raw_dicecloud_data, 'spell');
+        await this.syncItems(actor, parsedData, 'spell');
       }
       if (game.settings.get('foundcloud', 'importItems')) {
-        await this.syncItems(actor, supabaseData.raw_dicecloud_data, 'equipment');
-      }
-      if (game.settings.get('foundcloud', 'importFeatures')) {
-        await this.syncItems(actor, supabaseData.raw_dicecloud_data, 'feat');
+        await this.syncItems(actor, parsedData, 'equipment');
       }
     }
 
@@ -322,21 +323,26 @@ export class DiceCloudImporter {
   }
 
   /**
-   * Sync items (spells, equipment, features) from raw DiceCloud data
+   * Sync items (spells, equipment, features) from parsed DiceCloud data
    * @param {Actor} actor - Foundry actor
-   * @param {object} rawData - raw_dicecloud_data from Supabase
+   * @param {object} parsedData - foundcloud_parsed_data from Supabase
    * @param {string} type - Item type
    */
-  async syncItems(actor, rawData, type) {
+  async syncItems(actor, parsedData, type) {
     console.log(`FoundCloud | Syncing ${type} items for ${actor.name}...`);
 
-    // Get items from raw DiceCloud data
-    const diceCloudItems = rawData.items?.filter(item => {
-      if (type === 'spell') return item.type === 'spell';
-      if (type === 'equipment') return ['equipment', 'weapon', 'consumable'].includes(item.type);
-      if (type === 'feat') return ['feat', 'class', 'background'].includes(item.type);
-      return false;
-    }) || [];
+    // Get items from parsed data based on type
+    let diceCloudItems = [];
+    if (type === 'feat') {
+      // Features come from actions array
+      diceCloudItems = parsedData.actions || [];
+    } else if (type === 'spell') {
+      // Spells come from spells array
+      diceCloudItems = parsedData.spells || [];
+    } else if (type === 'equipment') {
+      // Equipment comes from inventory array
+      diceCloudItems = parsedData.inventory || [];
+    }
 
     // Get existing items from actor
     const existingItems = actor.items.filter(item => item.type === type);
