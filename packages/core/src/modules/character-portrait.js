@@ -60,6 +60,13 @@
     });
   }
 
+  // Fallback debug object if not available
+  const debug = window.debug || {
+    log: console.log.bind(console),
+    warn: console.warn.bind(console),
+    error: console.error.bind(console)
+  };
+
   /**
    * Display character portrait in the specified element
    * @param {string} elementId - ID of the img element to display portrait in
