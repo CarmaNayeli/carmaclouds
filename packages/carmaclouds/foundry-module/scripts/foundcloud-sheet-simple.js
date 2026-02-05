@@ -65,12 +65,13 @@ export class FoundCloudSheetSimple extends ActorSheet {
     const actor = this.actor;
     const system = actor.system;
 
-    // Build context matching RollCloud structure
-    context.foundcloud = {
+    // Build sheet data - spread directly into context so the template can access
+    // (template uses {{characterClass}} not {{foundcloud.characterClass}})
+    const sheetData = {
       // Combat state
       combatState: this.combatState,
       advantageState: this.advantageState,
-      
+
       // Advantage states for template
       isAdvantage: this.advantageState === 'advantage',
       isNormal: this.advantageState === 'normal',
@@ -78,12 +79,13 @@ export class FoundCloudSheetSimple extends ActorSheet {
 
       // Theme
       isLightTheme: this.theme === 'light',
+      theme: this.theme,
 
       // Character info
       characterClass: this._getClassString(system),
       characterLevel: system.details?.level || 1,
-      characterRace: system.details?.race || 'Unknown',
-      
+      characterRace: system.details?.race || system.details?.species || 'Unknown',
+
       // Hit Dice
       hitDice: this._getHitDiceString(system),
 
@@ -134,8 +136,17 @@ export class FoundCloudSheetSimple extends ActorSheet {
       inventory: this._prepareInventory(actor),
 
       // Conditions list for dropdown
-      conditionsList: this._getConditionsList()
+      conditionsList: this._getConditionsList(),
+
+      // Status bar computed fields
+      hpPercent: (system.attributes?.hp?.max || 0) > 0 ? Math.round(((system.attributes?.hp?.value || 0) / (system.attributes?.hp?.max || 1)) * 100) : 0,
+      hpClass: (system.attributes?.hp?.max || 0) > 0 ? ((system.attributes?.hp?.value || 0) <= (system.attributes?.hp?.max || 0) * 0.25 ? 'critical' : (system.attributes?.hp?.value || 0) <= (system.attributes?.hp?.max || 0) * 0.5 ? 'low' : '') : '',
+      spellSlotsSummary: this._getSpellSlotsSummary(system)
     };
+
+    // Spread into root context so template can access directly
+    Object.assign(context, sheetData);
+    context.foundcloud = sheetData;
 
     return context;
   }
@@ -144,9 +155,16 @@ export class FoundCloudSheetSimple extends ActorSheet {
    * Get class string
    */
   _getClassString(system) {
+    // Try class Items first (D&D 5e populates system.classes from embedded Items)
     const classes = system.classes || {};
     const classNames = Object.values(classes).map(c => c.name || c.identifier).filter(Boolean);
-    return classNames.join(' / ') || 'Unknown';
+    if (classNames.length > 0) return classNames.join(' / ');
+
+    // Fallback: check actor flags for imported class name
+    const flagClass = this.actor.getFlag('foundcloud', 'className');
+    if (flagClass) return flagClass;
+
+    return 'Unknown';
   }
 
   /**
@@ -167,6 +185,24 @@ export class FoundCloudSheetSimple extends ActorSheet {
 
     totalDice = system.attributes?.hd?.value || totalMax;
     return `${totalDice}/${totalMax} ${diceType}`;
+  }
+
+  /**
+   * Get spell slots summary string for status bar (e.g. "5/8")
+   */
+  _getSpellSlotsSummary(system) {
+    const spells = system.spells || {};
+    let available = 0;
+    let total = 0;
+    for (let i = 1; i <= 9; i++) {
+      const slot = spells[`spell${i}`] || {};
+      const max = slot.max || slot.override || 0;
+      if (max > 0) {
+        total += max;
+        available += slot.value !== undefined ? slot.value : max;
+      }
+    }
+    return total > 0 ? `${available}/${total}` : null;
   }
 
   /**
@@ -224,16 +260,24 @@ export class FoundCloudSheetSimple extends ActorSheet {
       cha: 'CHA'
     };
 
+    const profBonus = system.attributes?.prof || 2;
+
     for (const [key, abbr] of Object.entries(abilityNames)) {
       const ability = system.abilities?.[key] || {};
       const save = ability.save || {};
       const proficient = save.proficient || 0;
-      const mod = save.total || ability.mod || 0;
+      const abilityMod = ability.mod || 0;
+
+      // D&D 5e stores total at save.value, but compute if missing
+      let saveMod = save.value || save.total;
+      if (saveMod === undefined) {
+        saveMod = abilityMod + (proficient > 0 ? profBonus : 0);
+      }
 
       saves.push({
         key,
         abbr,
-        mod: mod >= 0 ? `+${mod}` : `${mod}`,
+        mod: saveMod >= 0 ? `+${saveMod}` : `${saveMod}`,
         proficient: proficient > 0
       });
     }
@@ -499,6 +543,10 @@ export class FoundCloudSheetSimple extends ActorSheet {
     // Theme toggle
     html.find('.theme-btn').click(this._onThemeToggle.bind(this));
 
+    // Settings & Close
+    html.find('#settings-btn').click(this._onOpenSettings.bind(this));
+    html.find('#close-btn').click(this._onCloseSheet.bind(this));
+
     // HP management
     html.find('#hp-display').click(this._onHPClick.bind(this));
 
@@ -509,10 +557,10 @@ export class FoundCloudSheetSimple extends ActorSheet {
     html.find('#short-rest-btn').click(this._onShortRest.bind(this));
     html.find('#long-rest-btn').click(this._onLongRest.bind(this));
 
-    // Advantage toggle
-    html.find('#advantage-btn').click(() => this._setAdvantage('advantage'));
-    html.find('#normal-btn').click(() => this._setAdvantage('normal'));
-    html.find('#disadvantage-btn').click(() => this._setAdvantage('disadvantage'));
+    // Advantage toggle (header + status bar)
+    html.find('#advantage-btn, .status-adv-btn[data-adv="advantage"]').click(() => this._setAdvantage('advantage'));
+    html.find('#normal-btn, .status-adv-btn[data-adv="normal"]').click(() => this._setAdvantage('normal'));
+    html.find('#disadvantage-btn, .status-adv-btn[data-adv="disadvantage"]').click(() => this._setAdvantage('disadvantage'));
 
     // Combat economy
     html.find('.action-economy-item').click(this._onToggleActionEconomy.bind(this));
@@ -568,6 +616,18 @@ export class FoundCloudSheetSimple extends ActorSheet {
     event.preventDefault();
     this.theme = event.currentTarget.dataset.theme;
     this.render(false);
+  }
+
+  _onOpenSettings(event) {
+    event.preventDefault();
+    // Open Foundry module settings for foundcloud
+    const settingsApp = new SettingsConfig();
+    settingsApp.render(true);
+  }
+
+  _onCloseSheet(event) {
+    event.preventDefault();
+    this.close();
   }
 
   async _onHPClick(event) {

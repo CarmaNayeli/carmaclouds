@@ -1924,6 +1924,20 @@ function displayCharacter(character) {
 
   currentCharacter = character;
 
+  // Save to localStorage so chat window can access it
+  try {
+    localStorage.setItem('owlcloud-active-character', JSON.stringify({
+      id: character.id,
+      name: character.name,
+      race: character.race,
+      class: character.class,
+      level: character.level
+    }));
+    console.log('✅ Saved active character to localStorage for chat window');
+  } catch (e) {
+    console.warn('Failed to save character to localStorage:', e);
+  }
+
   // Update UI
   characterSection.style.display = 'block';
   noCharacterSection.style.display = 'none';

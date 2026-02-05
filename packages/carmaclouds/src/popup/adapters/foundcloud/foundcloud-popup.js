@@ -74,9 +74,9 @@ function renderCharacterList() {
   if (emptyState) emptyState.style.display = 'none';
 
   listEl.innerHTML = characters.map(char => {
-    const level = char.level || '?';
-    const race = char.race || 'Unknown';
-    const charClass = char.class || 'Unknown';
+    const level = char.level || char.preview?.level || '?';
+    const race = char.race || char.preview?.race || 'Unknown';
+    const charClass = char.class || char.preview?.class || 'Unknown';
 
     return `
       <div style="background: #2a2a2a; border-radius: 8px; padding: 16px; border: 1px solid #333;">

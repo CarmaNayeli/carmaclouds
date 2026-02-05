@@ -319,8 +319,21 @@ OBR.onReady(async () => {
  */
 async function checkForActiveCharacter() {
   try {
-    const playerId = await OBR.player.getId();
+    // First try to get from localStorage (set by popover)
+    const storedCharacter = localStorage.getItem('owlcloud-active-character');
+    if (storedCharacter) {
+      try {
+        currentCharacter = JSON.parse(storedCharacter);
+        characterNameEl.textContent = currentCharacter.name || 'Unknown Character';
+        console.log('✅ Chat: Loaded character from localStorage:', currentCharacter.name);
+        return;
+      } catch (e) {
+        console.warn('Failed to parse stored character:', e);
+      }
+    }
 
+    // Fallback: query Supabase
+    const playerId = await OBR.player.getId();
     const response = await fetch(
       `${SUPABASE_URL}/functions/v1/characters?owlbear_player_id=${encodeURIComponent(playerId)}&fields=essential`,
       { headers: SUPABASE_HEADERS }

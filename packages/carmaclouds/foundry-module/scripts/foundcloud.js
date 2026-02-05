@@ -316,21 +316,52 @@ Hooks.once('ready', () => {
         item.dataset.characterId = char.dicecloud_character_id;
         item.innerHTML = `
           <div class="foundcloud-char-name">${char.character_name}</div>
-          <div class="foundcloud-char-details">Level ${char.level || 1} ${char.character_class || 'Unknown'}</div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div class="foundcloud-char-details">Level ${char.level || 1} ${char.class || char.character_class || 'Unknown'}${char.race ? ' \u2022 ' + char.race : ''}</div>
+            <button class="foundcloud-import-btn foundcloud-download-btn" title="Import to Foundry">
+              <i class="fas fa-download"></i>
+            </button>
+          </div>
         `;
         
-        item.addEventListener('click', () => {
+        // Click to select
+        item.addEventListener('click', (e) => {
+          // Don't select if clicking the import button
+          if (e.target.closest('.foundcloud-import-btn')) return;
           // Remove selection from all items
           listContainer.querySelectorAll('.foundcloud-character-item').forEach(i => i.classList.remove('selected'));
           // Select this item
           item.classList.add('selected');
         });
 
-        // Double-click to import
-        item.addEventListener('dblclick', () => {
-          game.foundcloud.ui.showImportDialog();
-          popupMenu.style.display = 'none';
-        });
+        // Import button click
+        const importBtn = item.querySelector('.foundcloud-import-btn');
+        if (importBtn) {
+          importBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const charId = char.dicecloud_character_id;
+            importBtn.disabled = true;
+            importBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importing...';
+            try {
+              const actor = await game.foundcloud.importCharacter(charId);
+              if (actor) {
+                importBtn.innerHTML = '<i class="fas fa-check"></i> Imported!';
+                setTimeout(() => {
+                  actor.sheet.render(true);
+                  popupMenu.style.display = 'none';
+                }, 500);
+              }
+            } catch (err) {
+              console.error('FoundCloud | Import failed:', err);
+              importBtn.innerHTML = '<i class="fas fa-times"></i> Failed';
+              ui.notifications.error('Import failed: ' + err.message);
+              setTimeout(() => {
+                importBtn.disabled = false;
+                importBtn.innerHTML = '<i class="fas fa-download"></i> Import';
+              }, 2000);
+            }
+          });
+        }
 
         listContainer.appendChild(item);
       });

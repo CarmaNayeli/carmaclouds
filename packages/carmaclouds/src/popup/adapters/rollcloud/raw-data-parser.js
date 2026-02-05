@@ -31,8 +31,8 @@ export function parseRawCharacterData(rawData, characterId) {
 
     // Check for race
     if (!raceFound && prop.type === 'folder' && prop.name) {
-      const commonRaces = ['half-elf', 'half-orc', 'dragonborn', 'tiefling', 'aarakocra', 'lizardfolk', 'warforged', 'changeling', 'kalashtar', 'goliath', 'firbolg', 'genasi', 'yuan-ti', 'bugbear', 'hobgoblin', 'halfling', 'tortle', 'kobold', 'tabaxi', 'goblin', 'kenku', 'human', 'dwarf', 'gnome', 'triton', 'elf', 'orc', 'shifter'];
-      const nameMatchesRace = commonRaces.some(r => prop.name.toLowerCase().includes(r));
+      const commonRaces = ['half-elf', 'half-orc', 'dragonborn', 'tiefling', 'aarakocra', 'lizardfolk', 'warforged', 'changeling', 'kalashtar', 'goliath', 'firbolg', 'genasi', 'yuan-ti', 'bugbear', 'hobgoblin', 'halfling', 'tortle', 'kobold', 'tabaxi', 'goblin', 'kenku', 'human', 'dwarf', 'gnome', 'triton', 'elf', 'orc', 'shifter', 'aasimar'];
+      const nameMatchesRace = commonRaces.some(r => new RegExp(`\\b${r}\\b`, 'i').test(prop.name));
       if (nameMatchesRace) {
         const parentDepth = prop.ancestors ? prop.ancestors.length : 0;
         if (parentDepth <= 2) {
@@ -70,14 +70,18 @@ export function parseRawCharacterData(rawData, characterId) {
 
   // Extract variables - handle both plain values and calculation objects
   const getVar = (name) => {
-    const varName = name.toLowerCase();
-    const rawValue = variables[varName];
+    // Try exact name first (preserves camelCase like strengthSave, proficiencyBonus)
+    let rawValue = variables[name];
+    // Fall back to lowercase if not found
+    if (rawValue === undefined) {
+      rawValue = variables[name.toLowerCase()];
+    }
 
     if (rawValue === undefined) return 0;
 
     // If it's an object with a 'value' property, extract the numeric value
     if (typeof rawValue === 'object' && rawValue !== null) {
-      return rawValue.value ?? 0;
+      return rawValue.value ?? rawValue.total ?? 0;
     }
 
     // Otherwise return the raw value
@@ -95,12 +99,12 @@ export function parseRawCharacterData(rawData, characterId) {
   };
 
   const abilityMods = {
-    strengthMod: getVar('strengthMod'),
-    dexterityMod: getVar('dexterityMod'),
-    constitutionMod: getVar('constitutionMod'),
-    intelligenceMod: getVar('intelligenceMod'),
-    wisdomMod: getVar('wisdomMod'),
-    charismaMod: getVar('charismaMod')
+    strength: getVar('strengthMod') || Math.floor((abilities.strength - 10) / 2),
+    dexterity: getVar('dexterityMod') || Math.floor((abilities.dexterity - 10) / 2),
+    constitution: getVar('constitutionMod') || Math.floor((abilities.constitution - 10) / 2),
+    intelligence: getVar('intelligenceMod') || Math.floor((abilities.intelligence - 10) / 2),
+    wisdom: getVar('wisdomMod') || Math.floor((abilities.wisdom - 10) / 2),
+    charisma: getVar('charismaMod') || Math.floor((abilities.charisma - 10) / 2)
   };
 
   // Combat stats - find HP property directly from properties array
@@ -141,12 +145,23 @@ export function parseRawCharacterData(rawData, characterId) {
   console.log('   speed:', speed, 'type:', typeof speed);
   console.log('   proficiencyBonus:', proficiencyBonus, 'type:', typeof proficiencyBonus);
 
-  // Hit dice
+  // Hit dice - determine die type from class
   const hitDiceUsed = getVar('hitDiceUsed') || 0;
+  const classLower = characterClass.toLowerCase();
+  const hitDieMap = {
+    'barbarian': 'd12',
+    'fighter': 'd10', 'paladin': 'd10', 'ranger': 'd10',
+    'bard': 'd8', 'cleric': 'd8', 'druid': 'd8', 'monk': 'd8', 'rogue': 'd8', 'warlock': 'd8',
+    'sorcerer': 'd6', 'wizard': 'd6'
+  };
+  let hitDieType = 'd8'; // default
+  for (const [cls, die] of Object.entries(hitDieMap)) {
+    if (classLower.includes(cls)) { hitDieType = die; break; }
+  }
   const hitDice = {
     current: Math.max(0, level - hitDiceUsed),
     max: level,
-    die: 'd10' // Default, should be extracted from class
+    type: hitDieType
   };
 
   // Saving throws
@@ -361,7 +376,7 @@ export function parseRawCharacterData(rawData, characterId) {
     proficiency_bonus: proficiencyBonus,
 
     // Hit dice
-    hitDice: `${hitDice.current}/${hitDice.max} ${hitDice.die}`,
+    hitDice: hitDice,
     hit_dice: hitDice,
 
     // Death saves

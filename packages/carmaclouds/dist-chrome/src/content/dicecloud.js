@@ -124,8 +124,8 @@
       if (!prop)
         continue;
       if (!raceFound && prop.type === "folder" && prop.name) {
-        const commonRaces = ["human", "elf", "dwarf", "halfling", "gnome", "half-elf", "half-orc", "dragonborn", "tiefling", "orc", "goblin", "kobold", "warforged", "tabaxi", "kenku", "aarakocra", "genasi", "aasimar", "firbolg", "goliath", "triton", "yuan-ti", "tortle", "lizardfolk", "bugbear", "hobgoblin", "changeling", "shifter", "kalashtar"];
-        const nameMatchesRace = commonRaces.some((race) => prop.name.toLowerCase().includes(race));
+        const commonRaces = ["half-elf", "half-orc", "dragonborn", "tiefling", "halfling", "human", "elf", "dwarf", "gnome", "orc", "goblin", "kobold", "warforged", "tabaxi", "kenku", "aarakocra", "genasi", "aasimar", "firbolg", "goliath", "triton", "yuan-ti", "tortle", "lizardfolk", "bugbear", "hobgoblin", "changeling", "shifter", "kalashtar"];
+        const nameMatchesRace = commonRaces.some((race) => new RegExp(`\\b${race}\\b`, "i").test(prop.name));
         if (nameMatchesRace) {
           const parentDepth = prop.ancestors ? prop.ancestors.length : 0;
           if (parentDepth <= 2) {
@@ -210,6 +210,34 @@
             }
           } else if (typeof subRaceValue === "string") {
             subraceName = formatRaceName(subRaceValue);
+          }
+          if (subraceName && subraceName.toLowerCase() === "sub race") {
+            console.log('CarmaClouds: Skipping generic "Sub Race" label, looking for actual subrace...');
+            subraceName = null;
+          }
+        }
+        if (!subraceName) {
+          const subraceKeywords = ["fire", "water", "air", "earth", "firegenasi", "watergenasi", "airgenasi", "earthgenasi"];
+          for (const varName of raceVars) {
+            const varValue = variables[varName];
+            const varNameLower = varName.toLowerCase();
+            if (subraceKeywords.some((kw) => varNameLower.includes(kw))) {
+              const isActive = typeof varValue === "boolean" ? varValue : typeof varValue === "object" && varValue !== null && varValue.value === true;
+              if (isActive || varValue === true) {
+                if (varNameLower.includes("fire"))
+                  subraceName = "Fire";
+                else if (varNameLower.includes("water"))
+                  subraceName = "Water";
+                else if (varNameLower.includes("air"))
+                  subraceName = "Air";
+                else if (varNameLower.includes("earth"))
+                  subraceName = "Earth";
+                if (subraceName) {
+                  console.log("CarmaClouds: Found subrace from variable:", varName, "->", subraceName);
+                  break;
+                }
+              }
+            }
           }
         }
         const raceVar = raceVars.find((key) => key.toLowerCase() === "race");

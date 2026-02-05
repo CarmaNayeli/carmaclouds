@@ -1,4 +1,4 @@
-<form class="{{cssClass}} foundcloud-sheet-simple" autocomplete="off">
+<form class="{{cssClass}} foundcloud-sheet-simple" data-theme="{{theme}}" autocomplete="off">
   <!-- Systems Bar -->
   <div class="systems-bar">
     <div class="theme-switcher">
@@ -112,8 +112,6 @@
           <div class="action-icon">🛡️</div>
           <div class="action-label">Reaction</div>
         </div>
-        <button type="button" class="combat-reset-btn" id="turn-reset-btn" title="Reset turn (Action/Bonus/Movement)">↻ Turn</button>
-        <button type="button" class="combat-reset-btn" id="round-reset-btn" title="Reset round (includes Reaction)">↻ Round</button>
       </div>
 
       <!-- Conditions & Concentration Row -->
@@ -375,5 +373,53 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- Status Bar (sticky bottom) -->
+  <div class="status-bar">
+    <!-- HP Progress Bar -->
+    <div class="status-hp-section">
+      <span class="status-hp-icon">❤️</span>
+      <div class="status-hp-bar">
+        <div class="status-hp-fill {{hpClass}}" style="width: {{hpPercent}}%"></div>
+        <div class="status-hp-text">{{hp.current}}/{{hp.max}}{{#if hp.temp}} +{{hp.temp}}t{{/if}}</div>
+      </div>
+    </div>
+
+    <!-- Advantage Toggle (compact) -->
+    <div class="status-adv-section">
+      <button type="button" class="status-adv-btn adv {{#if isAdvantage}}active{{/if}}" data-adv="advantage" title="Advantage">⬆️</button>
+      <button type="button" class="status-adv-btn norm {{#if isNormal}}active{{/if}}" data-adv="normal" title="Normal">🎲</button>
+      <button type="button" class="status-adv-btn dis {{#if isDisadvantage}}active{{/if}}" data-adv="disadvantage" title="Disadvantage">⬇️</button>
+    </div>
+
+    <!-- Initiative -->
+    <div class="status-init-section">
+      <span>⚡</span> Init {{initiative}}
+    </div>
+
+    <!-- Concentration -->
+    {{#if combatState.concentration}}
+    <div class="status-conc-section">
+      <span>🧠</span>
+      <span class="status-conc-spell">{{combatState.concentration}}</span>
+    </div>
+    {{/if}}
+
+    <!-- Spell Slots Summary -->
+    {{#if spellSlotsSummary}}
+    <div class="status-slots-section">
+      <span>✨</span> Slots {{spellSlotsSummary}}
+    </div>
+    {{/if}}
+
+    <!-- Active Conditions -->
+    {{#if combatState.conditions.length}}
+    <div class="status-conditions">
+      {{#each combatState.conditions}}
+      <span class="status-condition-badge">{{this}}</span>
+      {{/each}}
+    </div>
+    {{/if}}
   </div>
 </form>

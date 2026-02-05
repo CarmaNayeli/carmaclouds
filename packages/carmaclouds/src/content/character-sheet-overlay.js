@@ -69,8 +69,8 @@ window.browserAPI = browserAPI;
 
       // Check for race as a folder (DiceCloud often stores races as folders)
       if (!raceFound && prop.type === 'folder' && prop.name) {
-        const commonRaces = ['human', 'elf', 'dwarf', 'halfling', 'gnome', 'half-elf', 'half-orc', 'dragonborn', 'tiefling', 'orc', 'goblin', 'kobold', 'warforged', 'tabaxi', 'kenku', 'aarakocra', 'genasi', 'aasimar', 'firbolg', 'goliath', 'triton', 'yuan-ti', 'tortle', 'lizardfolk', 'bugbear', 'hobgoblin', 'changeling', 'shifter', 'kalashtar'];
-        const nameMatchesRace = commonRaces.some(r => prop.name.toLowerCase().includes(r));
+        const commonRaces = ['half-elf', 'half-orc', 'dragonborn', 'tiefling', 'halfling', 'human', 'elf', 'dwarf', 'gnome', 'orc', 'goblin', 'kobold', 'warforged', 'tabaxi', 'kenku', 'aarakocra', 'genasi', 'aasimar', 'firbolg', 'goliath', 'triton', 'yuan-ti', 'tortle', 'lizardfolk', 'bugbear', 'hobgoblin', 'changeling', 'shifter', 'kalashtar'];
+        const nameMatchesRace = commonRaces.some(r => new RegExp(`\\b${r}\\b`, 'i').test(prop.name));
         if (nameMatchesRace) {
           const parentDepth = prop.ancestors ? prop.ancestors.length : 0;
           if (parentDepth <= 2) {

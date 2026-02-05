@@ -372,9 +372,9 @@ async function handleGetAllCharacterProfiles(supabaseUserId) {
       console.log(`   Character ${index}:`, {
         id: char.id,
         name: char.name,
-        class: char.class,
-        level: char.level,
-        race: char.race,
+        class: char.class || char.preview?.class,
+        level: char.level || char.preview?.level,
+        race: char.race || char.preview?.race,
         hasRaw: !!char.raw
       });
     });
@@ -391,10 +391,11 @@ async function handleGetAllCharacterProfiles(supabaseUserId) {
           id: char.id,
           name: char.name || 'Unknown',
           character_name: char.name || 'Unknown',
-          class: char.class || 'Unknown',
-          level: char.level || 1,
-          race: char.race || 'Unknown',
-          raw: char.raw // Include raw data for parsing
+          class: char.class || char.preview?.class || 'Unknown',
+          level: char.level || char.preview?.level || 1,
+          race: char.race || char.preview?.race || 'Unknown',
+          raw: char.raw, // Include raw data for parsing
+          preview: char.preview // Pass through preview for adapters
         };
         console.log(`   ✅ Created ${profileKey}:`, profiles[profileKey].name);
       } else {
@@ -602,6 +603,7 @@ async function handleSyncToCarmaClouds(characterData) {
         dicecloud_character_id: characterData.id,
         character_name: characterData.name || 'Unknown',
         raw_dicecloud_data: characterData, // Store the full character object with raw DiceCloud data
+        platform: ['dicecloud', 'foundcloud', 'rollcloud', 'owlcloud'], // Mark as available on all platforms
         updated_at: new Date().toISOString()
       };
 

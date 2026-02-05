@@ -202,8 +202,8 @@ export function parseCharacterData(apiData, characterId) {
     // Check for race as a folder (DiceCloud often stores races as folders)
     // Look for folders with common race names at the top level
     if (!raceFound && prop.type === 'folder' && prop.name) {
-      const commonRaces = ['human', 'elf', 'dwarf', 'halfling', 'gnome', 'half-elf', 'half-orc', 'dragonborn', 'tiefling', 'orc', 'goblin', 'kobold', 'warforged', 'tabaxi', 'kenku', 'aarakocra', 'genasi', 'aasimar', 'firbolg', 'goliath', 'triton', 'yuan-ti', 'tortle', 'lizardfolk', 'bugbear', 'hobgoblin', 'changeling', 'shifter', 'kalashtar'];
-      const nameMatchesRace = commonRaces.some(race => prop.name.toLowerCase().includes(race));
+      const commonRaces = ['half-elf', 'half-orc', 'dragonborn', 'tiefling', 'halfling', 'human', 'elf', 'dwarf', 'gnome', 'orc', 'goblin', 'kobold', 'warforged', 'tabaxi', 'kenku', 'aarakocra', 'genasi', 'aasimar', 'firbolg', 'goliath', 'triton', 'yuan-ti', 'tortle', 'lizardfolk', 'bugbear', 'hobgoblin', 'changeling', 'shifter', 'kalashtar'];
+      const nameMatchesRace = commonRaces.some(race => new RegExp(`\\b${race}\\b`, 'i').test(prop.name));
       if (nameMatchesRace) {
         const parentDepth = prop.ancestors ? prop.ancestors.length : 0;
         if (parentDepth <= 2) { // Top-level or near top-level folder
@@ -307,6 +307,40 @@ export function parseCharacterData(apiData, characterId) {
           }
         } else if (typeof subRaceValue === 'string') {
           subraceName = formatRaceName(subRaceValue);
+        }
+        
+        // Skip generic labels like "Sub Race" - they're not actual subraces
+        if (subraceName && subraceName.toLowerCase() === 'sub race') {
+          console.log('CarmaClouds: Skipping generic "Sub Race" label, looking for actual subrace...');
+          subraceName = null;
+        }
+      }
+      
+      // If no valid subrace found, look for specific subrace variables
+      if (!subraceName) {
+        const subraceKeywords = ['fire', 'water', 'air', 'earth', 'firegenasi', 'watergenasi', 'airgenasi', 'earthgenasi'];
+        for (const varName of raceVars) {
+          const varValue = variables[varName];
+          const varNameLower = varName.toLowerCase();
+          
+          // Check if variable name contains subrace keyword and has truthy value
+          if (subraceKeywords.some(kw => varNameLower.includes(kw))) {
+            const isActive = typeof varValue === 'boolean' ? varValue : 
+                            (typeof varValue === 'object' && varValue !== null && varValue.value === true);
+            
+            if (isActive || varValue === true) {
+              // Extract subrace from variable name
+              if (varNameLower.includes('fire')) subraceName = 'Fire';
+              else if (varNameLower.includes('water')) subraceName = 'Water';
+              else if (varNameLower.includes('air')) subraceName = 'Air';
+              else if (varNameLower.includes('earth')) subraceName = 'Earth';
+              
+              if (subraceName) {
+                console.log('CarmaClouds: Found subrace from variable:', varName, '->', subraceName);
+                break;
+              }
+            }
+          }
         }
       }
 
@@ -421,8 +455,8 @@ export function parseForRollCloud(rawData) {
 
     // Check for race as a folder (DiceCloud often stores races as folders)
     if (!raceFound && prop.type === 'folder' && prop.name) {
-      const commonRaces = ['human', 'elf', 'dwarf', 'halfling', 'gnome', 'half-elf', 'half-orc', 'dragonborn', 'tiefling', 'orc', 'goblin', 'kobold', 'warforged', 'tabaxi', 'kenku', 'aarakocra', 'genasi', 'aasimar', 'firbolg', 'goliath', 'triton', 'yuan-ti', 'tortle', 'lizardfolk', 'bugbear', 'hobgoblin', 'changeling', 'shifter', 'kalashtar'];
-      const nameMatchesRace = commonRaces.some(r => prop.name.toLowerCase().includes(r));
+      const commonRaces = ['half-elf', 'half-orc', 'dragonborn', 'tiefling', 'halfling', 'human', 'elf', 'dwarf', 'gnome', 'orc', 'goblin', 'kobold', 'warforged', 'tabaxi', 'kenku', 'aarakocra', 'genasi', 'aasimar', 'firbolg', 'goliath', 'triton', 'yuan-ti', 'tortle', 'lizardfolk', 'bugbear', 'hobgoblin', 'changeling', 'shifter', 'kalashtar'];
+      const nameMatchesRace = commonRaces.some(r => new RegExp(`\\b${r}\\b`, 'i').test(prop.name));
       if (nameMatchesRace) {
         const parentDepth = prop.ancestors ? prop.ancestors.length : 0;
         if (parentDepth <= 2) {

@@ -204,6 +204,39 @@
   transform: none;
 }
 
+/* Small inline download button */
+.foundcloud-download-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: 2px solid #ff6b35;
+  border-radius: 6px;
+  color: #ff6b35;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.foundcloud-download-btn:hover {
+  background: #ff6b35;
+  color: white;
+  box-shadow: 0 2px 8px rgba(255, 107, 53, 0.4);
+}
+
+.foundcloud-download-btn:active {
+  transform: scale(0.92);
+}
+
+.foundcloud-download-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Scrollbar styling */
 .foundcloud-character-list::-webkit-scrollbar {
   width: 8px;

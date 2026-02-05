@@ -75,7 +75,8 @@
 /* Base Sheet Styles */
 .foundcloud-simple {
   font-family: 'Roboto', 'Signika', sans-serif;
-  background: var(--bg-primary);
+  background: var(--bg-primary) !important;
+  background-image: none !important;
   color: var(--text-primary);
   height: 100%;
   display: flex;
@@ -671,6 +672,8 @@
 
 /* Filter Buttons */
 .foundcloud-simple .filter-btn {
+  display: inline-block;
+  width: auto;
   background: var(--bg-tertiary);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
@@ -680,6 +683,7 @@
   font-size: 0.85em;
   transition: all 0.2s;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .foundcloud-simple .filter-btn:hover {
@@ -710,4 +714,172 @@
 
 .foundcloud-simple .content-area::-webkit-scrollbar-thumb:hover {
   background: #ff8c5a;
+}
+
+/* ===== Status Bar (sticky bottom) ===== */
+.foundcloud-simple .status-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: var(--bg-secondary);
+  border-top: 2px solid var(--accent-primary);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+/* HP Progress Bar */
+.foundcloud-simple .status-hp-section {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 140px;
+  max-width: 260px;
+}
+
+.foundcloud-simple .status-hp-icon {
+  font-size: 16px;
+}
+
+.foundcloud-simple .status-hp-bar {
+  flex: 1;
+  height: 22px;
+  background: var(--bg-tertiary);
+  border-radius: 5px;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid var(--border-color);
+}
+
+.foundcloud-simple .status-hp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #27ae60, #2ecc71);
+  transition: width 0.3s ease;
+}
+
+.foundcloud-simple .status-hp-fill.low {
+  background: linear-gradient(90deg, #e67e22, #f39c12);
+}
+
+.foundcloud-simple .status-hp-fill.critical {
+  background: linear-gradient(90deg, #c0392b, #e74c3c);
+}
+
+.foundcloud-simple .status-hp-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 11px;
+  font-weight: bold;
+  color: white;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Advantage Toggle (compact) */
+.foundcloud-simple .status-adv-section {
+  display: flex;
+  gap: 3px;
+}
+
+.foundcloud-simple .status-adv-btn {
+  padding: 4px 7px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  transition: all 0.15s;
+}
+
+.foundcloud-simple .status-adv-btn:hover {
+  border-color: var(--accent-primary);
+}
+
+.foundcloud-simple .status-adv-btn.active.adv {
+  background: var(--accent-success);
+  border-color: var(--accent-success);
+  color: white;
+}
+
+.foundcloud-simple .status-adv-btn.active.norm {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: white;
+}
+
+.foundcloud-simple .status-adv-btn.active.dis {
+  background: var(--accent-danger);
+  border-color: var(--accent-danger);
+  color: white;
+}
+
+/* Concentration */
+.foundcloud-simple .status-conc-section {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  background: var(--bg-spell);
+  border: 1px solid var(--border-spell);
+  border-radius: 5px;
+  font-size: 12px;
+}
+
+.foundcloud-simple .status-conc-spell {
+  color: var(--accent-purple);
+  font-weight: bold;
+  max-width: 90px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Spell Slots Summary */
+.foundcloud-simple .status-slots-section {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  background: var(--bg-action);
+  border: 1px solid var(--border-action);
+  border-radius: 5px;
+  font-size: 12px;
+  color: var(--accent-info);
+  font-weight: bold;
+}
+
+/* Initiative */
+.foundcloud-simple .status-init-section {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--text-primary);
+}
+
+/* Active Conditions */
+.foundcloud-simple .status-conditions {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.foundcloud-simple .status-condition-badge {
+  padding: 2px 8px;
+  background: var(--accent-purple);
+  color: var(--text-inverse);
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: bold;
 }

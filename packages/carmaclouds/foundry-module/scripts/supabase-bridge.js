@@ -92,11 +92,24 @@ export class SupabaseBridge {
     }
 
     try {
-      const { data, error } = await this.supabase
+      // Get the user's DiceCloud ID from settings
+      const userId = game.settings.get('foundcloud', 'dicecloudUserId');
+      
+      let query = this.supabase
         .from('clouds_characters')
-        .select('id, dicecloud_character_id, character_name, level, race, class, updated_at, platform')
+        .select('id, dicecloud_character_id, character_name, level, race, class, updated_at, platform, user_id_dicecloud')
         .contains('platform', ['foundcloud'])
         .order('character_name', { ascending: true });
+      
+      // Filter by user ID if set
+      if (userId && userId.trim() !== '') {
+        query = query.eq('user_id_dicecloud', userId.trim());
+        console.log(`FoundCloud | Filtering characters for user: ${userId}`);
+      } else {
+        console.log('FoundCloud | No user ID set - showing all characters (set your DiceCloud User ID in settings to filter)');
+      }
+      
+      const { data, error } = await query;
 
       if (error) {
         console.error('FoundCloud | Failed to fetch characters:', error);

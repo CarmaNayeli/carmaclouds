@@ -122,6 +122,16 @@ export class FoundCloudSettings {
       default: false
     });
 
+    // DiceCloud User ID
+    game.settings.register(this.namespace, 'dicecloudUserId', {
+      name: 'DiceCloud User ID',
+      hint: 'Your DiceCloud user ID (found in the browser extension after logging in). Leave empty to see all shared characters.',
+      scope: 'client',
+      config: true,
+      type: String,
+      default: ''
+    });
+
     console.log('FoundCloud | Settings registered');
   }
 
