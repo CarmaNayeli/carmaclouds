@@ -206,6 +206,16 @@
   color: var(--fc-text-inverse);
 }
 
+/* Character Name */
+.foundcloud-sheet-simple .char-name-section,
+.foundcloud-sheet .char-name-section {
+  font-size: 1.8em;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 15px;
+  color: var(--fc-text-primary);
+}
+
 /* Character Header */
 .foundcloud-sheet .character-header {
   padding: 15px;
@@ -214,11 +224,13 @@
   flex-shrink: 0;
 }
 
+.foundcloud-sheet-simple .char-info-layer,
 .foundcloud-sheet .char-info-layer {
   display: grid;
   gap: 10px;
   text-align: center;
   margin-bottom: 12px;
+  color: var(--fc-text-primary);
 }
 
 .foundcloud-sheet .layer-1 {
@@ -253,10 +265,13 @@
   color: var(--fc-text-primary);
 }
 
+.foundcloud-sheet-simple .stat-box,
 .foundcloud-sheet .stat-box {
   padding: 10px;
   background: var(--fc-bg-tertiary);
+  border: 1px solid var(--fc-border-color);
   border-radius: 6px;
+  color: var(--fc-text-primary);
 }
 
 .foundcloud-sheet .stat-box.clickable {
@@ -269,15 +284,18 @@
   transform: translateY(-2px);
 }
 
+.foundcloud-sheet-simple .stat-label,
 .foundcloud-sheet .stat-label {
   font-size: 0.8em;
   color: var(--fc-text-secondary);
   margin-bottom: 3px;
 }
 
+.foundcloud-sheet-simple .stat-value,
 .foundcloud-sheet .stat-value {
   font-size: 1.3em;
   font-weight: bold;
+  color: var(--fc-text-primary);
 }
 
 .foundcloud-sheet .death-saves .success {
