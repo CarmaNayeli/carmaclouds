@@ -915,7 +915,7 @@ export class FoundCloudSheetSimple extends ActorSheet {
     event.preventDefault();
     const ability = event.currentTarget.dataset.ability;
     try {
-      await this.actor.rollAbilityTest(ability, this._getRollOptions());
+      await this.actor.rollAbility(ability, this._getRollOptions());
     } catch (error) {
       console.error("Error rolling ability check:", error);
       ui.notifications.error(`Failed to roll ${ability.toUpperCase()} ability check.`);
