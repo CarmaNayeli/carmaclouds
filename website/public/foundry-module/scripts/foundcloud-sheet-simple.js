@@ -805,11 +805,7 @@ export class FoundCloudSheetSimple extends ActorSheet {
   async _onInitiativeRoll(event) {
     event.preventDefault();
     try {
-      if (this.actor.rollInitiative) {
-        await this.actor.rollInitiative({ createCombatants: true });
-      } else {
-        ui.notifications.warn("Initiative rolls are not supported for this actor type.");
-      }
+      await this.actor.rollInitiative({ createCombatants: true });
     } catch (error) {
       console.error("Error rolling initiative:", error);
       ui.notifications.error("Failed to roll initiative.");
@@ -919,14 +915,10 @@ export class FoundCloudSheetSimple extends ActorSheet {
     event.preventDefault();
     const ability = event.currentTarget.dataset.ability;
     try {
-      if (this.actor.rollAbilityTest) {
-        await this.actor.rollAbilityTest(ability, this._getRollOptions());
-      } else {
-        ui.notifications.warn("Ability check rolls are not supported for this actor type.");
-      }
+      await this.actor.rollAbilityTest(ability, this._getRollOptions());
     } catch (error) {
       console.error("Error rolling ability check:", error);
-      ui.notifications.error("Failed to roll ability check.");
+      ui.notifications.error(`Failed to roll ${ability.toUpperCase()} ability check.`);
     }
   }
 
@@ -934,14 +926,10 @@ export class FoundCloudSheetSimple extends ActorSheet {
     event.preventDefault();
     const ability = event.currentTarget.dataset.ability;
     try {
-      if (this.actor.rollAbilitySave) {
-        await this.actor.rollAbilitySave(ability, this._getRollOptions());
-      } else {
-        ui.notifications.warn("Saving throw rolls are not supported for this actor type.");
-      }
+      await this.actor.rollAbilitySave(ability, this._getRollOptions());
     } catch (error) {
       console.error("Error rolling saving throw:", error);
-      ui.notifications.error("Failed to roll saving throw.");
+      ui.notifications.error(`Failed to roll ${ability.toUpperCase()} saving throw.`);
     }
   }
 
@@ -949,14 +937,10 @@ export class FoundCloudSheetSimple extends ActorSheet {
     event.preventDefault();
     const skill = event.currentTarget.dataset.skill;
     try {
-      if (this.actor.rollSkill) {
-        await this.actor.rollSkill(skill, this._getRollOptions());
-      } else {
-        ui.notifications.warn("Skill rolls are not supported for this actor type.");
-      }
+      await this.actor.rollSkill(skill, this._getRollOptions());
     } catch (error) {
       console.error("Error rolling skill:", error);
-      ui.notifications.error("Failed to roll skill.");
+      ui.notifications.error("Failed to roll skill check.");
     }
   }
 
@@ -1025,14 +1009,10 @@ export class FoundCloudSheetSimple extends ActorSheet {
     const item = this.actor.items.get(itemId);
     if (item) {
       try {
-        if (item.rollAttack) {
-          await item.rollAttack(this._getRollOptions());
-        } else {
-          ui.notifications.warn("Attack rolls are not supported for this item type.");
-        }
+        await item.rollAttack(this._getRollOptions());
       } catch (error) {
         console.error("Error rolling attack:", error);
-        ui.notifications.error("Failed to roll attack.");
+        ui.notifications.error(`Failed to roll attack for ${item.name}.`);
       }
     }
   }
@@ -1043,14 +1023,10 @@ export class FoundCloudSheetSimple extends ActorSheet {
     const item = this.actor.items.get(itemId);
     if (item) {
       try {
-        if (item.rollDamage) {
-          await item.rollDamage();
-        } else {
-          ui.notifications.warn("Damage rolls are not supported for this item type.");
-        }
+        await item.rollDamage();
       } catch (error) {
         console.error("Error rolling damage:", error);
-        ui.notifications.error("Failed to roll damage.");
+        ui.notifications.error(`Failed to roll damage for ${item.name}.`);
       }
     }
   }
