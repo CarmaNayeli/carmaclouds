@@ -53,8 +53,8 @@
         <div class="stat-box clickable" id="death-saves-display">
           <div class="stat-label">Death Saves</div>
           <div style="font-size: 0.9em; font-weight: bold;">
-            <span style="color: var(--accent-success);">✓{{deathSaves.successes}}</span> /
-            <span style="color: var(--accent-danger);">✗{{deathSaves.failures}}</span>
+            <span style="color: var(--fc-accent-success);">✓{{deathSaves.successes}}</span> /
+            <span style="color: var(--fc-accent-danger);">✗{{deathSaves.failures}}</span>
           </div>
         </div>
         <div class="stat-box clickable" id="inspiration-display">
@@ -201,7 +201,7 @@
           {{#each abilities}}
           <div class="card ability-card" data-ability="{{this.key}}">
             <div style="font-weight: bold; font-size: 0.9em;">{{this.abbr}}</div>
-            <div style="font-size: 0.85em; color: var(--text-secondary);">{{this.value}}</div>
+            <div style="font-size: 0.85em; color: var(--fc-text-secondary);">{{this.value}}</div>
             <div class="bonus">{{this.mod}}</div>
           </div>
           {{/each}}
@@ -217,7 +217,7 @@
           <div class="card save-card {{#if this.proficient}}proficient{{/if}}" data-ability="{{this.key}}">
             <div style="font-weight: bold; font-size: 0.9em;">{{this.abbr}}</div>
             <div class="bonus">{{this.mod}}</div>
-            {{#if this.proficient}}<div style="position: absolute; top: 4px; right: 4px; color: var(--accent-success);">●</div>{{/if}}
+            {{#if this.proficient}}<div style="position: absolute; top: 4px; right: 4px; color: var(--fc-accent-success);">●</div>{{/if}}
           </div>
           {{/each}}
         </div>
@@ -231,10 +231,10 @@
           {{#each skills}}
           <div class="card skill-card {{#if this.proficient}}proficient{{/if}} {{#if this.expertise}}expertise{{/if}}" data-skill="{{this.key}}">
             <div style="font-weight: bold; font-size: 0.85em;">{{this.name}}</div>
-            <div style="font-size: 0.75em; color: var(--text-secondary);">({{this.ability}})</div>
+            <div style="font-size: 0.75em; color: var(--fc-text-secondary);">({{this.ability}})</div>
             <div class="bonus">{{this.mod}}</div>
-            {{#if this.expertise}}<div style="position: absolute; top: 4px; right: 4px; color: var(--accent-warning);">★</div>{{/if}}
-            {{#if this.proficient}}<div style="position: absolute; top: 4px; right: 4px; color: var(--accent-success);">●</div>{{/if}}
+            {{#if this.expertise}}<div style="position: absolute; top: 4px; right: 4px; color: var(--fc-accent-warning);">★</div>{{/if}}
+            {{#if this.proficient}}<div style="position: absolute; top: 4px; right: 4px; color: var(--fc-accent-success);">●</div>{{/if}}
           </div>
           {{/each}}
         </div>
@@ -373,9 +373,9 @@
             <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 4px; margin-bottom: 8px;">
               <div>
                 <strong>{{this.name}}</strong>
-                {{#if this.equipped}}<span style="color: var(--accent-success); margin-left: 8px;">⚔️</span>{{/if}}
-                {{#if this.attuned}}<span style="color: var(--accent-warning); margin-left: 8px;">✨</span>{{/if}}
-                <div style="font-size: 0.85em; color: var(--text-secondary);">Qty: {{this.quantity}}</div>
+                {{#if this.equipped}}<span style="color: var(--fc-accent-success); margin-left: 8px;">⚔️</span>{{/if}}
+                {{#if this.attuned}}<span style="color: var(--fc-accent-warning); margin-left: 8px;">✨</span>{{/if}}
+                <div style="font-size: 0.85em; color: var(--fc-text-secondary);">Qty: {{this.quantity}}</div>
               </div>
             </div>
           </div>
