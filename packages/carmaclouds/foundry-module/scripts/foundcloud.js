@@ -315,23 +315,92 @@ Hooks.once('ready', () => {
       // Check if user is authenticated
       const isAuthenticated = await game.foundcloud.bridge.isAuthenticated();
       if (!isAuthenticated) {
-        // Show login prompt in the character list area
+        // Show inline login form in the character list area
         listContainer.innerHTML = `
-          <div class="foundcloud-empty">
-            <div style="text-align: center; padding: 20px;">
-              <i class="fas fa-lock" style="font-size: 3em; color: #16a75a; margin-bottom: 12px;"></i>
-              <h3 style="margin-bottom: 8px;">Authentication Required</h3>
-              <p style="color: #999; font-size: 13px; margin-bottom: 16px;">Please sign in to view your characters</p>
-              <button class="foundcloud-btn foundcloud-login-btn" id="foundcloud-login-btn">
-                <i class="fas fa-sign-in-alt"></i> Sign In
-              </button>
+          <div class="foundcloud-auth-container" style="padding: 20px;">
+            <div style="text-align: center; margin-bottom: 20px;">
+              <i class="fas fa-lock" style="font-size: 2.5em; color: #16a75a; margin-bottom: 8px;"></i>
+              <h3 style="margin-bottom: 4px; font-size: 16px;">Sign In to FoundCloud</h3>
+              <p style="color: #999; font-size: 12px;">Access your synced characters</p>
             </div>
+            <form id="foundcloud-inline-auth-form" style="display: flex; flex-direction: column; gap: 12px;">
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <label for="foundcloud-inline-email" style="font-size: 13px; font-weight: 600;">Email</label>
+                <input type="email" id="foundcloud-inline-email" name="email" required autocomplete="email" placeholder="your@email.com" style="padding: 8px; border: 1px solid #444; border-radius: 4px; background: #2a2a2a; color: #e0e0e0; font-size: 13px;">
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <label for="foundcloud-inline-password" style="font-size: 13px; font-weight: 600;">Password</label>
+                <input type="password" id="foundcloud-inline-password" name="password" required autocomplete="current-password" placeholder="Min 6 characters" minlength="6" style="padding: 8px; border: 1px solid #444; border-radius: 4px; background: #2a2a2a; color: #e0e0e0; font-size: 13px;">
+              </div>
+              <div id="foundcloud-inline-auth-error" style="display: none; color: #ff6400; font-size: 12px; padding: 8px; background: rgba(255, 100, 0, 0.1); border-radius: 4px;"></div>
+              <div style="display: flex; gap: 8px; margin-top: 4px;">
+                <button type="submit" class="foundcloud-btn" style="flex: 1; padding: 10px; font-size: 13px;">
+                  <i class="fas fa-sign-in-alt"></i> Sign In
+                </button>
+                <button type="button" id="foundcloud-inline-signup-btn" class="foundcloud-btn" style="flex: 1; padding: 10px; font-size: 13px; background: #555;">
+                  <i class="fas fa-user-plus"></i> Sign Up
+                </button>
+              </div>
+              <p style="color: #888; font-size: 11px; text-align: center; margin-top: 4px;">
+                Don't have an account? Click "Sign Up" to create one.
+              </p>
+            </form>
           </div>
         `;
 
-        // Add login button handler
-        document.getElementById('foundcloud-login-btn').addEventListener('click', () => {
-          game.foundcloud.ui.showAuthDialog();
+        // Add inline form handlers
+        const form = document.getElementById('foundcloud-inline-auth-form');
+        const errorDiv = document.getElementById('foundcloud-inline-auth-error');
+        const emailInput = document.getElementById('foundcloud-inline-email');
+        const passwordInput = document.getElementById('foundcloud-inline-password');
+        const signUpBtn = document.getElementById('foundcloud-inline-signup-btn');
+
+        // Sign In handler
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const email = emailInput.value.trim();
+          const password = passwordInput.value;
+
+          try {
+            errorDiv.style.display = 'none';
+            await game.foundcloud.bridge.signIn(email, password);
+            ui.notifications.info('Signed in successfully!');
+            // Reload character list
+            await loadCharacterList();
+          } catch (error) {
+            console.error('FoundCloud | Sign in failed:', error);
+            errorDiv.textContent = `Sign in failed: ${error.message}`;
+            errorDiv.style.display = 'block';
+          }
+        });
+
+        // Sign Up handler
+        signUpBtn.addEventListener('click', async () => {
+          const email = emailInput.value.trim();
+          const password = passwordInput.value;
+
+          if (!email || !password) {
+            errorDiv.textContent = 'Please enter email and password';
+            errorDiv.style.display = 'block';
+            return;
+          }
+
+          if (password.length < 6) {
+            errorDiv.textContent = 'Password must be at least 6 characters long';
+            errorDiv.style.display = 'block';
+            return;
+          }
+
+          try {
+            errorDiv.style.display = 'none';
+            await game.foundcloud.bridge.signUp(email, password);
+            ui.notifications.info('Account created successfully! You can now sign in.');
+            errorDiv.style.display = 'none';
+          } catch (error) {
+            console.error('FoundCloud | Sign up failed:', error);
+            errorDiv.textContent = `Sign up failed: ${error.message}`;
+            errorDiv.style.display = 'block';
+          }
         });
 
         return;
