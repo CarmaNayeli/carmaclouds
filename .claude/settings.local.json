@@ -23,7 +23,8 @@
       "WebFetch(domain:extensions.owlbear.rodeo)",
       "Bash(supabase --version:*)",
       "Bash(git revert:*)",
-      "Bash(git check-ignore:*)"
+      "Bash(git check-ignore:*)",
+      "Bash(7z a:*)"
     ],
     "additionalDirectories": [
       "c:\\Users\\c_dow\\carmaclouds\\packages\\core\\src",

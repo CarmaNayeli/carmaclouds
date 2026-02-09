@@ -599,10 +599,13 @@ export class FoundCloudSheetSimple extends ActorSheet {
 
     if (!this.isEditable) return;
 
-    // Apply custom player color to portrait border
+    // Apply custom player color to portrait border and ensure token setup
     const playerColor = this.actor.getFlag('foundcloud', 'playerColor');
     if (playerColor) {
       html.find('#char-portrait').css('border-color', playerColor);
+
+      // Ensure token uses portrait and colored ring
+      this._ensureTokenSetup(playerColor);
     }
 
     // Theme toggle
@@ -721,11 +724,31 @@ export class FoundCloudSheetSimple extends ActorSheet {
       portrait.css('border-color', color);
     }
 
-    // Update actor prototype token color if available
-    if (this.actor.prototypeToken) {
+    // Update actor prototype token to use portrait image and colored ring
+    const updates = {
+      'prototypeToken.texture.src': this.actor.img,  // Use portrait as token image
+      'prototypeToken.ring.subject.scale': 1.0,      // Enable ring
+      'prototypeToken.ring.colors.ring': color       // Set ring color
+    };
+
+    await this.actor.update(updates);
+  }
+
+  /**
+   * Ensure token is configured to use portrait image and colored ring
+   */
+  async _ensureTokenSetup(color) {
+    // Only update if needed
+    const needsUpdate =
+      this.actor.prototypeToken?.texture?.src !== this.actor.img ||
+      this.actor.prototypeToken?.ring?.colors?.ring !== color;
+
+    if (needsUpdate) {
       await this.actor.update({
+        'prototypeToken.texture.src': this.actor.img,
+        'prototypeToken.ring.subject.scale': 1.0,
         'prototypeToken.ring.colors.ring': color
-      });
+      }, { diff: false, render: false });
     }
   }
 
