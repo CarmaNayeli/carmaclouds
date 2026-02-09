@@ -10,11 +10,30 @@
  * @returns {Object} Formatted character data for sheet-builder
  */
 export function parseRawCharacterData(rawData, characterId) {
-  if (!rawData || !rawData.creature || !rawData.variables || !rawData.properties) {
-    throw new Error('Invalid raw data format: missing creature, variables, or properties');
+  // Log the structure for debugging
+  console.log('RollCloud: Parsing character data, keys:', rawData ? Object.keys(rawData) : 'null');
+
+  if (!rawData) {
+    throw new Error('Invalid raw data format: rawData is null or undefined');
   }
 
-  const { creature, variables, properties } = rawData;
+  // Check if data is wrapped in a 'raw' field (common storage pattern)
+  const actualData = rawData.raw || rawData;
+
+  if (!actualData.creature) {
+    console.error('Missing creature field. Available keys:', Object.keys(actualData));
+    throw new Error('Invalid raw data format: missing creature field. Check console for details.');
+  }
+  if (!actualData.variables) {
+    console.error('Missing variables field. Available keys:', Object.keys(actualData));
+    throw new Error('Invalid raw data format: missing variables field. Check console for details.');
+  }
+  if (!actualData.properties) {
+    console.error('Missing properties field. Available keys:', Object.keys(actualData));
+    throw new Error('Invalid raw data format: missing properties field. Check console for details.');
+  }
+
+  const { creature, variables, properties } = actualData;
 
   // Extract basic info
   const name = creature.name || 'Unknown Character';
