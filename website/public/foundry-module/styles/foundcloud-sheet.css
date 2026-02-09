@@ -698,7 +698,8 @@
 }
 
 /* Cards */
-.foundcloud-sheet .card {
+.foundcloud-sheet .card,
+.foundcloud-sheet-simple .card {
   background: var(--fc-bg-card);
   border: 1px solid var(--fc-border-card);
   border-radius: 4px;
@@ -708,37 +709,43 @@
   transition: all 0.2s;
 }
 
-.foundcloud-sheet .card:hover {
+.foundcloud-sheet .card:hover,
+.foundcloud-sheet-simple .card:hover {
   background: var(--fc-bg-card-hover);
   transform: translateY(-2px);
   box-shadow: 0 4px 8px var(--fc-shadow-hover);
 }
 
-.foundcloud-sheet .card .bonus {
+.foundcloud-sheet .card .bonus,
+.foundcloud-sheet-simple .card .bonus {
   color: var(--fc-accent-primary);
   font-weight: bold;
   font-size: 1.2em;
 }
 
 /* Ability Cards */
-.foundcloud-sheet .ability-card .ability-name {
+.foundcloud-sheet .ability-card .ability-name,
+.foundcloud-sheet-simple .ability-card .ability-name {
   font-weight: bold;
   font-size: 0.9em;
   color: var(--fc-text-secondary);
 }
 
-.foundcloud-sheet .ability-card .ability-score {
+.foundcloud-sheet .ability-card .ability-score,
+.foundcloud-sheet-simple .ability-card .ability-score {
   font-size: 1.4em;
   font-weight: bold;
   margin: 5px 0;
 }
 
 /* Save Cards */
-.foundcloud-sheet .save-card.proficient {
+.foundcloud-sheet .save-card.proficient,
+.foundcloud-sheet-simple .save-card.proficient {
   border-color: var(--fc-accent-success);
 }
 
-.foundcloud-sheet .proficiency-indicator {
+.foundcloud-sheet .proficiency-indicator,
+.foundcloud-sheet-simple .proficiency-indicator {
   position: absolute;
   top: 5px;
   right: 5px;
@@ -747,26 +754,32 @@
 }
 
 .foundcloud-sheet .save-card,
-.foundcloud-sheet .skill-card {
+.foundcloud-sheet .skill-card,
+.foundcloud-sheet-simple .save-card,
+.foundcloud-sheet-simple .skill-card {
   position: relative;
 }
 
 /* Skill Cards */
-.foundcloud-sheet .skill-card .skill-name {
+.foundcloud-sheet .skill-card .skill-name,
+.foundcloud-sheet-simple .skill-card .skill-name {
   font-size: 0.85em;
   font-weight: bold;
 }
 
-.foundcloud-sheet .skill-card .skill-ability {
+.foundcloud-sheet .skill-card .skill-ability,
+.foundcloud-sheet-simple .skill-card .skill-ability {
   font-size: 0.7em;
   color: var(--fc-text-muted);
 }
 
-.foundcloud-sheet .skill-card.expertise {
+.foundcloud-sheet .skill-card.expertise,
+.foundcloud-sheet-simple .skill-card.expertise {
   border-color: var(--fc-accent-warning);
 }
 
-.foundcloud-sheet .expertise-indicator {
+.foundcloud-sheet .expertise-indicator,
+.foundcloud-sheet-simple .expertise-indicator {
   position: absolute;
   top: 5px;
   right: 5px;

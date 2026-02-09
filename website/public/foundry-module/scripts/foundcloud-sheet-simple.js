@@ -752,11 +752,7 @@ export class FoundCloudSheetSimple extends ActorSheet {
     }
   }
 
-  async _onDragPortrait(event) {
-    // Ensure token is properly configured before dragging
-    const playerColor = this.actor.getFlag('foundcloud', 'playerColor') || '#3ea895';
-    await this._ensureTokenSetup(playerColor);
-
+  _onDragPortrait(event) {
     // Set up drag data for creating a token when dropped on canvas
     const dragData = {
       type: 'Actor',
