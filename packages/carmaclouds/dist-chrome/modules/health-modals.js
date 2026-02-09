@@ -205,25 +205,7 @@ function showHPModal() {
 
     // Send message to Roll20
     if (messageData) {
-      // Try window.opener first (Chrome)
-      if (window.opener && !window.opener.closed) {
-        try {
-          window.opener.postMessage(messageData, '*');
-        } catch (error) {
-          debug.warn('⚠️ Could not send via window.opener:', error.message);
-          // Fallback to background script relay
-          browserAPI.runtime.sendMessage({
-            action: 'relayRollToRoll20',
-            roll: messageData
-          });
-        }
-      } else {
-        // Fallback: Use background script to relay to Roll20 (Firefox)
-        browserAPI.runtime.sendMessage({
-          action: 'relayRollToRoll20',
-          roll: messageData
-        });
-      }
+      sendToRoll20(messageData);
     }
 
     saveCharacterData();

@@ -232,29 +232,7 @@
 
       // Send message to Roll20
       if (messageData) {
-        // Try window.opener first (Chrome)
-        if (window.opener && !window.opener.closed) {
-          try {
-            window.opener.postMessage(messageData, '*');
-          } catch (error) {
-            debug.warn('⚠️ Could not send via window.opener:', error.message);
-            // Fallback to background script relay
-            if (typeof browserAPI !== 'undefined') {
-              browserAPI.runtime.sendMessage({
-                action: 'relayRollToRoll20',
-                roll: messageData
-              });
-            }
-          }
-        } else {
-          // Fallback: Use background script to relay to Roll20 (Firefox)
-          if (typeof browserAPI !== 'undefined') {
-            browserAPI.runtime.sendMessage({
-              action: 'relayRollToRoll20',
-              roll: messageData
-            });
-          }
-        }
+        sendToRoll20(messageData);
       }
 
       // Save and rebuild sheet
@@ -387,14 +365,12 @@
       debug.log(`🎲 Rolled ${hitDie}: ${roll} + ${conMod} = ${healing} HP (restored ${actualHealing})`);
 
       // Announce the roll with fancy formatting
-      if (window.opener && !window.opener.closed) {
-        const colorBanner = typeof getColoredBanner !== 'undefined' ? getColoredBanner(characterData) : '';
-        window.opener.postMessage({
-          action: 'announceSpell',
-          message: `&{template:default} {{name=${colorBanner}${characterData.name} spends hit dice}} {{Roll=🎲 ${hitDie}: ${roll} + ${conMod} CON}} {{HP Restored=${healing}}} {{Current HP=${characterData.hitPoints.current}/${characterData.hitPoints.max}}}`,
-          color: characterData.notificationColor
-        }, '*');
-      }
+      const colorBanner = typeof getColoredBanner !== 'undefined' ? getColoredBanner(characterData) : '';
+      sendToRoll20({
+        action: 'announceSpell',
+        message: `&{template:default} {{name=${colorBanner}${characterData.name} spends hit dice}} {{Roll=🎲 ${hitDie}: ${roll} + ${conMod} CON}} {{HP Restored=${healing}}} {{Current HP=${characterData.hitPoints.current}/${characterData.hitPoints.max}}}`,
+        color: characterData.notificationColor
+      });
     }
 
     if (diceSpent > 0) {
@@ -416,13 +392,7 @@
       color: characterData.notificationColor
     };
 
-    if (window.opener && !window.opener.closed) {
-      try {
-        window.opener.postMessage(messageData, '*');
-      } catch (error) {
-        debug.log('❌ Failed to send short rest announcement:', error);
-      }
-    }
+    sendToRoll20(messageData);
   }
 
   /**
@@ -564,29 +534,7 @@
       color: characterData.notificationColor
     };
 
-    // Try window.opener first (Chrome)
-    if (window.opener && !window.opener.closed) {
-      try {
-        window.opener.postMessage(messageData, '*');
-      } catch (error) {
-        debug.warn('⚠️ Could not send via window.opener:', error.message);
-        // Fallback to background script relay
-        if (typeof browserAPI !== 'undefined') {
-          browserAPI.runtime.sendMessage({
-            action: 'relayRollToRoll20',
-            roll: messageData
-          });
-        }
-      }
-    } else {
-      // Fallback: Use background script to relay to Roll20 (Firefox)
-      if (typeof browserAPI !== 'undefined') {
-        browserAPI.runtime.sendMessage({
-          action: 'relayRollToRoll20',
-          roll: messageData
-        });
-      }
-    }
+    sendToRoll20(messageData);
   }
 
   /**
@@ -775,29 +723,7 @@
       color: characterData.notificationColor
     };
 
-    // Try window.opener first (Chrome)
-    if (window.opener && !window.opener.closed) {
-      try {
-        window.opener.postMessage(messageData, '*');
-      } catch (error) {
-        debug.warn('⚠️ Could not send via window.opener:', error.message);
-        // Fallback to background script relay
-        if (typeof browserAPI !== 'undefined') {
-          browserAPI.runtime.sendMessage({
-            action: 'relayRollToRoll20',
-            roll: messageData
-          });
-        }
-      }
-    } else {
-      // Fallback: Use background script to relay to Roll20 (Firefox)
-      if (typeof browserAPI !== 'undefined') {
-        browserAPI.runtime.sendMessage({
-          action: 'relayRollToRoll20',
-          roll: messageData
-        });
-      }
-    }
+    sendToRoll20(messageData);
   }
 
   // ===== EXPORTS =====

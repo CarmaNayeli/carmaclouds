@@ -127,6 +127,30 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   // Handle clearAllCloudData - delete all character data from Supabase
+  // Relay messages from popup sheet to Roll20 content script tabs
+  // This is the fallback path when window.opener is not available
+  if (message.action === 'relayToRoll20') {
+    const roll20Patterns = ['*://app.roll20.net/*'];
+    browserAPI.tabs.query({ url: roll20Patterns }).then(tabs => {
+      if (tabs.length === 0) {
+        console.warn('⚠️ No Roll20 tabs found to relay message to');
+        sendResponse({ success: false, error: 'No Roll20 tabs found' });
+        return;
+      }
+      for (const tab of tabs) {
+        browserAPI.tabs.sendMessage(tab.id, message.data).catch(err => {
+          console.warn(`⚠️ Failed to relay to tab ${tab.id}:`, err);
+        });
+      }
+      console.log(`📨 Relayed ${message.data.action} to ${tabs.length} Roll20 tab(s)`);
+      sendResponse({ success: true });
+    }).catch(err => {
+      console.error('❌ Failed to query Roll20 tabs:', err);
+      sendResponse({ success: false, error: err.message });
+    });
+    return true; // Keep channel open for async response
+  }
+
   if (message.action === 'clearAllCloudData') {
     console.log('🗑️ Clearing all cloud character data...');
     handleClearAllCloudData()

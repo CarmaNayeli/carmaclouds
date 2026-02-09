@@ -138,13 +138,7 @@
             color: characterData.notificationColor
           };
 
-          if (window.opener && !window.opener.closed) {
-            try {
-              window.opener.postMessage(messageData, '*');
-            } catch (error) {
-              debug.log('❌ Failed to send companion attack announcement:', error);
-            }
-          }
+          sendToRoll20(messageData);
 
           roll(`${name} - Attack`, `1d20+${bonus}`);
         });
@@ -164,13 +158,7 @@
             color: characterData.notificationColor
           };
 
-          if (window.opener && !window.opener.closed) {
-            try {
-              window.opener.postMessage(messageData, '*');
-            } catch (error) {
-              debug.log('❌ Failed to send companion damage announcement:', error);
-            }
-          }
+          sendToRoll20(messageData);
 
           roll(`${name} - Damage`, damage);
         });

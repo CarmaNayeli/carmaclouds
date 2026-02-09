@@ -124,8 +124,8 @@ export class FoundCloudSettings {
 
     // DiceCloud User ID
     game.settings.register(this.namespace, 'dicecloudUserId', {
-      name: 'DiceCloud User ID',
-      hint: 'Your DiceCloud user ID (found in the browser extension after logging in). Leave empty to see all shared characters.',
+      name: 'DiceCloud User ID (REQUIRED)',
+      hint: 'REQUIRED for privacy: Your DiceCloud user ID from your profile URL (dicecloud.com/character/YOUR_USER_ID/...). Only characters owned by this ID will be visible.',
       scope: 'client',
       config: true,
       type: String,

@@ -37,6 +37,61 @@ export default function HomeTab({ setActiveTab }: HomeTabProps) {
         </ol>
       </section>
 
+      <section className="bg-black border border-gray-800 rounded-lg p-6">
+        <h3 className="text-2xl font-semibold mb-4 text-white">Installing the Browser Extension</h3>
+        <p className="text-gray-400 mb-6">
+          CarmaClouds is not yet on the Chrome Web Store or Firefox Add-ons. You'll need to load it manually after downloading.
+        </p>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="bg-gray-900 border border-gray-700 rounded-lg p-5">
+            <h4 className="font-semibold text-white mb-3">Chrome / Edge</h4>
+            <ol className="space-y-2 text-gray-400 text-sm">
+              <li className="flex items-start">
+                <span className="text-[#16a75a] mr-2 font-bold">1.</span>
+                <span>Download and <strong className="text-gray-200">unzip</strong> the Chrome ZIP file</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-[#16a75a] mr-2 font-bold">2.</span>
+                <span>Go to <code className="bg-gray-800 px-1.5 py-0.5 rounded text-xs">chrome://extensions</code> in your address bar</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-[#16a75a] mr-2 font-bold">3.</span>
+                <span>Enable <strong className="text-gray-200">Developer mode</strong> (toggle in the top-right corner)</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-[#16a75a] mr-2 font-bold">4.</span>
+                <span>Click <strong className="text-gray-200">Load unpacked</strong> and select the unzipped folder</span>
+              </li>
+            </ol>
+            <p className="text-gray-500 text-xs mt-3">For Edge, use <code className="bg-gray-800 px-1.5 py-0.5 rounded text-xs">edge://extensions</code> instead.</p>
+          </div>
+
+          <div className="bg-gray-900 border border-gray-700 rounded-lg p-5">
+            <h4 className="font-semibold text-white mb-3">Firefox</h4>
+            <ol className="space-y-2 text-gray-400 text-sm">
+              <li className="flex items-start">
+                <span className="text-[#16a75a] mr-2 font-bold">1.</span>
+                <span>Download the Firefox ZIP file (no need to unzip)</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-[#16a75a] mr-2 font-bold">2.</span>
+                <span>Go to <code className="bg-gray-800 px-1.5 py-0.5 rounded text-xs">about:debugging#/runtime/this-firefox</code> in your address bar</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-[#16a75a] mr-2 font-bold">3.</span>
+                <span>Click <strong className="text-gray-200">Load Temporary Add-on</strong></span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-[#16a75a] mr-2 font-bold">4.</span>
+                <span>Select the ZIP file, or unzip and pick any file inside the folder (e.g. <code className="bg-gray-800 px-1.5 py-0.5 rounded text-xs">manifest.json</code>)</span>
+              </li>
+            </ol>
+            <p className="text-gray-500 text-xs mt-3">Temporary add-ons are removed when Firefox closes. Re-load after each restart.</p>
+          </div>
+        </div>
+      </section>
+
       <section className="grid md:grid-cols-4 gap-6">
         <button
           onClick={() => setActiveTab('rollcloud')}

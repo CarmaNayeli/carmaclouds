@@ -792,6 +792,26 @@ export function parseForRollCloud(rawData) {
         spellType = (hasHealingRoll || hasHealingName || hasHealingDesc) ? 'healing' : 'damage';
       }
 
+      // Detect lifesteal spells (damage + healing based on damage dealt)
+      // These spells have both a damage roll and a healing roll, where healing is based on damage
+      let isLifesteal = false;
+      if (damageRolls.length >= 2) {
+        const hasDamageRoll = damageRolls.some(roll =>
+          roll.type && roll.type.toLowerCase() !== 'healing'
+        );
+        const hasHealingRoll = damageRolls.some(roll =>
+          roll.type && roll.type.toLowerCase() === 'healing'
+        );
+
+        // Check if spell name or description indicates lifesteal
+        const spellName = (spell.name || '').toLowerCase();
+        const spellDesc = extractText(spell.description).toLowerCase();
+        const isVampiric = spellName.includes('vampiric') ||
+                          spellDesc.includes('regain') && spellDesc.includes('damage');
+
+        isLifesteal = hasDamageRoll && hasHealingRoll && isVampiric;
+      }
+
       return {
         id: spell._id,
         name: spell.name || 'Unnamed Spell',
@@ -811,7 +831,8 @@ export function parseForRollCloud(rawData) {
         attackRoll: attackRoll,
         damage: damage,
         damageType: damageType,
-        damageRolls: damageRolls
+        damageRolls: damageRolls,
+        isLifesteal: isLifesteal
       };
     });
 

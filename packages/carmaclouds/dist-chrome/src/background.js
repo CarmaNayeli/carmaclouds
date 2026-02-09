@@ -87,6 +87,27 @@
       });
       return true;
     }
+    if (message.action === "relayToRoll20") {
+      const roll20Patterns = ["*://app.roll20.net/*"];
+      browserAPI.tabs.query({ url: roll20Patterns }).then((tabs) => {
+        if (tabs.length === 0) {
+          console.warn("\u26A0\uFE0F No Roll20 tabs found to relay message to");
+          sendResponse({ success: false, error: "No Roll20 tabs found" });
+          return;
+        }
+        for (const tab of tabs) {
+          browserAPI.tabs.sendMessage(tab.id, message.data).catch((err) => {
+            console.warn(`\u26A0\uFE0F Failed to relay to tab ${tab.id}:`, err);
+          });
+        }
+        console.log(`\u{1F4E8} Relayed ${message.data.action} to ${tabs.length} Roll20 tab(s)`);
+        sendResponse({ success: true });
+      }).catch((err) => {
+        console.error("\u274C Failed to query Roll20 tabs:", err);
+        sendResponse({ success: false, error: err.message });
+      });
+      return true;
+    }
     if (message.action === "clearAllCloudData") {
       console.log("\u{1F5D1}\uFE0F Clearing all cloud character data...");
       handleClearAllCloudData().then((result) => {

@@ -655,9 +655,8 @@ function applyAdvantageToFormula(formula, effectNotes) {
  * Execute the roll after optional effects have been handled
  */
 function executeRoll(name, formula, effectNotes, prerolledResult = null) {
-  const colorBanner = getColoredBanner(characterData);
-  // Format: "🔵 CharacterName rolls Initiative"
-  let rollName = `${colorBanner}${characterData.name} rolls ${name}`;
+  // Format: "CharacterName rolls Initiative" (Roll20 adds color indicator)
+  let rollName = `${characterData.name} rolls ${name}`;
 
   // Add effect notes to roll name if any
   if (effectNotes.length > 0) {
@@ -687,33 +686,15 @@ function executeRoll(name, formula, effectNotes, prerolledResult = null) {
     messageData.prerolledResult = prerolledResult;
   }
 
-  // Send roll to Roll20 content script via window.opener
-  debug.log('🔍 Checking window.opener:', {
-    hasOpener: !!window.opener,
-    isClosed: window.opener ? window.opener.closed : 'N/A'
-  });
-  
-  if (window.opener && !window.opener.closed) {
-    try {
-      window.opener.postMessage(messageData, '*');
-      debug.log('🎲 Roll sent to Roll20 via window.opener.postMessage:', messageData);
-      debug.log('   Target origin: * (all origins)');
-    } catch (error) {
-      debug.warn('⚠️ Could not send roll via window.opener:', error.message);
-      // Fallback: try sending via background script
-      if (typeof browserAPI !== 'undefined') {
-        browserAPI.runtime.sendMessage({
-          action: 'rollFromPopout',
-          roll: messageData
-        }).catch(err => {
-          debug.error('❌ Failed to send roll via background:', err);
-        });
-      }
-    }
+  // Send roll to Roll20 content script
+  if (typeof sendToRoll20 === 'function') {
+    sendToRoll20(messageData);
+    debug.log('🎲 Roll sent to Roll20:', messageData);
   } else {
-    debug.warn('⚠️ No window.opener available, cannot send roll to Roll20');
-    debug.log('   window.opener:', window.opener);
-    debug.log('   window.opener.closed:', window.opener ? window.opener.closed : 'N/A');
+    debug.warn('⚠️ sendToRoll20 not available, trying window.opener directly');
+    if (window.opener && !window.opener.closed) {
+      window.opener.postMessage(messageData, '*');
+    }
   }
 
   // TODO: Add Owlbear Rodeo integration for dice rolls

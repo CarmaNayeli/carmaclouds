@@ -222,17 +222,26 @@ export function parseRawCharacterData(rawData, characterId) {
     if (prop.type === 'action' && prop.name) {
       const children = findChildren(prop._id);
 
-      // Extract attack and damage from children
-      let attackBonus = prop.attackBonus;
-      const damages = [];
-
-      for (const child of children) {
-        if (child.type === 'attack' || (child.type === 'roll' && child.name?.toLowerCase().includes('attack'))) {
-          if (child.roll) {
-            attackBonus = typeof child.roll === 'string' ? child.roll : (child.roll.calculation || child.roll.value);
-          }
+      // Extract attack roll from action or children
+      let attackRoll = '';
+      if (prop.attackRoll) {
+        attackRoll = typeof prop.attackRoll === 'string' ? prop.attackRoll : (prop.attackRoll.calculation || String(prop.attackRoll.value || ''));
+      } else {
+        // Check children for attack roll
+        const attackChild = children.find(c => c.type === 'attack' || (c.type === 'roll' && c.name?.toLowerCase().includes('attack')));
+        if (attackChild && attackChild.roll) {
+          attackRoll = typeof attackChild.roll === 'string' ? attackChild.roll : (attackChild.roll.calculation || String(attackChild.roll.value || ''));
+        } else if (prop.attackBonus !== undefined && prop.attackBonus !== null) {
+          // Fallback: construct attack roll from bonus (e.g., "4" -> "1d20+4")
+          const bonus = typeof prop.attackBonus === 'string' ? prop.attackBonus : String(prop.attackBonus);
+          const sign = bonus.startsWith('+') || bonus.startsWith('-') ? '' : '+';
+          attackRoll = `1d20${sign}${bonus}`;
         }
+      }
 
+      // Extract damage from children
+      const damages = [];
+      for (const child of children) {
         if (child.type === 'damage' || (child.type === 'roll' && (child.name?.toLowerCase().includes('damage') || child.name?.toLowerCase().includes('heal')))) {
           let formula = '';
           if (child.amount) {
@@ -257,14 +266,14 @@ export function parseRawCharacterData(rawData, characterId) {
         name: prop.name,
         description: prop.description || '',
         actionType: prop.actionType || 'action',
-        attackBonus: attackBonus,
+        attackRoll: attackRoll,
         damage: damages.length > 0 ? damages : prop.damage,
         uses: prop.uses
       });
     }
 
-    // Spells
-    if (prop.type === 'spell' && prop.name) {
+    // Spells (exclude inactive/disabled)
+    if (prop.type === 'spell' && prop.name && !prop.inactive && !prop.disabled) {
       const children = findChildren(prop._id);
 
       // Extract attack and damage from children
@@ -298,6 +307,24 @@ export function parseRawCharacterData(rawData, characterId) {
         }
       }
 
+      // Detect lifesteal spells (damage + healing based on damage dealt)
+      let isLifesteal = false;
+      if (damageRolls.length >= 2) {
+        const hasDamageRoll = damageRolls.some(roll =>
+          roll.type && roll.type.toLowerCase() !== 'healing'
+        );
+        const hasHealingRoll = damageRolls.some(roll =>
+          roll.type && roll.type.toLowerCase() === 'healing'
+        );
+
+        const spellName = (prop.name || '').toLowerCase();
+        const spellDesc = (prop.description || '').toLowerCase();
+        const isVampiric = spellName.includes('vampiric') ||
+                          (spellDesc.includes('regain') && spellDesc.includes('damage'));
+
+        isLifesteal = hasDamageRoll && hasHealingRoll && isVampiric;
+      }
+
       spells.push({
         name: prop.name,
         level: prop.level || 0,
@@ -308,7 +335,9 @@ export function parseRawCharacterData(rawData, characterId) {
         description: prop.description || '',
         prepared: prop.prepared !== false,
         attackRoll: attackRoll,
-        damage: damageRolls
+        damageRolls: damageRolls,
+        damage: damageRolls.length > 0 ? damageRolls[0].formula : '',
+        isLifesteal: isLifesteal
       });
     }
 

@@ -4,6 +4,33 @@ debug.log('✅ Popup HTML loaded');
 // They export their functions to globalThis, making them globally available without needing to import.
 // Functions like isEdgeCase, getEdgeCase, resolveSpellCast, etc. are already available globally.
 
+/**
+ * Send a message to the Roll20 content script.
+ * Tries window.opener.postMessage first (direct path), falls back to
+ * relaying through the background script when the opener is unavailable.
+ * Exported to globalThis so all modules can use it.
+ */
+function sendToRoll20(messageData) {
+  if (window.opener && !window.opener.closed) {
+    try {
+      window.opener.postMessage(messageData, '*');
+      return;
+    } catch (error) {
+      debug.warn('⚠️ window.opener.postMessage failed, using relay:', error.message);
+    }
+  }
+  // Fallback: relay through background script to Roll20 tabs
+  if (typeof browserAPI !== 'undefined') {
+    browserAPI.runtime.sendMessage({
+      action: 'relayToRoll20',
+      data: messageData
+    }).catch(err => {
+      debug.error('❌ Failed to relay message to Roll20:', err);
+    });
+  }
+}
+globalThis.sendToRoll20 = sendToRoll20;
+
 // Initialize theme manager
 if (typeof ThemeManager !== 'undefined') {
   ThemeManager.init().then(() => {
@@ -77,14 +104,8 @@ function toggleActionEconomy(indicatorId) {
       color: characterData.notificationColor
     };
 
-    if (window.opener && !window.opener.closed) {
-      try {
-        window.opener.postMessage(messageData, '*');
-        debug.log(`📢 Announced ${actionName} restoration to Roll20`);
-      } catch (error) {
-        debug.warn('⚠️ Could not send action economy announcement:', error);
-      }
-    }
+    sendToRoll20(messageData);
+    debug.log(`📢 Announced ${actionName} restoration to Roll20`);
   }
 
   debug.log(`${isUsed ? '✅' : '⏸️'} ${indicatorId}: ${isUsed ? 'restored' : 'used'} (inCombat: ${inCombat}, isMyTurn: ${isMyTurn})`);
@@ -258,22 +279,17 @@ window.addEventListener('message', async (event) => {
       }
 
       // Register this character with GM Initiative Tracker (if it exists)
-      // Use postMessage to avoid CORS issues - send character name only
-      if (window.opener) {
-        window.opener.postMessage({
-          action: 'registerPopup',
-          characterName: event.data.data.name
-        }, '*');
-        debug.log(`✅ Sent registration message for: ${event.data.data.name}`);
-        
-        // Check if it's currently this character's turn by reading recent chat
-        // Add a small delay to ensure combat system has processed start of combat
-        setTimeout(() => {
-          checkCurrentTurnFromChat(event.data.data.name);
-        }, 500);
-      } else {
-        debug.warn(`⚠️ No window.opener available for: ${event.data.data.name}`);
-      }
+      sendToRoll20({
+        action: 'registerPopup',
+        characterName: event.data.data.name
+      });
+      debug.log(`✅ Sent registration message for: ${event.data.data.name}`);
+
+      // Check if it's currently this character's turn by reading recent chat
+      // Add a small delay to ensure combat system has processed start of combat
+      setTimeout(() => {
+        checkCurrentTurnFromChat(event.data.data.name);
+      }, 500);
     };
 
     // Only initialize if DOM is ready, otherwise queue it
@@ -349,26 +365,20 @@ window.addEventListener('message', async (event) => {
       }
 
       // Register this popup with GM Initiative Tracker for turn notifications
-      if (window.opener) {
-        window.opener.postMessage({
-          action: 'registerPopup',
-          characterName: characterData.name
-        }, '*');
-        debug.log(`✅ Sent registration message for: ${characterData.name}`);
+      sendToRoll20({
+        action: 'registerPopup',
+        characterName: characterData.name
+      });
+      debug.log(`✅ Sent registration message for: ${characterData.name}`);
 
-        // Check if it's currently this character's turn
-        setTimeout(() => {
-          if (window.opener && !window.opener.closed) {
-            window.opener.postMessage({
-              action: 'checkCurrentTurn',
-              characterName: characterData.name
-            }, '*');
-            debug.log(`🎯 Checking current turn for: ${characterData.name}`);
-          }
-        }, 500);
-      } else {
-        debug.warn(`⚠️ No window.opener available for: ${characterData.name}`);
-      }
+      // Check if it's currently this character's turn
+      setTimeout(() => {
+        sendToRoll20({
+          action: 'checkCurrentTurn',
+          characterName: characterData.name
+        });
+        debug.log(`🎯 Checking current turn for: ${characterData.name}`);
+      }, 500);
     };
 
     // Only initialize if DOM is ready, otherwise queue it
@@ -932,22 +942,11 @@ async function getActiveCharacterId() {
  * This handles the case where a character tab is switched after turn notifications were sent
  */
 function checkCurrentTurnFromChat(characterName) {
-  try {
-    if (!window.opener) {
-      debug.warn('⚠️ No window.opener available for turn check');
-      return;
-    }
-
-    // Request recent chat messages from parent window
-    window.opener.postMessage({
-      action: 'checkCurrentTurn',
-      characterName: characterName
-    }, '*');
-    
-    debug.log(`🔍 Requested turn check for: ${characterName}`);
-  } catch (error) {
-    debug.warn('⚠️ Error checking current turn:', error);
-  }
+  sendToRoll20({
+    action: 'checkCurrentTurn',
+    characterName: characterName
+  });
+  debug.log(`🔍 Requested turn check for: ${characterName}`);
 }
 
 // Switch to a different character
@@ -1371,27 +1370,13 @@ function shareCharacterWithGM() {
     // Create the broadcast message
     const broadcastMessage = `👑[ROLLCLOUD:CHARACTER:${encodedData}]👑`;
     
-    // Send message to parent window (Roll20 content script)
-    if (window.opener) {
-      window.opener.postMessage({
-        action: 'shareCharacterWithGM',
-        message: broadcastMessage
-      }, '*');
-      debug.log('✅ Character data sent to Roll20 for GM sharing');
-      showNotification(`✅ Sharing ${characterData.name} with GM...`, 'success');
-    } else {
-      // Fallback: try to send via runtime message
-      browserAPI.runtime.sendMessage({
-        action: 'shareCharacterWithGM',
-        message: broadcastMessage
-      }).then(() => {
-        debug.log('✅ Character data sent via runtime for GM sharing');
-        showNotification(`✅ Sharing ${characterData.name} with GM...`, 'success');
-      }).catch(error => {
-        debug.error('❌ Failed to share character with GM:', error);
-        showNotification('❌ Failed to share character with GM', 'error');
-      });
-    }
+    // Send message to Roll20 content script
+    sendToRoll20({
+      action: 'shareCharacterWithGM',
+      message: broadcastMessage
+    });
+    debug.log('✅ Character data sent to Roll20 for GM sharing');
+    showNotification(`✅ Sharing ${characterData.name} with GM...`, 'success');
   } catch (error) {
     debug.error('❌ Error preparing character data for GM sharing:', error);
     showNotification('❌ Failed to prepare character data for sharing', 'error');
@@ -1457,22 +1442,7 @@ function setAdvantageState(state) {
   };
 
   // Send to Roll20
-  if (window.opener && !window.opener.closed) {
-    try {
-      window.opener.postMessage(messageData, '*');
-    } catch (error) {
-      debug.warn('⚠️ Could not send advantage state via window.opener:', error.message);
-      browserAPI.runtime.sendMessage({
-        action: 'relayRollToRoll20',
-        roll: messageData
-      });
-    }
-  } else {
-    browserAPI.runtime.sendMessage({
-      action: 'relayRollToRoll20',
-      roll: messageData
-    });
-  }
+  sendToRoll20(messageData);
 }
 
 
@@ -1695,14 +1665,8 @@ function initManualSyncButton() {
         debug.log('🔄 Sending manual sync message:', syncMessage);
 
         // Send to Roll20 content script (which will forward to DiceCloud sync)
-        if (window.opener && !window.opener.closed) {
-          window.opener.postMessage(syncMessage, '*');
-          debug.log('✅ Sync message sent via opener');
-        } else {
-          // Also try posting to self (in case we're in a popup)
-          window.postMessage(syncMessage, '*');
-          debug.log('✅ Sync message sent to self');
-        }
+        sendToRoll20(syncMessage);
+        debug.log('✅ Sync message sent');
 
         // Wait a bit for sync to complete
         await new Promise(resolve => setTimeout(resolve, 1000));

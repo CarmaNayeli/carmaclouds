@@ -45,6 +45,9 @@ export default function RollCloudTab() {
               Download for Firefox
             </a>
           </div>
+          <p className="text-gray-500 text-sm mt-4">
+            Not on the store yet — see the <strong className="text-gray-300">Installing the Browser Extension</strong> guide on the Home tab for how to load the ZIP in Chrome or Firefox.
+          </p>
         </div>
       </section>
 

@@ -65,23 +65,15 @@
     showNotification(notificationText);
     debug.log('✅ Action announcement displayed');
 
-    // Send to Roll20 chat via window.opener
+    // Send to Roll20 chat
     const messageData = {
       action: 'announceSpell',
       message: message,
       color: characterData.notificationColor
     };
 
-    if (window.opener && !window.opener.closed) {
-      try {
-        window.opener.postMessage(messageData, '*');
-        debug.log('📨 Action announcement sent to Roll20 via window.opener');
-      } catch (error) {
-        debug.warn('⚠️ Could not send via window.opener:', error.message);
-      }
-    } else {
-      debug.warn('⚠️ No window.opener available, action not sent to Roll20');
-    }
+    sendToRoll20(messageData);
+    debug.log('📨 Action announcement sent to Roll20');
 
     // TODO: Add Owlbear Rodeo integration here to send action announcements to VTT
   }

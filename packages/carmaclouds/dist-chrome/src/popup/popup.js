@@ -12396,6 +12396,19 @@ ${suffix}`;
         const hasHealingDesc = spellDesc.includes("regain") && spellDesc.includes("hit point");
         spellType = hasHealingRoll || hasHealingName || hasHealingDesc ? "healing" : "damage";
       }
+      let isLifesteal = false;
+      if (damageRolls.length >= 2) {
+        const hasDamageRoll = damageRolls.some(
+          (roll) => roll.type && roll.type.toLowerCase() !== "healing"
+        );
+        const hasHealingRoll = damageRolls.some(
+          (roll) => roll.type && roll.type.toLowerCase() === "healing"
+        );
+        const spellName = (spell.name || "").toLowerCase();
+        const spellDesc = extractText(spell.description).toLowerCase();
+        const isVampiric = spellName.includes("vampiric") || spellDesc.includes("regain") && spellDesc.includes("damage");
+        isLifesteal = hasDamageRoll && hasHealingRoll && isVampiric;
+      }
       return {
         id: spell._id,
         name: spell.name || "Unnamed Spell",
@@ -12415,7 +12428,8 @@ ${suffix}`;
         attackRoll,
         damage,
         damageType,
-        damageRolls
+        damageRolls,
+        isLifesteal
       };
     });
     const actions = properties.filter((p) => p.type === "action" && p.name && !p.inactive && !p.disabled).map((action) => {
@@ -12961,6 +12975,12 @@ ${suffix}`;
     }
   }
   async function syncCharacterToSupabase(char) {
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session) {
+      throw new Error("Not authenticated. Please log in to sync characters.");
+    }
+    const authResult = await browserAPI.storage.local.get(["diceCloudUserId"]);
+    const dicecloudUserId = authResult.diceCloudUserId || null;
     const parsedData = parseForFoundCloud(char.raw, char.id);
     const characterData = {
       dicecloud_character_id: char.id,
@@ -12970,7 +12990,9 @@ ${suffix}`;
       class: parsedData?.class || char.class || "Unknown",
       foundcloud_parsed_data: parsedData || {},
       raw_dicecloud_data: char.raw || {},
-      platform: ["foundcloud"]
+      platform: ["foundcloud"],
+      user_id_supabase: session.user.id,
+      user_id_dicecloud: dicecloudUserId
     };
     const { data: existing } = await supabase.from("clouds_characters").select("id").eq("dicecloud_character_id", char.id).single();
     if (existing) {

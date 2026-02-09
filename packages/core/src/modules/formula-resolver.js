@@ -212,6 +212,26 @@
       }
     }
 
+    // Pattern 1a-bare: Find bare DiceCloud references like #spellList.abilityMod (not in parentheses)
+    // This handles cases like "2d8 + #spellList.abilityMod" in spell damage formulas
+    const bareDiceCloudRefPattern = /#([a-zA-Z_][a-zA-Z0-9_.]*)/g;
+
+    while ((match = bareDiceCloudRefPattern.exec(resolvedFormula)) !== null) {
+      const varRef = '#' + match[1]; // e.g., "#spellList.abilityMod"
+      const fullMatch = match[0]; // e.g., "#spellList.abilityMod"
+
+      // Use getVariableValue which handles # prefix and dot notation
+      const value = getVariableValue(varRef);
+
+      if (value !== null && typeof value === 'number') {
+        resolvedFormula = resolvedFormula.replace(fullMatch, value);
+        variablesResolved.push(`${varRef}=${value}`);
+        debug.log(`✅ Resolved bare DiceCloud reference: ${varRef} = ${value}`);
+      } else {
+        debug.log(`⚠️ Could not resolve bare DiceCloud reference: ${varRef}, value: ${value}`);
+      }
+    }
+
     // Pattern 1b: Find simple variables in parentheses like (variableName)
     const parenthesesPattern = /\(([a-zA-Z_][a-zA-Z0-9_]*)\)/g;
 

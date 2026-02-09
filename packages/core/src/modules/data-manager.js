@@ -144,22 +144,14 @@
     // Try to send to DiceCloud sync
     window.postMessage(syncMessage, '*');
 
-    // Also try to send via opener if available
-    if (window.opener && !window.opener.closed) {
-      window.opener.postMessage(syncMessage, '*');
-    }
-
-    // Also send to window opener if available (for backwards compatibility)
-    if (window.opener && !window.opener.closed) {
-      window.opener.postMessage({
-        action: 'updateCharacterData',
-        data: characterData,
-        characterId: characterData.id || characterData.dicecloud_character_id || currentSlotId
-      }, '*');
-      debug.log('💾 Sent character data update to parent window');
-
-      // TODO: Add Owlbear Rodeo integration for GM Panel player data tracking
-    }
+    // Also send to Roll20 via relay
+    sendToRoll20(syncMessage);
+    sendToRoll20({
+      action: 'updateCharacterData',
+      data: characterData,
+      characterId: characterData.id || characterData.dicecloud_character_id || currentSlotId
+    });
+    debug.log('💾 Sent character data update to Roll20');
   }
 
   /**

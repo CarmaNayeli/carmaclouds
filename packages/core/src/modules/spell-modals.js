@@ -392,19 +392,8 @@
             color: characterData.notificationColor
           };
 
-          if (window.opener && !window.opener.closed) {
-            try {
-              window.opener.postMessage(messageData, '*');
-              debug.log('✅ Custom macro sent via window.opener');
-            } catch (error) {
-              debug.warn('⚠️ Could not send via window.opener:', error.message);
-            }
-          } else {
-            browserAPI.runtime.sendMessage({
-              action: 'relayRollToRoll20',
-              roll: messageData
-            });
-          }
+          sendToRoll20(messageData);
+          debug.log('✅ Custom macro sent to Roll20');
 
           showNotification(`✨ ${spell.name} - Custom Macro Sent!`, 'success');
           document.body.removeChild(overlay);
@@ -649,18 +638,7 @@
                   color: characterData.notificationColor
                 };
 
-                if (window.opener && !window.opener.closed) {
-                  try {
-                    window.opener.postMessage(messageData, '*');
-                  } catch (error) {
-                    debug.warn('⚠️ Could not send via window.opener:', error.message);
-                  }
-                } else {
-                  browserAPI.runtime.sendMessage({
-                    action: 'relayRollToRoll20',
-                    roll: messageData
-                  });
-                }
+                sendToRoll20(messageData);
 
                 showNotification(`💉 Lifesteal! Dealt ${damage} damage, regained ${actualHealing} HP`, 'success');
               }

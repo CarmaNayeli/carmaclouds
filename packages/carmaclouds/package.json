@@ -17,5 +17,8 @@
     "browser-extension"
   ],
   "author": "Dice Cat",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "archiver": "^7.0.1"
+  }
 }

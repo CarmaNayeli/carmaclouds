@@ -43,10 +43,113 @@ export class SupabaseBridge {
         console.log('FoundCloud | Supabase connected successfully');
       }
 
+      // Check for existing session
+      const { data: { session } } = await this.supabase.auth.getSession();
+      if (session) {
+        console.log('FoundCloud | User already authenticated:', session.user.email);
+      }
+
     } catch (error) {
       console.error('FoundCloud | Failed to initialize Supabase:', error);
       this.connected = false;
     }
+  }
+
+  /**
+   * Sign in with email and password
+   * @param {string} email - User email
+   * @param {string} password - User password
+   * @returns {Promise<object>}
+   */
+  async signIn(email, password) {
+    if (!this.supabase) {
+      throw new Error('Supabase not initialized');
+    }
+
+    const { data, error } = await this.supabase.auth.signInWithPassword({
+      email: email,
+      password: password
+    });
+
+    if (error) {
+      console.error('FoundCloud | Sign in failed:', error);
+      throw error;
+    }
+
+    console.log('FoundCloud | User signed in:', data.user.email);
+    return data;
+  }
+
+  /**
+   * Sign up with email and password
+   * @param {string} email - User email
+   * @param {string} password - User password
+   * @returns {Promise<object>}
+   */
+  async signUp(email, password) {
+    if (!this.supabase) {
+      throw new Error('Supabase not initialized');
+    }
+
+    const { data, error } = await this.supabase.auth.signUp({
+      email: email,
+      password: password
+    });
+
+    if (error) {
+      console.error('FoundCloud | Sign up failed:', error);
+      throw error;
+    }
+
+    console.log('FoundCloud | User signed up:', data.user?.email);
+    return data;
+  }
+
+  /**
+   * Sign out current user
+   * @returns {Promise<void>}
+   */
+  async signOut() {
+    if (!this.supabase) {
+      throw new Error('Supabase not initialized');
+    }
+
+    const { error } = await this.supabase.auth.signOut();
+
+    if (error) {
+      console.error('FoundCloud | Sign out failed:', error);
+      throw error;
+    }
+
+    console.log('FoundCloud | User signed out');
+  }
+
+  /**
+   * Get current auth session
+   * @returns {Promise<object|null>}
+   */
+  async getSession() {
+    if (!this.supabase) {
+      throw new Error('Supabase not initialized');
+    }
+
+    const { data: { session }, error } = await this.supabase.auth.getSession();
+
+    if (error) {
+      console.error('FoundCloud | Failed to get session:', error);
+      return null;
+    }
+
+    return session;
+  }
+
+  /**
+   * Check if user is authenticated
+   * @returns {Promise<boolean>}
+   */
+  async isAuthenticated() {
+    const session = await this.getSession();
+    return session !== null;
   }
 
   /**
@@ -92,23 +195,27 @@ export class SupabaseBridge {
     }
 
     try {
-      // Get the user's DiceCloud ID from settings
-      const userId = game.settings.get('foundcloud', 'dicecloudUserId');
-      
-      let query = this.supabase
-        .from('clouds_characters')
-        .select('id, dicecloud_character_id, character_name, level, race, class, updated_at, platform, user_id_dicecloud')
-        .contains('platform', ['foundcloud'])
-        .order('character_name', { ascending: true });
-      
-      // Filter by user ID if set
-      if (userId && userId.trim() !== '') {
-        query = query.eq('user_id_dicecloud', userId.trim());
-        console.log(`FoundCloud | Filtering characters for user: ${userId}`);
-      } else {
-        console.log('FoundCloud | No user ID set - showing all characters (set your DiceCloud User ID in settings to filter)');
+      // Get current authenticated user
+      const session = await this.getSession();
+
+      // REQUIRE authentication for privacy
+      if (!session) {
+        console.warn('FoundCloud | Not authenticated - cannot load characters');
+        ui.notifications.warn('FoundCloud: Please log in to view your characters.');
+        return [];
       }
-      
+
+      const userId = session.user.id;
+
+      const query = this.supabase
+        .from('clouds_characters')
+        .select('id, dicecloud_character_id, character_name, level, race, class, updated_at, platform, user_id_supabase')
+        .contains('platform', ['foundcloud'])
+        .eq('user_id_supabase', userId)
+        .order('character_name', { ascending: true });
+
+      console.log(`FoundCloud | Filtering characters for authenticated user: ${session.user.email}`);
+
       const { data, error } = await query;
 
       if (error) {
@@ -205,10 +312,22 @@ export class SupabaseBridge {
     }
 
     try {
+      // Get current authenticated user
+      const session = await this.getSession();
+
+      // REQUIRE authentication for privacy
+      if (!session) {
+        console.warn('FoundCloud | Not authenticated - cannot search characters');
+        return [];
+      }
+
+      const userId = session.user.id;
+
       const { data, error } = await this.supabase
         .from('clouds_characters')
         .select('id, dicecloud_character_id, character_name, level, race, class, platform')
         .contains('platform', ['foundcloud'])
+        .eq('user_id_supabase', userId)
         .ilike('character_name', `%${searchTerm}%`)
         .order('character_name', { ascending: true });
 

@@ -200,9 +200,20 @@ async function syncCharacter(charId) {
  * Sync character data to Supabase
  */
 async function syncCharacterToSupabase(char) {
+  // Get current auth session
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+  if (sessionError || !session) {
+    throw new Error('Not authenticated. Please log in to sync characters.');
+  }
+
+  // Get DiceCloud user ID from storage
+  const authResult = await browserAPI.storage.local.get(['diceCloudUserId']);
+  const dicecloudUserId = authResult.diceCloudUserId || null;
+
   // Parse character data using imported parseForFoundCloud
   const parsedData = parseForFoundCloud(char.raw, char.id);
-  
+
   // Build character data with basic fields and parsed data in single JSON column
   const characterData = {
     dicecloud_character_id: char.id,
@@ -212,7 +223,9 @@ async function syncCharacterToSupabase(char) {
     class: parsedData?.class || char.class || 'Unknown',
     foundcloud_parsed_data: parsedData || {},
     raw_dicecloud_data: char.raw || {},
-    platform: ['foundcloud']
+    platform: ['foundcloud'],
+    user_id_supabase: session.user.id,
+    user_id_dicecloud: dicecloudUserId
   };
 
   // Check if character already exists
@@ -228,7 +241,7 @@ async function syncCharacterToSupabase(char) {
       .from('clouds_characters')
       .update(characterData)
       .eq('dicecloud_character_id', char.id);
-    
+
     if (error) {
       throw new Error(error.message);
     }
@@ -237,7 +250,7 @@ async function syncCharacterToSupabase(char) {
     const { error } = await supabase
       .from('clouds_characters')
       .insert(characterData);
-    
+
     if (error) {
       throw new Error(error.message);
     }

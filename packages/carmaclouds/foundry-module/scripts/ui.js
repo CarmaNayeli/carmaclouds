@@ -9,12 +9,95 @@ export class FoundCloudUI {
   }
 
   /**
+   * Show authentication dialog for Supabase login
+   */
+  async showAuthDialog() {
+    const content = `
+      <form id="foundcloud-auth-form">
+        <div class="form-group">
+          <label for="foundcloud-email">Email</label>
+          <input type="email" id="foundcloud-email" name="email" required autocomplete="email" placeholder="your@email.com" style="width: 100%; padding: 8px; margin-top: 4px;">
+        </div>
+        <div class="form-group" style="margin-top: 12px;">
+          <label for="foundcloud-password">Password</label>
+          <input type="password" id="foundcloud-password" name="password" required autocomplete="current-password" placeholder="Min 6 characters" minlength="6" style="width: 100%; padding: 8px; margin-top: 4px;">
+        </div>
+        <div id="foundcloud-auth-error" style="display: none; color: #ff6400; margin-top: 12px; padding: 8px; background: rgba(255, 100, 0, 0.1); border-radius: 4px;"></div>
+        <p style="margin-top: 12px; font-size: 12px; color: #999;">
+          Don't have an account? Click "Sign Up" to create one.
+        </p>
+      </form>
+    `;
+
+    new Dialog({
+      title: 'FoundCloud Authentication',
+      content: content,
+      buttons: {
+        signin: {
+          icon: '<i class="fas fa-sign-in-alt"></i>',
+          label: 'Sign In',
+          callback: async (html) => {
+            const email = html.find('[name="email"]').val().trim();
+            const password = html.find('[name="password"]').val();
+            const errorDiv = html.find('#foundcloud-auth-error');
+
+            try {
+              await this.foundcloud.bridge.signIn(email, password);
+              ui.notifications.info('Signed in successfully!');
+              // Show import dialog after successful login
+              this.showImportDialog();
+            } catch (error) {
+              console.error('FoundCloud | Sign in failed:', error);
+              ui.notifications.error(`Sign in failed: ${error.message}`);
+            }
+          }
+        },
+        signup: {
+          icon: '<i class="fas fa-user-plus"></i>',
+          label: 'Sign Up',
+          callback: async (html) => {
+            const email = html.find('[name="email"]').val().trim();
+            const password = html.find('[name="password"]').val();
+            const errorDiv = html.find('#foundcloud-auth-error');
+
+            if (password.length < 6) {
+              ui.notifications.error('Password must be at least 6 characters long');
+              return;
+            }
+
+            try {
+              await this.foundcloud.bridge.signUp(email, password);
+              ui.notifications.info('Account created successfully! You can now sign in.');
+            } catch (error) {
+              console.error('FoundCloud | Sign up failed:', error);
+              ui.notifications.error(`Sign up failed: ${error.message}`);
+            }
+          }
+        },
+        cancel: {
+          icon: '<i class="fas fa-times"></i>',
+          label: 'Cancel'
+        }
+      },
+      default: 'signin'
+    }).render(true);
+  }
+
+  /**
    * Show import dialog to select a character
    */
   async showImportDialog() {
     // Check if Supabase is connected
     if (!this.foundcloud.isSupabaseConnected()) {
       this.showSupabaseNotConnectedDialog();
+      return;
+    }
+
+    // Check if user is authenticated
+    const isAuthenticated = await this.foundcloud.bridge.isAuthenticated();
+    if (!isAuthenticated) {
+      // Show auth dialog instead
+      this.showAuthDialog();
       return;
     }
 
@@ -202,6 +285,54 @@ export class FoundCloudUI {
         }
       },
       default: 'sync'
+    }).render(true);
+  }
+
+  /**
+   * Show user auth status dialog
+   */
+  async showAuthStatus() {
+    const session = await this.foundcloud.bridge.getSession();
+
+    if (!session) {
+      this.showAuthDialog();
+      return;
+    }
+
+    const content = `
+      <div style="text-align: center;">
+        <p><i class="fas fa-user-circle" style="font-size: 3em; color: #16a75a;"></i></p>
+        <h2>Signed In</h2>
+        <div style="background: rgba(22, 167, 90, 0.1); border: 1px solid rgba(22, 167, 90, 0.3); border-radius: 8px; padding: 12px; margin: 16px 0;">
+          <p style="font-weight: 600; color: #e0e0e0;">${session.user.email}</p>
+        </div>
+        <p style="color: #999; font-size: 13px;">Your characters are synced to this account.</p>
+      </div>
+    `;
+
+    new Dialog({
+      title: 'FoundCloud Authentication Status',
+      content: content,
+      buttons: {
+        signout: {
+          icon: '<i class="fas fa-sign-out-alt"></i>',
+          label: 'Sign Out',
+          callback: async () => {
+            try {
+              await this.foundcloud.bridge.signOut();
+              ui.notifications.info('Signed out successfully');
+            } catch (error) {
+              console.error('FoundCloud | Sign out failed:', error);
+              ui.notifications.error(`Sign out failed: ${error.message}`);
+            }
+          }
+        },
+        close: {
+          icon: '<i class="fas fa-times"></i>',
+          label: 'Close'
+        }
+      },
+      default: 'close'
     }).render(true);
   }
 

@@ -446,31 +446,8 @@
 
     const debug = window.debug || console;
 
-    // Try window.opener first (Chrome)
-    if (window.opener && !window.opener.closed) {
-      try {
-        window.opener.postMessage(messageData, '*');
-        debug.log('✅ Spell data sent via window.opener');
-        return;
-      } catch (error) {
-        debug.warn('⚠️ Could not send via window.opener:', error.message);
-      }
-    }
-
-    // Fallback: Use background script to relay to Roll20 (Firefox)
-    if (typeof browserAPI !== 'undefined') {
-      debug.log('📡 Using background script to relay spell data to Roll20...');
-      browserAPI.runtime.sendMessage({
-        action: 'relayRollToRoll20',
-        roll: messageData
-      }, (response) => {
-        if (browserAPI.runtime.lastError) {
-          debug.error('❌ Error relaying spell announcement:', browserAPI.runtime.lastError);
-        } else if (response && response.success) {
-          debug.log('✅ Spell data announced to Roll20');
-        }
-      });
-    }
+    sendToRoll20(messageData);
+    debug.log('✅ Spell data sent to Roll20');
   }
 
   /**
@@ -502,36 +479,8 @@
     };
 
     // Send announcement to Roll20
-    // Try window.opener first (Chrome)
-    if (window.opener && !window.opener.closed) {
-      try {
-        window.opener.postMessage(messageData, '*');
-        debug.log('✅ Spell announcement sent via window.opener');
-      } catch (error) {
-        debug.warn('⚠️ Could not send via window.opener:', error.message);
-        // Fallback
-        if (typeof browserAPI !== 'undefined') {
-          browserAPI.runtime.sendMessage({
-            action: 'relayRollToRoll20',
-            roll: messageData
-          }, (response) => {
-            if (browserAPI.runtime.lastError) {
-              debug.error('❌ Error relaying spell announcement:', browserAPI.runtime.lastError);
-            }
-          });
-        }
-      }
-    } else if (typeof browserAPI !== 'undefined') {
-      // Fallback
-      browserAPI.runtime.sendMessage({
-        action: 'relayRollToRoll20',
-        roll: messageData
-      }, (response) => {
-        if (browserAPI.runtime.lastError) {
-          debug.error('❌ Error relaying spell announcement:', browserAPI.runtime.lastError);
-        }
-      });
-    }
+    sendToRoll20(messageData);
+    debug.log('✅ Spell announcement sent to Roll20');
 
     // Only auto-roll if there are NO damage rolls (no buttons)
     // If there are damage rolls, the modal will handle rolling when buttons are clicked

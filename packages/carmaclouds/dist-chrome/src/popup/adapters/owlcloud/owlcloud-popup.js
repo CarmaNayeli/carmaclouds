@@ -5775,16 +5775,8 @@
         message,
         color: characterData.notificationColor
       };
-      if (window.opener && !window.opener.closed) {
-        try {
-          window.opener.postMessage(messageData, "*");
-          debug.log("\u{1F4E8} Action announcement sent to Roll20 via window.opener");
-        } catch (error) {
-          debug.warn("\u26A0\uFE0F Could not send via window.opener:", error.message);
-        }
-      } else {
-        debug.warn("\u26A0\uFE0F No window.opener available, action not sent to Roll20");
-      }
+      sendToRoll20(messageData);
+      debug.log("\u{1F4E8} Action announcement sent to Roll20");
     }
     function postActionToChat(actionLabel, state) {
       const emoji = state === "used" ? "\u274C" : "\u2705";
@@ -8316,13 +8308,7 @@
               message: announcement,
               color: characterData.notificationColor
             };
-            if (window.opener && !window.opener.closed) {
-              try {
-                window.opener.postMessage(messageData, "*");
-              } catch (error) {
-                debug.log("\u274C Failed to send companion attack announcement:", error);
-              }
-            }
+            sendToRoll20(messageData);
             roll(`${name} - Attack`, `1d20+${bonus}`);
           });
         });
@@ -8337,13 +8323,7 @@
               message: announcement,
               color: characterData.notificationColor
             };
-            if (window.opener && !window.opener.closed) {
-              try {
-                window.opener.postMessage(messageData, "*");
-              } catch (error) {
-                debug.log("\u274C Failed to send companion damage announcement:", error);
-              }
-            }
+            sendToRoll20(messageData);
             roll(`${name} - Damage`, damage);
           });
         });
@@ -8543,17 +8523,13 @@
         }
       };
       window.postMessage(syncMessage, "*");
-      if (window.opener && !window.opener.closed) {
-        window.opener.postMessage(syncMessage, "*");
-      }
-      if (window.opener && !window.opener.closed) {
-        window.opener.postMessage({
-          action: "updateCharacterData",
-          data: characterData,
-          characterId: characterData.id || characterData.dicecloud_character_id || currentSlotId
-        }, "*");
-        debug.log("\u{1F4BE} Sent character data update to parent window");
-      }
+      sendToRoll20(syncMessage);
+      sendToRoll20({
+        action: "updateCharacterData",
+        data: characterData,
+        characterId: characterData.id || characterData.dicecloud_character_id || currentSlotId
+      });
+      debug.log("\u{1F4BE} Sent character data update to Roll20");
     }
     function validateCharacterData(data) {
       if (!data)
@@ -9244,8 +9220,7 @@
       return modifiedFormula;
     }
     function executeRoll(name, formula, effectNotes, prerolledResult = null) {
-      const colorBanner = getColoredBanner(characterData);
-      let rollName = `${colorBanner}${characterData.name} rolls ${name}`;
+      let rollName = `${characterData.name} rolls ${name}`;
       if (effectNotes.length > 0) {
         rollName += ` ${effectNotes.join(" ")}`;
       }
@@ -9267,30 +9242,14 @@
       if (prerolledResult !== null) {
         messageData.prerolledResult = prerolledResult;
       }
-      debug.log("\u{1F50D} Checking window.opener:", {
-        hasOpener: !!window.opener,
-        isClosed: window.opener ? window.opener.closed : "N/A"
-      });
-      if (window.opener && !window.opener.closed) {
-        try {
-          window.opener.postMessage(messageData, "*");
-          debug.log("\u{1F3B2} Roll sent to Roll20 via window.opener.postMessage:", messageData);
-          debug.log("   Target origin: * (all origins)");
-        } catch (error) {
-          debug.warn("\u26A0\uFE0F Could not send roll via window.opener:", error.message);
-          if (typeof browserAPI !== "undefined") {
-            browserAPI.runtime.sendMessage({
-              action: "rollFromPopout",
-              roll: messageData
-            }).catch((err) => {
-              debug.error("\u274C Failed to send roll via background:", err);
-            });
-          }
-        }
+      if (typeof sendToRoll20 === "function") {
+        sendToRoll20(messageData);
+        debug.log("\u{1F3B2} Roll sent to Roll20:", messageData);
       } else {
-        debug.warn("\u26A0\uFE0F No window.opener available, cannot send roll to Roll20");
-        debug.log("   window.opener:", window.opener);
-        debug.log("   window.opener.closed:", window.opener ? window.opener.closed : "N/A");
+        debug.warn("\u26A0\uFE0F sendToRoll20 not available, trying window.opener directly");
+        if (window.opener && !window.opener.closed) {
+          window.opener.postMessage(messageData, "*");
+        }
       }
       showNotification(`\u{1F3B2} Rolling ${name}...`);
       debug.log("\u2705 Roll executed");

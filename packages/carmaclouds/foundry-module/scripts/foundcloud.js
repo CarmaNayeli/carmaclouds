@@ -247,7 +247,12 @@ Hooks.once('ready', () => {
   popupMenu.innerHTML = `
     <div class="foundcloud-menu-header">
       <h3>FoundCloud Characters</h3>
-      <button class="foundcloud-menu-close" title="Close">✕</button>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <button class="foundcloud-btn" id="foundcloud-auth-status-btn" title="Account Status" style="padding: 4px 8px; font-size: 12px;">
+          <i class="fas fa-user"></i>
+        </button>
+        <button class="foundcloud-menu-close" title="Close">✕</button>
+      </div>
     </div>
     <div class="foundcloud-menu-content">
       <div class="foundcloud-character-list" id="foundcloud-character-list">
@@ -285,6 +290,11 @@ Hooks.once('ready', () => {
     popupMenu.style.display = 'none';
   });
 
+  // Auth status button handler
+  popupMenu.querySelector('#foundcloud-auth-status-btn').addEventListener('click', () => {
+    game.foundcloud.ui.showAuthStatus();
+  });
+
   // Open sheet button handler
   popupMenu.querySelector('#foundcloud-open-sheet').addEventListener('click', () => {
     const selected = popupMenu.querySelector('.foundcloud-character-item.selected');
@@ -299,11 +309,37 @@ Hooks.once('ready', () => {
   // Load character list function
   async function loadCharacterList() {
     const listContainer = document.getElementById('foundcloud-character-list');
-    listContainer.innerHTML = '<div class="foundcloud-loading">Loading characters...</div>';
+    listContainer.innerHTML = '<div class="foundcloud-loading">Checking authentication...</div>';
 
     try {
+      // Check if user is authenticated
+      const isAuthenticated = await game.foundcloud.bridge.isAuthenticated();
+      if (!isAuthenticated) {
+        // Show login prompt in the character list area
+        listContainer.innerHTML = `
+          <div class="foundcloud-empty">
+            <div style="text-align: center; padding: 20px;">
+              <i class="fas fa-lock" style="font-size: 3em; color: #16a75a; margin-bottom: 12px;"></i>
+              <h3 style="margin-bottom: 8px;">Authentication Required</h3>
+              <p style="color: #999; font-size: 13px; margin-bottom: 16px;">Please sign in to view your characters</p>
+              <button class="foundcloud-btn foundcloud-login-btn" id="foundcloud-login-btn">
+                <i class="fas fa-sign-in-alt"></i> Sign In
+              </button>
+            </div>
+          </div>
+        `;
+
+        // Add login button handler
+        document.getElementById('foundcloud-login-btn').addEventListener('click', () => {
+          game.foundcloud.ui.showAuthDialog();
+        });
+
+        return;
+      }
+
+      listContainer.innerHTML = '<div class="foundcloud-loading">Loading characters...</div>';
       const characters = await game.foundcloud.getAvailableCharacters();
-      
+
       if (!characters || characters.length === 0) {
         listContainer.innerHTML = '<div class="foundcloud-empty">No characters found. Sync your characters using the browser extension first.</div>';
         return;

@@ -354,13 +354,7 @@
         color: data.notificationColor
       };
 
-      if (window.opener && !window.opener.closed) {
-        try {
-          window.opener.postMessage(messageData, '*');
-        } catch (error) {
-          debug.log('❌ Failed to send initiative announcement:', error);
-        }
-      }
+      sendToRoll20(messageData);
 
       roll('Initiative', `1d20+${initiativeBonus}`);
       });
@@ -447,13 +441,7 @@
             color: data.notificationColor
           };
 
-          if (window.opener && !window.opener.closed) {
-            try {
-              window.opener.postMessage(messageData, '*');
-            } catch (error) {
-              debug.log('❌ Failed to send ability check announcement:', error);
-            }
-          }
+          sendToRoll20(messageData);
 
           roll(`${ability.charAt(0).toUpperCase() + ability.slice(1)} Check`, `1d20${checkMod >= 0 ? '+' : ''}${checkMod}`);
         });
@@ -469,13 +457,7 @@
             color: data.notificationColor
           };
 
-          if (window.opener && !window.opener.closed) {
-            try {
-              window.opener.postMessage(messageData, '*');
-            } catch (error) {
-              debug.log('❌ Failed to send saving throw announcement:', error);
-            }
-          }
+          sendToRoll20(messageData);
 
           roll(`${abilityShort} Save`, `1d20${saveMod >= 0 ? '+' : ''}${saveMod}`);
         });
@@ -515,13 +497,7 @@
           color: data.notificationColor
         };
 
-        if (window.opener && !window.opener.closed) {
-          try {
-            window.opener.postMessage(messageData, '*');
-          } catch (error) {
-            debug.log('❌ Failed to send skill check announcement:', error);
-          }
-        }
+        sendToRoll20(messageData);
 
         roll(displayName, `1d20${bonus >= 0 ? '+' : ''}${bonus}`);
       });

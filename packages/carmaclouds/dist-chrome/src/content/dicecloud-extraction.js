@@ -626,6 +626,19 @@
         const hasHealingDesc = spellDesc.includes("regain") && spellDesc.includes("hit point");
         spellType = hasHealingRoll || hasHealingName || hasHealingDesc ? "healing" : "damage";
       }
+      let isLifesteal = false;
+      if (damageRolls.length >= 2) {
+        const hasDamageRoll = damageRolls.some(
+          (roll) => roll.type && roll.type.toLowerCase() !== "healing"
+        );
+        const hasHealingRoll = damageRolls.some(
+          (roll) => roll.type && roll.type.toLowerCase() === "healing"
+        );
+        const spellName = (spell.name || "").toLowerCase();
+        const spellDesc = extractText(spell.description).toLowerCase();
+        const isVampiric = spellName.includes("vampiric") || spellDesc.includes("regain") && spellDesc.includes("damage");
+        isLifesteal = hasDamageRoll && hasHealingRoll && isVampiric;
+      }
       return {
         id: spell._id,
         name: spell.name || "Unnamed Spell",
@@ -645,7 +658,8 @@
         attackRoll,
         damage,
         damageType,
-        damageRolls
+        damageRolls,
+        isLifesteal
       };
     });
     const actions = properties.filter((p) => p.type === "action" && p.name && !p.inactive && !p.disabled).map((action) => {

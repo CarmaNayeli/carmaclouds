@@ -68,19 +68,11 @@
         const isActive = gmModeToggle.classList.contains('active');
 
         // Send message to Roll20 content script to toggle GM panel
-        if (window.opener && !window.opener.closed) {
-          window.opener.postMessage({
-            action: 'toggleGMMode',
-            enabled: !isActive
-          }, '*');
-          debug.log(`👑 GM Mode ${!isActive ? 'enabled' : 'disabled'}`);
-        } else if (typeof browserAPI !== 'undefined' && browserAPI) {
-          // Try via background script
-          browserAPI.runtime.sendMessage({
-            action: 'toggleGMMode',
-            enabled: !isActive
-          });
-        }
+        sendToRoll20({
+          action: 'toggleGMMode',
+          enabled: !isActive
+        });
+        debug.log(`👑 GM Mode ${!isActive ? 'enabled' : 'disabled'}`);
 
         // Toggle active state
         gmModeToggle.classList.toggle('active');
@@ -155,31 +147,14 @@
           const encodedData = btoa(unescape(encodeURIComponent(jsonString)));
           const broadcastMessage = `👑[OWLCLOUD:CHARACTER:${encodedData}]👑`;
 
-          // Send to Roll20 chat via parent window
-          if (window.opener && !window.opener.closed) {
-            window.opener.postMessage({
-              action: 'postChatMessageFromPopup',
-              message: broadcastMessage
-            }, '*');
+          // Send to Roll20 chat
+          sendToRoll20({
+            action: 'postChatMessageFromPopup',
+            message: broadcastMessage
+          });
 
-            showNotification(`👑 ${characterData.name} shared with GM!`, 'success');
-            debug.log('👑 Character broadcast sent to GM:', characterData.name);
-          } else if (typeof browserAPI !== 'undefined' && browserAPI) {
-            // Try via background script
-            browserAPI.runtime.sendMessage({
-              action: 'postChatMessageFromPopup',
-              message: broadcastMessage
-            }).then(() => {
-              showNotification(`👑 ${characterData.name} shared with GM!`, 'success');
-              debug.log('👑 Character broadcast sent via background script:', characterData.name);
-            }).catch(err => {
-              debug.error('❌ Failed to send character broadcast:', err);
-              showNotification('❌ Failed to share with GM', 'error');
-            });
-          } else {
-            showNotification('⚠️ Unable to share with GM (no connection)', 'warning');
-            debug.warn('⚠️ No window.opener or browserAPI available for GM share');
-          }
+          showNotification(`👑 ${characterData.name} shared with GM!`, 'success');
+          debug.log('👑 Character broadcast sent to GM:', characterData.name);
         } catch (error) {
           debug.error('❌ Error creating character broadcast:', error);
           debug.error('❌ Error details:', {
