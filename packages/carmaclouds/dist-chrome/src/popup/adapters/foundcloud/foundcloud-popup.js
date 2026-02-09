@@ -12406,7 +12406,7 @@ ${suffix}`;
       foundcloud_parsed_data: parsedData || {},
       raw_dicecloud_data: char.raw || {},
       platform: ["foundcloud"],
-      user_id_supabase: session.user.id,
+      supabase_user_id: session.user.id,
       user_id_dicecloud: dicecloudUserId
     };
     const { data: existing } = await supabase.from("clouds_characters").select("id").eq("dicecloud_character_id", char.id).single();

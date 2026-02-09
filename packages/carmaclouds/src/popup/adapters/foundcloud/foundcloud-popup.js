@@ -224,7 +224,7 @@ async function syncCharacterToSupabase(char) {
     foundcloud_parsed_data: parsedData || {},
     raw_dicecloud_data: char.raw || {},
     platform: ['foundcloud'],
-    user_id_supabase: session.user.id,
+    supabase_user_id: session.user.id,
     user_id_dicecloud: dicecloudUserId
   };
 

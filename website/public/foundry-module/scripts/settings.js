@@ -122,15 +122,7 @@ export class FoundCloudSettings {
       default: false
     });
 
-    // DiceCloud User ID
-    game.settings.register(this.namespace, 'dicecloudUserId', {
-      name: 'DiceCloud User ID (REQUIRED)',
-      hint: 'REQUIRED for privacy: Your DiceCloud user ID from your profile URL (dicecloud.com/character/YOUR_USER_ID/...). Only characters owned by this ID will be visible.',
-      scope: 'client',
-      config: true,
-      type: String,
-      default: ''
-    });
+    // Note: DiceCloud User ID setting removed - now using Supabase authentication
 
     console.log('FoundCloud | Settings registered');
   }

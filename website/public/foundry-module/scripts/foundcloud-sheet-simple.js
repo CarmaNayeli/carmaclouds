@@ -81,6 +81,9 @@ export class FoundCloudSheetSimple extends ActorSheet {
       isLightTheme: this.theme === 'light',
       theme: this.theme,
 
+      // Player color for chat and token border
+      playerColor: this.actor.getFlag('foundcloud', 'playerColor') || '#3ea895',
+
       // Character info
       characterClass: this._getClassString(system),
       characterLevel: system.details?.level || 1,
@@ -127,10 +130,10 @@ export class FoundCloudSheetSimple extends ActorSheet {
       spellSlots: this._prepareSpellSlots(system),
 
       // Spells
-      spells: this._prepareSpells(actor),
+      spells: this._prepareSpells(actor).filter(spell => this._filterSpell(spell)),
 
       // Actions
-      actions: this._prepareActions(actor),
+      actions: this._prepareActions(actor).filter(action => this._filterAction(action)),
 
       // Inventory
       inventory: this._prepareInventory(actor),
@@ -209,10 +212,12 @@ export class FoundCloudSheetSimple extends ActorSheet {
    * Get initiative bonus
    */
   _getInitiativeBonus(system) {
-    const dex = system.abilities?.dex?.mod || 0;
-    const bonus = system.attributes?.init?.bonus || 0;
+    const dex = parseInt(system.abilities?.dex?.mod) || 0;
+    const bonus = parseInt(system.attributes?.init?.bonus) || 0;
     const total = dex + bonus;
-    return total >= 0 ? `+${total}` : `${total}`;
+    // Format: "+3", "-2", or "+0" (not "+00")
+    if (total === 0) return '+0';
+    return total > 0 ? `+${total}` : `${total}`;
   }
 
   /**
@@ -445,16 +450,21 @@ export class FoundCloudSheetSimple extends ActorSheet {
    */
   _prepareActions(actor) {
     const actions = [];
-    const actionItems = actor.items.filter(i => 
-      ['weapon', 'feat', 'consumable'].includes(i.type) && i.system.activation?.type
+    // Include all weapons, feats, and consumables (don't require activation type)
+    const actionItems = actor.items.filter(i =>
+      ['weapon', 'feat', 'consumable'].includes(i.type)
     );
 
     for (const item of actionItems) {
       const system = item.system;
+
+      // Determine activation type, default to 'action' if not set
+      const activationType = system.activation?.type || 'action';
+
       actions.push({
         id: item.id,
         name: item.name,
-        actionType: this._getActionType(system.activation?.type),
+        actionType: this._getActionType(activationType),
         category: this._determineActionCategory(system),
         description: system.description?.value || '',
         hasAttack: !!system.actionType && system.actionType !== 'save',
@@ -484,6 +494,55 @@ export class FoundCloudSheetSimple extends ActorSheet {
     if (system.actionType === 'heal') return 'healing';
     if (system.damage?.parts?.length > 0) return 'damage';
     return 'utility';
+  }
+
+  /**
+   * Filter spell based on current filter state
+   */
+  _filterSpell(spell) {
+    // Level filter
+    if (this.filters.spellLevel !== 'all' && spell.level !== parseInt(this.filters.spellLevel)) {
+      return false;
+    }
+
+    // Category filter
+    if (this.filters.spellCategory !== 'all' && spell.category !== this.filters.spellCategory) {
+      return false;
+    }
+
+    // Casting time filter
+    if (this.filters.spellCastingTime !== 'all' && spell.castingTime !== this.filters.spellCastingTime) {
+      return false;
+    }
+
+    // Search filter
+    if (this.searchTerms.spells && !spell.name.toLowerCase().includes(this.searchTerms.spells)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Filter action based on current filter state
+   */
+  _filterAction(action) {
+    // Action type filter
+    if (this.filters.actionType !== 'all' && action.actionType !== this.filters.actionType) {
+      return false;
+    }
+
+    // Category filter
+    if (this.filters.actionCategory !== 'all' && action.category !== this.filters.actionCategory) {
+      return false;
+    }
+
+    // Search filter
+    if (this.searchTerms.actions && !action.name.toLowerCase().includes(this.searchTerms.actions)) {
+      return false;
+    }
+
+    return true;
   }
 
   /**
@@ -540,12 +599,24 @@ export class FoundCloudSheetSimple extends ActorSheet {
 
     if (!this.isEditable) return;
 
+    // Apply custom player color to portrait border
+    const playerColor = this.actor.getFlag('foundcloud', 'playerColor');
+    if (playerColor) {
+      html.find('#char-portrait').css('border-color', playerColor);
+    }
+
     // Theme toggle
     html.find('.theme-btn').click(this._onThemeToggle.bind(this));
 
     // Settings & Close
     html.find('#settings-btn').click(this._onOpenSettings.bind(this));
     html.find('#close-btn').click(this._onCloseSheet.bind(this));
+
+    // Player color picker
+    html.find('#player-color').change(this._onPlayerColorChange.bind(this));
+
+    // Draggable portrait
+    html.find('#char-portrait').on('dragstart', this._onDragPortrait.bind(this));
 
     // HP management
     html.find('#hp-display').click(this._onHPClick.bind(this));
@@ -615,7 +686,16 @@ export class FoundCloudSheetSimple extends ActorSheet {
   _onThemeToggle(event) {
     event.preventDefault();
     this.theme = event.currentTarget.dataset.theme;
-    this.render(false);
+
+    // Update the form's data-theme attribute immediately for CSS
+    const form = this.element.find('form');
+    if (form.length) {
+      form.attr('data-theme', this.theme);
+    }
+
+    // Update button states
+    this.element.find('.theme-btn').removeClass('active');
+    event.currentTarget.classList.add('active');
   }
 
   _onOpenSettings(event) {
@@ -628,6 +708,34 @@ export class FoundCloudSheetSimple extends ActorSheet {
   _onCloseSheet(event) {
     event.preventDefault();
     this.close();
+  }
+
+  async _onPlayerColorChange(event) {
+    event.preventDefault();
+    const color = event.target.value;
+    await this.actor.setFlag('foundcloud', 'playerColor', color);
+
+    // Update portrait border color
+    const portrait = this.element.find('#char-portrait');
+    if (portrait.length) {
+      portrait.css('border-color', color);
+    }
+
+    // Update actor prototype token color if available
+    if (this.actor.prototypeToken) {
+      await this.actor.update({
+        'prototypeToken.ring.colors.ring': color
+      });
+    }
+  }
+
+  _onDragPortrait(event) {
+    // Set up drag data for creating a token when dropped on canvas
+    const dragData = {
+      type: 'Actor',
+      uuid: this.actor.uuid
+    };
+    event.originalEvent.dataTransfer.setData('text/plain', JSON.stringify(dragData));
   }
 
   async _onHPClick(event) {
@@ -673,7 +781,16 @@ export class FoundCloudSheetSimple extends ActorSheet {
 
   async _onInitiativeRoll(event) {
     event.preventDefault();
-    await this.actor.rollInitiative({ createCombatants: true });
+    try {
+      if (this.actor.rollInitiative) {
+        await this.actor.rollInitiative({ createCombatants: true });
+      } else {
+        ui.notifications.warn("Initiative rolls are not supported for this actor type.");
+      }
+    } catch (error) {
+      console.error("Error rolling initiative:", error);
+      ui.notifications.error("Failed to roll initiative.");
+    }
   }
 
   async _onShortRest(event) {
@@ -778,19 +895,46 @@ export class FoundCloudSheetSimple extends ActorSheet {
   async _onAbilityRoll(event) {
     event.preventDefault();
     const ability = event.currentTarget.dataset.ability;
-    await this.actor.rollAbilityTest(ability, this._getRollOptions());
+    try {
+      if (this.actor.rollAbilityTest) {
+        await this.actor.rollAbilityTest(ability, this._getRollOptions());
+      } else {
+        ui.notifications.warn("Ability check rolls are not supported for this actor type.");
+      }
+    } catch (error) {
+      console.error("Error rolling ability check:", error);
+      ui.notifications.error("Failed to roll ability check.");
+    }
   }
 
   async _onSaveRoll(event) {
     event.preventDefault();
     const ability = event.currentTarget.dataset.ability;
-    await this.actor.rollAbilitySave(ability, this._getRollOptions());
+    try {
+      if (this.actor.rollAbilitySave) {
+        await this.actor.rollAbilitySave(ability, this._getRollOptions());
+      } else {
+        ui.notifications.warn("Saving throw rolls are not supported for this actor type.");
+      }
+    } catch (error) {
+      console.error("Error rolling saving throw:", error);
+      ui.notifications.error("Failed to roll saving throw.");
+    }
   }
 
   async _onSkillRoll(event) {
     event.preventDefault();
     const skill = event.currentTarget.dataset.skill;
-    await this.actor.rollSkill(skill, this._getRollOptions());
+    try {
+      if (this.actor.rollSkill) {
+        await this.actor.rollSkill(skill, this._getRollOptions());
+      } else {
+        ui.notifications.warn("Skill rolls are not supported for this actor type.");
+      }
+    } catch (error) {
+      console.error("Error rolling skill:", error);
+      ui.notifications.error("Failed to roll skill.");
+    }
   }
 
   async _onUseSpellSlot(event) {
@@ -830,7 +974,18 @@ export class FoundCloudSheetSimple extends ActorSheet {
     const itemId = event.currentTarget.dataset.itemId;
     const item = this.actor.items.get(itemId);
     if (item) {
-      await item.use();
+      try {
+        if (item.use) {
+          await item.use();
+        } else if (item.roll) {
+          await item.roll();
+        } else {
+          ui.notifications.warn("This spell cannot be cast from the sheet.");
+        }
+      } catch (error) {
+        console.error("Error casting spell:", error);
+        ui.notifications.error("Failed to cast spell.");
+      }
     }
   }
 
@@ -846,7 +1001,16 @@ export class FoundCloudSheetSimple extends ActorSheet {
     const itemId = event.currentTarget.dataset.itemId;
     const item = this.actor.items.get(itemId);
     if (item) {
-      await item.rollAttack(this._getRollOptions());
+      try {
+        if (item.rollAttack) {
+          await item.rollAttack(this._getRollOptions());
+        } else {
+          ui.notifications.warn("Attack rolls are not supported for this item type.");
+        }
+      } catch (error) {
+        console.error("Error rolling attack:", error);
+        ui.notifications.error("Failed to roll attack.");
+      }
     }
   }
 
@@ -855,7 +1019,16 @@ export class FoundCloudSheetSimple extends ActorSheet {
     const itemId = event.currentTarget.dataset.itemId;
     const item = this.actor.items.get(itemId);
     if (item) {
-      await item.rollDamage();
+      try {
+        if (item.rollDamage) {
+          await item.rollDamage();
+        } else {
+          ui.notifications.warn("Damage rolls are not supported for this item type.");
+        }
+      } catch (error) {
+        console.error("Error rolling damage:", error);
+        ui.notifications.error("Failed to roll damage.");
+      }
     }
   }
 

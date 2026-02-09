@@ -13,8 +13,14 @@
   <div class="content-area">
     <div class="header">
       <!-- Character Portrait -->
-      <div style="text-align: center; margin-bottom: 15px;">
-        <img id="char-portrait" src="{{actor.img}}" alt="Character Portrait" style="width: 120px; height: 120px; border-radius: 50%; border: 4px solid var(--accent-primary); object-fit: cover; {{#unless actor.img}}display: none;{{/unless}} box-shadow: 0 4px 12px var(--shadow-hover);">
+      <div class="char-portrait-container">
+        <img id="char-portrait" class="draggable-portrait" src="{{actor.img}}" alt="Character Portrait" draggable="true" {{#unless actor.img}}style="display: none;"{{/unless}}>
+        <div class="player-color-picker">
+          <label for="player-color" title="Player Color (appears in chat and around token)">
+            <span class="color-icon">🎨</span>
+          </label>
+          <input type="color" id="player-color" name="player-color" value="{{playerColor}}" title="Player Color">
+        </div>
       </div>
 
       <!-- Character Name -->
@@ -153,17 +159,21 @@
     <div class="section">
       <h3>💎 Resources</h3>
       <div class="section-content">
-        <div id="resources-container">
+        <div id="resources-container" class="resources-grid">
           {{#if resources.length}}
           {{#each resources}}
           <div class="resource-card" data-resource-id="{{this.id}}">
             <div class="resource-name">{{this.name}}</div>
             <div class="resource-uses">{{this.current}} / {{this.max}}</div>
             <div class="resource-recovery">{{this.recovery}}</div>
+            <div class="resource-buttons">
+              <button type="button" class="resource-use-btn" data-resource-id="{{this.id}}" title="Use">−</button>
+              <button type="button" class="resource-restore-btn" data-resource-id="{{this.id}}" title="Restore">+</button>
+            </div>
           </div>
           {{/each}}
           {{else}}
-          <div style="text-align: center; color: var(--text-muted); padding: 20px;">No resources</div>
+          <div style="text-align: center; color: var(--fc-text-muted); padding: 20px;">No resources</div>
           {{/if}}
         </div>
       </div>

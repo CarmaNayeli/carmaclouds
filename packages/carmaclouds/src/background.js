@@ -626,8 +626,9 @@ async function handleSyncToCarmaClouds(characterData) {
         user_id_dicecloud: authResult.diceCloudUserId || null,
         dicecloud_character_id: characterData.id,
         character_name: characterData.name || 'Unknown',
-        raw_dicecloud_data: characterData, // Store the full character object with raw DiceCloud data
+        raw_dicecloud_data: characterData.raw || characterData, // Store the DiceCloud API structure { creature, variables, properties }
         platform: ['dicecloud', 'foundcloud', 'rollcloud', 'owlcloud'], // Mark as available on all platforms
+        supabase_user_id: null, // Auth-based sync happens through FoundCloud tab
         updated_at: new Date().toISOString()
       };
 

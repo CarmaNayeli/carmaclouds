@@ -209,9 +209,9 @@ export class SupabaseBridge {
 
       const query = this.supabase
         .from('clouds_characters')
-        .select('id, dicecloud_character_id, character_name, level, race, class, updated_at, platform, user_id_supabase')
+        .select('id, dicecloud_character_id, character_name, level, race, class, updated_at, platform, supabase_user_id')
         .contains('platform', ['foundcloud'])
-        .eq('user_id_supabase', userId)
+        .eq('supabase_user_id', userId)
         .order('character_name', { ascending: true });
 
       console.log(`FoundCloud | Filtering characters for authenticated user: ${session.user.email}`);
@@ -327,7 +327,7 @@ export class SupabaseBridge {
         .from('clouds_characters')
         .select('id, dicecloud_character_id, character_name, level, race, class, platform')
         .contains('platform', ['foundcloud'])
-        .eq('user_id_supabase', userId)
+        .eq('supabase_user_id', userId)
         .ilike('character_name', `%${searchTerm}%`)
         .order('character_name', { ascending: true });
 
