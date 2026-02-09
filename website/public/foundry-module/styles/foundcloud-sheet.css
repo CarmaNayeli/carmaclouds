@@ -35,6 +35,39 @@
   --fc-shadow-hover: rgba(0,0,0,0.4);
 }
 
+/* Dark theme (explicit) */
+.foundcloud-sheet-simple[data-theme="dark"],
+.foundcloud-sheet[data-theme="dark"] {
+  --fc-bg-primary: #1a1a1a;
+  --fc-bg-secondary: #2d2d2d;
+  --fc-bg-tertiary: #3a3a3a;
+  --fc-bg-card: #1e3a33;
+  --fc-bg-card-hover: #2a4940;
+  --fc-bg-spell: #3d3520;
+  --fc-bg-action: #1e2f3d;
+  --fc-bg-resource: #2e1f33;
+
+  --fc-text-primary: #e0e0e0;
+  --fc-text-secondary: #b0b0b0;
+  --fc-text-muted: #808080;
+  --fc-text-inverse: #1a1a1a;
+
+  --fc-border-color: #444;
+  --fc-border-card: #3ea895;
+  --fc-border-spell: #f5a623;
+  --fc-border-action: #42a5f5;
+
+  --fc-accent-primary: #3ea895;
+  --fc-accent-success: #2ecc71;
+  --fc-accent-danger: #e74c3c;
+  --fc-accent-warning: #f5a623;
+  --fc-accent-info: #42a5f5;
+  --fc-accent-purple: #b19cd9;
+
+  --fc-shadow: rgba(0,0,0,0.3);
+  --fc-shadow-hover: rgba(0,0,0,0.4);
+}
+
 /* Light theme */
 .foundcloud-sheet-simple[data-theme="light"],
 .foundcloud-sheet[data-theme="light"] {
