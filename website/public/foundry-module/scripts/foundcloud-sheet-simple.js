@@ -594,19 +594,17 @@ export class FoundCloudSheetSimple extends ActorSheet {
   }
 
   /** @override */
-  activateListeners(html) {
+  async activateListeners(html) {
     super.activateListeners(html);
 
     if (!this.isEditable) return;
 
     // Apply custom player color to portrait border and ensure token setup
-    const playerColor = this.actor.getFlag('foundcloud', 'playerColor');
-    if (playerColor) {
-      html.find('#char-portrait').css('border-color', playerColor);
+    const playerColor = this.actor.getFlag('foundcloud', 'playerColor') || '#3ea895';
+    html.find('#char-portrait').css('border-color', playerColor);
 
-      // Ensure token uses portrait and colored ring
-      this._ensureTokenSetup(playerColor);
-    }
+    // Ensure token uses portrait and colored ring (must complete before drag)
+    await this._ensureTokenSetup(playerColor);
 
     // Theme toggle
     html.find('.theme-btn').click(this._onThemeToggle.bind(this));
