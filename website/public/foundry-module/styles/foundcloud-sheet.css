@@ -135,45 +135,44 @@
   box-shadow: 0 6px 16px var(--fc-shadow-hover);
 }
 
-/* Player Color Picker */
-.foundcloud-sheet-simple .player-color-picker,
-.foundcloud-sheet .player-color-picker {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.foundcloud-sheet-simple .player-color-picker label,
-.foundcloud-sheet .player-color-picker label {
+/* Player Color Picker (in systems bar) */
+.foundcloud-sheet-simple .systems-bar .player-color-picker,
+.foundcloud-sheet .systems-bar .player-color-picker {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 0.85em;
-  color: var(--fc-text-secondary);
-  cursor: pointer;
 }
 
-.foundcloud-sheet-simple .player-color-picker .color-icon,
-.foundcloud-sheet .player-color-picker .color-icon {
+.foundcloud-sheet-simple .systems-bar .player-color-picker label,
+.foundcloud-sheet .systems-bar .player-color-picker label {
+  display: flex;
+  align-items: center;
   font-size: 1.2em;
+  cursor: pointer;
+  margin: 0;
 }
 
-.foundcloud-sheet-simple #player-color,
-.foundcloud-sheet #player-color {
-  width: 40px;
-  height: 30px;
+.foundcloud-sheet-simple .systems-bar .player-color-picker .color-icon,
+.foundcloud-sheet .systems-bar .player-color-picker .color-icon {
+  filter: drop-shadow(0 2px 4px var(--fc-shadow));
+}
+
+.foundcloud-sheet-simple .systems-bar #player-color,
+.foundcloud-sheet .systems-bar #player-color {
+  width: 32px;
+  height: 24px;
   border: 2px solid var(--fc-border-color);
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s;
+  vertical-align: middle;
 }
 
-.foundcloud-sheet-simple #player-color:hover,
-.foundcloud-sheet #player-color:hover {
+.foundcloud-sheet-simple .systems-bar #player-color:hover,
+.foundcloud-sheet .systems-bar #player-color:hover {
   border-color: var(--fc-accent-primary);
   box-shadow: 0 2px 8px var(--fc-shadow-hover);
+  transform: scale(1.05);
 }
 
 /* Systems Bar / Header */

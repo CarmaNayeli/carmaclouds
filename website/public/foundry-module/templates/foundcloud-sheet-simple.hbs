@@ -5,6 +5,12 @@
       <button type="button" class="theme-btn {{#if isLightTheme}}active{{/if}}" data-theme="light">Light</button>
       <button type="button" class="theme-btn {{#unless isLightTheme}}active{{/unless}}" data-theme="dark">Dark</button>
     </div>
+    <div class="player-color-picker">
+      <label for="player-color" title="Player Color (appears in chat and around token)">
+        <span class="color-icon">🎨</span>
+      </label>
+      <input type="color" id="player-color" name="player-color" value="{{playerColor}}" title="Player Color">
+    </div>
     <button type="button" class="settings-btn" id="settings-btn" title="Settings">⚙️</button>
     <button type="button" class="close-btn" id="close-btn">✕</button>
   </div>
@@ -14,13 +20,7 @@
     <div class="header">
       <!-- Character Portrait -->
       <div class="char-portrait-container">
-        <img id="char-portrait" class="draggable-portrait" src="{{actor.img}}" alt="Character Portrait" draggable="true" {{#unless actor.img}}style="display: none;"{{/unless}}>
-        <div class="player-color-picker">
-          <label for="player-color" title="Player Color (appears in chat and around token)">
-            <span class="color-icon">🎨</span>
-          </label>
-          <input type="color" id="player-color" name="player-color" value="{{playerColor}}" title="Player Color">
-        </div>
+        <img id="char-portrait" class="draggable-portrait" src="{{supabasePortraitUrl}}" alt="Character Portrait" draggable="true" {{#unless supabasePortraitUrl}}style="display: none;"{{/unless}}>
       </div>
 
       <!-- Character Name -->

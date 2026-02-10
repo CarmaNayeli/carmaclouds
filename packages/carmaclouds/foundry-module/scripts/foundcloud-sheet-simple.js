@@ -84,6 +84,9 @@ export class FoundCloudSheetSimple extends ActorSheet {
       // Player color for chat and token border
       playerColor: this.actor.getFlag('foundcloud', 'playerColor') || '#3ea895',
 
+      // Supabase portrait URL for drag-to-canvas
+      supabasePortraitUrl: this.actor.img || 'icons/svg/mystery-man.svg',
+
       // Character info
       characterClass: this._getClassString(system),
       characterLevel: system.details?.level || 1,
@@ -722,28 +725,32 @@ export class FoundCloudSheetSimple extends ActorSheet {
       portrait.css('border-color', color);
     }
 
-    // Update actor prototype token to use portrait image and colored ring
+    // Update actor prototype token to use Supabase portrait URL and colored ring
+    const portraitUrl = this.actor.img;  // Should be Supabase bucket URL from import
     const updates = {
-      'prototypeToken.texture.src': this.actor.img,  // Use portrait as token image
-      'prototypeToken.ring.subject.scale': 1.0,      // Enable ring
-      'prototypeToken.ring.colors.ring': color       // Set ring color
+      'prototypeToken.texture.src': portraitUrl,
+      'prototypeToken.ring.subject.scale': 1.0,
+      'prototypeToken.ring.colors.ring': color
     };
 
     await this.actor.update(updates);
   }
 
   /**
-   * Ensure token is configured to use portrait image and colored ring
+   * Ensure token is configured to use Supabase portrait image and colored ring
    */
   async _ensureTokenSetup(color) {
+    // Use actor.img which should be the Supabase bucket URL from import
+    const portraitUrl = this.actor.img;
+
     // Only update if needed
     const needsUpdate =
-      this.actor.prototypeToken?.texture?.src !== this.actor.img ||
+      this.actor.prototypeToken?.texture?.src !== portraitUrl ||
       this.actor.prototypeToken?.ring?.colors?.ring !== color;
 
     if (needsUpdate) {
       await this.actor.update({
-        'prototypeToken.texture.src': this.actor.img,
+        'prototypeToken.texture.src': portraitUrl,
         'prototypeToken.ring.subject.scale': 1.0,
         'prototypeToken.ring.colors.ring': color
       }, { diff: false, render: false });
