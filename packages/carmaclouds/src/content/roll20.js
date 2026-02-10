@@ -79,7 +79,7 @@
    * Handles roll messages from Dice Cloud
    * Wrapped in try-catch to ensure one failure doesn't break subsequent rolls
    */
-  function handleDiceCloudRoll(rollData) {
+  async function handleDiceCloudRoll(rollData) {
     try {
       debug.log('🎲 Handling roll:', rollData);
       debug.log('🎲 Roll data keys:', Object.keys(rollData || {}));
@@ -91,6 +91,35 @@
       if (!rollData) {
         debug.error('❌ No roll data provided');
         return { success: false, error: 'No roll data provided' };
+      }
+
+      // Check if this is a damage roll and if there's a pending critical hit
+      // Damage rolls have formulas with dice but no d20 (to exclude attack rolls)
+      const isDamageRoll = rollData.formula && /\dd\d+/.test(rollData.formula) && !rollData.formula.includes('1d20');
+
+      if (isDamageRoll) {
+        try {
+          const storage = await browserAPI.storage.local.get('criticalHitPending');
+          if (storage.criticalHitPending) {
+            const critData = storage.criticalHitPending;
+            const critAge = Date.now() - critData.timestamp;
+
+            // Only apply crit if it's less than 30 seconds old
+            if (critAge < 30000) {
+              debug.log('💥 Critical hit active! Doubling damage dice for:', rollData.name);
+              rollData.formula = doubleDamageDice(rollData.formula);
+              debug.log('💥 Doubled formula:', rollData.formula);
+
+              // Clear the crit flag after use
+              await browserAPI.storage.local.remove('criticalHitPending');
+            } else {
+              debug.log('⏱️ Critical hit flag expired, clearing');
+              await browserAPI.storage.local.remove('criticalHitPending');
+            }
+          }
+        } catch (storageError) {
+          debug.warn('⚠️ Could not check critical hit flag:', storageError);
+        }
       }
 
       // Use pre-formatted message if it exists (for spells, actions, etc.)
@@ -129,6 +158,20 @@
   }
 
   /**
+   * Doubles the damage dice in a formula for critical hits
+   * Examples: "1d10 + 5" -> "2d10 + 5", "2d6 + 1d8 + 3" -> "4d6 + 2d8 + 3"
+   */
+  function doubleDamageDice(formula) {
+    if (!formula) return formula;
+
+    // Match all dice notation (e.g., 1d10, 2d6, etc.) and double the count
+    return formula.replace(/(\d+)d(\d+)/g, (match, count, sides) => {
+      const doubledCount = parseInt(count) * 2;
+      return `${doubledCount}d${sides}`;
+    });
+  }
+
+  /**
    * Observes Roll20 chat for the next roll result and checks for natural 1s/20s
    */
   function observeNextRollResult(originalRollData) {
@@ -160,6 +203,22 @@
                 if (rollResult.baseRoll === 1 || rollResult.baseRoll === 20) {
                   const rollType = rollResult.baseRoll === 1 ? 'Natural 1' : 'Natural 20';
                   debug.log(`🎯 ${rollType} detected in Roll20 roll!`);
+
+                  // For natural 20s on attack rolls, set a critical hit flag for the next damage roll
+                  if (rollResult.baseRoll === 20 && originalRollData.formula && originalRollData.formula.includes('1d20')) {
+                    debug.log('💥 Critical hit! Setting crit flag for next damage roll');
+                    browserAPI.storage.local.set({
+                      criticalHitPending: {
+                        timestamp: Date.now(),
+                        attackName: originalRollData.name
+                      }
+                    });
+                    // Auto-clear after 30 seconds
+                    setTimeout(() => {
+                      browserAPI.storage.local.remove('criticalHitPending');
+                      debug.log('⏱️ Critical hit flag expired');
+                    }, 30000);
+                  }
 
                   // Send to popup for racial trait checking
                   browserAPI.runtime.sendMessage({

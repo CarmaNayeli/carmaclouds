@@ -48,7 +48,7 @@
         return false;
       }
     }
-    function handleDiceCloudRoll(rollData) {
+    async function handleDiceCloudRoll(rollData) {
       try {
         debug.log("\u{1F3B2} Handling roll:", rollData);
         debug.log("\u{1F3B2} Roll data keys:", Object.keys(rollData || {}));
@@ -58,6 +58,27 @@
         if (!rollData) {
           debug.error("\u274C No roll data provided");
           return { success: false, error: "No roll data provided" };
+        }
+        const isDamageRoll = rollData.formula && /\dd\d+/.test(rollData.formula) && !rollData.formula.includes("1d20");
+        if (isDamageRoll) {
+          try {
+            const storage = await browserAPI.storage.local.get("criticalHitPending");
+            if (storage.criticalHitPending) {
+              const critData = storage.criticalHitPending;
+              const critAge = Date.now() - critData.timestamp;
+              if (critAge < 3e4) {
+                debug.log("\u{1F4A5} Critical hit active! Doubling damage dice for:", rollData.name);
+                rollData.formula = doubleDamageDice(rollData.formula);
+                debug.log("\u{1F4A5} Doubled formula:", rollData.formula);
+                await browserAPI.storage.local.remove("criticalHitPending");
+              } else {
+                debug.log("\u23F1\uFE0F Critical hit flag expired, clearing");
+                await browserAPI.storage.local.remove("criticalHitPending");
+              }
+            }
+          } catch (storageError) {
+            debug.warn("\u26A0\uFE0F Could not check critical hit flag:", storageError);
+          }
         }
         let formattedMessage;
         try {
@@ -85,6 +106,14 @@
         return { success: false, error: "Unexpected error: " + error.message };
       }
     }
+    function doubleDamageDice(formula) {
+      if (!formula)
+        return formula;
+      return formula.replace(/(\d+)d(\d+)/g, (match, count, sides) => {
+        const doubledCount = parseInt(count) * 2;
+        return `${doubledCount}d${sides}`;
+      });
+    }
     function observeNextRollResult(originalRollData) {
       debug.log("\u{1F440} Setting up observer for Roll20 roll result...");
       const chatLog = document.querySelector("#textchat .content");
@@ -105,6 +134,19 @@
                   if (rollResult.baseRoll === 1 || rollResult.baseRoll === 20) {
                     const rollType = rollResult.baseRoll === 1 ? "Natural 1" : "Natural 20";
                     debug.log(`\u{1F3AF} ${rollType} detected in Roll20 roll!`);
+                    if (rollResult.baseRoll === 20 && originalRollData.formula && originalRollData.formula.includes("1d20")) {
+                      debug.log("\u{1F4A5} Critical hit! Setting crit flag for next damage roll");
+                      browserAPI.storage.local.set({
+                        criticalHitPending: {
+                          timestamp: Date.now(),
+                          attackName: originalRollData.name
+                        }
+                      });
+                      setTimeout(() => {
+                        browserAPI.storage.local.remove("criticalHitPending");
+                        debug.log("\u23F1\uFE0F Critical hit flag expired");
+                      }, 3e4);
+                    }
                     browserAPI.runtime.sendMessage({
                       action: "rollResult",
                       rollResult: rollResult.total.toString(),
