@@ -77,6 +77,84 @@ function deduplicateByName(items) {
 }
 
 /**
+ * Evaluates DiceCloud conditional expressions in text
+ * Handles patterns like: [variable > 1 ? "text" : ""] or [variable ? "text" : ""]
+ * @param {string} text - Text potentially containing conditionals
+ * @param {object} variables - DiceCloud variables object for evaluation
+ * @returns {string} Text with conditionals evaluated or cleaned
+ */
+function evaluateConditionals(text, variables = {}) {
+  if (!text || typeof text !== 'string') return text;
+
+  // Match DiceCloud conditional syntax: [condition ? "text" : "fallback"]
+  // Supports nested quotes and multiple conditions
+  const conditionalPattern = /\[([^\[\]]+)\s*\?\s*"([^"]*)"\s*:\s*"([^"]*)"\]/g;
+
+  let result = text;
+  let match;
+
+  while ((match = conditionalPattern.exec(text)) !== null) {
+    const fullMatch = match[0];
+    const condition = match[1].trim();
+    const trueText = match[2];
+    const falseText = match[3];
+
+    // Try to evaluate the condition
+    let shouldShow = false;
+
+    // Handle comparison operators: >, <, >=, <=, ==, !=
+    const comparisonMatch = condition.match(/^(\w+)\s*(>|<|>=|<=|==|!=)\s*(.+)$/);
+    if (comparisonMatch) {
+      const varName = comparisonMatch[1];
+      const operator = comparisonMatch[2];
+      const compareValue = comparisonMatch[3].trim();
+
+      // Get variable value (case-sensitive first, then try lowercase)
+      let varValue = variables[varName];
+      if (varValue === undefined) {
+        varValue = variables[varName.toLowerCase()];
+      }
+
+      // Convert to number if possible
+      const numVarValue = parseFloat(varValue);
+      const numCompareValue = parseFloat(compareValue);
+
+      if (!isNaN(numVarValue) && !isNaN(numCompareValue)) {
+        switch (operator) {
+          case '>': shouldShow = numVarValue > numCompareValue; break;
+          case '<': shouldShow = numVarValue < numCompareValue; break;
+          case '>=': shouldShow = numVarValue >= numCompareValue; break;
+          case '<=': shouldShow = numVarValue <= numCompareValue; break;
+          case '==': shouldShow = numVarValue === numCompareValue; break;
+          case '!=': shouldShow = numVarValue !== numCompareValue; break;
+        }
+      } else {
+        // String comparison fallback
+        switch (operator) {
+          case '==': shouldShow = varValue == compareValue; break;
+          case '!=': shouldShow = varValue != compareValue; break;
+        }
+      }
+    } else {
+      // Simple boolean check (variable exists and is truthy)
+      const varName = condition;
+      let varValue = variables[varName];
+      if (varValue === undefined) {
+        varValue = variables[varName.toLowerCase()];
+      }
+
+      // Check if truthy (non-zero, non-empty, true)
+      shouldShow = !!(varValue && varValue !== 0 && varValue !== '0' && varValue !== false);
+    }
+
+    // Replace the conditional with the appropriate text
+    result = result.replace(fullMatch, shouldShow ? trueText : falseText);
+  }
+
+  return result;
+}
+
+/**
  * Determines hit die type from character class (D&D 5e)
  */
 function getHitDieTypeFromClass(levels) {
@@ -749,12 +827,17 @@ export function parseForRollCloud(rawData) {
     return finalAC;
   };
 
-  // Helper to extract text from DiceCloud text objects
+  // Helper to extract text from DiceCloud text objects and evaluate conditionals
   const extractText = (field) => {
     if (!field) return '';
-    if (typeof field === 'string') return field;
-    if (typeof field === 'object' && field.text) return field.text;
-    return '';
+    let text = '';
+    if (typeof field === 'string') {
+      text = field;
+    } else if (typeof field === 'object' && field.text) {
+      text = field.text;
+    }
+    // Evaluate any conditional expressions using the character's variables
+    return evaluateConditionals(text, variables);
   };
 
   // Parse spells from properties with child attack/damage extraction (exclude inactive/disabled)

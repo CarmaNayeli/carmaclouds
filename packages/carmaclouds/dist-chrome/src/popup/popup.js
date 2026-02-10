@@ -11796,6 +11796,99 @@ ${suffix}`;
   });
 
   // src/content/dicecloud-extraction.js
+  function isValidProperty(property) {
+    if (!property)
+      return false;
+    if (property.inactive === true || property.disabled === true)
+      return false;
+    if (property.removed === true || property.soft_removed === true)
+      return false;
+    if (!property._id && !property.id)
+      return false;
+    return true;
+  }
+  function normalizeNameForDedupe(name) {
+    if (!name)
+      return "";
+    return name.toLowerCase().trim().replace(/\b(a|an|the)\b/g, "").replace(/ing\b/g, "").replace(/dice/g, "die").replace(/ies\b/g, "y").replace(/s\b/g, "").replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ").trim();
+  }
+  function deduplicateByName(items) {
+    const seen = /* @__PURE__ */ new Set();
+    return items.filter((item) => {
+      const normalized = normalizeNameForDedupe(item.name);
+      if (seen.has(normalized)) {
+        return false;
+      }
+      seen.add(normalized);
+      return true;
+    });
+  }
+  function evaluateConditionals(text, variables = {}) {
+    if (!text || typeof text !== "string")
+      return text;
+    const conditionalPattern = /\[([^\[\]]+)\s*\?\s*"([^"]*)"\s*:\s*"([^"]*)"\]/g;
+    let result = text;
+    let match;
+    while ((match = conditionalPattern.exec(text)) !== null) {
+      const fullMatch = match[0];
+      const condition = match[1].trim();
+      const trueText = match[2];
+      const falseText = match[3];
+      let shouldShow = false;
+      const comparisonMatch = condition.match(/^(\w+)\s*(>|<|>=|<=|==|!=)\s*(.+)$/);
+      if (comparisonMatch) {
+        const varName = comparisonMatch[1];
+        const operator = comparisonMatch[2];
+        const compareValue = comparisonMatch[3].trim();
+        let varValue = variables[varName];
+        if (varValue === void 0) {
+          varValue = variables[varName.toLowerCase()];
+        }
+        const numVarValue = parseFloat(varValue);
+        const numCompareValue = parseFloat(compareValue);
+        if (!isNaN(numVarValue) && !isNaN(numCompareValue)) {
+          switch (operator) {
+            case ">":
+              shouldShow = numVarValue > numCompareValue;
+              break;
+            case "<":
+              shouldShow = numVarValue < numCompareValue;
+              break;
+            case ">=":
+              shouldShow = numVarValue >= numCompareValue;
+              break;
+            case "<=":
+              shouldShow = numVarValue <= numCompareValue;
+              break;
+            case "==":
+              shouldShow = numVarValue === numCompareValue;
+              break;
+            case "!=":
+              shouldShow = numVarValue !== numCompareValue;
+              break;
+          }
+        } else {
+          switch (operator) {
+            case "==":
+              shouldShow = varValue == compareValue;
+              break;
+            case "!=":
+              shouldShow = varValue != compareValue;
+              break;
+          }
+        }
+      } else {
+        const varName = condition;
+        let varValue = variables[varName];
+        if (varValue === void 0) {
+          varValue = variables[varName.toLowerCase()];
+        }
+        shouldShow = !!(varValue && varValue !== 0 && varValue !== "0" && varValue !== false);
+      }
+      result = result.replace(fullMatch, shouldShow ? trueText : falseText);
+    }
+    return result;
+  }
   function parseCharacterData(apiData, characterId) {
     console.log("CarmaClouds: Parsing character data...");
     if (!apiData.creatures || apiData.creatures.length === 0) {
@@ -11945,7 +12038,7 @@ ${suffix}`;
           raceFound = true;
         }
       }
-      if (prop.type === "class" && prop.name && !prop.inactive && !prop.disabled) {
+      if (prop.type === "class" && prop.name && isValidProperty(prop)) {
         const cleanName = prop.name.replace(/\s*\[Multiclass\]/i, "").trim();
         const normalizedClassName = cleanName.toLowerCase().trim();
         if (!uniqueClasses.has(normalizedClassName)) {
@@ -12145,7 +12238,7 @@ ${suffix}`;
           raceFound = true;
         }
       }
-      if (prop.type === "class" && prop.name && !prop.inactive && !prop.disabled) {
+      if (prop.type === "class" && prop.name && isValidProperty(prop)) {
         const cleanName = prop.name.replace(/\s*\[Multiclass\]/i, "").trim();
         const normalizedClassName = cleanName.toLowerCase().trim();
         if (!uniqueClasses.has(normalizedClassName)) {
@@ -12326,13 +12419,15 @@ ${suffix}`;
     const extractText = (field) => {
       if (!field)
         return "";
-      if (typeof field === "string")
-        return field;
-      if (typeof field === "object" && field.text)
-        return field.text;
-      return "";
+      let text = "";
+      if (typeof field === "string") {
+        text = field;
+      } else if (typeof field === "object" && field.text) {
+        text = field.text;
+      }
+      return evaluateConditionals(text, variables);
     };
-    const spells = properties.filter((p) => p.type === "spell" && !p.inactive && !p.disabled).map((spell) => {
+    const spells = properties.filter((p) => p.type === "spell" && isValidProperty(p)).map((spell) => {
       const spellChildren = properties.filter((p) => {
         if (p.type !== "roll" && p.type !== "damage" && p.type !== "attack")
           return false;
@@ -12432,7 +12527,7 @@ ${suffix}`;
         isLifesteal
       };
     });
-    const actions = properties.filter((p) => p.type === "action" && p.name && !p.inactive && !p.disabled).map((action) => {
+    const actions = properties.filter((p) => p.type === "action" && p.name && isValidProperty(p)).map((action) => {
       const actionChildren = properties.filter((p) => {
         if (p.type !== "roll" && p.type !== "damage" && p.type !== "attack")
           return false;
@@ -12554,7 +12649,7 @@ ${suffix}`;
       reset: resource.reset || "",
       variableName: resource.variableName || resource.varName || ""
     }));
-    const inventory = properties.filter((p) => (p.type === "item" || p.type === "equipment" || p.type === "container") && !p.inactive).map((item) => ({
+    const inventory = properties.filter((p) => (p.type === "item" || p.type === "equipment" || p.type === "container") && isValidProperty(p)).map((item) => ({
       id: item._id,
       name: item.name || "Unnamed Item",
       quantity: item.quantity || 1,
@@ -12589,9 +12684,9 @@ ${suffix}`;
       proficiencyBonus: variables.proficiencyBonus?.total || variables.proficiencyBonus?.value || 0,
       spellSlots,
       resources,
-      inventory,
-      spells,
-      actions,
+      inventory: deduplicateByName(inventory),
+      spells: deduplicateByName(spells),
+      actions: deduplicateByName(actions),
       companions
     };
   }

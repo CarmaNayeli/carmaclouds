@@ -1,5 +1,16 @@
 (() => {
   // src/content/dicecloud-extraction.js
+  function isValidProperty(property) {
+    if (!property)
+      return false;
+    if (property.inactive === true || property.disabled === true)
+      return false;
+    if (property.removed === true || property.soft_removed === true)
+      return false;
+    if (!property._id && !property.id)
+      return false;
+    return true;
+  }
   function parseCharacterData(apiData, characterId) {
     console.log("CarmaClouds: Parsing character data...");
     if (!apiData.creatures || apiData.creatures.length === 0) {
@@ -149,7 +160,7 @@
           raceFound = true;
         }
       }
-      if (prop.type === "class" && prop.name && !prop.inactive && !prop.disabled) {
+      if (prop.type === "class" && prop.name && isValidProperty(prop)) {
         const cleanName = prop.name.replace(/\s*\[Multiclass\]/i, "").trim();
         const normalizedClassName = cleanName.toLowerCase().trim();
         if (!uniqueClasses.has(normalizedClassName)) {
