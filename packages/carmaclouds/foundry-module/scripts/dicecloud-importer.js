@@ -259,6 +259,66 @@ export class DiceCloudImporter {
   }
 
   /**
+   * Get spellcasting configuration for a class
+   * @param {string} className - Character class name
+   * @returns {object|null} Spellcasting config or null if not a caster
+   */
+  getSpellcastingConfig(className) {
+    const classLower = className?.toLowerCase();
+
+    // Full casters (9th level spells at 17)
+    const fullCasters = {
+      'bard': 'cha',
+      'cleric': 'wis',
+      'druid': 'wis',
+      'sorcerer': 'cha',
+      'wizard': 'int'
+    };
+
+    // Half casters (5th level spells at 17)
+    const halfCasters = {
+      'paladin': 'cha',
+      'ranger': 'wis',
+      'artificer': 'int'
+    };
+
+    // Third casters (4th level spells at 19)
+    const thirdCasters = {
+      'eldritch knight': 'int',
+      'arcane trickster': 'int'
+    };
+
+    // Pact casters
+    const pactCasters = {
+      'warlock': 'cha'
+    };
+
+    if (fullCasters[classLower]) {
+      return {
+        progression: 'full',
+        ability: fullCasters[classLower]
+      };
+    } else if (halfCasters[classLower]) {
+      return {
+        progression: 'half',
+        ability: halfCasters[classLower]
+      };
+    } else if (thirdCasters[classLower]) {
+      return {
+        progression: 'third',
+        ability: thirdCasters[classLower]
+      };
+    } else if (pactCasters[classLower]) {
+      return {
+        progression: 'pact',
+        ability: pactCasters[classLower]
+      };
+    }
+
+    return null; // Not a spellcasting class
+  }
+
+  /**
    * Map character details from Supabase
    * @param {object} sb - Supabase data
    * @returns {object}
@@ -514,30 +574,50 @@ export class DiceCloudImporter {
 
     if (classParts.length === 1) {
       // Single class: assign all levels
-      await actor.createEmbeddedDocuments('Item', [{
-        name: classParts[0].trim(),
+      const className = classParts[0].trim();
+      const classData = {
+        name: className,
         type: 'class',
         system: {
           levels: totalLevel,
-          hitDice: `d${this.getHitDieDenomination(classParts[0].trim())}`,
+          hitDice: `d${this.getHitDieDenomination(className)}`,
           hitDiceUsed: 0
         }
-      }]);
+      };
+
+      // Add spellcasting configuration if this is a spellcasting class
+      const spellcastingConfig = this.getSpellcastingConfig(className);
+      if (spellcastingConfig) {
+        classData.system.spellcasting = spellcastingConfig;
+      }
+
+      await actor.createEmbeddedDocuments('Item', [classData]);
     } else {
       // Multiclass: split levels evenly as best guess (DiceCloud doesn't tell us per-class levels easily)
       // First class gets the majority of levels
       const levelsPerClass = Math.floor(totalLevel / classParts.length);
       const remainder = totalLevel % classParts.length;
 
-      const classItems = classParts.map((cls, index) => ({
-        name: cls.trim(),
-        type: 'class',
-        system: {
-          levels: levelsPerClass + (index === 0 ? remainder : 0),
-          hitDice: `d${this.getHitDieDenomination(cls.trim())}`,
-          hitDiceUsed: 0
+      const classItems = classParts.map((cls, index) => {
+        const className = cls.trim();
+        const classData = {
+          name: className,
+          type: 'class',
+          system: {
+            levels: levelsPerClass + (index === 0 ? remainder : 0),
+            hitDice: `d${this.getHitDieDenomination(className)}`,
+            hitDiceUsed: 0
+          }
+        };
+
+        // Add spellcasting configuration if this is a spellcasting class
+        const spellcastingConfig = this.getSpellcastingConfig(className);
+        if (spellcastingConfig) {
+          classData.system.spellcasting = spellcastingConfig;
         }
-      }));
+
+        return classData;
+      });
 
       await actor.createEmbeddedDocuments('Item', classItems);
     }
