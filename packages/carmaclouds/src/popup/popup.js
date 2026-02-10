@@ -157,6 +157,44 @@ async function handleClearLocalData() {
   }
 }
 
+// Reset UI positions to default
+async function handleResetPositions() {
+  const confirmed = confirm(
+    '🔄 Reset UI Positions?\n\n' +
+    'This will reset the positions of:\n' +
+    '• DiceCloud sync button\n' +
+    '• Roll20 character sheet button\n' +
+    '• Roll20 status bar\n' +
+    '• Character sheet overlay\n' +
+    '• GM mode popup\n\n' +
+    'All UI elements will return to their default positions.\n\n' +
+    'Are you sure you want to continue?'
+  );
+
+  if (!confirmed) return;
+
+  try {
+    // Send message to all tabs to reset their positions
+    const tabs = await browserAPI.tabs.query({});
+
+    for (const tab of tabs) {
+      try {
+        await browserAPI.tabs.sendMessage(tab.id, {
+          action: 'resetUIPositions'
+        });
+      } catch (error) {
+        // Tab might not have content script injected, that's okay
+        console.log('Could not send reset message to tab:', tab.id);
+      }
+    }
+
+    alert('✅ UI positions reset successfully!\n\nPlease reload any open Roll20 or DiceCloud pages to see the changes.');
+  } catch (error) {
+    console.error('Error resetting positions:', error);
+    alert('❌ Failed to reset positions: ' + error.message);
+  }
+}
+
 // Clear cloud character data
 async function handleClearCloudData() {
   const confirmed = confirm(
@@ -166,23 +204,23 @@ async function handleClearCloudData() {
     'This action CANNOT be undone!\n\n' +
     'Are you sure you want to continue?'
   );
-  
+
   if (!confirmed) return;
-  
+
   const doubleConfirm = confirm(
     '🚨 FINAL WARNING 🚨\n\n' +
     'You are about to permanently delete all cloud character data.\n\n' +
     'Type your confirmation by clicking OK.'
   );
-  
+
   if (!doubleConfirm) return;
-  
+
   try {
     // Send message to background to clear cloud data
     const response = await browserAPI.runtime.sendMessage({
       action: 'clearAllCloudData'
     });
-    
+
     if (response && response.success) {
       alert('✅ Cloud data cleared successfully!\n\n' + (response.message || ''));
     } else {
@@ -829,6 +867,7 @@ async function init() {
   // Set up data management buttons
   document.getElementById('clear-local-data-btn').addEventListener('click', handleClearLocalData);
   document.getElementById('clear-cloud-data-btn').addEventListener('click', handleClearCloudData);
+  document.getElementById('reset-positions-btn').addEventListener('click', handleResetPositions);
 
   // Set up refresh button
   document.getElementById('refresh-button').addEventListener('click', async () => {

@@ -14309,6 +14309,29 @@ This cannot be undone.`)) {
       alert("\u274C Failed to clear local data: " + error.message);
     }
   }
+  async function handleResetPositions() {
+    const confirmed = confirm(
+      "\u{1F504} Reset UI Positions?\n\nThis will reset the positions of:\n\u2022 DiceCloud sync button\n\u2022 Roll20 character sheet button\n\u2022 Roll20 status bar\n\u2022 Character sheet overlay\n\u2022 GM mode popup\n\nAll UI elements will return to their default positions.\n\nAre you sure you want to continue?"
+    );
+    if (!confirmed)
+      return;
+    try {
+      const tabs = await browserAPI5.tabs.query({});
+      for (const tab of tabs) {
+        try {
+          await browserAPI5.tabs.sendMessage(tab.id, {
+            action: "resetUIPositions"
+          });
+        } catch (error) {
+          console.log("Could not send reset message to tab:", tab.id);
+        }
+      }
+      alert("\u2705 UI positions reset successfully!\n\nPlease reload any open Roll20 or DiceCloud pages to see the changes.");
+    } catch (error) {
+      console.error("Error resetting positions:", error);
+      alert("\u274C Failed to reset positions: " + error.message);
+    }
+  }
   async function handleClearCloudData() {
     const confirmed = confirm(
       "\u26A0\uFE0F Clear Cloud Data?\n\nThis will delete ALL character data from the cloud (Supabase).\nLocal data will NOT be affected.\n\nThis action CANNOT be undone!\n\nAre you sure you want to continue?"
@@ -14816,6 +14839,7 @@ This cannot be undone.`)) {
     });
     document.getElementById("clear-local-data-btn").addEventListener("click", handleClearLocalData);
     document.getElementById("clear-cloud-data-btn").addEventListener("click", handleClearCloudData);
+    document.getElementById("reset-positions-btn").addEventListener("click", handleResetPositions);
     document.getElementById("refresh-button").addEventListener("click", async () => {
       const activeTab = document.querySelector(".tab-button.active")?.dataset.tab;
       if (activeTab) {

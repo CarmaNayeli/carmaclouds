@@ -487,9 +487,18 @@ browserAPI.runtime.onMessage.addListener((request, sender, sendResponse) => {
       hasMeteorAuth: !!authData.meteor,
       localStorageKeys: Object.keys(authData.localStorage).length
     });
-    
+
     sendResponse(authData);
     return true; // Keep channel open for async response
+  } else if (request.action === 'resetUIPositions') {
+    console.log('🔄 Resetting UI positions on DiceCloud');
+
+    // Clear sync button position
+    localStorage.removeItem('carmaclouds_button_position');
+
+    console.log('✅ Reset DiceCloud sync button position');
+    sendResponse({ success: true, message: 'DiceCloud sync button position reset' });
+    return true;
   }
 });
 

@@ -1652,6 +1652,37 @@
         debug.error('❌ Error in endTurnFromDiscord:', endTurnError);
         sendResponse({ success: false, error: endTurnError.message });
       }
+    } else if (request.action === 'resetUIPositions') {
+      try {
+        debug.log('🔄 Resetting UI positions');
+
+        // Clear all position-related localStorage keys
+        const positionKeys = [
+          'rollcloud-sheet-toggle_position',
+          'rollcloud-status-bar_position',
+          'rollcloud-status-bar_size',
+          'rollcloud-status-bar_hidden',
+          'rollcloud-sheet-toggle_hidden',
+          'rollcloud-gm-mode-button_position'
+        ];
+
+        // Also clear any character sheet positions (they use dynamic keys)
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.includes('_position') || key.includes('_hidden')) && key.includes('rollcloud')) {
+            positionKeys.push(key);
+          }
+        }
+
+        // Remove all position keys
+        positionKeys.forEach(key => localStorage.removeItem(key));
+
+        debug.log('✅ Reset positions:', positionKeys);
+        sendResponse({ success: true, message: 'UI positions reset' });
+      } catch (resetError) {
+        debug.error('❌ Error resetting positions:', resetError);
+        sendResponse({ success: false, error: resetError.message });
+      }
     }
     } catch (outerError) {
       // Catch any unexpected errors to prevent breaking the message listener
