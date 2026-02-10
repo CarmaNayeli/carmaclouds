@@ -39,7 +39,7 @@
 }
 
 /* Dark theme */
-.foundcloud-simple[data-theme="dark"] {
+.foundcloud-sheet-simple[data-theme="dark"] {
   --bg-primary: #1a1a1a;
   --bg-secondary: #2d2d2d;
   --bg-tertiary: #3a3a3a;
@@ -73,7 +73,7 @@
 }
 
 /* Base Sheet Styles */
-.foundcloud-simple {
+.foundcloud-sheet-simple {
   font-family: 'Roboto', 'Signika', sans-serif;
   background: var(--bg-primary) !important;
   background-image: none !important;
@@ -83,7 +83,7 @@
   flex-direction: column;
 }
 
-.foundcloud-simple .systems-bar {
+.foundcloud-sheet-simple .systems-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -93,13 +93,13 @@
   gap: 10px;
 }
 
-.foundcloud-simple .theme-switcher {
+.foundcloud-sheet-simple .theme-switcher {
   display: flex;
   gap: 5px;
   align-items: center;
 }
 
-.foundcloud-simple .theme-btn {
+.foundcloud-sheet-simple .theme-btn {
   background: var(--bg-secondary);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
@@ -110,20 +110,20 @@
   transition: all 0.2s;
 }
 
-.foundcloud-simple .theme-btn:hover {
+.foundcloud-sheet-simple .theme-btn:hover {
   background: var(--accent-primary);
   color: var(--text-inverse);
   border-color: var(--accent-primary);
 }
 
-.foundcloud-simple .theme-btn.active {
+.foundcloud-sheet-simple .theme-btn.active {
   background: var(--accent-primary);
   color: var(--text-inverse);
   border-color: var(--accent-primary);
 }
 
-.foundcloud-simple .settings-btn,
-.foundcloud-simple .close-btn {
+.foundcloud-sheet-simple .settings-btn,
+.foundcloud-sheet-simple .close-btn {
   background: var(--bg-secondary);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
@@ -134,30 +134,30 @@
   transition: all 0.2s;
 }
 
-.foundcloud-simple .close-btn {
+.foundcloud-sheet-simple .close-btn {
   background: var(--accent-danger);
   color: var(--text-inverse);
   border: none;
 }
 
-.foundcloud-simple .close-btn:hover {
+.foundcloud-sheet-simple .close-btn:hover {
   background: #c0392b;
 }
 
-.foundcloud-simple .content-area {
+.foundcloud-sheet-simple .content-area {
   padding: 20px;
   overflow-y: auto;
   flex: 1;
 }
 
-.foundcloud-simple .header {
+.foundcloud-sheet-simple .header {
   text-align: center;
   margin-bottom: 20px;
   padding-bottom: 10px;
   border-bottom: 2px solid var(--accent-primary);
 }
 
-.foundcloud-simple .char-name-section {
+.foundcloud-sheet-simple .char-name-section {
   text-align: center;
   margin-bottom: 15px;
   font-size: 1.5em;
@@ -165,7 +165,7 @@
   color: var(--text-primary);
 }
 
-.foundcloud-simple .char-info-layer {
+.foundcloud-sheet-simple .char-info-layer {
   display: grid;
   gap: 10px;
   text-align: center;
@@ -173,15 +173,15 @@
   color: var(--text-primary);
 }
 
-.foundcloud-simple .layer-1 {
+.foundcloud-sheet-simple .layer-1 {
   grid-template-columns: repeat(4, 1fr);
 }
 
-.foundcloud-simple .layer-2 {
+.foundcloud-sheet-simple .layer-2 {
   grid-template-columns: repeat(5, 1fr);
 }
 
-.foundcloud-simple .layer-3 {
+.foundcloud-sheet-simple .layer-3 {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 15px;
@@ -189,36 +189,36 @@
   margin: 0 auto 12px auto;
 }
 
-.foundcloud-simple .stat-box {
+.foundcloud-sheet-simple .stat-box {
   padding: 10px;
   background: var(--bg-tertiary);
   border-radius: 6px;
 }
 
-.foundcloud-simple .stat-box.clickable {
+.foundcloud-sheet-simple .stat-box.clickable {
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.foundcloud-simple .stat-box.clickable:hover {
+.foundcloud-sheet-simple .stat-box.clickable:hover {
   background: var(--bg-card-hover);
   transform: translateY(-2px);
 }
 
-.foundcloud-simple .stat-label {
+.foundcloud-sheet-simple .stat-label {
   font-size: 0.8em;
   color: var(--text-secondary);
   margin-bottom: 3px;
 }
 
-.foundcloud-simple .stat-value {
+.foundcloud-sheet-simple .stat-value {
   font-size: 1.3em;
   font-weight: bold;
   color: var(--text-primary);
 }
 
-.foundcloud-simple .hp-box,
-.foundcloud-simple .initiative-box {
+.foundcloud-sheet-simple .hp-box,
+.foundcloud-sheet-simple .initiative-box {
   padding: 15px 20px;
   border-radius: 8px;
   cursor: pointer;
@@ -227,17 +227,17 @@
   text-align: center;
 }
 
-.foundcloud-simple .hp-box {
+.foundcloud-sheet-simple .hp-box {
   background: var(--accent-danger);
   color: var(--text-inverse);
 }
 
-.foundcloud-simple .initiative-box {
+.foundcloud-sheet-simple .initiative-box {
   background: var(--accent-info);
   color: var(--text-inverse);
 }
 
-.foundcloud-simple .rest-buttons {
+.foundcloud-sheet-simple .rest-buttons {
   display: flex;
   gap: 15px;
   margin-top: 12px;
@@ -248,7 +248,7 @@
   margin-right: auto;
 }
 
-.foundcloud-simple .rest-btn {
+.foundcloud-sheet-simple .rest-btn {
   background: var(--accent-info);
   color: var(--text-inverse);
   border: none;
@@ -260,20 +260,20 @@
   transition: all 0.2s;
 }
 
-.foundcloud-simple .rest-btn:hover {
+.foundcloud-sheet-simple .rest-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
 
-.foundcloud-simple .rest-btn.short {
+.foundcloud-sheet-simple .rest-btn.short {
   background: var(--accent-warning);
 }
 
-.foundcloud-simple .rest-btn.long {
+.foundcloud-sheet-simple .rest-btn.long {
   background: var(--accent-success);
 }
 
-.foundcloud-simple .advantage-toggle {
+.foundcloud-sheet-simple .advantage-toggle {
   flex: 1;
   padding: 10px;
   border: 2px solid transparent;
@@ -284,29 +284,29 @@
   transition: all 0.2s;
 }
 
-.foundcloud-simple .advantage-toggle[data-state="advantage"] {
+.foundcloud-sheet-simple .advantage-toggle[data-state="advantage"] {
   border-color: var(--accent-success);
   color: var(--accent-success);
 }
 
-.foundcloud-simple .advantage-toggle[data-state="normal"] {
+.foundcloud-sheet-simple .advantage-toggle[data-state="normal"] {
   border-color: var(--accent-primary);
   color: var(--accent-primary);
 }
 
-.foundcloud-simple .advantage-toggle[data-state="disadvantage"] {
+.foundcloud-sheet-simple .advantage-toggle[data-state="disadvantage"] {
   border-color: var(--accent-danger);
   color: var(--accent-danger);
 }
 
-.foundcloud-simple .advantage-toggle.active {
+.foundcloud-sheet-simple .advantage-toggle.active {
   background: var(--accent-primary);
   color: var(--text-inverse);
   border-color: var(--accent-primary);
 }
 
 /* Combat Section */
-.foundcloud-simple .combat-section {
+.foundcloud-sheet-simple .combat-section {
   background: var(--bg-secondary);
   padding: 15px;
   border-radius: 8px;
@@ -314,7 +314,7 @@
   border: 2px solid var(--border-color);
 }
 
-.foundcloud-simple .action-economy {
+.foundcloud-sheet-simple .action-economy {
   display: flex;
   gap: 10px;
   align-items: center;
@@ -322,7 +322,7 @@
   margin-bottom: 12px;
 }
 
-.foundcloud-simple .action-economy-item {
+.foundcloud-sheet-simple .action-economy-item {
   flex: 1;
   min-width: 70px;
   padding: 10px;
@@ -333,39 +333,39 @@
   border: 2px solid var(--accent-primary);
 }
 
-.foundcloud-simple .action-economy-item[data-used="false"] {
+.foundcloud-sheet-simple .action-economy-item[data-used="false"] {
   background: var(--accent-primary);
   opacity: 1;
   box-shadow: 0 0 10px rgba(255, 100, 0, 0.5);
 }
 
-.foundcloud-simple .action-economy-item[data-used="true"] {
+.foundcloud-sheet-simple .action-economy-item[data-used="true"] {
   background: var(--bg-tertiary);
   opacity: 0.4;
   box-shadow: none;
   border-color: var(--border-color);
 }
 
-.foundcloud-simple .action-economy-item:hover {
+.foundcloud-sheet-simple .action-economy-item:hover {
   transform: translateY(-2px);
 }
 
-.foundcloud-simple .action-icon {
+.foundcloud-sheet-simple .action-icon {
   font-size: 1.5em;
   margin-bottom: 4px;
 }
 
-.foundcloud-simple .action-label {
+.foundcloud-sheet-simple .action-label {
   font-size: 0.75em;
   font-weight: bold;
   color: var(--text-inverse);
 }
 
-.foundcloud-simple .action-economy-item[data-used="true"] .action-label {
+.foundcloud-sheet-simple .action-economy-item[data-used="true"] .action-label {
   color: var(--text-muted);
 }
 
-.foundcloud-simple .combat-reset-btn {
+.foundcloud-sheet-simple .combat-reset-btn {
   padding: 8px 12px;
   background: var(--accent-warning);
   color: var(--text-inverse);
@@ -377,19 +377,19 @@
   transition: all 0.2s;
 }
 
-.foundcloud-simple .combat-reset-btn:hover {
+.foundcloud-sheet-simple .combat-reset-btn:hover {
   background: var(--accent-danger);
   transform: scale(1.05);
 }
 
-.foundcloud-simple .combat-status-row {
+.foundcloud-sheet-simple .combat-status-row {
   display: flex;
   gap: 10px;
   align-items: center;
   flex-wrap: wrap;
 }
 
-.foundcloud-simple .concentration-indicator {
+.foundcloud-sheet-simple .concentration-indicator {
   flex: 1;
   min-width: 200px;
   padding: 8px 12px;
@@ -401,7 +401,7 @@
   gap: 8px;
 }
 
-.foundcloud-simple .concentration-drop-btn {
+.foundcloud-sheet-simple .concentration-drop-btn {
   background: var(--accent-danger);
   color: var(--text-inverse);
   border: none;
@@ -412,13 +412,13 @@
   transition: all 0.2s;
 }
 
-.foundcloud-simple .conditions-manager {
+.foundcloud-sheet-simple .conditions-manager {
   flex: 1;
   min-width: 200px;
   position: relative;
 }
 
-.foundcloud-simple .conditions-btn {
+.foundcloud-sheet-simple .conditions-btn {
   padding: 8px 16px;
   background: var(--accent-purple);
   color: var(--text-inverse);
@@ -431,7 +431,7 @@
   width: 100%;
 }
 
-.foundcloud-simple .conditions-dropdown {
+.foundcloud-sheet-simple .conditions-dropdown {
   position: absolute;
   top: 100%;
   left: 0;
@@ -446,7 +446,7 @@
   overflow-y: auto;
 }
 
-.foundcloud-simple .condition-option {
+.foundcloud-sheet-simple .condition-option {
   padding: 10px 12px;
   cursor: pointer;
   transition: background 0.2s;
@@ -456,18 +456,18 @@
   gap: 8px;
 }
 
-.foundcloud-simple .condition-option:hover {
+.foundcloud-sheet-simple .condition-option:hover {
   background: var(--bg-card-hover);
 }
 
-.foundcloud-simple .active-conditions {
+.foundcloud-sheet-simple .active-conditions {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
   margin-top: 8px;
 }
 
-.foundcloud-simple .condition-badge {
+.foundcloud-sheet-simple .condition-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -481,17 +481,17 @@
   transition: all 0.2s;
 }
 
-.foundcloud-simple .condition-badge:hover {
+.foundcloud-sheet-simple .condition-badge:hover {
   background: var(--accent-danger);
   transform: scale(1.05);
 }
 
 /* Sections */
-.foundcloud-simple .section {
+.foundcloud-sheet-simple .section {
   margin-bottom: 25px;
 }
 
-.foundcloud-simple .section h3 {
+.foundcloud-sheet-simple .section h3 {
   color: var(--text-primary);
   margin-bottom: 10px;
   cursor: pointer;
@@ -504,24 +504,24 @@
   transition: background 0.2s;
 }
 
-.foundcloud-simple .section h3:hover {
+.foundcloud-sheet-simple .section h3:hover {
   background: var(--bg-tertiary);
 }
 
-.foundcloud-simple .section-content {
+.foundcloud-sheet-simple .section-content {
   overflow: hidden;
   transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
   max-height: 5000px;
   opacity: 1;
 }
 
-.foundcloud-simple .grid {
+.foundcloud-sheet-simple .grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
   gap: 10px;
 }
 
-.foundcloud-simple .card {
+.foundcloud-sheet-simple .card {
   background: var(--bg-card);
   border: 1px solid var(--border-card);
   border-radius: 4px;
@@ -532,25 +532,25 @@
   position: relative;
 }
 
-.foundcloud-simple .card:hover {
+.foundcloud-sheet-simple .card:hover {
   background: var(--bg-card-hover);
   transform: translateY(-2px);
   box-shadow: 0 4px 8px var(--shadow-hover);
 }
 
-.foundcloud-simple .bonus {
+.foundcloud-sheet-simple .bonus {
   color: var(--accent-primary);
   font-weight: bold;
 }
 
-.foundcloud-simple .spell-slots-grid {
+.foundcloud-sheet-simple .spell-slots-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
   gap: 8px;
   margin-top: 10px;
 }
 
-.foundcloud-simple .spell-slot-card {
+.foundcloud-sheet-simple .spell-slot-card {
   background: var(--bg-action);
   border: 2px solid var(--accent-info);
   border-radius: 6px;
@@ -561,18 +561,18 @@
   transition: all 0.2s;
 }
 
-.foundcloud-simple .spell-slot-card:hover {
+.foundcloud-sheet-simple .spell-slot-card:hover {
   transform: translateY(-2px);
 }
 
-.foundcloud-simple .spell-slot-card.empty {
+.foundcloud-sheet-simple .spell-slot-card.empty {
   opacity: 0.5;
   border-color: var(--border-color);
   background: var(--bg-tertiary);
 }
 
-.foundcloud-simple .spell-card,
-.foundcloud-simple .action-card {
+.foundcloud-sheet-simple .spell-card,
+.foundcloud-sheet-simple .action-card {
   background: var(--bg-spell);
   border: 1px solid var(--border-spell);
   margin-bottom: 10px;
@@ -580,13 +580,13 @@
   border-radius: 4px;
 }
 
-.foundcloud-simple .action-card {
+.foundcloud-sheet-simple .action-card {
   background: var(--bg-action);
   border-color: var(--accent-danger);
 }
 
-.foundcloud-simple .spell-header,
-.foundcloud-simple .action-header {
+.foundcloud-sheet-simple .spell-header,
+.foundcloud-sheet-simple .action-header {
   display: flex;
   justify-content: space-between;
   cursor: pointer;
@@ -594,13 +594,13 @@
   align-items: flex-start;
 }
 
-.foundcloud-simple .spell-header:hover,
-.foundcloud-simple .action-header:hover {
+.foundcloud-sheet-simple .spell-header:hover,
+.foundcloud-sheet-simple .action-header:hover {
   background: var(--bg-feature);
 }
 
-.foundcloud-simple .spell-description,
-.foundcloud-simple .action-description {
+.foundcloud-sheet-simple .spell-description,
+.foundcloud-sheet-simple .action-description {
   display: none;
   margin-top: 10px;
   padding-top: 10px;
@@ -609,15 +609,15 @@
   overflow-y: auto;
 }
 
-.foundcloud-simple .spell-description.expanded,
-.foundcloud-simple .action-description.expanded {
+.foundcloud-sheet-simple .spell-description.expanded,
+.foundcloud-sheet-simple .action-description.expanded {
   display: block;
 }
 
-.foundcloud-simple .cast-btn,
-.foundcloud-simple .attack-btn,
-.foundcloud-simple .damage-btn,
-.foundcloud-simple .use-btn {
+.foundcloud-sheet-simple .cast-btn,
+.foundcloud-sheet-simple .attack-btn,
+.foundcloud-sheet-simple .damage-btn,
+.foundcloud-sheet-simple .use-btn {
   color: var(--text-inverse);
   border: none;
   padding: 5px 12px;
@@ -628,31 +628,31 @@
   transition: all 0.2s;
 }
 
-.foundcloud-simple .cast-btn {
+.foundcloud-sheet-simple .cast-btn {
   background: var(--accent-purple);
 }
 
-.foundcloud-simple .attack-btn {
+.foundcloud-sheet-simple .attack-btn {
   background: var(--accent-danger);
 }
 
-.foundcloud-simple .damage-btn {
+.foundcloud-sheet-simple .damage-btn {
   background: var(--accent-warning);
 }
 
-.foundcloud-simple .use-btn {
+.foundcloud-sheet-simple .use-btn {
   background: var(--accent-purple);
 }
 
-.foundcloud-simple .cast-btn:hover,
-.foundcloud-simple .attack-btn:hover,
-.foundcloud-simple .damage-btn:hover,
-.foundcloud-simple .use-btn:hover {
+.foundcloud-sheet-simple .cast-btn:hover,
+.foundcloud-sheet-simple .attack-btn:hover,
+.foundcloud-sheet-simple .damage-btn:hover,
+.foundcloud-sheet-simple .use-btn:hover {
   transform: translateY(-1px);
 }
 
-.foundcloud-simple .concentration-tag,
-.foundcloud-simple .ritual-tag {
+.foundcloud-sheet-simple .concentration-tag,
+.foundcloud-sheet-simple .ritual-tag {
   display: inline-block;
   padding: 2px 8px;
   border-radius: 12px;
@@ -662,16 +662,16 @@
   color: var(--text-inverse);
 }
 
-.foundcloud-simple .concentration-tag {
+.foundcloud-sheet-simple .concentration-tag {
   background: var(--accent-info);
 }
 
-.foundcloud-simple .ritual-tag {
+.foundcloud-sheet-simple .ritual-tag {
   background: var(--accent-purple);
 }
 
 /* Filter Buttons */
-.foundcloud-simple .filter-btn {
+.foundcloud-sheet-simple .filter-btn {
   display: inline-block;
   width: auto;
   background: var(--bg-tertiary);
@@ -686,12 +686,12 @@
   white-space: nowrap;
 }
 
-.foundcloud-simple .filter-btn:hover {
+.foundcloud-sheet-simple .filter-btn:hover {
   background: var(--bg-card-hover);
   transform: translateY(-1px);
 }
 
-.foundcloud-simple .filter-btn.active {
+.foundcloud-sheet-simple .filter-btn.active {
   background: var(--accent-primary);
   color: var(--text-inverse);
   border-color: var(--accent-primary);
@@ -699,25 +699,25 @@
 }
 
 /* Scrollbar */
-.foundcloud-simple .content-area::-webkit-scrollbar {
+.foundcloud-sheet-simple .content-area::-webkit-scrollbar {
   width: 10px;
 }
 
-.foundcloud-simple .content-area::-webkit-scrollbar-track {
+.foundcloud-sheet-simple .content-area::-webkit-scrollbar-track {
   background: var(--bg-tertiary);
 }
 
-.foundcloud-simple .content-area::-webkit-scrollbar-thumb {
+.foundcloud-sheet-simple .content-area::-webkit-scrollbar-thumb {
   background: var(--accent-primary);
   border-radius: 5px;
 }
 
-.foundcloud-simple .content-area::-webkit-scrollbar-thumb:hover {
+.foundcloud-sheet-simple .content-area::-webkit-scrollbar-thumb:hover {
   background: #ff8c5a;
 }
 
 /* ===== Status Bar (sticky bottom) ===== */
-.foundcloud-simple .status-bar {
+.foundcloud-sheet-simple .status-bar {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -729,7 +729,7 @@
 }
 
 /* HP Progress Bar */
-.foundcloud-simple .status-hp-section {
+.foundcloud-sheet-simple .status-hp-section {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -738,11 +738,11 @@
   max-width: 260px;
 }
 
-.foundcloud-simple .status-hp-icon {
+.foundcloud-sheet-simple .status-hp-icon {
   font-size: 16px;
 }
 
-.foundcloud-simple .status-hp-bar {
+.foundcloud-sheet-simple .status-hp-bar {
   flex: 1;
   height: 22px;
   background: var(--bg-tertiary);
@@ -752,21 +752,21 @@
   border: 1px solid var(--border-color);
 }
 
-.foundcloud-simple .status-hp-fill {
+.foundcloud-sheet-simple .status-hp-fill {
   height: 100%;
   background: linear-gradient(90deg, #27ae60, #2ecc71);
   transition: width 0.3s ease;
 }
 
-.foundcloud-simple .status-hp-fill.low {
+.foundcloud-sheet-simple .status-hp-fill.low {
   background: linear-gradient(90deg, #e67e22, #f39c12);
 }
 
-.foundcloud-simple .status-hp-fill.critical {
+.foundcloud-sheet-simple .status-hp-fill.critical {
   background: linear-gradient(90deg, #c0392b, #e74c3c);
 }
 
-.foundcloud-simple .status-hp-text {
+.foundcloud-sheet-simple .status-hp-text {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -780,12 +780,12 @@
 }
 
 /* Advantage Toggle (compact) */
-.foundcloud-simple .status-adv-section {
+.foundcloud-sheet-simple .status-adv-section {
   display: flex;
   gap: 3px;
 }
 
-.foundcloud-simple .status-adv-btn {
+.foundcloud-sheet-simple .status-adv-btn {
   padding: 4px 7px;
   border: 1px solid var(--border-color);
   border-radius: 4px;
@@ -796,30 +796,30 @@
   transition: all 0.15s;
 }
 
-.foundcloud-simple .status-adv-btn:hover {
+.foundcloud-sheet-simple .status-adv-btn:hover {
   border-color: var(--accent-primary);
 }
 
-.foundcloud-simple .status-adv-btn.active.adv {
+.foundcloud-sheet-simple .status-adv-btn.active.adv {
   background: var(--accent-success);
   border-color: var(--accent-success);
   color: white;
 }
 
-.foundcloud-simple .status-adv-btn.active.norm {
+.foundcloud-sheet-simple .status-adv-btn.active.norm {
   background: var(--accent-primary);
   border-color: var(--accent-primary);
   color: white;
 }
 
-.foundcloud-simple .status-adv-btn.active.dis {
+.foundcloud-sheet-simple .status-adv-btn.active.dis {
   background: var(--accent-danger);
   border-color: var(--accent-danger);
   color: white;
 }
 
 /* Concentration */
-.foundcloud-simple .status-conc-section {
+.foundcloud-sheet-simple .status-conc-section {
   display: flex;
   align-items: center;
   gap: 5px;
@@ -830,7 +830,7 @@
   font-size: 12px;
 }
 
-.foundcloud-simple .status-conc-spell {
+.foundcloud-sheet-simple .status-conc-spell {
   color: var(--accent-purple);
   font-weight: bold;
   max-width: 90px;
@@ -840,7 +840,7 @@
 }
 
 /* Spell Slots Summary */
-.foundcloud-simple .status-slots-section {
+.foundcloud-sheet-simple .status-slots-section {
   display: flex;
   align-items: center;
   gap: 5px;
@@ -854,7 +854,7 @@
 }
 
 /* Initiative */
-.foundcloud-simple .status-init-section {
+.foundcloud-sheet-simple .status-init-section {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -868,14 +868,14 @@
 }
 
 /* Active Conditions */
-.foundcloud-simple .status-conditions {
+.foundcloud-sheet-simple .status-conditions {
   display: flex;
   gap: 4px;
   flex-wrap: wrap;
   align-items: center;
 }
 
-.foundcloud-simple .status-condition-badge {
+.foundcloud-sheet-simple .status-condition-badge {
   padding: 2px 8px;
   background: var(--accent-purple);
   color: var(--text-inverse);
