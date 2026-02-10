@@ -96,6 +96,7 @@
       // Check if this is a damage roll and if there's a pending critical hit
       // Damage rolls have formulas with dice but no d20 (to exclude attack rolls)
       const isDamageRoll = rollData.formula && /\dd\d+/.test(rollData.formula) && !rollData.formula.includes('1d20');
+      let isCriticalHit = false;
 
       if (isDamageRoll) {
         try {
@@ -109,6 +110,7 @@
               debug.log('💥 Critical hit active! Doubling damage dice for:', rollData.name);
               rollData.formula = doubleDamageDice(rollData.formula);
               debug.log('💥 Doubled formula:', rollData.formula);
+              isCriticalHit = true;
 
               // Clear the crit flag after use
               await browserAPI.storage.local.remove('criticalHitPending');
@@ -120,6 +122,11 @@
         } catch (storageError) {
           debug.warn('⚠️ Could not check critical hit flag:', storageError);
         }
+      }
+
+      // Add critical hit indicator to roll name
+      if (isCriticalHit) {
+        rollData.name = `💥 CRITICAL HIT! ${rollData.name}`;
       }
 
       // Use pre-formatted message if it exists (for spells, actions, etc.)

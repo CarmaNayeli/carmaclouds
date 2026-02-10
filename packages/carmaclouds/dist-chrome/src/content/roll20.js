@@ -60,6 +60,7 @@
           return { success: false, error: "No roll data provided" };
         }
         const isDamageRoll = rollData.formula && /\dd\d+/.test(rollData.formula) && !rollData.formula.includes("1d20");
+        let isCriticalHit = false;
         if (isDamageRoll) {
           try {
             const storage = await browserAPI.storage.local.get("criticalHitPending");
@@ -70,6 +71,7 @@
                 debug.log("\u{1F4A5} Critical hit active! Doubling damage dice for:", rollData.name);
                 rollData.formula = doubleDamageDice(rollData.formula);
                 debug.log("\u{1F4A5} Doubled formula:", rollData.formula);
+                isCriticalHit = true;
                 await browserAPI.storage.local.remove("criticalHitPending");
               } else {
                 debug.log("\u23F1\uFE0F Critical hit flag expired, clearing");
@@ -79,6 +81,9 @@
           } catch (storageError) {
             debug.warn("\u26A0\uFE0F Could not check critical hit flag:", storageError);
           }
+        }
+        if (isCriticalHit) {
+          rollData.name = `\u{1F4A5} CRITICAL HIT! ${rollData.name}`;
         }
         let formattedMessage;
         try {
