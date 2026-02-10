@@ -93,22 +93,127 @@
         return { success: false, error: 'No roll data provided' };
       }
 
-      // Check if this is a damage roll and if there's a pending critical hit
+      // Check if this is a damage roll or attack roll and apply modifiers/crit
       // Damage rolls have formulas with dice but no d20 (to exclude attack rolls)
       // OR have 'damage' in the roll name
       const hasDiceInFormula = rollData.formula && /\dd\d+/.test(rollData.formula);
       const hasD20 = rollData.formula && rollData.formula.toLowerCase().includes('d20');
       const hasDamageInName = rollData.name && rollData.name.toLowerCase().includes('damage');
+      const hasAttackInName = rollData.name && rollData.name.toLowerCase().includes('attack');
       const isDamageRoll = (hasDiceInFormula && !hasD20) || hasDamageInName;
+      const isAttackRoll = hasD20 && hasAttackInName && !hasDamageInName;
 
-      debug.log('🔍 Checking if damage roll:', {
+      debug.log('🔍 Checking roll type:', {
         formula: rollData.formula,
         name: rollData.name,
         hasDiceInFormula,
         hasD20,
         hasDamageInName,
-        isDamageRoll
+        hasAttackInName,
+        isDamageRoll,
+        isAttackRoll
       });
+
+      // Apply missing modifiers to rolls
+      try {
+        const storage = await browserAPI.storage.local.get('characterProfiles');
+        const characterProfiles = storage.characterProfiles || {};
+
+        // Find the character profile that matches the roll
+        let characterData = null;
+        const characterNameLower = (rollData.characterName || '').toLowerCase();
+
+        for (const [key, profile] of Object.entries(characterProfiles)) {
+          if (profile.name && profile.name.toLowerCase() === characterNameLower) {
+            characterData = profile;
+            break;
+          }
+        }
+
+        if (characterData) {
+          debug.log('📊 Found character data for modifier application:', characterData.name);
+
+          // Check if formula already has modifiers (patterns like "+X" or "-X")
+          const hasModifier = /[+\-]\s*\d+/.test(rollData.formula);
+
+          if (isDamageRoll && !hasModifier) {
+            // Apply ability modifier to damage rolls
+            const attributeMods = characterData.attributeMods || {};
+            const strMod = attributeMods.strength || attributeMods.strengthMod || 0;
+            const dexMod = attributeMods.dexterity || attributeMods.dexterityMod || 0;
+            const proficiencyBonus = characterData.proficiencyBonus || 0;
+
+            // Determine which modifier to use based on attack type
+            const rollNameLower = rollData.name.toLowerCase();
+            const isRangedOrFinesse = rollNameLower.includes('bow') ||
+                                     rollNameLower.includes('crossbow') ||
+                                     rollNameLower.includes('dart') ||
+                                     rollNameLower.includes('sling') ||
+                                     rollNameLower.includes('rapier') ||
+                                     rollNameLower.includes('shortsword') ||
+                                     rollNameLower.includes('scimitar') ||
+                                     rollNameLower.includes('dagger') ||
+                                     rollNameLower.includes('whip');
+
+            const abilityMod = isRangedOrFinesse ? dexMod : Math.max(strMod, dexMod);
+
+            // Check if character has features that add proficiency to damage
+            const addProficiency = hasProficiencyToDamageFeature(characterData, rollData.name);
+            const totalModifier = addProficiency ? abilityMod + proficiencyBonus : abilityMod;
+
+            if (totalModifier !== 0) {
+              if (totalModifier > 0) {
+                rollData.formula = `${rollData.formula} + ${totalModifier}`;
+                if (addProficiency) {
+                  debug.log(`✨ Added +${totalModifier} (ability + proficiency) to damage roll (feature detected)`);
+                } else {
+                  debug.log(`✨ Added +${totalModifier} ability modifier to damage roll`);
+                }
+              } else {
+                rollData.formula = `${rollData.formula} - ${Math.abs(totalModifier)}`;
+                debug.log(`✨ Added ${totalModifier} modifier to damage roll`);
+              }
+            }
+          }
+
+          if (isAttackRoll && !hasModifier) {
+            // Apply proficiency bonus and ability modifier to attack rolls
+            const proficiencyBonus = characterData.proficiencyBonus || 0;
+            const attributeMods = characterData.attributeMods || {};
+            const strMod = attributeMods.strength || attributeMods.strengthMod || 0;
+            const dexMod = attributeMods.dexterity || attributeMods.dexterityMod || 0;
+
+            // Determine which modifier to use based on attack type
+            const rollNameLower = rollData.name.toLowerCase();
+            const isRangedOrFinesse = rollNameLower.includes('bow') ||
+                                     rollNameLower.includes('crossbow') ||
+                                     rollNameLower.includes('dart') ||
+                                     rollNameLower.includes('sling') ||
+                                     rollNameLower.includes('rapier') ||
+                                     rollNameLower.includes('shortsword') ||
+                                     rollNameLower.includes('scimitar') ||
+                                     rollNameLower.includes('dagger') ||
+                                     rollNameLower.includes('whip');
+
+            const abilityMod = isRangedOrFinesse ? dexMod : Math.max(strMod, dexMod);
+            const totalModifier = abilityMod + proficiencyBonus;
+
+            if (totalModifier !== 0) {
+              if (totalModifier > 0) {
+                rollData.formula = `${rollData.formula} + ${totalModifier}`;
+                debug.log(`✨ Added +${totalModifier} (ability + proficiency) to attack roll`);
+              } else {
+                rollData.formula = `${rollData.formula} - ${Math.abs(totalModifier)}`;
+                debug.log(`✨ Added ${totalModifier} (ability + proficiency) to attack roll`);
+              }
+            }
+          }
+        } else {
+          debug.log('⚠️ No character data found for modifier application');
+        }
+      } catch (error) {
+        debug.warn('⚠️ Error retrieving character data for modifiers:', error);
+      }
 
       let isCriticalHit = false;
 
@@ -200,6 +305,56 @@
       const doubledCount = parseInt(count) * 2;
       return `${doubledCount}d${sides}`;
     });
+  }
+
+  /**
+   * Check if character has features that add proficiency bonus to damage
+   * Returns true if character has features like Hexblade's Curse, Kensei Weapons, etc.
+   */
+  function hasProficiencyToDamageFeature(characterData, rollName) {
+    if (!characterData) return false;
+
+    // Check if character has actions with proficiency-to-damage features
+    const actions = characterData.actions || [];
+    const rollNameLower = rollName.toLowerCase();
+
+    // Keywords that indicate proficiency should be added to damage
+    const proficiencyDamageFeatures = [
+      'hexblade',
+      'hex warrior',
+      'kensei',
+      'divine strike',
+      'potent cantrip',
+      'deft strike',
+      'sharpshooter', // -5/+10 feature, but some tables use proficiency instead
+      'great weapon master' // Similar to sharpshooter
+    ];
+
+    // Check if the roll name or action tags include these features
+    for (const feature of proficiencyDamageFeatures) {
+      if (rollNameLower.includes(feature)) {
+        return true;
+      }
+    }
+
+    // Check character's actions for features with these keywords
+    for (const action of actions) {
+      const actionName = (action.name || '').toLowerCase();
+      const actionSummary = (action.summary || '').toLowerCase();
+      const actionDescription = (action.description || '').toLowerCase();
+      const actionTags = action.tags || [];
+
+      for (const feature of proficiencyDamageFeatures) {
+        if (actionName.includes(feature) ||
+            actionSummary.includes(feature) ||
+            actionDescription.includes(feature) ||
+            actionTags.some(tag => typeof tag === 'string' && tag.toLowerCase().includes(feature))) {
+          return true;
+        }
+      }
+    }
+
+    return false;
   }
 
   /**
@@ -927,20 +1082,126 @@
         color: request.color || request.roll?.color
       };
 
-      // Check for critical hit on damage rolls (async operation)
+      // Check for critical hit on damage rolls and apply missing modifiers (async operation)
       (async () => {
-        // Check if this is a damage roll and apply crit if needed
+        // Check if this is a damage roll or attack roll
         const hasDiceInFormula = rollData.formula && /\dd\d+/.test(rollData.formula);
         const hasD20 = rollData.formula && rollData.formula.toLowerCase().includes('d20');
         const hasDamageInName = rollData.name && rollData.name.toLowerCase().includes('damage');
+        const hasAttackInName = rollData.name && rollData.name.toLowerCase().includes('attack');
         const isDamageRoll = (hasDiceInFormula && !hasD20) || hasDamageInName;
+        const isAttackRoll = hasD20 && hasAttackInName && !hasDamageInName;
 
-        debug.log('🔍 Checking if damage roll (rollFromPopout):', {
+        debug.log('🔍 Checking roll type (rollFromPopout):', {
           formula: rollData.formula,
           name: rollData.name,
-          isDamageRoll
+          isDamageRoll,
+          isAttackRoll
         });
 
+        // Retrieve character data to apply missing modifiers
+        try {
+          const storage = await browserAPI.storage.local.get('characterProfiles');
+          const characterProfiles = storage.characterProfiles || {};
+
+          // Find the character profile that matches the roll
+          let characterData = null;
+          const characterNameLower = (rollData.characterName || '').toLowerCase();
+
+          for (const [key, profile] of Object.entries(characterProfiles)) {
+            if (profile.name && profile.name.toLowerCase() === characterNameLower) {
+              characterData = profile;
+              break;
+            }
+          }
+
+          if (characterData) {
+            debug.log('📊 Found character data for modifier application:', characterData.name);
+
+            // Check if formula already has modifiers (patterns like "+X" or "-X")
+            const hasModifier = /[+\-]\s*\d+/.test(rollData.formula);
+
+            if (isDamageRoll && !hasModifier) {
+              // Apply ability modifier to damage rolls
+              const attributeMods = characterData.attributeMods || {};
+              const strMod = attributeMods.strength || attributeMods.strengthMod || 0;
+              const dexMod = attributeMods.dexterity || attributeMods.dexterityMod || 0;
+              const proficiencyBonus = characterData.proficiencyBonus || 0;
+
+              // Determine which modifier to use based on attack type
+              // Check if it's a ranged or finesse weapon (use dex), otherwise use str
+              const rollNameLower = rollData.name.toLowerCase();
+              const isRangedOrFinesse = rollNameLower.includes('bow') ||
+                                       rollNameLower.includes('crossbow') ||
+                                       rollNameLower.includes('dart') ||
+                                       rollNameLower.includes('sling') ||
+                                       rollNameLower.includes('rapier') ||
+                                       rollNameLower.includes('shortsword') ||
+                                       rollNameLower.includes('scimitar') ||
+                                       rollNameLower.includes('dagger') ||
+                                       rollNameLower.includes('whip');
+
+              const abilityMod = isRangedOrFinesse ? dexMod : Math.max(strMod, dexMod);
+
+              // Check if character has features that add proficiency to damage
+              const addProficiency = hasProficiencyToDamageFeature(characterData, rollData.name);
+              const totalModifier = addProficiency ? abilityMod + proficiencyBonus : abilityMod;
+
+              if (totalModifier !== 0) {
+                if (totalModifier > 0) {
+                  rollData.formula = `${rollData.formula} + ${totalModifier}`;
+                  if (addProficiency) {
+                    debug.log(`✨ Added +${totalModifier} (ability + proficiency) to damage roll (feature detected)`);
+                  } else {
+                    debug.log(`✨ Added +${totalModifier} ability modifier to damage roll`);
+                  }
+                } else {
+                  rollData.formula = `${rollData.formula} - ${Math.abs(totalModifier)}`;
+                  debug.log(`✨ Added ${totalModifier} modifier to damage roll`);
+                }
+              }
+            }
+
+            if (isAttackRoll && !hasModifier) {
+              // Apply proficiency bonus and ability modifier to attack rolls
+              const proficiencyBonus = characterData.proficiencyBonus || 0;
+              const attributeMods = characterData.attributeMods || {};
+              const strMod = attributeMods.strength || attributeMods.strengthMod || 0;
+              const dexMod = attributeMods.dexterity || attributeMods.dexterityMod || 0;
+
+              // Determine which modifier to use based on attack type
+              const rollNameLower = rollData.name.toLowerCase();
+              const isRangedOrFinesse = rollNameLower.includes('bow') ||
+                                       rollNameLower.includes('crossbow') ||
+                                       rollNameLower.includes('dart') ||
+                                       rollNameLower.includes('sling') ||
+                                       rollNameLower.includes('rapier') ||
+                                       rollNameLower.includes('shortsword') ||
+                                       rollNameLower.includes('scimitar') ||
+                                       rollNameLower.includes('dagger') ||
+                                       rollNameLower.includes('whip');
+
+              const abilityMod = isRangedOrFinesse ? dexMod : Math.max(strMod, dexMod);
+              const totalModifier = abilityMod + proficiencyBonus;
+
+              if (totalModifier !== 0) {
+                if (totalModifier > 0) {
+                  rollData.formula = `${rollData.formula} + ${totalModifier}`;
+                  debug.log(`✨ Added +${totalModifier} (ability + proficiency) to attack roll`);
+                } else {
+                  rollData.formula = `${rollData.formula} - ${Math.abs(totalModifier)}`;
+                  debug.log(`✨ Added ${totalModifier} (ability + proficiency) to attack roll`);
+                }
+              }
+            }
+          } else {
+            debug.log('⚠️ No character data found for modifier application');
+          }
+        } catch (error) {
+          debug.warn('⚠️ Error retrieving character data for modifiers:', error);
+        }
+
+        // Check for critical hit on damage rolls
         if (isDamageRoll) {
           try {
             const storage = await browserAPI.storage.local.get('criticalHitPending');
