@@ -33,8 +33,8 @@
           reject(e);
         }
       }
-      function step(result) {
-        result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
+      function step(result2) {
+        result2.done ? resolve(result2.value) : adopt(result2.value).then(fulfilled, rejected);
       }
       step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
@@ -1742,8 +1742,8 @@ Suggested solution: ${env.workaround}`;
     }
     decode(rawPayload, callback) {
       if (this._isArrayBuffer(rawPayload)) {
-        let result = this._binaryDecode(rawPayload);
-        return callback(result);
+        let result2 = this._binaryDecode(rawPayload);
+        return callback(result2);
       }
       if (typeof rawPayload === "string") {
         const jsonPayload = JSON.parse(rawPayload);
@@ -3172,9 +3172,9 @@ Option 2: Install and provide the "ws" package:
     push(data) {
       const { topic, event, payload, ref } = data;
       const callback = () => {
-        this.encode(data, (result) => {
+        this.encode(data, (result2) => {
           var _a;
-          (_a = this.conn) === null || _a === void 0 ? void 0 : _a.send(result);
+          (_a = this.conn) === null || _a === void 0 ? void 0 : _a.send(result2);
         });
       };
       this.log("push", `${topic} ${event} (${ref})`, payload);
@@ -4249,12 +4249,12 @@ Option 2: Install and provide the "ws" package:
       return item.map((el) => recursiveToCamel(el));
     else if (typeof item === "function" || item !== Object(item))
       return item;
-    const result = {};
+    const result2 = {};
     Object.entries(item).forEach(([key, value]) => {
       const newKey = key.replace(/([-_][a-z])/gi, (c) => c.toUpperCase().replace(/[-_]/g, ""));
-      result[newKey] = recursiveToCamel(value);
+      result2[newKey] = recursiveToCamel(value);
     });
-    return result;
+    return result2;
   };
   var isValidBucketName = (bucketName) => {
     if (!bucketName || typeof bucketName !== "string")
@@ -4366,19 +4366,19 @@ Option 2: Install and provide the "ws" package:
   };
   async function _handleRequest(fetcher, method, url, options, parameters, body, namespace) {
     return new Promise((resolve, reject) => {
-      fetcher(url, _getRequestParams(method, options, parameters, body)).then((result) => {
-        if (!result.ok)
-          throw result;
+      fetcher(url, _getRequestParams(method, options, parameters, body)).then((result2) => {
+        if (!result2.ok)
+          throw result2;
         if (options === null || options === void 0 ? void 0 : options.noResolveJson)
-          return result;
+          return result2;
         if (namespace === "vectors") {
-          const contentType = result.headers.get("content-type");
-          if (result.headers.get("content-length") === "0" || result.status === 204)
+          const contentType = result2.headers.get("content-type");
+          if (result2.headers.get("content-length") === "0" || result2.status === 204)
             return {};
           if (!contentType || !contentType.includes("application/json"))
             return {};
         }
-        return result.json();
+        return result2.json();
       }).then((data) => resolve(data)).catch((error) => handleError(error, reject, options, namespace));
     });
   }
@@ -6850,30 +6850,30 @@ Option 2: Install and provide the "ws" package:
     }
   }
   function base64UrlToUint8Array(str) {
-    const result = [];
+    const result2 = [];
     const state = { queue: 0, queuedBits: 0 };
     const onByte = (byte) => {
-      result.push(byte);
+      result2.push(byte);
     };
     for (let i = 0; i < str.length; i += 1) {
       byteFromBase64URL(str.charCodeAt(i), state, onByte);
     }
-    return new Uint8Array(result);
+    return new Uint8Array(result2);
   }
   function stringToUint8Array(str) {
-    const result = [];
-    stringToUTF8(str, (byte) => result.push(byte));
-    return new Uint8Array(result);
+    const result2 = [];
+    stringToUTF8(str, (byte) => result2.push(byte));
+    return new Uint8Array(result2);
   }
   function bytesToBase64URL(bytes) {
-    const result = [];
+    const result2 = [];
     const state = { queue: 0, queuedBits: 0 };
     const onChar = (char) => {
-      result.push(char);
+      result2.push(char);
     };
     bytes.forEach((byte) => byteToBase64URL(byte, state, onChar));
     byteToBase64URL(null, state, onChar);
-    return result.join("");
+    return result2.join("");
   }
 
   // ../../node_modules/@supabase/auth-js/dist/module/lib/helpers.js
@@ -6916,21 +6916,21 @@ Option 2: Install and provide the "ws" package:
     return localStorageWriteTests.writable;
   };
   function parseParametersFromURL(href) {
-    const result = {};
+    const result2 = {};
     const url = new URL(href);
     if (url.hash && url.hash[0] === "#") {
       try {
         const hashSearchParams = new URLSearchParams(url.hash.substring(1));
         hashSearchParams.forEach((value, key) => {
-          result[key] = value;
+          result2[key] = value;
         });
       } catch (e) {
       }
     }
     url.searchParams.forEach((value, key) => {
-      result[key] = value;
+      result2[key] = value;
     });
-    return result;
+    return result2;
   }
   var resolveFetch3 = (customFetch) => {
     if (customFetch) {
@@ -6970,23 +6970,23 @@ Option 2: Install and provide the "ws" package:
   };
   Deferred.promiseConstructor = Promise;
   function decodeJWT(token) {
-    const parts = token.split(".");
-    if (parts.length !== 3) {
+    const parts2 = token.split(".");
+    if (parts2.length !== 3) {
       throw new AuthInvalidJwtError("Invalid JWT structure");
     }
-    for (let i = 0; i < parts.length; i++) {
-      if (!BASE64URL_REGEX.test(parts[i])) {
+    for (let i = 0; i < parts2.length; i++) {
+      if (!BASE64URL_REGEX.test(parts2[i])) {
         throw new AuthInvalidJwtError("JWT not in base64url format");
       }
     }
     const data = {
       // using base64url lib
-      header: JSON.parse(stringFromBase64URL(parts[0])),
-      payload: JSON.parse(stringFromBase64URL(parts[1])),
-      signature: base64UrlToUint8Array(parts[2]),
+      header: JSON.parse(stringFromBase64URL(parts2[0])),
+      payload: JSON.parse(stringFromBase64URL(parts2[1])),
+      signature: base64UrlToUint8Array(parts2[2]),
       raw: {
-        header: parts[0],
-        payload: parts[1]
+        header: parts2[0],
+        payload: parts2[1]
       }
     };
     return data;
@@ -7002,9 +7002,9 @@ Option 2: Install and provide the "ws" package:
       (async () => {
         for (let attempt = 0; attempt < Infinity; attempt++) {
           try {
-            const result = await fn(attempt);
-            if (!isRetryable(attempt, null, result)) {
-              accept(result);
+            const result2 = await fn(attempt);
+            if (!isRetryable(attempt, null, result2)) {
+              accept(result2);
               return;
             }
           } catch (e) {
@@ -7224,21 +7224,21 @@ Option 2: Install and provide the "ws" package:
   }
   async function _handleRequest2(fetcher, method, url, options, parameters, body) {
     const requestParams = _getRequestParams2(method, options, parameters, body);
-    let result;
+    let result2;
     try {
-      result = await fetcher(url, Object.assign({}, requestParams));
+      result2 = await fetcher(url, Object.assign({}, requestParams));
     } catch (e) {
       console.error(e);
       throw new AuthRetryableFetchError(_getErrorMessage2(e), 0);
     }
-    if (!result.ok) {
-      await handleError2(result);
+    if (!result2.ok) {
+      await handleError2(result2);
     }
     if (options === null || options === void 0 ? void 0 : options.noResolveJson) {
-      return result;
+      return result2;
     }
     try {
-      return await result.json();
+      return await result2.json();
     } catch (e) {
       await handleError2(e);
     }
@@ -7785,8 +7785,8 @@ Option 2: Install and provide the "ws" package:
         } else {
           if (internals.debug) {
             try {
-              const result = await globalThis.navigator.locks.query();
-              console.log("@supabase/gotrue-js: Navigator LockManager state", JSON.stringify(result, null, "  "));
+              const result2 = await globalThis.navigator.locks.query();
+              console.log("@supabase/gotrue-js: Navigator LockManager state", JSON.stringify(result2, null, "  "));
             } catch (e) {
               console.warn("@supabase/gotrue-js: Error when querying Navigator LockManager state", e);
             }
@@ -8105,15 +8105,15 @@ ${suffix}`;
     );
     const challenge = base64UrlToUint8Array(challengeStr).buffer;
     const user = Object.assign(Object.assign({}, userOpts), { id: base64UrlToUint8Array(userOpts.id).buffer });
-    const result = Object.assign(Object.assign({}, restOptions), {
+    const result2 = Object.assign(Object.assign({}, restOptions), {
       challenge,
       user
     });
     if (excludeCredentials && excludeCredentials.length > 0) {
-      result.excludeCredentials = new Array(excludeCredentials.length);
+      result2.excludeCredentials = new Array(excludeCredentials.length);
       for (let i = 0; i < excludeCredentials.length; i++) {
         const cred = excludeCredentials[i];
-        result.excludeCredentials[i] = Object.assign(Object.assign({}, cred), {
+        result2.excludeCredentials[i] = Object.assign(Object.assign({}, cred), {
           id: base64UrlToUint8Array(cred.id).buffer,
           type: cred.type || "public-key",
           // Cast transports to handle future transport types like "cable"
@@ -8121,7 +8121,7 @@ ${suffix}`;
         });
       }
     }
-    return result;
+    return result2;
   }
   function deserializeCredentialRequestOptions(options) {
     if (!options) {
@@ -8135,12 +8135,12 @@ ${suffix}`;
       ["challenge", "allowCredentials"]
     );
     const challenge = base64UrlToUint8Array(challengeStr).buffer;
-    const result = Object.assign(Object.assign({}, restOptions), { challenge });
+    const result2 = Object.assign(Object.assign({}, restOptions), { challenge });
     if (allowCredentials && allowCredentials.length > 0) {
-      result.allowCredentials = new Array(allowCredentials.length);
+      result2.allowCredentials = new Array(allowCredentials.length);
       for (let i = 0; i < allowCredentials.length; i++) {
         const cred = allowCredentials[i];
-        result.allowCredentials[i] = Object.assign(Object.assign({}, cred), {
+        result2.allowCredentials[i] = Object.assign(Object.assign({}, cred), {
           id: base64UrlToUint8Array(cred.id).buffer,
           type: cred.type || "public-key",
           // Cast transports to handle future transport types like "cable"
@@ -8148,7 +8148,7 @@ ${suffix}`;
         });
       }
     }
-    return result;
+    return result2;
   }
   function serializeCredentialCreationResponse(credential) {
     var _a;
@@ -8281,7 +8281,7 @@ ${suffix}`;
   function deepMerge(...sources) {
     const isObject = (val) => val !== null && typeof val === "object" && !Array.isArray(val);
     const isArrayBufferLike = (val) => val instanceof ArrayBuffer || ArrayBuffer.isView(val);
-    const result = {};
+    const result2 = {};
     for (const source of sources) {
       if (!source)
         continue;
@@ -8290,22 +8290,22 @@ ${suffix}`;
         if (value === void 0)
           continue;
         if (Array.isArray(value)) {
-          result[key] = value;
+          result2[key] = value;
         } else if (isArrayBufferLike(value)) {
-          result[key] = value;
+          result2[key] = value;
         } else if (isObject(value)) {
-          const existing = result[key];
+          const existing = result2[key];
           if (isObject(existing)) {
-            result[key] = deepMerge(existing, value);
+            result2[key] = deepMerge(existing, value);
           } else {
-            result[key] = deepMerge(value);
+            result2[key] = deepMerge(value);
           }
         } else {
-          result[key] = value;
+          result2[key] = value;
         }
       }
     }
-    return result;
+    return result2;
   }
   function mergeCredentialCreationOptions(baseOptions, overrides) {
     return deepMerge(DEFAULT_CREATION_OPTIONS, baseOptions, overrides || {});
@@ -8753,11 +8753,11 @@ ${suffix}`;
      * and the provided result contains a non-nullish error, the error is thrown instead of
      * being returned. This ensures consistent behavior across all public API methods.
      */
-    _returnResult(result) {
-      if (this.throwOnError && result && result.error) {
-        throw result.error;
+    _returnResult(result2) {
+      if (this.throwOnError && result2 && result2.error) {
+        throw result2.error;
       }
-      return result;
+      return result2;
     }
     _logPrefix() {
       return `GoTrueClient@${this.storageKey}:${this.instanceID} (${version3}) ${(/* @__PURE__ */ new Date()).toISOString()}`;
@@ -9444,15 +9444,15 @@ ${suffix}`;
           ;
           [codeChallenge, codeChallengeMethod] = await getCodeChallengeAndMethod(this.storage, this.storageKey);
         }
-        const result = await _request(this.fetch, "POST", `${this.url}/sso`, {
+        const result2 = await _request(this.fetch, "POST", `${this.url}/sso`, {
           body: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, "providerId" in params ? { provider_id: params.providerId } : null), "domain" in params ? { domain: params.domain } : null), { redirect_to: (_b = (_a = params.options) === null || _a === void 0 ? void 0 : _a.redirectTo) !== null && _b !== void 0 ? _b : void 0 }), ((_c = params === null || params === void 0 ? void 0 : params.options) === null || _c === void 0 ? void 0 : _c.captchaToken) ? { gotrue_meta_security: { captcha_token: params.options.captchaToken } } : null), { skip_http_redirect: true, code_challenge: codeChallenge, code_challenge_method: codeChallengeMethod }),
           headers: this.headers,
           xform: _ssoResponse
         });
-        if (((_d = result.data) === null || _d === void 0 ? void 0 : _d.url) && isBrowser() && !((_e = params.options) === null || _e === void 0 ? void 0 : _e.skipBrowserRedirect)) {
-          window.location.assign(result.data.url);
+        if (((_d = result2.data) === null || _d === void 0 ? void 0 : _d.url) && isBrowser() && !((_e = params.options) === null || _e === void 0 ? void 0 : _e.skipBrowserRedirect)) {
+          window.location.assign(result2.data.url);
         }
-        return this._returnResult(result);
+        return this._returnResult(result2);
       } catch (error) {
         await removeItemAsync(this.storage, `${this.storageKey}-code-verifier`);
         if (isAuthError(error)) {
@@ -9473,8 +9473,8 @@ ${suffix}`;
     }
     async _reauthenticate() {
       try {
-        return await this._useSession(async (result) => {
-          const { data: { session }, error: sessionError } = result;
+        return await this._useSession(async (result2) => {
+          const { data: { session }, error: sessionError } = result2;
           if (sessionError)
             throw sessionError;
           if (!session)
@@ -9546,12 +9546,12 @@ ${suffix}`;
      */
     async getSession() {
       await this.initializePromise;
-      const result = await this._acquireLock(this.lockAcquireTimeout, async () => {
-        return this._useSession(async (result2) => {
-          return result2;
+      const result2 = await this._acquireLock(this.lockAcquireTimeout, async () => {
+        return this._useSession(async (result3) => {
+          return result3;
         });
       });
-      return result;
+      return result2;
     }
     /**
      * Acquires a global lock based on the storage key.
@@ -9561,36 +9561,36 @@ ${suffix}`;
       try {
         if (this.lockAcquired) {
           const last = this.pendingInLock.length ? this.pendingInLock[this.pendingInLock.length - 1] : Promise.resolve();
-          const result = (async () => {
+          const result2 = (async () => {
             await last;
             return await fn();
           })();
           this.pendingInLock.push((async () => {
             try {
-              await result;
+              await result2;
             } catch (e) {
             }
           })());
-          return result;
+          return result2;
         }
         return await this.lock(`lock:${this.storageKey}`, acquireTimeout, async () => {
           this._debug("#_acquireLock", "lock acquired for storage key", this.storageKey);
           try {
             this.lockAcquired = true;
-            const result = fn();
+            const result2 = fn();
             this.pendingInLock.push((async () => {
               try {
-                await result;
+                await result2;
               } catch (e) {
               }
             })());
-            await result;
+            await result2;
             while (this.pendingInLock.length) {
               const waitOn = [...this.pendingInLock];
               await Promise.all(waitOn);
               this.pendingInLock.splice(0, waitOn.length);
             }
-            return await result;
+            return await result2;
           } finally {
             this._debug("#_acquireLock", "lock released for storage key", this.storageKey);
             this.lockAcquired = false;
@@ -9609,8 +9609,8 @@ ${suffix}`;
     async _useSession(fn) {
       this._debug("#_useSession", "begin");
       try {
-        const result = await this.__loadSession();
-        return await fn(result);
+        const result2 = await this.__loadSession();
+        return await fn(result2);
       } finally {
         this._debug("#_useSession", "end");
       }
@@ -9681,13 +9681,13 @@ ${suffix}`;
         return await this._getUser(jwt);
       }
       await this.initializePromise;
-      const result = await this._acquireLock(this.lockAcquireTimeout, async () => {
+      const result2 = await this._acquireLock(this.lockAcquireTimeout, async () => {
         return await this._getUser();
       });
-      if (result.data.user) {
+      if (result2.data.user) {
         this.suppressGetSessionWarning = true;
       }
-      return result;
+      return result2;
     }
     async _getUser(jwt) {
       try {
@@ -9698,9 +9698,9 @@ ${suffix}`;
             xform: _userResponse
           });
         }
-        return await this._useSession(async (result) => {
+        return await this._useSession(async (result2) => {
           var _a, _b, _c;
-          const { data, error } = result;
+          const { data, error } = result2;
           if (error) {
             throw error;
           }
@@ -9735,8 +9735,8 @@ ${suffix}`;
     }
     async _updateUser(attributes, options = {}) {
       try {
-        return await this._useSession(async (result) => {
-          const { data: sessionData, error: sessionError } = result;
+        return await this._useSession(async (result2) => {
+          const { data: sessionData, error: sessionError } = result2;
           if (sessionError) {
             throw sessionError;
           }
@@ -9845,10 +9845,10 @@ ${suffix}`;
     }
     async _refreshSession(currentSession) {
       try {
-        return await this._useSession(async (result) => {
+        return await this._useSession(async (result2) => {
           var _a;
           if (!currentSession) {
-            const { data, error: error2 } = result;
+            const { data, error: error2 } = result2;
             if (error2) {
               throw error2;
             }
@@ -9989,9 +9989,9 @@ ${suffix}`;
       });
     }
     async _signOut({ scope } = { scope: "global" }) {
-      return await this._useSession(async (result) => {
+      return await this._useSession(async (result2) => {
         var _a;
-        const { data, error: sessionError } = result;
+        const { data, error: sessionError } = result2;
         if (sessionError && !isAuthSessionMissingError(sessionError)) {
           return this._returnResult({ error: sessionError });
         }
@@ -10032,10 +10032,10 @@ ${suffix}`;
       return { data: { subscription } };
     }
     async _emitInitialSession(id) {
-      return await this._useSession(async (result) => {
+      return await this._useSession(async (result2) => {
         var _a, _b;
         try {
-          const { data: { session }, error } = result;
+          const { data: { session }, error } = result2;
           if (error)
             throw error;
           await ((_a = this.stateChangeEmitters.get(id)) === null || _a === void 0 ? void 0 : _a.callback("INITIAL_SESSION", session));
@@ -10111,9 +10111,9 @@ ${suffix}`;
     async linkIdentityOAuth(credentials) {
       var _a;
       try {
-        const { data, error } = await this._useSession(async (result) => {
+        const { data, error } = await this._useSession(async (result2) => {
           var _a2, _b, _c, _d, _e;
-          const { data: data2, error: error2 } = result;
+          const { data: data2, error: error2 } = result2;
           if (error2)
             throw error2;
           const url = await this._getUrlForProvider(`${this.url}/user/identities/authorize`, credentials.provider, {
@@ -10144,10 +10144,10 @@ ${suffix}`;
       }
     }
     async linkIdentityIdToken(credentials) {
-      return await this._useSession(async (result) => {
+      return await this._useSession(async (result2) => {
         var _a;
         try {
-          const { error: sessionError, data: { session } } = result;
+          const { error: sessionError, data: { session } } = result2;
           if (sessionError)
             throw sessionError;
           const { options, provider, token, access_token, nonce } = credentials;
@@ -10192,9 +10192,9 @@ ${suffix}`;
      */
     async unlinkIdentity(identity) {
       try {
-        return await this._useSession(async (result) => {
+        return await this._useSession(async (result2) => {
           var _a, _b;
-          const { data, error } = result;
+          const { data, error } = result2;
           if (error) {
             throw error;
           }
@@ -10354,18 +10354,18 @@ ${suffix}`;
           throw new AuthSessionMissingError();
         await this._saveSession(data.session);
         await this._notifyAllSubscribers("TOKEN_REFRESHED", data.session);
-        const result = { data: data.session, error: null };
-        this.refreshingDeferred.resolve(result);
-        return result;
+        const result2 = { data: data.session, error: null };
+        this.refreshingDeferred.resolve(result2);
+        return result2;
       } catch (error) {
         this._debug(debugName, "error", error);
         if (isAuthError(error)) {
-          const result = { data: null, error };
+          const result2 = { data: null, error };
           if (!isAuthRetryableFetchError(error)) {
             await this._removeSession();
           }
-          (_a = this.refreshingDeferred) === null || _a === void 0 ? void 0 : _a.resolve(result);
-          return result;
+          (_a = this.refreshingDeferred) === null || _a === void 0 ? void 0 : _a.resolve(result2);
+          return result2;
         }
         (_b = this.refreshingDeferred) === null || _b === void 0 ? void 0 : _b.reject(error);
         throw error;
@@ -10545,8 +10545,8 @@ ${suffix}`;
           try {
             const now = Date.now();
             try {
-              return await this._useSession(async (result) => {
-                const { data: { session } } = result;
+              return await this._useSession(async (result2) => {
+                const { data: { session } } = result2;
                 if (!session || !session.refresh_token || !session.expires_at) {
                   this._debug("#_autoRefreshTokenTick()", "no session");
                   return;
@@ -10658,9 +10658,9 @@ ${suffix}`;
     }
     async _unenroll(params) {
       try {
-        return await this._useSession(async (result) => {
+        return await this._useSession(async (result2) => {
           var _a;
-          const { data: sessionData, error: sessionError } = result;
+          const { data: sessionData, error: sessionError } = result2;
           if (sessionError) {
             return this._returnResult({ data: null, error: sessionError });
           }
@@ -10678,9 +10678,9 @@ ${suffix}`;
     }
     async _enroll(params) {
       try {
-        return await this._useSession(async (result) => {
+        return await this._useSession(async (result2) => {
           var _a, _b;
-          const { data: sessionData, error: sessionError } = result;
+          const { data: sessionData, error: sessionError } = result2;
           if (sessionError) {
             return this._returnResult({ data: null, error: sessionError });
           }
@@ -10708,9 +10708,9 @@ ${suffix}`;
     async _verify(params) {
       return this._acquireLock(this.lockAcquireTimeout, async () => {
         try {
-          return await this._useSession(async (result) => {
+          return await this._useSession(async (result2) => {
             var _a;
-            const { data: sessionData, error: sessionError } = result;
+            const { data: sessionData, error: sessionError } = result2;
             if (sessionError) {
               return this._returnResult({ data: null, error: sessionError });
             }
@@ -10740,9 +10740,9 @@ ${suffix}`;
     async _challenge(params) {
       return this._acquireLock(this.lockAcquireTimeout, async () => {
         try {
-          return await this._useSession(async (result) => {
+          return await this._useSession(async (result2) => {
             var _a;
-            const { data: sessionData, error: sessionError } = result;
+            const { data: sessionData, error: sessionError } = result2;
             if (sessionError) {
               return this._returnResult({ data: null, error: sessionError });
             }
@@ -10885,8 +10885,8 @@ ${suffix}`;
      */
     async _getAuthorizationDetails(authorizationId) {
       try {
-        return await this._useSession(async (result) => {
-          const { data: { session }, error: sessionError } = result;
+        return await this._useSession(async (result2) => {
+          const { data: { session }, error: sessionError } = result2;
           if (sessionError) {
             return this._returnResult({ data: null, error: sessionError });
           }
@@ -10912,8 +10912,8 @@ ${suffix}`;
      */
     async _approveAuthorization(authorizationId, options) {
       try {
-        return await this._useSession(async (result) => {
-          const { data: { session }, error: sessionError } = result;
+        return await this._useSession(async (result2) => {
+          const { data: { session }, error: sessionError } = result2;
           if (sessionError) {
             return this._returnResult({ data: null, error: sessionError });
           }
@@ -10946,8 +10946,8 @@ ${suffix}`;
      */
     async _denyAuthorization(authorizationId, options) {
       try {
-        return await this._useSession(async (result) => {
-          const { data: { session }, error: sessionError } = result;
+        return await this._useSession(async (result2) => {
+          const { data: { session }, error: sessionError } = result2;
           if (sessionError) {
             return this._returnResult({ data: null, error: sessionError });
           }
@@ -10980,8 +10980,8 @@ ${suffix}`;
      */
     async _listOAuthGrants() {
       try {
-        return await this._useSession(async (result) => {
-          const { data: { session }, error: sessionError } = result;
+        return await this._useSession(async (result2) => {
+          const { data: { session }, error: sessionError } = result2;
           if (sessionError) {
             return this._returnResult({ data: null, error: sessionError });
           }
@@ -11007,8 +11007,8 @@ ${suffix}`;
      */
     async _revokeOAuthGrant(options) {
       try {
-        return await this._useSession(async (result) => {
-          const { data: { session }, error: sessionError } = result;
+        return await this._useSession(async (result2) => {
+          const { data: { session }, error: sessionError } = result2;
           if (sessionError) {
             return this._returnResult({ data: null, error: sessionError });
           }
@@ -11236,7 +11236,7 @@ ${suffix}`;
     var _DEFAULT_GLOBAL_OPTIO, _globalOptions$header;
     const { db: dbOptions, auth: authOptions, realtime: realtimeOptions, global: globalOptions } = options;
     const { db: DEFAULT_DB_OPTIONS$1, auth: DEFAULT_AUTH_OPTIONS$1, realtime: DEFAULT_REALTIME_OPTIONS$1, global: DEFAULT_GLOBAL_OPTIONS$1 } = defaults;
-    const result = {
+    const result2 = {
       db: _objectSpread22(_objectSpread22({}, DEFAULT_DB_OPTIONS$1), dbOptions),
       auth: _objectSpread22(_objectSpread22({}, DEFAULT_AUTH_OPTIONS$1), authOptions),
       realtime: _objectSpread22(_objectSpread22({}, DEFAULT_REALTIME_OPTIONS$1), realtimeOptions),
@@ -11245,10 +11245,10 @@ ${suffix}`;
       accessToken: async () => ""
     };
     if (options.accessToken)
-      result.accessToken = options.accessToken;
+      result2.accessToken = options.accessToken;
     else
-      delete result.accessToken;
-    return result;
+      delete result2.accessToken;
+    return result2;
   }
   function validateSupabaseUrl(supabaseUrl) {
     const trimmedUrl = supabaseUrl === null || supabaseUrl === void 0 ? void 0 : supabaseUrl.trim();
@@ -11578,11 +11578,11 @@ ${suffix}`;
       return true;
     });
   }
-  function evaluateConditionals(text, variables = {}) {
+  function evaluateConditionals(text, variables2 = {}) {
     if (!text || typeof text !== "string")
       return text;
     const conditionalPattern = /\[([^\[\]]+)\s*\?\s*"([^"]*)"\s*:\s*"([^"]*)"\]/g;
-    let result = text;
+    let result2 = text;
     let match;
     while ((match = conditionalPattern.exec(text)) !== null) {
       const fullMatch = match[0];
@@ -11595,9 +11595,9 @@ ${suffix}`;
         const varName = comparisonMatch[1];
         const operator = comparisonMatch[2];
         const compareValue = comparisonMatch[3].trim();
-        let varValue = variables[varName];
+        let varValue = variables2[varName];
         if (varValue === void 0) {
-          varValue = variables[varName.toLowerCase()];
+          varValue = variables2[varName.toLowerCase()];
         }
         const numVarValue = parseFloat(varValue);
         const numCompareValue = parseFloat(compareValue);
@@ -11634,21 +11634,421 @@ ${suffix}`;
         }
       } else {
         const varName = condition;
-        let varValue = variables[varName];
+        let varValue = variables2[varName];
         if (varValue === void 0) {
-          varValue = variables[varName.toLowerCase()];
+          varValue = variables2[varName.toLowerCase()];
         }
         shouldShow = !!(varValue && varValue !== 0 && varValue !== "0" && varValue !== false);
       }
-      result = result.replace(fullMatch, shouldShow ? trueText : falseText);
+      result2 = result2.replace(fullMatch, shouldShow ? trueText : falseText);
     }
+    return result2;
+  }
+  function evaluateDamageFormula(formula, variables = {}) {
+    if (!formula || typeof formula !== "string")
+      return formula;
+    let result = formula;
+    const getVar = (name) => {
+      if (!name)
+        return void 0;
+      if (variables[name] !== void 0) {
+        return variables[name];
+      }
+      const lower = name.toLowerCase();
+      if (variables[lower] !== void 0) {
+        return variables[lower];
+      }
+      return void 0;
+    };
+    const variablePattern = /\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g;
+    result = result.replace(variablePattern, (match, varName) => {
+      if (varName === "d" || varName === "D")
+        return match;
+      if (["floor", "ceil", "round", "abs", "min", "max"].includes(varName.toLowerCase())) {
+        return match;
+      }
+      const value = getVar(varName);
+      if (value !== void 0) {
+        const numValue = parseFloat(value);
+        return isNaN(numValue) ? match : String(numValue);
+      }
+      return match;
+    });
+    try {
+      if (/[\(\)\+\-\*\/]/.test(result)) {
+        let evalFormula = result.replace(/\bfloor\s*\(/gi, "Math.floor(").replace(/\bceil\s*\(/gi, "Math.ceil(").replace(/\bround\s*\(/gi, "Math.round(").replace(/\babs\s*\(/gi, "Math.abs(").replace(/\bmin\s*\(/gi, "Math.min(").replace(/\bmax\s*\(/gi, "Math.max(");
+        const diceParts = [];
+        evalFormula = evalFormula.replace(/(\d+)d(\d+)/gi, (match) => {
+          diceParts.push(match);
+          return `__DICE${diceParts.length - 1}__`;
+        });
+        const parts = evalFormula.split(/(__DICE\d+__)/);
+        const evaluatedParts = parts.map((part) => {
+          if (part.startsWith("__DICE")) {
+            const index = parseInt(part.match(/\d+/)[0]);
+            return diceParts[index];
+          }
+          try {
+            if (!/[a-zA-Z]/.test(part.replace(/Math\.(floor|ceil|round|abs|min|max)/g, ""))) {
+              const evaluated = eval(part);
+              if (!isNaN(evaluated) && isFinite(evaluated)) {
+                return String(evaluated);
+              }
+            }
+          } catch (e) {
+          }
+          return part;
+        });
+        result = evaluatedParts.join("");
+      }
+    } catch (e) {
+      console.warn("Failed to evaluate damage formula:", formula, e);
+    }
+    result = result.replace(/\)\s*d\s*s/gi, "d10").replace(/\(\s*\)/g, "").replace(/\+\s*\+/g, "+").replace(/\s+/g, " ").trim();
     return result;
+  }
+  function getHitDieTypeFromClass(levels) {
+    const hitDiceMap = {
+      "barbarian": "d12",
+      "fighter": "d10",
+      "paladin": "d10",
+      "ranger": "d10",
+      "bard": "d8",
+      "cleric": "d8",
+      "druid": "d8",
+      "monk": "d8",
+      "rogue": "d8",
+      "warlock": "d8",
+      "sorcerer": "d6",
+      "wizard": "d6"
+    };
+    if (levels && levels.length > 0) {
+      const primaryClass = levels[0]?.name?.toLowerCase() || "";
+      for (const [classKey, die] of Object.entries(hitDiceMap)) {
+        if (primaryClass.includes(classKey)) {
+          return die;
+        }
+      }
+    }
+    return "d8";
+  }
+  function parseCharacterData(apiData, characterId) {
+    console.log("CarmaClouds: Parsing character data...");
+    if (!apiData.creatures || apiData.creatures.length === 0) {
+      console.error("CarmaClouds: No creatures found in API response");
+      throw new Error("No character data found in API response");
+    }
+    const creature = apiData.creatures[0];
+    const variables2 = apiData.creatureVariables && apiData.creatureVariables[0] || {};
+    const properties = apiData.creatureProperties || [];
+    console.log("CarmaClouds: Creature:", creature.name);
+    console.log("CarmaClouds: Variables count:", Object.keys(variables2).length);
+    console.log("CarmaClouds: Properties count:", properties.length);
+    const characterName = creature.name || "";
+    const calculateArmorClass = () => {
+      const extractNumeric = (val) => {
+        if (val === null || val === void 0)
+          return null;
+        if (typeof val === "number" && !isNaN(val))
+          return val;
+        if (typeof val === "string") {
+          const parsed = parseFloat(val);
+          return isNaN(parsed) ? null : parsed;
+        }
+        if (typeof val === "object") {
+          if (val.total !== void 0 && typeof val.total === "number")
+            return val.total;
+          if (val.value !== void 0 && typeof val.value === "number")
+            return val.value;
+          if (val.calculation && typeof val.calculation === "string") {
+            const bm = val.calculation.match(/^(\d+)/);
+            if (bm)
+              return parseInt(bm[1]);
+          }
+        }
+        return null;
+      };
+      if (variables2.armorClass && (variables2.armorClass.total || variables2.armorClass.value)) {
+        const variableAC = variables2.armorClass.total || variables2.armorClass.value;
+        console.log(`CarmaClouds: Using Dicecloud's calculated AC: ${variableAC}`);
+        return variableAC;
+      }
+      if (creature && creature.denormalizedStats) {
+        const tryKeys = ["armorClass", "ac", "armor"];
+        for (const k of tryKeys) {
+          if (creature.denormalizedStats.hasOwnProperty(k)) {
+            const num = extractNumeric(creature.denormalizedStats[k]);
+            if (num !== null) {
+              console.log(`CarmaClouds: Using denormalizedStats.${k}:`, num);
+              return num;
+            }
+          }
+        }
+      }
+      const varNamesToCheck = ["armor", "armorClass", "armor_class", "ac", "acTotal"];
+      for (const vn of varNamesToCheck) {
+        if (variables2.hasOwnProperty(vn)) {
+          const v = variables2[vn];
+          const candidate = extractNumeric(v && (v.total ?? v.value ?? v));
+          if (candidate !== null) {
+            console.log(`CarmaClouds: Using variable ${vn}:`, candidate);
+            return candidate;
+          }
+        }
+      }
+      let baseAC = 10;
+      let armorAC = null;
+      const acBonuses = [];
+      properties.forEach((prop) => {
+        if (prop.inactive || prop.disabled)
+          return;
+        const hasArmorStat = prop.stat === "armor" || Array.isArray(prop.stats) && prop.stats.includes("armor");
+        if (hasArmorStat) {
+          let amount = null;
+          if (typeof prop.amount === "number") {
+            amount = prop.amount;
+          } else if (typeof prop.amount === "string") {
+            amount = parseFloat(prop.amount);
+          }
+          if (amount !== null && !isNaN(amount)) {
+            const operation = prop.operation || "";
+            if (operation === "base" || operation === "Base value") {
+              if (armorAC === null || amount > armorAC) {
+                armorAC = amount;
+              }
+            } else if (operation === "add" || operation === "Add") {
+              acBonuses.push({ name: prop.name, amount });
+            }
+          }
+        }
+      });
+      let finalAC = armorAC !== null ? armorAC : baseAC;
+      acBonuses.forEach((bonus) => {
+        finalAC += bonus.amount;
+      });
+      console.log("CarmaClouds: Calculated AC:", finalAC);
+      return finalAC;
+    };
+    let characterRace = "Unknown";
+    let characterClass = "";
+    let characterLevel = 0;
+    const uniqueClasses = /* @__PURE__ */ new Set();
+    let raceFound = false;
+    console.log("CarmaClouds: Extracting basic character info...");
+    const propertyTypes = {};
+    properties.forEach((prop) => {
+      if (prop && prop.type) {
+        propertyTypes[prop.type] = (propertyTypes[prop.type] || 0) + 1;
+      }
+    });
+    console.log("CarmaClouds: Property types in character:", propertyTypes);
+    if (creature.race) {
+      console.log("CarmaClouds: Found race on creature:", creature.race);
+      characterRace = creature.race;
+      raceFound = true;
+    }
+    if (creature.denormalizedStats && creature.denormalizedStats.race) {
+      console.log("CarmaClouds: Found race in denormalizedStats:", creature.denormalizedStats.race);
+      characterRace = creature.denormalizedStats.race;
+      raceFound = true;
+    }
+    for (const prop of properties) {
+      if (!prop)
+        continue;
+      if (!raceFound && prop.type === "folder" && prop.name) {
+        const commonRaces = ["half-elf", "half-orc", "dragonborn", "tiefling", "halfling", "human", "elf", "dwarf", "gnome", "orc", "goblin", "kobold", "warforged", "tabaxi", "kenku", "aarakocra", "genasi", "aasimar", "firbolg", "goliath", "triton", "yuan-ti", "tortle", "lizardfolk", "bugbear", "hobgoblin", "changeling", "shifter", "kalashtar"];
+        const nameMatchesRace = commonRaces.some((race) => new RegExp(`\\b${race}\\b`, "i").test(prop.name));
+        if (nameMatchesRace) {
+          const parentDepth = prop.ancestors ? prop.ancestors.length : 0;
+          if (parentDepth <= 2) {
+            console.log("CarmaClouds: Found race folder:", prop.name);
+            characterRace = prop.name;
+            raceFound = true;
+          }
+        }
+      }
+      if (!raceFound && (prop.type === "race" || prop.type === "species" || prop.type === "characterRace")) {
+        if (prop.name) {
+          console.log("CarmaClouds: Found race property:", prop.type, prop.name);
+          characterRace = prop.name;
+          raceFound = true;
+        }
+      }
+      if (!raceFound && prop.type === "constant" && prop.name && prop.name.toLowerCase() === "race") {
+        if (prop.value) {
+          console.log("CarmaClouds: Found race as constant:", prop.value);
+          characterRace = prop.value;
+          raceFound = true;
+        }
+      }
+      if (prop.type === "class" && prop.name && isValidProperty(prop)) {
+        const cleanName = prop.name.replace(/\s*\[Multiclass\]/i, "").trim();
+        const normalizedClassName = cleanName.toLowerCase().trim();
+        if (!uniqueClasses.has(normalizedClassName)) {
+          uniqueClasses.add(normalizedClassName);
+          if (characterClass) {
+            characterClass += ` / ${cleanName}`;
+          } else {
+            characterClass = cleanName;
+          }
+        }
+      }
+      if (prop.type === "classLevel" && !prop.inactive && !prop.disabled) {
+        characterLevel += 1;
+      }
+    }
+    if (!raceFound && (!characterRace || characterRace === "Unknown")) {
+      console.log("CarmaClouds: Race not found in properties, checking variables...");
+      const raceVars = Object.keys(variables2).filter(
+        (key) => key.toLowerCase().includes("race") || key.toLowerCase().includes("species")
+      );
+      if (raceVars.length > 0) {
+        console.log("CarmaClouds: Found race-related variables:", raceVars);
+        raceVars.forEach((varName) => {
+          console.log(`CarmaClouds: Raw data for "${varName}":`, variables2[varName]);
+        });
+        const formatRaceName = (name) => {
+          if (!name)
+            return null;
+          if (name.toLowerCase() === "custom" || name.toLowerCase() === "customlineage") {
+            return "Custom Lineage";
+          }
+          let formatted = name.replace(/([a-z])([A-Z])/g, "$1 $2");
+          formatted = formatted.split(" ").map(
+            (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+          ).join(" ");
+          return formatted;
+        };
+        const extractRaceFromVarName = (varName) => {
+          const raceName2 = varName.replace(/race$/i, "").replace(/^race$/i, "");
+          if (raceName2 && raceName2 !== varName.toLowerCase()) {
+            return raceName2.charAt(0).toUpperCase() + raceName2.slice(1);
+          }
+          return null;
+        };
+        let raceName = null;
+        let subraceName = null;
+        const subRaceVar = raceVars.find((key) => key.toLowerCase() === "subrace");
+        if (subRaceVar) {
+          const subRaceValue = variables2[subRaceVar];
+          console.log("CarmaClouds: Found subRace variable:", subRaceValue);
+          if (typeof subRaceValue === "object" && subRaceValue !== null) {
+            if (subRaceValue.name) {
+              subraceName = formatRaceName(subRaceValue.name);
+            } else if (subRaceValue.text) {
+              subraceName = formatRaceName(subRaceValue.text);
+            } else if (subRaceValue.value) {
+              subraceName = formatRaceName(subRaceValue.value);
+            }
+          } else if (typeof subRaceValue === "string") {
+            subraceName = formatRaceName(subRaceValue);
+          }
+          if (subraceName && subraceName.toLowerCase() === "sub race") {
+            console.log('CarmaClouds: Skipping generic "Sub Race" label, looking for actual subrace...');
+            subraceName = null;
+          }
+        }
+        if (!subraceName) {
+          const subraceKeywords = ["fire", "water", "air", "earth", "firegenasi", "watergenasi", "airgenasi", "earthgenasi"];
+          for (const varName of raceVars) {
+            const varValue = variables2[varName];
+            const varNameLower = varName.toLowerCase();
+            if (subraceKeywords.some((kw) => varNameLower.includes(kw))) {
+              const isActive = typeof varValue === "boolean" ? varValue : typeof varValue === "object" && varValue !== null && varValue.value === true;
+              if (isActive || varValue === true) {
+                if (varNameLower.includes("fire"))
+                  subraceName = "Fire";
+                else if (varNameLower.includes("water"))
+                  subraceName = "Water";
+                else if (varNameLower.includes("air"))
+                  subraceName = "Air";
+                else if (varNameLower.includes("earth"))
+                  subraceName = "Earth";
+                if (subraceName) {
+                  console.log("CarmaClouds: Found subrace from variable:", varName, "->", subraceName);
+                  break;
+                }
+              }
+            }
+          }
+        }
+        const raceVar = raceVars.find((key) => key.toLowerCase() === "race");
+        if (raceVar) {
+          const raceValue = variables2[raceVar];
+          console.log("CarmaClouds: Found race variable:", raceValue);
+          if (typeof raceValue === "object" && raceValue !== null) {
+            if (raceValue.value && typeof raceValue.value === "object" && raceValue.value.value) {
+              raceName = formatRaceName(raceValue.value.value);
+              console.log("CarmaClouds: Extracted race from nested value.value:", raceName);
+            } else if (raceValue.value && typeof raceValue.value === "string") {
+              raceName = formatRaceName(raceValue.value);
+            } else if (raceValue.name) {
+              raceName = formatRaceName(raceValue.name);
+            } else if (raceValue.text) {
+              raceName = formatRaceName(raceValue.text);
+            }
+          } else if (typeof raceValue === "string") {
+            raceName = formatRaceName(raceValue);
+          }
+        }
+        if (!raceName) {
+          for (const varName of raceVars) {
+            const varValue = variables2[varName];
+            if (typeof varValue === "object" && varValue !== null && varValue.value === true) {
+              const extracted = extractRaceFromVarName(varName);
+              if (extracted) {
+                raceName = extracted;
+                console.log("CarmaClouds: Extracted race from variable name:", varName, "->", raceName);
+                break;
+              }
+            }
+          }
+        }
+        if (raceName && subraceName) {
+          characterRace = `${raceName} - ${subraceName}`;
+          console.log("CarmaClouds: Combined race and subrace:", characterRace);
+        } else if (subraceName) {
+          characterRace = subraceName;
+          console.log("CarmaClouds: Using subrace as race:", characterRace);
+        } else if (raceName) {
+          characterRace = raceName;
+          console.log("CarmaClouds: Using race:", characterRace);
+        } else {
+          console.log("CarmaClouds: Could not determine race from variables");
+        }
+      } else {
+        console.log("CarmaClouds: No race variables found");
+      }
+    }
+    console.log("CarmaClouds: Character preview:", characterName, characterLevel, characterRace, characterClass);
+    const characterData = {
+      // Metadata
+      id: creature._id || characterId,
+      name: characterName,
+      url: window.location.href,
+      timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+      source: "dicecloud",
+      // Preview info (for character lists, etc.)
+      preview: {
+        race: characterRace,
+        class: characterClass || "Unknown",
+        level: characterLevel
+      },
+      // Raw DiceCloud API data - VTT adapters will parse this as needed
+      raw: {
+        creature,
+        variables: variables2,
+        properties
+      }
+    };
+    console.log("CarmaClouds: Successfully stored character data:", characterData.name);
+    return characterData;
   }
   function parseForRollCloud(rawData) {
     if (!rawData || !rawData.creature || !rawData.variables || !rawData.properties) {
       throw new Error("Invalid raw data format");
     }
-    const { creature, variables, properties } = rawData;
+    const { creature, variables: variables2, properties } = rawData;
     const characterName = creature.name || "";
     let race = "Unknown";
     let characterClass = "";
@@ -11694,12 +12094,12 @@ ${suffix}`;
       }
     }
     if (!raceFound && (!race || race === "Unknown")) {
-      const raceVars = Object.keys(variables).filter(
+      const raceVars = Object.keys(variables2).filter(
         (key) => key.toLowerCase().includes("race") || key.toLowerCase().includes("species")
       );
       if (raceVars.length > 0) {
         raceVars.forEach((varName) => {
-          console.log(`parseForRollCloud: Raw data for "${varName}":`, variables[varName]);
+          console.log(`parseForRollCloud: Raw data for "${varName}":`, variables2[varName]);
         });
         const formatRaceName = (name) => {
           if (!name)
@@ -11724,7 +12124,7 @@ ${suffix}`;
         let subraceName = null;
         const subRaceVar = raceVars.find((key) => key.toLowerCase() === "subrace");
         if (subRaceVar) {
-          const subRaceValue = variables[subRaceVar];
+          const subRaceValue = variables2[subRaceVar];
           if (typeof subRaceValue === "object" && subRaceValue !== null) {
             if (subRaceValue.name) {
               subraceName = formatRaceName(subRaceValue.name);
@@ -11739,7 +12139,7 @@ ${suffix}`;
         }
         const raceVar = raceVars.find((key) => key.toLowerCase() === "race");
         if (raceVar) {
-          const raceValue = variables[raceVar];
+          const raceValue = variables2[raceVar];
           if (typeof raceValue === "object" && raceValue !== null) {
             if (raceValue.value && typeof raceValue.value === "object" && raceValue.value.value) {
               raceName = formatRaceName(raceValue.value.value);
@@ -11756,7 +12156,7 @@ ${suffix}`;
         }
         if (!raceName) {
           for (const varName of raceVars) {
-            const varValue = variables[varName];
+            const varValue = variables2[varName];
             if (typeof varValue === "object" && varValue !== null && varValue.value === true) {
               const extracted = extractRaceFromVarName(varName);
               if (extracted) {
@@ -11777,7 +12177,7 @@ ${suffix}`;
     }
     const attributes = {};
     STANDARD_VARS.abilities.forEach((ability) => {
-      attributes[ability] = variables[ability]?.total || variables[ability]?.value || 10;
+      attributes[ability] = variables2[ability]?.total || variables2[ability]?.value || 10;
     });
     const attributeMods = {};
     Object.keys(attributes).forEach((attr) => {
@@ -11785,15 +12185,15 @@ ${suffix}`;
     });
     const saves = {};
     STANDARD_VARS.saves.forEach((save) => {
-      if (variables[save]) {
+      if (variables2[save]) {
         const abilityName = save.replace("Save", "");
-        saves[abilityName] = variables[save].total || variables[save].value || 0;
+        saves[abilityName] = variables2[save].total || variables2[save].value || 0;
       }
     });
     const skills = {};
     STANDARD_VARS.skills.forEach((skill) => {
-      if (variables[skill]) {
-        skills[skill] = variables[skill].total || variables[skill].value || 0;
+      if (variables2[skill]) {
+        skills[skill] = variables2[skill].total || variables2[skill].value || 0;
       }
     });
     const calculateAC = () => {
@@ -11814,8 +12214,8 @@ ${suffix}`;
         }
         return null;
       };
-      if (variables.armorClass?.total || variables.armorClass?.value) {
-        return variables.armorClass.total || variables.armorClass.value;
+      if (variables2.armorClass?.total || variables2.armorClass?.value) {
+        return variables2.armorClass.total || variables2.armorClass.value;
       }
       if (creature.denormalizedStats) {
         const tryKeys = ["armorClass", "ac", "armor"];
@@ -11829,8 +12229,8 @@ ${suffix}`;
       }
       const varNamesToCheck = ["armor", "armorClass", "armor_class", "ac", "acTotal"];
       for (const vn of varNamesToCheck) {
-        if (variables.hasOwnProperty(vn)) {
-          const candidate = extractNumeric(variables[vn]?.total ?? variables[vn]?.value ?? variables[vn]);
+        if (variables2.hasOwnProperty(vn)) {
+          const candidate = extractNumeric(variables2[vn]?.total ?? variables2[vn]?.value ?? variables2[vn]);
           if (candidate !== null)
             return candidate;
         }
@@ -11868,7 +12268,7 @@ ${suffix}`;
       } else if (typeof field === "object" && field.text) {
         text = field.text;
       }
-      return evaluateConditionals(text, variables);
+      return evaluateConditionals(text, variables2);
     };
     const spells = properties.filter((p) => p.type === "spell" && isValidProperty(p)).map((spell) => {
       const spellChildren = properties.filter((p) => {
@@ -11891,31 +12291,35 @@ ${suffix}`;
           attackRoll = attackChild.roll.calculation || attackChild.roll.value || "use_spell_attack_bonus";
         }
       }
+      if (attackRoll && attackRoll !== "use_spell_attack_bonus") {
+        attackRoll = evaluateDamageFormula(attackRoll, variables2);
+      }
       const damageRolls = [];
       spellChildren.filter((c) => c.type === "damage" || c.type === "roll" && c.name && (c.name.toLowerCase().includes("damage") || c.name.toLowerCase().includes("heal"))).forEach((damageChild) => {
-        let formula = "";
+        let formula2 = "";
         if (damageChild.amount) {
           if (typeof damageChild.amount === "string") {
-            formula = damageChild.amount;
+            formula2 = damageChild.amount;
           } else if (typeof damageChild.amount === "object") {
-            formula = damageChild.amount.calculation || String(damageChild.amount.value || "");
+            formula2 = damageChild.amount.calculation || String(damageChild.amount.value || "");
           }
         } else if (damageChild.roll) {
           if (typeof damageChild.roll === "string") {
-            formula = damageChild.roll;
+            formula2 = damageChild.roll;
           } else if (typeof damageChild.roll === "object") {
-            formula = damageChild.roll.calculation || String(damageChild.roll.value || "");
+            formula2 = damageChild.roll.calculation || String(damageChild.roll.value || "");
           }
         } else if (damageChild.damage) {
           if (typeof damageChild.damage === "string") {
-            formula = damageChild.damage;
+            formula2 = damageChild.damage;
           } else if (typeof damageChild.damage === "object") {
-            formula = damageChild.damage.calculation || String(damageChild.damage.value || "");
+            formula2 = damageChild.damage.calculation || String(damageChild.damage.value || "");
           }
         }
-        if (formula) {
+        if (formula2) {
+          const evaluatedFormula = evaluateDamageFormula(formula2, variables2);
           damageRolls.push({
-            formula,
+            formula: evaluatedFormula,
             type: damageChild.damageType || "",
             name: damageChild.name || ""
           });
@@ -11995,6 +12399,9 @@ ${suffix}`;
           }
         }
       }
+      if (attackRoll) {
+        attackRoll = evaluateDamageFormula(attackRoll, variables2);
+      }
       let damage = "";
       let damageType = "";
       if (action.damage) {
@@ -12025,6 +12432,9 @@ ${suffix}`;
             damageType = damageChild.damageType;
           }
         }
+      }
+      if (damage) {
+        damage = evaluateDamageFormula(damage, variables2);
       }
       if (!damageType && action.damageType) {
         damageType = action.damageType;
@@ -12070,9 +12480,9 @@ ${suffix}`;
     });
     const spellSlots = {};
     console.log("\u{1F52E} Parsing spell slots from variables...");
-    console.log("\u{1F52E} Available variables:", Object.keys(variables).filter((k) => k.toLowerCase().includes("slot")));
+    console.log("\u{1F52E} Available variables:", Object.keys(variables2).filter((k) => k.toLowerCase().includes("slot")));
     for (let level2 = 1; level2 <= 9; level2++) {
-      const slotVar = variables[`slotLevel${level2}`];
+      const slotVar = variables2[`slotLevel${level2}`];
       if (slotVar) {
         const current = slotVar.value || 0;
         const max = slotVar.total || slotVar.max || slotVar.value || 0;
@@ -12117,14 +12527,14 @@ ${suffix}`;
       saves,
       skills,
       hitPoints: {
-        current: variables.hitPoints?.currentValue ?? variables.hitPoints?.value ?? 0,
-        max: variables.hitPoints?.total ?? variables.hitPoints?.max ?? 0
+        current: variables2.hitPoints?.currentValue ?? variables2.hitPoints?.value ?? 0,
+        max: variables2.hitPoints?.total ?? variables2.hitPoints?.max ?? 0
       },
-      temporaryHP: variables.temporaryHitPoints?.value ?? variables.temporaryHitPoints?.currentValue ?? 0,
+      temporaryHP: variables2.temporaryHitPoints?.value ?? variables2.temporaryHitPoints?.currentValue ?? 0,
       armorClass: calculateAC(),
-      speed: variables.speed?.total || variables.speed?.value || 30,
-      initiative: variables.initiative?.total || variables.initiative?.value || 0,
-      proficiencyBonus: variables.proficiencyBonus?.total || variables.proficiencyBonus?.value || 0,
+      speed: variables2.speed?.total || variables2.speed?.value || 30,
+      initiative: variables2.initiative?.total || variables2.initiative?.value || 0,
+      proficiencyBonus: variables2.proficiencyBonus?.total || variables2.proficiencyBonus?.value || 0,
       spellSlots,
       resources,
       inventory: deduplicateByName(inventory),
@@ -12278,6 +12688,9 @@ ${suffix}`;
     }
     return null;
   }
+  function parseForOwlCloud(rawData) {
+    return parseForRollCloud(rawData);
+  }
   function parseForFoundCloud(rawData, characterId = null) {
     console.log("\u{1F3B2} Parsing character for Foundry VTT...");
     const rollCloudData = parseForRollCloud(rawData, characterId);
@@ -12367,10 +12780,10 @@ ${suffix}`;
     console.log("\u2705 Parsed for Foundry VTT:", foundryData.name);
     return foundryData;
   }
-  function extractVariable(variables, varName) {
-    if (!variables || !variables[varName])
+  function extractVariable(variables2, varName) {
+    if (!variables2 || !variables2[varName])
       return null;
-    const varData = variables[varName];
+    const varData = variables2[varName];
     return varData.value !== void 0 ? varData.value : varData;
   }
 

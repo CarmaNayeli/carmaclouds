@@ -53,11 +53,11 @@
       return true;
     });
   }
-  function evaluateConditionals(text, variables = {}) {
+  function evaluateConditionals(text, variables2 = {}) {
     if (!text || typeof text !== "string")
       return text;
     const conditionalPattern = /\[([^\[\]]+)\s*\?\s*"([^"]*)"\s*:\s*"([^"]*)"\]/g;
-    let result = text;
+    let result2 = text;
     let match;
     while ((match = conditionalPattern.exec(text)) !== null) {
       const fullMatch = match[0];
@@ -70,9 +70,9 @@
         const varName = comparisonMatch[1];
         const operator = comparisonMatch[2];
         const compareValue = comparisonMatch[3].trim();
-        let varValue = variables[varName];
+        let varValue = variables2[varName];
         if (varValue === void 0) {
-          varValue = variables[varName.toLowerCase()];
+          varValue = variables2[varName.toLowerCase()];
         }
         const numVarValue = parseFloat(varValue);
         const numCompareValue = parseFloat(compareValue);
@@ -109,15 +109,103 @@
         }
       } else {
         const varName = condition;
-        let varValue = variables[varName];
+        let varValue = variables2[varName];
         if (varValue === void 0) {
-          varValue = variables[varName.toLowerCase()];
+          varValue = variables2[varName.toLowerCase()];
         }
         shouldShow = !!(varValue && varValue !== 0 && varValue !== "0" && varValue !== false);
       }
-      result = result.replace(fullMatch, shouldShow ? trueText : falseText);
+      result2 = result2.replace(fullMatch, shouldShow ? trueText : falseText);
     }
+    return result2;
+  }
+  function evaluateDamageFormula(formula, variables = {}) {
+    if (!formula || typeof formula !== "string")
+      return formula;
+    let result = formula;
+    const getVar = (name) => {
+      if (!name)
+        return void 0;
+      if (variables[name] !== void 0) {
+        return variables[name];
+      }
+      const lower = name.toLowerCase();
+      if (variables[lower] !== void 0) {
+        return variables[lower];
+      }
+      return void 0;
+    };
+    const variablePattern = /\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g;
+    result = result.replace(variablePattern, (match, varName) => {
+      if (varName === "d" || varName === "D")
+        return match;
+      if (["floor", "ceil", "round", "abs", "min", "max"].includes(varName.toLowerCase())) {
+        return match;
+      }
+      const value = getVar(varName);
+      if (value !== void 0) {
+        const numValue = parseFloat(value);
+        return isNaN(numValue) ? match : String(numValue);
+      }
+      return match;
+    });
+    try {
+      if (/[\(\)\+\-\*\/]/.test(result)) {
+        let evalFormula = result.replace(/\bfloor\s*\(/gi, "Math.floor(").replace(/\bceil\s*\(/gi, "Math.ceil(").replace(/\bround\s*\(/gi, "Math.round(").replace(/\babs\s*\(/gi, "Math.abs(").replace(/\bmin\s*\(/gi, "Math.min(").replace(/\bmax\s*\(/gi, "Math.max(");
+        const diceParts = [];
+        evalFormula = evalFormula.replace(/(\d+)d(\d+)/gi, (match) => {
+          diceParts.push(match);
+          return `__DICE${diceParts.length - 1}__`;
+        });
+        const parts = evalFormula.split(/(__DICE\d+__)/);
+        const evaluatedParts = parts.map((part) => {
+          if (part.startsWith("__DICE")) {
+            const index = parseInt(part.match(/\d+/)[0]);
+            return diceParts[index];
+          }
+          try {
+            if (!/[a-zA-Z]/.test(part.replace(/Math\.(floor|ceil|round|abs|min|max)/g, ""))) {
+              const evaluated = eval(part);
+              if (!isNaN(evaluated) && isFinite(evaluated)) {
+                return String(evaluated);
+              }
+            }
+          } catch (e) {
+          }
+          return part;
+        });
+        result = evaluatedParts.join("");
+      }
+    } catch (e) {
+      console.warn("Failed to evaluate damage formula:", formula, e);
+    }
+    result = result.replace(/\)\s*d\s*s/gi, "d10").replace(/\(\s*\)/g, "").replace(/\+\s*\+/g, "+").replace(/\s+/g, " ").trim();
     return result;
+  }
+  function getHitDieTypeFromClass(levels) {
+    const hitDiceMap = {
+      "barbarian": "d12",
+      "fighter": "d10",
+      "paladin": "d10",
+      "ranger": "d10",
+      "bard": "d8",
+      "cleric": "d8",
+      "druid": "d8",
+      "monk": "d8",
+      "rogue": "d8",
+      "warlock": "d8",
+      "sorcerer": "d6",
+      "wizard": "d6"
+    };
+    if (levels && levels.length > 0) {
+      const primaryClass = levels[0]?.name?.toLowerCase() || "";
+      for (const [classKey, die] of Object.entries(hitDiceMap)) {
+        if (primaryClass.includes(classKey)) {
+          return die;
+        }
+      }
+    }
+    return "d8";
   }
   function parseCharacterData(apiData, characterId) {
     console.log("CarmaClouds: Parsing character data...");
@@ -126,10 +214,10 @@
       throw new Error("No character data found in API response");
     }
     const creature = apiData.creatures[0];
-    const variables = apiData.creatureVariables && apiData.creatureVariables[0] || {};
+    const variables2 = apiData.creatureVariables && apiData.creatureVariables[0] || {};
     const properties = apiData.creatureProperties || [];
     console.log("CarmaClouds: Creature:", creature.name);
-    console.log("CarmaClouds: Variables count:", Object.keys(variables).length);
+    console.log("CarmaClouds: Variables count:", Object.keys(variables2).length);
     console.log("CarmaClouds: Properties count:", properties.length);
     const characterName = creature.name || "";
     const calculateArmorClass = () => {
@@ -155,8 +243,8 @@
         }
         return null;
       };
-      if (variables.armorClass && (variables.armorClass.total || variables.armorClass.value)) {
-        const variableAC = variables.armorClass.total || variables.armorClass.value;
+      if (variables2.armorClass && (variables2.armorClass.total || variables2.armorClass.value)) {
+        const variableAC = variables2.armorClass.total || variables2.armorClass.value;
         console.log(`CarmaClouds: Using Dicecloud's calculated AC: ${variableAC}`);
         return variableAC;
       }
@@ -174,8 +262,8 @@
       }
       const varNamesToCheck = ["armor", "armorClass", "armor_class", "ac", "acTotal"];
       for (const vn of varNamesToCheck) {
-        if (variables.hasOwnProperty(vn)) {
-          const v = variables[vn];
+        if (variables2.hasOwnProperty(vn)) {
+          const v = variables2[vn];
           const candidate = extractNumeric(v && (v.total ?? v.value ?? v));
           if (candidate !== null) {
             console.log(`CarmaClouds: Using variable ${vn}:`, candidate);
@@ -286,13 +374,13 @@
     }
     if (!raceFound && (!characterRace || characterRace === "Unknown")) {
       console.log("CarmaClouds: Race not found in properties, checking variables...");
-      const raceVars = Object.keys(variables).filter(
+      const raceVars = Object.keys(variables2).filter(
         (key) => key.toLowerCase().includes("race") || key.toLowerCase().includes("species")
       );
       if (raceVars.length > 0) {
         console.log("CarmaClouds: Found race-related variables:", raceVars);
         raceVars.forEach((varName) => {
-          console.log(`CarmaClouds: Raw data for "${varName}":`, variables[varName]);
+          console.log(`CarmaClouds: Raw data for "${varName}":`, variables2[varName]);
         });
         const formatRaceName = (name) => {
           if (!name)
@@ -317,7 +405,7 @@
         let subraceName = null;
         const subRaceVar = raceVars.find((key) => key.toLowerCase() === "subrace");
         if (subRaceVar) {
-          const subRaceValue = variables[subRaceVar];
+          const subRaceValue = variables2[subRaceVar];
           console.log("CarmaClouds: Found subRace variable:", subRaceValue);
           if (typeof subRaceValue === "object" && subRaceValue !== null) {
             if (subRaceValue.name) {
@@ -338,7 +426,7 @@
         if (!subraceName) {
           const subraceKeywords = ["fire", "water", "air", "earth", "firegenasi", "watergenasi", "airgenasi", "earthgenasi"];
           for (const varName of raceVars) {
-            const varValue = variables[varName];
+            const varValue = variables2[varName];
             const varNameLower = varName.toLowerCase();
             if (subraceKeywords.some((kw) => varNameLower.includes(kw))) {
               const isActive = typeof varValue === "boolean" ? varValue : typeof varValue === "object" && varValue !== null && varValue.value === true;
@@ -361,7 +449,7 @@
         }
         const raceVar = raceVars.find((key) => key.toLowerCase() === "race");
         if (raceVar) {
-          const raceValue = variables[raceVar];
+          const raceValue = variables2[raceVar];
           console.log("CarmaClouds: Found race variable:", raceValue);
           if (typeof raceValue === "object" && raceValue !== null) {
             if (raceValue.value && typeof raceValue.value === "object" && raceValue.value.value) {
@@ -380,7 +468,7 @@
         }
         if (!raceName) {
           for (const varName of raceVars) {
-            const varValue = variables[varName];
+            const varValue = variables2[varName];
             if (typeof varValue === "object" && varValue !== null && varValue.value === true) {
               const extracted = extractRaceFromVarName(varName);
               if (extracted) {
@@ -424,7 +512,7 @@
       // Raw DiceCloud API data - VTT adapters will parse this as needed
       raw: {
         creature,
-        variables,
+        variables: variables2,
         properties
       }
     };
@@ -435,7 +523,7 @@
     if (!rawData || !rawData.creature || !rawData.variables || !rawData.properties) {
       throw new Error("Invalid raw data format");
     }
-    const { creature, variables, properties } = rawData;
+    const { creature, variables: variables2, properties } = rawData;
     const characterName = creature.name || "";
     let race = "Unknown";
     let characterClass = "";
@@ -481,12 +569,12 @@
       }
     }
     if (!raceFound && (!race || race === "Unknown")) {
-      const raceVars = Object.keys(variables).filter(
+      const raceVars = Object.keys(variables2).filter(
         (key) => key.toLowerCase().includes("race") || key.toLowerCase().includes("species")
       );
       if (raceVars.length > 0) {
         raceVars.forEach((varName) => {
-          console.log(`parseForRollCloud: Raw data for "${varName}":`, variables[varName]);
+          console.log(`parseForRollCloud: Raw data for "${varName}":`, variables2[varName]);
         });
         const formatRaceName = (name) => {
           if (!name)
@@ -511,7 +599,7 @@
         let subraceName = null;
         const subRaceVar = raceVars.find((key) => key.toLowerCase() === "subrace");
         if (subRaceVar) {
-          const subRaceValue = variables[subRaceVar];
+          const subRaceValue = variables2[subRaceVar];
           if (typeof subRaceValue === "object" && subRaceValue !== null) {
             if (subRaceValue.name) {
               subraceName = formatRaceName(subRaceValue.name);
@@ -526,7 +614,7 @@
         }
         const raceVar = raceVars.find((key) => key.toLowerCase() === "race");
         if (raceVar) {
-          const raceValue = variables[raceVar];
+          const raceValue = variables2[raceVar];
           if (typeof raceValue === "object" && raceValue !== null) {
             if (raceValue.value && typeof raceValue.value === "object" && raceValue.value.value) {
               raceName = formatRaceName(raceValue.value.value);
@@ -543,7 +631,7 @@
         }
         if (!raceName) {
           for (const varName of raceVars) {
-            const varValue = variables[varName];
+            const varValue = variables2[varName];
             if (typeof varValue === "object" && varValue !== null && varValue.value === true) {
               const extracted = extractRaceFromVarName(varName);
               if (extracted) {
@@ -564,7 +652,7 @@
     }
     const attributes = {};
     STANDARD_VARS.abilities.forEach((ability) => {
-      attributes[ability] = variables[ability]?.total || variables[ability]?.value || 10;
+      attributes[ability] = variables2[ability]?.total || variables2[ability]?.value || 10;
     });
     const attributeMods = {};
     Object.keys(attributes).forEach((attr) => {
@@ -572,15 +660,15 @@
     });
     const saves = {};
     STANDARD_VARS.saves.forEach((save) => {
-      if (variables[save]) {
+      if (variables2[save]) {
         const abilityName = save.replace("Save", "");
-        saves[abilityName] = variables[save].total || variables[save].value || 0;
+        saves[abilityName] = variables2[save].total || variables2[save].value || 0;
       }
     });
     const skills = {};
     STANDARD_VARS.skills.forEach((skill) => {
-      if (variables[skill]) {
-        skills[skill] = variables[skill].total || variables[skill].value || 0;
+      if (variables2[skill]) {
+        skills[skill] = variables2[skill].total || variables2[skill].value || 0;
       }
     });
     const calculateAC = () => {
@@ -601,8 +689,8 @@
         }
         return null;
       };
-      if (variables.armorClass?.total || variables.armorClass?.value) {
-        return variables.armorClass.total || variables.armorClass.value;
+      if (variables2.armorClass?.total || variables2.armorClass?.value) {
+        return variables2.armorClass.total || variables2.armorClass.value;
       }
       if (creature.denormalizedStats) {
         const tryKeys = ["armorClass", "ac", "armor"];
@@ -616,8 +704,8 @@
       }
       const varNamesToCheck = ["armor", "armorClass", "armor_class", "ac", "acTotal"];
       for (const vn of varNamesToCheck) {
-        if (variables.hasOwnProperty(vn)) {
-          const candidate = extractNumeric(variables[vn]?.total ?? variables[vn]?.value ?? variables[vn]);
+        if (variables2.hasOwnProperty(vn)) {
+          const candidate = extractNumeric(variables2[vn]?.total ?? variables2[vn]?.value ?? variables2[vn]);
           if (candidate !== null)
             return candidate;
         }
@@ -655,7 +743,7 @@
       } else if (typeof field === "object" && field.text) {
         text = field.text;
       }
-      return evaluateConditionals(text, variables);
+      return evaluateConditionals(text, variables2);
     };
     const spells = properties.filter((p) => p.type === "spell" && isValidProperty(p)).map((spell) => {
       const spellChildren = properties.filter((p) => {
@@ -678,31 +766,35 @@
           attackRoll = attackChild.roll.calculation || attackChild.roll.value || "use_spell_attack_bonus";
         }
       }
+      if (attackRoll && attackRoll !== "use_spell_attack_bonus") {
+        attackRoll = evaluateDamageFormula(attackRoll, variables2);
+      }
       const damageRolls = [];
       spellChildren.filter((c) => c.type === "damage" || c.type === "roll" && c.name && (c.name.toLowerCase().includes("damage") || c.name.toLowerCase().includes("heal"))).forEach((damageChild) => {
-        let formula = "";
+        let formula2 = "";
         if (damageChild.amount) {
           if (typeof damageChild.amount === "string") {
-            formula = damageChild.amount;
+            formula2 = damageChild.amount;
           } else if (typeof damageChild.amount === "object") {
-            formula = damageChild.amount.calculation || String(damageChild.amount.value || "");
+            formula2 = damageChild.amount.calculation || String(damageChild.amount.value || "");
           }
         } else if (damageChild.roll) {
           if (typeof damageChild.roll === "string") {
-            formula = damageChild.roll;
+            formula2 = damageChild.roll;
           } else if (typeof damageChild.roll === "object") {
-            formula = damageChild.roll.calculation || String(damageChild.roll.value || "");
+            formula2 = damageChild.roll.calculation || String(damageChild.roll.value || "");
           }
         } else if (damageChild.damage) {
           if (typeof damageChild.damage === "string") {
-            formula = damageChild.damage;
+            formula2 = damageChild.damage;
           } else if (typeof damageChild.damage === "object") {
-            formula = damageChild.damage.calculation || String(damageChild.damage.value || "");
+            formula2 = damageChild.damage.calculation || String(damageChild.damage.value || "");
           }
         }
-        if (formula) {
+        if (formula2) {
+          const evaluatedFormula = evaluateDamageFormula(formula2, variables2);
           damageRolls.push({
-            formula,
+            formula: evaluatedFormula,
             type: damageChild.damageType || "",
             name: damageChild.name || ""
           });
@@ -782,6 +874,9 @@
           }
         }
       }
+      if (attackRoll) {
+        attackRoll = evaluateDamageFormula(attackRoll, variables2);
+      }
       let damage = "";
       let damageType = "";
       if (action.damage) {
@@ -812,6 +907,9 @@
             damageType = damageChild.damageType;
           }
         }
+      }
+      if (damage) {
+        damage = evaluateDamageFormula(damage, variables2);
       }
       if (!damageType && action.damageType) {
         damageType = action.damageType;
@@ -857,9 +955,9 @@
     });
     const spellSlots = {};
     console.log("\u{1F52E} Parsing spell slots from variables...");
-    console.log("\u{1F52E} Available variables:", Object.keys(variables).filter((k) => k.toLowerCase().includes("slot")));
+    console.log("\u{1F52E} Available variables:", Object.keys(variables2).filter((k) => k.toLowerCase().includes("slot")));
     for (let level2 = 1; level2 <= 9; level2++) {
-      const slotVar = variables[`slotLevel${level2}`];
+      const slotVar = variables2[`slotLevel${level2}`];
       if (slotVar) {
         const current = slotVar.value || 0;
         const max = slotVar.total || slotVar.max || slotVar.value || 0;
@@ -904,14 +1002,14 @@
       saves,
       skills,
       hitPoints: {
-        current: variables.hitPoints?.currentValue ?? variables.hitPoints?.value ?? 0,
-        max: variables.hitPoints?.total ?? variables.hitPoints?.max ?? 0
+        current: variables2.hitPoints?.currentValue ?? variables2.hitPoints?.value ?? 0,
+        max: variables2.hitPoints?.total ?? variables2.hitPoints?.max ?? 0
       },
-      temporaryHP: variables.temporaryHitPoints?.value ?? variables.temporaryHitPoints?.currentValue ?? 0,
+      temporaryHP: variables2.temporaryHitPoints?.value ?? variables2.temporaryHitPoints?.currentValue ?? 0,
       armorClass: calculateAC(),
-      speed: variables.speed?.total || variables.speed?.value || 30,
-      initiative: variables.initiative?.total || variables.initiative?.value || 0,
-      proficiencyBonus: variables.proficiencyBonus?.total || variables.proficiencyBonus?.value || 0,
+      speed: variables2.speed?.total || variables2.speed?.value || 30,
+      initiative: variables2.initiative?.total || variables2.initiative?.value || 0,
+      proficiencyBonus: variables2.proficiencyBonus?.total || variables2.proficiencyBonus?.value || 0,
       spellSlots,
       resources,
       inventory: deduplicateByName(inventory),
@@ -1157,10 +1255,10 @@
     console.log("\u2705 Parsed for Foundry VTT:", foundryData.name);
     return foundryData;
   }
-  function extractVariable(variables, varName) {
-    if (!variables || !variables[varName])
+  function extractVariable(variables2, varName) {
+    if (!variables2 || !variables2[varName])
       return null;
-    const varData = variables[varName];
+    const varData = variables2[varName];
     return varData.value !== void 0 ? varData.value : varData;
   }
 })();

@@ -155,6 +155,119 @@ function evaluateConditionals(text, variables = {}) {
 }
 
 /**
+ * Evaluates and cleans damage formulas by substituting variables
+ * Handles DiceCloud formula syntax like: 1d10 + floor((level+1)/6)d10
+ * @param {string} formula - Damage formula potentially containing variables
+ * @param {object} variables - DiceCloud variables object for evaluation
+ * @returns {string} Formula with variables evaluated
+ */
+function evaluateDamageFormula(formula, variables = {}) {
+  if (!formula || typeof formula !== 'string') return formula;
+
+  let result = formula;
+
+  // Helper to get variable value (case-insensitive)
+  const getVar = (name) => {
+    if (!name) return undefined;
+    // Try exact case first
+    if (variables[name] !== undefined) {
+      return variables[name];
+    }
+    // Try lowercase
+    const lower = name.toLowerCase();
+    if (variables[lower] !== undefined) {
+      return variables[lower];
+    }
+    return undefined;
+  };
+
+  // Replace variable references with their values
+  // Match word boundaries to avoid partial replacements
+  const variablePattern = /\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g;
+
+  result = result.replace(variablePattern, (match, varName) => {
+    // Don't replace dice notation (d followed by numbers)
+    if (varName === 'd' || varName === 'D') return match;
+
+    // Don't replace common math functions
+    if (['floor', 'ceil', 'round', 'abs', 'min', 'max'].includes(varName.toLowerCase())) {
+      return match;
+    }
+
+    const value = getVar(varName);
+    if (value !== undefined) {
+      // Convert to number if possible
+      const numValue = parseFloat(value);
+      return isNaN(numValue) ? match : String(numValue);
+    }
+
+    return match;
+  });
+
+  // Evaluate mathematical expressions safely
+  try {
+    // Only evaluate if the formula contains parentheses or operators (not just dice notation)
+    if (/[\(\)\+\-\*\/]/.test(result)) {
+      // Replace floor/ceil/round with Math equivalents for evaluation
+      let evalFormula = result
+        .replace(/\bfloor\s*\(/gi, 'Math.floor(')
+        .replace(/\bceil\s*\(/gi, 'Math.ceil(')
+        .replace(/\bround\s*\(/gi, 'Math.round(')
+        .replace(/\babs\s*\(/gi, 'Math.abs(')
+        .replace(/\bmin\s*\(/gi, 'Math.min(')
+        .replace(/\bmax\s*\(/gi, 'Math.max(');
+
+      // Extract dice notation parts to preserve them
+      const diceParts = [];
+      evalFormula = evalFormula.replace(/(\d+)d(\d+)/gi, (match) => {
+        diceParts.push(match);
+        return `__DICE${diceParts.length - 1}__`;
+      });
+
+      // Try to evaluate the non-dice parts
+      // Split by dice placeholders and evaluate each numeric part
+      const parts = evalFormula.split(/(__DICE\d+__)/);
+      const evaluatedParts = parts.map(part => {
+        if (part.startsWith('__DICE')) {
+          const index = parseInt(part.match(/\d+/)[0]);
+          return diceParts[index];
+        }
+
+        // Try to evaluate as math expression
+        try {
+          // Only evaluate if it's a pure math expression (no letters except Math functions)
+          if (!/[a-zA-Z]/.test(part.replace(/Math\.(floor|ceil|round|abs|min|max)/g, ''))) {
+            const evaluated = eval(part);
+            if (!isNaN(evaluated) && isFinite(evaluated)) {
+              return String(evaluated);
+            }
+          }
+        } catch (e) {
+          // If evaluation fails, return original
+        }
+
+        return part;
+      });
+
+      result = evaluatedParts.join('');
+    }
+  } catch (e) {
+    // If evaluation fails, return the variable-substituted version
+    console.warn('Failed to evaluate damage formula:', formula, e);
+  }
+
+  // Clean up any malformed syntax
+  result = result
+    .replace(/\)\s*d\s*s/gi, 'd10')  // Fix ")ds" artifacts
+    .replace(/\(\s*\)/g, '')  // Remove empty parentheses
+    .replace(/\+\s*\+/g, '+')  // Fix double plus signs
+    .replace(/\s+/g, ' ')  // Normalize whitespace
+    .trim();
+
+  return result;
+}
+
+/**
  * Determines hit die type from character class (D&D 5e)
  */
 function getHitDieTypeFromClass(levels) {
@@ -867,6 +980,11 @@ export function parseForRollCloud(rawData) {
         }
       }
 
+      // Evaluate variables in attack roll formula
+      if (attackRoll && attackRoll !== 'use_spell_attack_bonus') {
+        attackRoll = evaluateDamageFormula(attackRoll, variables);
+      }
+
       // Extract damage rolls from children
       const damageRolls = [];
       spellChildren.filter(c => c.type === 'damage' || (c.type === 'roll' && c.name && (c.name.toLowerCase().includes('damage') || c.name.toLowerCase().includes('heal')))).forEach(damageChild => {
@@ -897,8 +1015,10 @@ export function parseForRollCloud(rawData) {
         }
 
         if (formula) {
+          // Evaluate variables in damage formula
+          const evaluatedFormula = evaluateDamageFormula(formula, variables);
           damageRolls.push({
-            formula: formula,
+            formula: evaluatedFormula,
             type: damageChild.damageType || '',
             name: damageChild.name || ''
           });
@@ -1011,6 +1131,11 @@ export function parseForRollCloud(rawData) {
         }
       }
 
+      // Evaluate variables in attack roll formula
+      if (attackRoll) {
+        attackRoll = evaluateDamageFormula(attackRoll, variables);
+      }
+
       // Extract damage from action or children
       let damage = '';
       let damageType = '';
@@ -1044,14 +1169,19 @@ export function parseForRollCloud(rawData) {
               damage = damageChild.damage.calculation || String(damageChild.damage.value || '');
             }
           }
-          
+
           // Extract damage type from child
           if (damageChild.damageType) {
             damageType = damageChild.damageType;
           }
         }
       }
-      
+
+      // Evaluate variables in damage formula
+      if (damage) {
+        damage = evaluateDamageFormula(damage, variables);
+      }
+
       // Fallback to action's damageType if not found in child
       if (!damageType && action.damageType) {
         damageType = action.damageType;
