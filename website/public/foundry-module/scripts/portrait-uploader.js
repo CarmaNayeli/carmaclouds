@@ -74,7 +74,7 @@ export class PortraitUploader {
    * @returns {Promise<string>} - Public URL of uploaded image
    */
   static async uploadToSupabase(imageBlob, characterId, characterName) {
-    const supabase = game.modules.get('foundcloud')?.supabaseClient;
+    const supabase = game.foundcloud?.supabaseClient;
     if (!supabase) {
       throw new Error('Supabase client not initialized');
     }
@@ -112,7 +112,7 @@ export class PortraitUploader {
    * @param {string} croppedUrl - URL of cropped portrait
    */
   static async updateCroppedPortraitUrl(characterId, croppedUrl) {
-    const supabase = game.modules.get('foundcloud')?.supabaseClient;
+    const supabase = game.foundcloud?.supabaseClient;
     if (!supabase) {
       throw new Error('Supabase client not initialized');
     }
