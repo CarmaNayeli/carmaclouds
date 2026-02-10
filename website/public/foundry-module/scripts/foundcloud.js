@@ -44,6 +44,9 @@ class FoundCloud {
       // Initialize Supabase bridge
       this.bridge = new SupabaseBridge();
       await this.bridge.initialize();
+
+      // Expose Supabase client on module for portrait uploader
+      this.supabaseClient = this.bridge.supabase;
     } catch (error) {
       console.error('FoundCloud | Failed to initialize Supabase bridge:', error);
       ui.notifications.warn('FoundCloud: Supabase connection failed. Import from cloud will not work.');

@@ -1,3 +1,5 @@
+import { PortraitUploader } from './portrait-uploader.js';
+
 /**
  * FoundCloud Simplified Character Sheet
  * Standalone sheet matching RollCloud structure with orange theme
@@ -84,8 +86,8 @@ export class FoundCloudSheetSimple extends ActorSheet {
       // Player color for chat and token border
       playerColor: this.actor.getFlag('foundcloud', 'playerColor') || '#3ea895',
 
-      // Supabase portrait URL for drag-to-canvas
-      supabasePortraitUrl: this.actor.img || 'icons/svg/mystery-man.svg',
+      // Supabase portrait URL for drag-to-canvas (cropped with colored border)
+      supabasePortraitUrl: this.actor.getFlag('foundcloud', 'croppedPortraitUrl') || this.actor.img || 'icons/svg/mystery-man.svg',
 
       // Character info
       characterClass: this._getClassString(system),
@@ -719,29 +721,59 @@ export class FoundCloudSheetSimple extends ActorSheet {
     const color = event.target.value;
     await this.actor.setFlag('foundcloud', 'playerColor', color);
 
-    // Update portrait border color
+    // Update portrait border color immediately
     const portrait = this.element.find('#char-portrait');
     if (portrait.length) {
       portrait.css('border-color', color);
     }
 
-    // Update actor prototype token to use Supabase portrait URL and colored ring
-    const portraitUrl = this.actor.img;  // Should be Supabase bucket URL from import
-    const updates = {
-      'prototypeToken.texture.src': portraitUrl,
-      'prototypeToken.ring.subject.scale': 1.0,
-      'prototypeToken.ring.colors.ring': color
-    };
+    // Generate new cropped portrait with new color and upload to Supabase
+    try {
+      const croppedUrl = await PortraitUploader.processAndUploadPortrait(this.actor, color);
 
-    await this.actor.update(updates);
+      // Store cropped URL as flag
+      await this.actor.setFlag('foundcloud', 'croppedPortraitUrl', croppedUrl);
+
+      // Update actor prototype token to use cropped portrait and colored ring
+      const updates = {
+        'prototypeToken.texture.src': croppedUrl,
+        'prototypeToken.ring.subject.scale': 1.0,
+        'prototypeToken.ring.colors.ring': color
+      };
+
+      await this.actor.update(updates);
+
+      // Re-render sheet to show new portrait
+      this.render(false);
+    } catch (error) {
+      console.error('Failed to update portrait:', error);
+      // Fallback: just update ring color
+      await this.actor.update({
+        'prototypeToken.ring.subject.scale': 1.0,
+        'prototypeToken.ring.colors.ring': color
+      });
+    }
   }
 
   /**
-   * Ensure token is configured to use Supabase portrait image and colored ring
+   * Ensure token is configured to use cropped Supabase portrait and colored ring
    */
   async _ensureTokenSetup(color) {
-    // Use actor.img which should be the Supabase bucket URL from import
-    const portraitUrl = this.actor.img;
+    // Check if we have a cropped portrait, if not generate one
+    let croppedUrl = this.actor.getFlag('foundcloud', 'croppedPortraitUrl');
+
+    if (!croppedUrl && this.actor.img) {
+      // Generate cropped portrait on first load
+      try {
+        croppedUrl = await PortraitUploader.processAndUploadPortrait(this.actor, color);
+        await this.actor.setFlag('foundcloud', 'croppedPortraitUrl', croppedUrl);
+      } catch (error) {
+        console.error('Failed to generate cropped portrait:', error);
+        croppedUrl = this.actor.img; // Fallback to original
+      }
+    }
+
+    const portraitUrl = croppedUrl || this.actor.img;
 
     // Only update if needed
     const needsUpdate =
