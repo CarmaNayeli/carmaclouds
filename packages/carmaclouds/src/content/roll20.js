@@ -927,33 +927,76 @@
         color: request.color || request.roll?.color
       };
 
-      // Check if silent rolls mode is enabled - if so, hide the roll instead of posting
-      if (silentRollsEnabled) {
-        debug.log('🔇 Silent rolls active - hiding roll instead of posting');
-        const hiddenRoll = {
-          id: Date.now() + Math.random(), // Unique ID
-          name: rollData.name,
-          formula: rollData.formula,
-          characterName: rollData.characterName,
-          timestamp: new Date().toLocaleTimeString(),
-          result: null // Will be filled when revealed
-        };
-        hiddenRolls.push(hiddenRoll);
-        updateHiddenRollsDisplay();
-        sendResponse({ success: true, hidden: true });
-      } else {
-        // Normal flow - post to Roll20 chat
-        const formattedMessage = formatRollForRoll20(rollData);
-        const success = postChatMessage(formattedMessage);
+      // Check for critical hit on damage rolls (async operation)
+      (async () => {
+        // Check if this is a damage roll and apply crit if needed
+        const hasDiceInFormula = rollData.formula && /\dd\d+/.test(rollData.formula);
+        const hasD20 = rollData.formula && rollData.formula.toLowerCase().includes('d20');
+        const hasDamageInName = rollData.name && rollData.name.toLowerCase().includes('damage');
+        const isDamageRoll = (hasDiceInFormula && !hasD20) || hasDamageInName;
 
-        if (success) {
-          debug.log('✅ Roll posted directly to Roll20 (no DiceCloud!)');
-          // Observe Roll20's result for natural 1s/20s
-          observeNextRollResult(rollData);
+        debug.log('🔍 Checking if damage roll (rollFromPopout):', {
+          formula: rollData.formula,
+          name: rollData.name,
+          isDamageRoll
+        });
+
+        if (isDamageRoll) {
+          try {
+            const storage = await browserAPI.storage.local.get('criticalHitPending');
+            debug.log('📦 Storage check (rollFromPopout):', storage);
+
+            if (storage.criticalHitPending) {
+              const critData = storage.criticalHitPending;
+              const critAge = Date.now() - critData.timestamp;
+
+              if (critAge < 30000) {
+                debug.log('💥 Critical hit active! Doubling damage dice (rollFromPopout)');
+                debug.log('💥 Original formula:', rollData.formula);
+                rollData.formula = doubleDamageDice(rollData.formula);
+                rollData.name = `💥 CRITICAL HIT! ${rollData.name}`;
+                debug.log('💥 Doubled formula:', rollData.formula);
+
+                await browserAPI.storage.local.remove('criticalHitPending');
+                debug.log('✅ Crit flag cleared (rollFromPopout)');
+              } else {
+                debug.log('⏱️ Crit flag expired (rollFromPopout)');
+                await browserAPI.storage.local.remove('criticalHitPending');
+              }
+            }
+          } catch (error) {
+            debug.warn('⚠️ Error checking crit flag (rollFromPopout):', error);
+          }
         }
 
-        sendResponse({ success: success });
-      }
+        // Check if silent rolls mode is enabled - if so, hide the roll instead of posting
+        if (silentRollsEnabled) {
+          debug.log('🔇 Silent rolls active - hiding roll instead of posting');
+          const hiddenRoll = {
+            id: Date.now() + Math.random(), // Unique ID
+            name: rollData.name,
+            formula: rollData.formula,
+            characterName: rollData.characterName,
+            timestamp: new Date().toLocaleTimeString(),
+            result: null // Will be filled when revealed
+          };
+          hiddenRolls.push(hiddenRoll);
+          updateHiddenRollsDisplay();
+          sendResponse({ success: true, hidden: true });
+        } else {
+          // Normal flow - post to Roll20 chat
+          const formattedMessage = formatRollForRoll20(rollData);
+          const success = postChatMessage(formattedMessage);
+
+          if (success) {
+            debug.log('✅ Roll posted directly to Roll20 (no DiceCloud!)');
+            // Observe Roll20's result for natural 1s/20s
+            observeNextRollResult(rollData);
+          }
+
+          sendResponse({ success: success });
+        }
+      })();
     } else if (request.action === 'announceSpell') {
       // Handle spell announcements relayed from background script (Firefox)
       if (request.spellData) {
