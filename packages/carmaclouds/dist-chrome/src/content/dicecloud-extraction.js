@@ -911,6 +911,25 @@
       if (damage) {
         damage = evaluateDamageFormula(damage, variables2);
       }
+      if (damage && attackRoll) {
+        const tags2 = action.tags || [];
+        const description = extractText(action.description).toLowerCase();
+        const summary = extractText(action.summary).toLowerCase();
+        const isFinesse = tags2.some((t) => typeof t === "string" && t.toLowerCase().includes("finesse")) || description.includes("finesse") || summary.includes("finesse");
+        if (isFinesse) {
+          const hasAbilityMod = /\+\s*\d{1,2}(?!\d)/.test(damage) || /dexterityMod|strengthMod|dexMod|strMod/i.test(damage);
+          if (!hasAbilityMod) {
+            const strMod = parseFloat(variables2.strengthMod || variables2.strengthmod || 0);
+            const dexMod = parseFloat(variables2.dexterityMod || variables2.dexteritymod || 0);
+            const abilityMod = Math.max(strMod, dexMod);
+            if (abilityMod > 0) {
+              damage = `${damage} + ${abilityMod}`;
+            } else if (abilityMod < 0) {
+              damage = `${damage} - ${Math.abs(abilityMod)}`;
+            }
+          }
+        }
+      }
       if (!damageType && action.damageType) {
         damageType = action.damageType;
       }

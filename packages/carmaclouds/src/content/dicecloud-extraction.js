@@ -1182,6 +1182,39 @@ export function parseForRollCloud(rawData) {
         damage = evaluateDamageFormula(damage, variables);
       }
 
+      // Check if this is a finesse weapon and add appropriate ability modifier to damage
+      if (damage && attackRoll) {
+        const tags = action.tags || [];
+        const description = extractText(action.description).toLowerCase();
+        const summary = extractText(action.summary).toLowerCase();
+
+        // Check if finesse weapon
+        const isFinesse = tags.some(t => typeof t === 'string' && t.toLowerCase().includes('finesse')) ||
+                          description.includes('finesse') ||
+                          summary.includes('finesse');
+
+        if (isFinesse) {
+          // Check if damage already includes an ability modifier
+          // Look for patterns like "+X" where X is a single/double digit number
+          const hasAbilityMod = /\+\s*\d{1,2}(?!\d)/.test(damage) || /dexterityMod|strengthMod|dexMod|strMod/i.test(damage);
+
+          if (!hasAbilityMod) {
+            // Get STR and DEX mods
+            const strMod = parseFloat(variables.strengthMod || variables.strengthmod || 0);
+            const dexMod = parseFloat(variables.dexterityMod || variables.dexteritymod || 0);
+
+            // Use higher of STR or DEX for finesse
+            const abilityMod = Math.max(strMod, dexMod);
+
+            if (abilityMod > 0) {
+              damage = `${damage} + ${abilityMod}`;
+            } else if (abilityMod < 0) {
+              damage = `${damage} - ${Math.abs(abilityMod)}`;
+            }
+          }
+        }
+      }
+
       // Fallback to action's damageType if not found in child
       if (!damageType && action.damageType) {
         damageType = action.damageType;
