@@ -252,7 +252,7 @@ export function parseCharacterData(apiData, characterId) {
     }
 
     // Extract class for preview
-    if (prop.type === 'class' && prop.name && !prop.inactive && !prop.disabled) {
+    if (prop.type === 'class' && prop.name && isValidProperty(prop)) {
       const cleanName = prop.name.replace(/\s*\[Multiclass\]/i, '').trim();
       const normalizedClassName = cleanName.toLowerCase().trim();
       if (!uniqueClasses.has(normalizedClassName)) {
@@ -501,7 +501,7 @@ export function parseForRollCloud(rawData) {
       }
     }
 
-    if (prop.type === 'class' && prop.name && !prop.inactive && !prop.disabled) {
+    if (prop.type === 'class' && prop.name && isValidProperty(prop)) {
       const cleanName = prop.name.replace(/\s*\[Multiclass\]/i, '').trim();
       const normalizedClassName = cleanName.toLowerCase().trim();
       if (!uniqueClasses.has(normalizedClassName)) {
