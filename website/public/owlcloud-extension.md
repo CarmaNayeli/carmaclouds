@@ -1,7 +1,7 @@
 ---
 title: OwlCloud - DiceCloud Character Sync
 description: Sync your DiceCloud V2 characters to Owlbear Rodeo with real-time cloud storage via CarmaClouds
-author: CarmaNayeli
+author: Carmabella
 image: https://carmaclouds.vercel.app/owlcloud-hero.png
 icon: https://carmaclouds.vercel.app/owlcloud-die.png
 tags:
