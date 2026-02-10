@@ -36,36 +36,6 @@ export default function OwlCloudTab() {
         </div>
       </section>
 
-      <section className="bg-black border border-[#a855f7] rounded-lg p-6">
-        <h3 className="text-2xl font-semibold mb-4 text-[#a855f7]">Download CarmaClouds</h3>
-        <div className="space-y-4">
-          <p className="text-gray-400 mb-4">
-            OwlCloud is included in the unified CarmaClouds extension. Install once, use everywhere.
-          </p>
-          <div className="flex gap-4">
-            <a
-              href="https://github.com/CarmaNayeli/carmaclouds/releases/latest/download/carmaclouds-chrome.zip"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block bg-[#a855f7] hover:bg-[#c084fc] text-white font-medium px-6 py-3 rounded-lg transition-colors"
-            >
-              Download for Chrome/Edge
-            </a>
-            <a
-              href="https://github.com/CarmaNayeli/carmaclouds/releases/latest/download/carmaclouds-firefox.zip"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block bg-[#a855f7] hover:bg-[#c084fc] text-white font-medium px-6 py-3 rounded-lg transition-colors"
-            >
-              Download for Firefox
-            </a>
-          </div>
-          <p className="text-gray-500 text-sm mt-4">
-            Not on the store yet — see the <strong className="text-gray-300">Installing the Browser Extension</strong> guide on the Home tab for how to load the ZIP in Chrome or Firefox.
-          </p>
-        </div>
-      </section>
-
       <section>
         <h3 className="text-2xl font-semibold mb-4 text-white">How to Use OwlCloud</h3>
         <ol className="space-y-4 text-gray-400">

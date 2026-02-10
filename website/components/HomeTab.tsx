@@ -15,6 +15,36 @@ export default function HomeTab({ setActiveTab }: HomeTabProps) {
         </p>
       </section>
 
+      <section className="bg-black border border-[#16a75a] rounded-lg p-6">
+        <h3 className="text-2xl font-semibold mb-4 text-[#16a75a]">Download CarmaClouds</h3>
+        <div className="space-y-4">
+          <p className="text-gray-400 mb-4">
+            RollCloud is included in the unified CarmaClouds extension. Install once, use everywhere.
+          </p>
+          <div className="flex gap-4">
+            <a
+              href="https://github.com/CarmaNayeli/carmaclouds/releases/latest/download/carmaclouds-chrome.zip"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block bg-[#16a75a] hover:bg-[#1bc76a] text-white font-medium px-6 py-3 rounded-lg transition-colors"
+            >
+              Download for Chrome/Edge
+            </a>
+            <a
+              href="https://github.com/CarmaNayeli/carmaclouds/releases/latest/download/carmaclouds-firefox.zip"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block bg-[#16a75a] hover:bg-[#1bc76a] text-white font-medium px-6 py-3 rounded-lg transition-colors"
+            >
+              Download for Firefox
+            </a>
+          </div>
+          <p className="text-gray-500 text-sm mt-4">
+            Not on the store yet — see the <strong className="text-gray-300">Installing the Browser Extension</strong> guide below for how to load the ZIP in Chrome or Firefox.
+          </p>
+        </div>
+      </section>
+
       <section className="bg-gradient-to-r from-[#16a75a]/10 to-[#16a75a]/5 border border-[#16a75a]/30 rounded-lg p-6 mb-8">
         <h3 className="text-xl font-semibold text-[#16a75a] mb-3">🎯 How It Works</h3>
         <ol className="space-y-3 text-gray-300">

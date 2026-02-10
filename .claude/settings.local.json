@@ -27,7 +27,14 @@
       "Bash(7z a:*)",
       "Bash(7z l:*)",
       "Bash(7z x:*)",
-      "Bash(vercel --prod:*)"
+      "Bash(vercel --prod:*)",
+      "Bash(gh release create:*)",
+      "Bash(gh auth refresh:*)",
+      "Bash(gh auth:*)",
+      "Bash(gh api:*)",
+      "Bash(git config:*)",
+      "Bash(gh release upload:*)",
+      "Bash(gh release:*)"
     ],
     "additionalDirectories": [
       "c:\\Users\\c_dow\\carmaclouds\\packages\\core\\src",

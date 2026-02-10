@@ -37,36 +37,6 @@ export default function FoundCloudTab() {
         </div>
       </section>
 
-      <section className="bg-black border border-orange-400 rounded-lg p-6">
-        <h3 className="text-2xl font-semibold mb-4 text-orange-400">Download CarmaClouds</h3>
-        <div className="space-y-4">
-          <p className="text-gray-400 mb-4">
-            FoundCloud is included in the unified CarmaClouds extension. Install once, use everywhere.
-          </p>
-          <div className="flex gap-4">
-            <a
-              href="https://github.com/CarmaNayeli/carmaclouds/releases/latest/download/carmaclouds-chrome.zip"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block bg-orange-400 hover:bg-orange-500 text-white font-medium px-6 py-3 rounded-lg transition-colors"
-            >
-              Download for Chrome/Edge
-            </a>
-            <a
-              href="https://github.com/CarmaNayeli/carmaclouds/releases/latest/download/carmaclouds-firefox.zip"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block bg-orange-400 hover:bg-orange-500 text-white font-medium px-6 py-3 rounded-lg transition-colors"
-            >
-              Download for Firefox
-            </a>
-          </div>
-          <p className="text-gray-500 text-sm mt-4">
-            Not on the store yet — see the <strong className="text-gray-300">Installing the Browser Extension</strong> guide on the Home tab for how to load the ZIP in Chrome or Firefox.
-          </p>
-        </div>
-      </section>
-
       <section>
         <h3 className="text-2xl font-semibold mb-4 text-white">How to Use FoundCloud</h3>
         <ol className="space-y-4 text-gray-400">
