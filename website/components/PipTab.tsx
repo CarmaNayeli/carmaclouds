@@ -22,6 +22,14 @@ export default function PipTab() {
         </div>
       </section>
 
+      <section className="bg-yellow-900/20 border border-yellow-600/50 rounded-lg p-6">
+        <h3 className="text-xl font-semibold text-yellow-500 mb-3">⚠️ Planned Feature</h3>
+        <p className="text-gray-300">
+          Discord integration is a planned feature that is not yet implemented. The Pip2 bot is currently in development.
+          Check back soon for updates!
+        </p>
+      </section>
+
       <section className="bg-black border border-[#2dd97c] rounded-lg p-6">
         <h3 className="text-2xl font-semibold mb-4 text-[#2dd97c]">Add to Discord</h3>
         <div className="space-y-4">

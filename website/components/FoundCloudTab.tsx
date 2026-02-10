@@ -37,6 +37,14 @@ export default function FoundCloudTab() {
         </div>
       </section>
 
+      <section className="bg-yellow-900/20 border border-yellow-600/50 rounded-lg p-6">
+        <h3 className="text-xl font-semibold text-yellow-500 mb-3">🚧 Work in Progress</h3>
+        <p className="text-gray-300">
+          The custom character sheet is still in active development. You may encounter bugs or incomplete features.
+          Please report any issues on GitHub!
+        </p>
+      </section>
+
       <section>
         <h3 className="text-2xl font-semibold mb-4 text-white">How to Use FoundCloud</h3>
         <ol className="space-y-4 text-gray-400">
