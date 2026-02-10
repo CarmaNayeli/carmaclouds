@@ -17,6 +17,25 @@ const STANDARD_VARS = {
 };
 
 /**
+ * Validates if a property should be included (compensates for DiceCloud API cache issues)
+ * Returns false for inactive, disabled, or likely-deleted items
+ */
+function isValidProperty(property) {
+  if (!property) return false;
+
+  // Filter out explicitly inactive or disabled items
+  if (property.inactive === true || property.disabled === true) return false;
+
+  // Filter out removed items (DiceCloud sometimes uses this flag)
+  if (property.removed === true || property.soft_removed === true) return false;
+
+  // Filter out items with null/undefined critical IDs (corrupted data)
+  if (!property._id && !property.id) return false;
+
+  return true;
+}
+
+/**
  * Determines hit die type from character class (D&D 5e)
  */
 function getHitDieTypeFromClass(levels) {
@@ -699,7 +718,7 @@ export function parseForRollCloud(rawData) {
 
   // Parse spells from properties with child attack/damage extraction (exclude inactive/disabled)
   const spells = properties
-    .filter(p => p.type === 'spell' && !p.inactive && !p.disabled)
+    .filter(p => p.type === 'spell' && isValidProperty(p))
     .map(spell => {
       // Find child properties (attack rolls, damage) for this spell
       const spellChildren = properties.filter(p => {
@@ -838,7 +857,7 @@ export function parseForRollCloud(rawData) {
 
   // Parse actions from properties (exclude inactive/disabled)
   const actions = properties
-    .filter(p => p.type === 'action' && p.name && !p.inactive && !p.disabled)
+    .filter(p => p.type === 'action' && p.name && isValidProperty(p))
     .map(action => {
       // Find child properties (attack rolls, damage) for this action
       const actionChildren = properties.filter(p => {
@@ -995,7 +1014,7 @@ export function parseForRollCloud(rawData) {
 
   // Parse inventory from properties (items, equipment, and containers, exclude inactive)
   const inventory = properties
-    .filter(p => (p.type === 'item' || p.type === 'equipment' || p.type === 'container') && !p.inactive)
+    .filter(p => (p.type === 'item' || p.type === 'equipment' || p.type === 'container') && isValidProperty(p))
     .map(item => ({
       id: item._id,
       name: item.name || 'Unnamed Item',
