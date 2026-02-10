@@ -87,7 +87,7 @@ export class PortraitUploader {
 
     // Upload to Supabase storage
     const { data, error } = await supabase.storage
-      .from('character-portraits')
+      .from('character-portrait')
       .upload(filepath, imageBlob, {
         contentType: 'image/png',
         upsert: false
@@ -100,7 +100,7 @@ export class PortraitUploader {
 
     // Get public URL
     const { data: { publicUrl } } = supabase.storage
-      .from('character-portraits')
+      .from('character-portrait')
       .getPublicUrl(filepath);
 
     return publicUrl;
