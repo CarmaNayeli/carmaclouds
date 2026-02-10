@@ -134,10 +134,33 @@ if (fs.existsSync(foundryModuleSource)) {
   if (fs.existsSync(foundryModuleDest)) {
     fs.rmSync(foundryModuleDest, { recursive: true, force: true });
   }
-  
+
   // Copy foundry module to website
   fs.cpSync(foundryModuleSource, foundryModuleDest, { recursive: true });
   console.log('✅ Synced Foundry module to website/public/foundry-module/');
+
+  // Create zip file for Foundry manifest download URL
+  console.log('\n📦 Creating foundry-module.zip for Vercel deployment...');
+  const { execSync } = await import('child_process');
+  const websitePublicDir = path.join('..', '..', 'website', 'public');
+  const zipPath = path.join(websitePublicDir, 'foundry-module.zip');
+
+  // Remove old zip if it exists
+  if (fs.existsSync(zipPath)) {
+    fs.rmSync(zipPath);
+  }
+
+  try {
+    // Create fresh zip using 7z (cross-platform)
+    execSync(`7z a -tzip foundry-module.zip foundry-module/*`, {
+      cwd: websitePublicDir,
+      stdio: 'inherit'
+    });
+    console.log('✅ Created website/public/foundry-module.zip');
+  } catch (error) {
+    console.error('⚠️  Failed to create zip (is 7z installed?):', error.message);
+    console.log('   You can manually create it with: cd website/public && 7z a -tzip foundry-module.zip foundry-module/*');
+  }
 } else {
   console.log('⚠️  Foundry module not found at foundry-module/');
 }

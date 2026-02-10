@@ -24,7 +24,10 @@
       "Bash(supabase --version:*)",
       "Bash(git revert:*)",
       "Bash(git check-ignore:*)",
-      "Bash(7z a:*)"
+      "Bash(7z a:*)",
+      "Bash(7z l:*)",
+      "Bash(7z x:*)",
+      "Bash(vercel --prod:*)"
     ],
     "additionalDirectories": [
       "c:\\Users\\c_dow\\carmaclouds\\packages\\core\\src",
