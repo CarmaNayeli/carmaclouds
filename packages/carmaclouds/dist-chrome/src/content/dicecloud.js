@@ -1667,6 +1667,11 @@
     } else if (request.action === "resetUIPositions") {
       console.log("\u{1F504} Resetting UI positions on DiceCloud");
       localStorage.removeItem("carmaclouds_button_position");
+      const buttonContainer = document.querySelector("#carmaclouds-sync-button-container");
+      if (buttonContainer) {
+        buttonContainer.style.transform = "translate(0px, 0px)";
+        console.log("\u2705 Reset button visual position to default");
+      }
       console.log("\u2705 Reset DiceCloud sync button position");
       sendResponse({ success: true, message: "DiceCloud sync button position reset" });
       return true;

@@ -1223,7 +1223,31 @@
               }
             }
             positionKeys.forEach((key) => localStorage.removeItem(key));
-            debug.log("\u2705 Reset positions:", positionKeys);
+            const statusBar = document.querySelector("#rollcloud-status-bar");
+            if (statusBar) {
+              statusBar.style.transform = "translate(0px, 0px)";
+              statusBar.style.width = "";
+              statusBar.style.height = "";
+              debug.log("\u2705 Reset status bar visual position");
+            }
+            const sheetToggle = document.querySelector("#rollcloud-sheet-toggle");
+            if (sheetToggle) {
+              sheetToggle.style.transform = "translate(0px, 0px)";
+              debug.log("\u2705 Reset sheet toggle visual position");
+            }
+            const gmModeButton = document.querySelector("#rollcloud-gm-mode-button");
+            if (gmModeButton) {
+              gmModeButton.style.transform = "translate(0px, 0px)";
+              debug.log("\u2705 Reset GM mode button visual position");
+            }
+            const characterSheets = document.querySelectorAll('[id^="rollcloud-character-sheet-"]');
+            characterSheets.forEach((sheet) => {
+              sheet.style.transform = "translate(0px, 0px)";
+            });
+            if (characterSheets.length > 0) {
+              debug.log(`\u2705 Reset ${characterSheets.length} character sheet position(s)`);
+            }
+            debug.log("\u2705 Reset all positions:", positionKeys);
             sendResponse({ success: true, message: "UI positions reset" });
           } catch (resetError) {
             debug.error("\u274C Error resetting positions:", resetError);

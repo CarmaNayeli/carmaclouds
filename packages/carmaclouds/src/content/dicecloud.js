@@ -493,8 +493,15 @@ browserAPI.runtime.onMessage.addListener((request, sender, sendResponse) => {
   } else if (request.action === 'resetUIPositions') {
     console.log('🔄 Resetting UI positions on DiceCloud');
 
-    // Clear sync button position
+    // Clear sync button position from localStorage
     localStorage.removeItem('carmaclouds_button_position');
+
+    // Find and reset the button's visual position
+    const buttonContainer = document.querySelector('#carmaclouds-sync-button-container');
+    if (buttonContainer) {
+      buttonContainer.style.transform = 'translate(0px, 0px)';
+      console.log('✅ Reset button visual position to default');
+    }
 
     console.log('✅ Reset DiceCloud sync button position');
     sendResponse({ success: true, message: 'DiceCloud sync button position reset' });
