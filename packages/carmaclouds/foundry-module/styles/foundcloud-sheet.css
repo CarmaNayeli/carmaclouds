@@ -787,13 +787,15 @@
 }
 
 /* Spell Slots */
-.foundcloud-sheet .spell-slots-grid {
+.foundcloud-sheet .spell-slots-grid,
+.foundcloud-sheet-simple .spell-slots-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
   gap: 8px;
 }
 
-.foundcloud-sheet .spell-slot-card {
+.foundcloud-sheet .spell-slot-card,
+.foundcloud-sheet-simple .spell-slot-card {
   background: var(--fc-bg-action);
   border: 2px solid var(--fc-accent-info);
   border-radius: 6px;
@@ -803,39 +805,46 @@
   transition: all 0.2s;
 }
 
-.foundcloud-sheet .spell-slot-card:hover {
+.foundcloud-sheet .spell-slot-card:hover,
+.foundcloud-sheet-simple .spell-slot-card:hover {
   transform: translateY(-2px);
 }
 
-.foundcloud-sheet .spell-slot-card.empty {
+.foundcloud-sheet .spell-slot-card.empty,
+.foundcloud-sheet-simple .spell-slot-card.empty {
   opacity: 0.5;
   border-color: var(--fc-border-color);
   background: var(--fc-bg-tertiary);
 }
 
-.foundcloud-sheet .spell-slot-level {
+.foundcloud-sheet .spell-slot-level,
+.foundcloud-sheet-simple .spell-slot-level {
   font-weight: bold;
   font-size: 0.85em;
 }
 
-.foundcloud-sheet .spell-slot-count {
+.foundcloud-sheet .spell-slot-count,
+.foundcloud-sheet-simple .spell-slot-count {
   font-size: 1.3em;
   font-weight: bold;
   color: var(--fc-accent-info);
 }
 
-.foundcloud-sheet .spell-slot-card.empty .spell-slot-count {
+.foundcloud-sheet .spell-slot-card.empty .spell-slot-count,
+.foundcloud-sheet-simple .spell-slot-card.empty .spell-slot-count {
   color: var(--fc-text-muted);
 }
 
 /* Resources */
-.foundcloud-sheet .resources-grid {
+.foundcloud-sheet .resources-grid,
+.foundcloud-sheet-simple .resources-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 10px;
 }
 
-.foundcloud-sheet .resource-card {
+.foundcloud-sheet .resource-card,
+.foundcloud-sheet-simple .resource-card {
   background: var(--fc-bg-resource);
   border: 1px solid var(--fc-accent-purple);
   border-radius: 6px;
@@ -843,24 +852,28 @@
   text-align: center;
 }
 
-.foundcloud-sheet .resource-name {
+.foundcloud-sheet .resource-name,
+.foundcloud-sheet-simple .resource-name {
   font-weight: bold;
   margin-bottom: 5px;
 }
 
-.foundcloud-sheet .resource-uses {
+.foundcloud-sheet .resource-uses,
+.foundcloud-sheet-simple .resource-uses {
   font-size: 1.2em;
   color: var(--fc-accent-purple);
   font-weight: bold;
 }
 
-.foundcloud-sheet .resource-recovery {
+.foundcloud-sheet .resource-recovery,
+.foundcloud-sheet-simple .resource-recovery {
   font-size: 0.75em;
   color: var(--fc-text-muted);
   text-transform: uppercase;
 }
 
-.foundcloud-sheet .resource-buttons {
+.foundcloud-sheet .resource-buttons,
+.foundcloud-sheet-simple .resource-buttons {
   display: flex;
   justify-content: center;
   gap: 8px;
@@ -868,7 +881,9 @@
 }
 
 .foundcloud-sheet .resource-use-btn,
-.foundcloud-sheet .resource-restore-btn {
+.foundcloud-sheet .resource-restore-btn,
+.foundcloud-sheet-simple .resource-use-btn,
+.foundcloud-sheet-simple .resource-restore-btn {
   width: 30px;
   height: 30px;
   border-radius: 50%;
@@ -878,12 +893,14 @@
   transition: all 0.2s;
 }
 
-.foundcloud-sheet .resource-use-btn {
+.foundcloud-sheet .resource-use-btn,
+.foundcloud-sheet-simple .resource-use-btn {
   background: var(--fc-accent-danger);
   color: white;
 }
 
-.foundcloud-sheet .resource-restore-btn {
+.foundcloud-sheet .resource-restore-btn,
+.foundcloud-sheet-simple .resource-restore-btn {
   background: var(--fc-accent-success);
   color: white;
 }
