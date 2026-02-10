@@ -59,28 +59,48 @@
           debug.error("\u274C No roll data provided");
           return { success: false, error: "No roll data provided" };
         }
-        const isDamageRoll = rollData.formula && /\dd\d+/.test(rollData.formula) && !rollData.formula.includes("1d20");
+        const hasDiceInFormula = rollData.formula && /\dd\d+/.test(rollData.formula);
+        const hasD20 = rollData.formula && rollData.formula.toLowerCase().includes("d20");
+        const hasDamageInName = rollData.name && rollData.name.toLowerCase().includes("damage");
+        const isDamageRoll = hasDiceInFormula && !hasD20 || hasDamageInName;
+        debug.log("\u{1F50D} Checking if damage roll:", {
+          formula: rollData.formula,
+          name: rollData.name,
+          hasDiceInFormula,
+          hasD20,
+          hasDamageInName,
+          isDamageRoll
+        });
         let isCriticalHit = false;
         if (isDamageRoll) {
+          debug.log("\u2705 Identified as damage roll, checking for crit flag...");
           try {
             const storage = await browserAPI.storage.local.get("criticalHitPending");
+            debug.log("\u{1F4E6} Storage check:", storage);
             if (storage.criticalHitPending) {
               const critData = storage.criticalHitPending;
               const critAge = Date.now() - critData.timestamp;
+              debug.log(`\u23F1\uFE0F Crit flag age: ${critAge}ms (max 30000ms)`);
               if (critAge < 3e4) {
                 debug.log("\u{1F4A5} Critical hit active! Doubling damage dice for:", rollData.name);
+                debug.log("\u{1F4A5} Original formula:", rollData.formula);
                 rollData.formula = doubleDamageDice(rollData.formula);
                 debug.log("\u{1F4A5} Doubled formula:", rollData.formula);
                 isCriticalHit = true;
                 await browserAPI.storage.local.remove("criticalHitPending");
+                debug.log("\u2705 Crit flag cleared after use");
               } else {
                 debug.log("\u23F1\uFE0F Critical hit flag expired, clearing");
                 await browserAPI.storage.local.remove("criticalHitPending");
               }
+            } else {
+              debug.log("\u274C No crit flag found in storage");
             }
           } catch (storageError) {
             debug.warn("\u26A0\uFE0F Could not check critical hit flag:", storageError);
           }
+        } else {
+          debug.log("\u23E9 Not a damage roll, skipping crit check");
         }
         if (isCriticalHit) {
           rollData.name = `\u{1F4A5} CRITICAL HIT! ${rollData.name}`;
@@ -139,8 +159,17 @@
                   if (rollResult.baseRoll === 1 || rollResult.baseRoll === 20) {
                     const rollType = rollResult.baseRoll === 1 ? "Natural 1" : "Natural 20";
                     debug.log(`\u{1F3AF} ${rollType} detected in Roll20 roll!`);
-                    if (rollResult.baseRoll === 20 && originalRollData.formula && originalRollData.formula.includes("1d20")) {
+                    debug.log(`\u{1F3AF} Roll data:`, originalRollData);
+                    const name = originalRollData.name?.toLowerCase() || "";
+                    const formula = originalRollData.formula?.toLowerCase() || "";
+                    const hasD20 = formula.includes("d20");
+                    const hasAttackKeyword = name.includes("attack");
+                    const isDamageRoll = name.includes("damage");
+                    const isSkillOrSave = name.includes("check") || name.includes("save") || name.includes("saving throw") || name.includes("skill") || name.includes("ability");
+                    const isAttackRoll = hasD20 && hasAttackKeyword && !isDamageRoll && !isSkillOrSave;
+                    if (rollResult.baseRoll === 20 && isAttackRoll) {
                       debug.log("\u{1F4A5} Critical hit! Setting crit flag for next damage roll");
+                      debug.log("\u{1F4A5} Attack name:", originalRollData.name);
                       browserAPI.storage.local.set({
                         criticalHitPending: {
                           timestamp: Date.now(),
@@ -151,6 +180,10 @@
                         browserAPI.storage.local.remove("criticalHitPending");
                         debug.log("\u23F1\uFE0F Critical hit flag expired");
                       }, 3e4);
+                    } else if (rollResult.baseRoll === 20) {
+                      debug.log("\u26A0\uFE0F Natural 20 detected but not identified as attack roll");
+                      debug.log("\u26A0\uFE0F Formula:", originalRollData.formula);
+                      debug.log("\u26A0\uFE0F Name:", originalRollData.name);
                     }
                     browserAPI.runtime.sendMessage({
                       action: "rollResult",

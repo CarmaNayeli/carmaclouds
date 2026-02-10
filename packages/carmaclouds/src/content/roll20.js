@@ -95,33 +95,57 @@
 
       // Check if this is a damage roll and if there's a pending critical hit
       // Damage rolls have formulas with dice but no d20 (to exclude attack rolls)
-      const isDamageRoll = rollData.formula && /\dd\d+/.test(rollData.formula) && !rollData.formula.includes('1d20');
+      // OR have 'damage' in the roll name
+      const hasDiceInFormula = rollData.formula && /\dd\d+/.test(rollData.formula);
+      const hasD20 = rollData.formula && rollData.formula.toLowerCase().includes('d20');
+      const hasDamageInName = rollData.name && rollData.name.toLowerCase().includes('damage');
+      const isDamageRoll = (hasDiceInFormula && !hasD20) || hasDamageInName;
+
+      debug.log('🔍 Checking if damage roll:', {
+        formula: rollData.formula,
+        name: rollData.name,
+        hasDiceInFormula,
+        hasD20,
+        hasDamageInName,
+        isDamageRoll
+      });
+
       let isCriticalHit = false;
 
       if (isDamageRoll) {
+        debug.log('✅ Identified as damage roll, checking for crit flag...');
         try {
           const storage = await browserAPI.storage.local.get('criticalHitPending');
+          debug.log('📦 Storage check:', storage);
+
           if (storage.criticalHitPending) {
             const critData = storage.criticalHitPending;
             const critAge = Date.now() - critData.timestamp;
+            debug.log(`⏱️ Crit flag age: ${critAge}ms (max 30000ms)`);
 
             // Only apply crit if it's less than 30 seconds old
             if (critAge < 30000) {
               debug.log('💥 Critical hit active! Doubling damage dice for:', rollData.name);
+              debug.log('💥 Original formula:', rollData.formula);
               rollData.formula = doubleDamageDice(rollData.formula);
               debug.log('💥 Doubled formula:', rollData.formula);
               isCriticalHit = true;
 
               // Clear the crit flag after use
               await browserAPI.storage.local.remove('criticalHitPending');
+              debug.log('✅ Crit flag cleared after use');
             } else {
               debug.log('⏱️ Critical hit flag expired, clearing');
               await browserAPI.storage.local.remove('criticalHitPending');
             }
+          } else {
+            debug.log('❌ No crit flag found in storage');
           }
         } catch (storageError) {
           debug.warn('⚠️ Could not check critical hit flag:', storageError);
         }
+      } else {
+        debug.log('⏩ Not a damage roll, skipping crit check');
       }
 
       // Add critical hit indicator to roll name
@@ -210,10 +234,34 @@
                 if (rollResult.baseRoll === 1 || rollResult.baseRoll === 20) {
                   const rollType = rollResult.baseRoll === 1 ? 'Natural 1' : 'Natural 20';
                   debug.log(`🎯 ${rollType} detected in Roll20 roll!`);
+                  debug.log(`🎯 Roll data:`, originalRollData);
 
-                  // For natural 20s on attack rolls, set a critical hit flag for the next damage roll
-                  if (rollResult.baseRoll === 20 && originalRollData.formula && originalRollData.formula.includes('1d20')) {
+                  // For natural 20s, check if this is an attack roll (not damage, skill check, or save)
+                  const name = originalRollData.name?.toLowerCase() || '';
+                  const formula = originalRollData.formula?.toLowerCase() || '';
+
+                  // Must have d20 in formula
+                  const hasD20 = formula.includes('d20');
+
+                  // Must have 'attack' in name or be a clear attack roll
+                  const hasAttackKeyword = name.includes('attack');
+
+                  // Exclude damage rolls
+                  const isDamageRoll = name.includes('damage');
+
+                  // Exclude skill checks and saving throws
+                  const isSkillOrSave = name.includes('check') ||
+                                       name.includes('save') ||
+                                       name.includes('saving throw') ||
+                                       name.includes('skill') ||
+                                       name.includes('ability');
+
+                  // This is an attack roll if it has d20 AND attack keyword AND is not damage/skill/save
+                  const isAttackRoll = hasD20 && hasAttackKeyword && !isDamageRoll && !isSkillOrSave;
+
+                  if (rollResult.baseRoll === 20 && isAttackRoll) {
                     debug.log('💥 Critical hit! Setting crit flag for next damage roll');
+                    debug.log('💥 Attack name:', originalRollData.name);
                     browserAPI.storage.local.set({
                       criticalHitPending: {
                         timestamp: Date.now(),
@@ -225,6 +273,10 @@
                       browserAPI.storage.local.remove('criticalHitPending');
                       debug.log('⏱️ Critical hit flag expired');
                     }, 30000);
+                  } else if (rollResult.baseRoll === 20) {
+                    debug.log('⚠️ Natural 20 detected but not identified as attack roll');
+                    debug.log('⚠️ Formula:', originalRollData.formula);
+                    debug.log('⚠️ Name:', originalRollData.name);
                   }
 
                   // Send to popup for racial trait checking
