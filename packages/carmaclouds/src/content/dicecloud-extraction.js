@@ -36,6 +36,47 @@ function isValidProperty(property) {
 }
 
 /**
+ * Normalizes a name for duplicate detection
+ * Handles common variations: "Use a d8 Hit Die" vs "Using a d8 Hit Dice"
+ */
+function normalizeNameForDedupe(name) {
+  if (!name) return '';
+
+  return name
+    .toLowerCase()
+    .trim()
+    // Remove common articles and prepositions
+    .replace(/\b(a|an|the)\b/g, '')
+    // Normalize verb forms (using -> use, adding -> add, etc)
+    .replace(/ing\b/g, '')
+    // Normalize plurals (dice -> die, dies -> die)
+    .replace(/dice/g, 'die')
+    .replace(/ies\b/g, 'y')
+    .replace(/s\b/g, '')
+    // Remove all non-alphanumeric except spaces
+    .replace(/[^a-z0-9\s]/g, '')
+    // Collapse multiple spaces
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Deduplicates an array of items based on normalized name similarity
+ * Keeps the first occurrence of each unique normalized name
+ */
+function deduplicateByName(items) {
+  const seen = new Set();
+  return items.filter(item => {
+    const normalized = normalizeNameForDedupe(item.name);
+    if (seen.has(normalized)) {
+      return false; // Skip duplicate
+    }
+    seen.add(normalized);
+    return true;
+  });
+}
+
+/**
  * Determines hit die type from character class (D&D 5e)
  */
 function getHitDieTypeFromClass(levels) {
@@ -1053,9 +1094,9 @@ export function parseForRollCloud(rawData) {
     proficiencyBonus: variables.proficiencyBonus?.total || variables.proficiencyBonus?.value || 0,
     spellSlots,
     resources,
-    inventory,
-    spells,
-    actions,
+    inventory: deduplicateByName(inventory),
+    spells: deduplicateByName(spells),
+    actions: deduplicateByName(actions),
     companions
   };
 }
