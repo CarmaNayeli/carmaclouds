@@ -980,6 +980,22 @@ export function parseForRollCloud(rawData) {
         }
       }
 
+      // If no attack child found, check description for spell attack mentions
+      if (!attackRoll) {
+        const spellDescription = extractText(spell.description).toLowerCase();
+        const spellSummary = extractText(spell.summary).toLowerCase();
+        const fullText = `${spellDescription} ${spellSummary}`;
+
+        // Check for ranged or melee spell attack mentions
+        const hasSpellAttack = /\b(ranged spell attack|melee spell attack|spell attack roll)\b/.test(fullText);
+
+        if (hasSpellAttack) {
+          // Use special flag to indicate spell attack bonus should be used
+          attackRoll = 'use_spell_attack_bonus';
+          console.log(`✨ Detected spell attack in description for "${spell.name}", using spell attack bonus`);
+        }
+      }
+
       // Evaluate variables in attack roll formula
       if (attackRoll && attackRoll !== 'use_spell_attack_bonus') {
         attackRoll = evaluateDamageFormula(attackRoll, variables);

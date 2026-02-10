@@ -12291,6 +12291,16 @@ ${suffix}`;
           attackRoll = attackChild.roll.calculation || attackChild.roll.value || "use_spell_attack_bonus";
         }
       }
+      if (!attackRoll) {
+        const spellDescription = extractText(spell.description).toLowerCase();
+        const spellSummary = extractText(spell.summary).toLowerCase();
+        const fullText = `${spellDescription} ${spellSummary}`;
+        const hasSpellAttack = /\b(ranged spell attack|melee spell attack|spell attack roll)\b/.test(fullText);
+        if (hasSpellAttack) {
+          attackRoll = "use_spell_attack_bonus";
+          console.log(`\u2728 Detected spell attack in description for "${spell.name}", using spell attack bonus`);
+        }
+      }
       if (attackRoll && attackRoll !== "use_spell_attack_bonus") {
         attackRoll = evaluateDamageFormula(attackRoll, variables2);
       }
