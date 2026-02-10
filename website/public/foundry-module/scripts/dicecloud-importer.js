@@ -442,11 +442,20 @@ export class DiceCloudImporter {
       const levelKey = `level${i}`;
       const slot = spellSlots[levelKey] || {};
 
+      console.log(`🔮 [IMPORTER] Level ${i} slot data:`, {
+        levelKey,
+        slot,
+        'slot.current': slot.current,
+        'slot.max': slot.max
+      });
+
       spells[`spell${i}`] = {
         value: slot.current || 0,
         max: slot.max || 0,
         override: null
       };
+
+      console.log(`🔮 [IMPORTER] Created spell${i}:`, spells[`spell${i}`]);
     }
 
     console.log('🔮 [IMPORTER] Final spells object:', spells);
