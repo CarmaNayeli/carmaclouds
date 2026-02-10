@@ -970,8 +970,10 @@ export function parseForRollCloud(rawData) {
     if (slotVar) {
       const current = slotVar.value || 0;
       const max = slotVar.total || slotVar.max || slotVar.value || 0;
-      spellSlots[`level${level}SpellSlots`] = current;
-      spellSlots[`level${level}SpellSlotsMax`] = max;
+      spellSlots[`level${level}`] = {
+        current: current,
+        max: max
+      };
     }
   }
 

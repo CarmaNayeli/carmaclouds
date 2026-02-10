@@ -766,8 +766,10 @@
       if (slotVar) {
         const current = slotVar.value || 0;
         const max = slotVar.total || slotVar.max || slotVar.value || 0;
-        spellSlots[`level${level2}SpellSlots`] = current;
-        spellSlots[`level${level2}SpellSlotsMax`] = max;
+        spellSlots[`level${level2}`] = {
+          current,
+          max
+        };
       }
     }
     const resources = properties.filter((p) => p.type === "resource" || p.type === "attribute" && p.attributeType === "resource").map((resource) => ({

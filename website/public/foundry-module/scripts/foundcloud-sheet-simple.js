@@ -952,8 +952,7 @@ export class FoundCloudSheetSimple extends ActorSheet {
     event.preventDefault();
     const ability = event.currentTarget.dataset.ability;
     try {
-      const options = this._getRollOptions();
-      await this.actor.rollAbilityTest(ability, { event, ...options });
+      await this.actor.rollAbilityCheck({ ability });
     } catch (error) {
       console.error("Error rolling ability check:", error);
       ui.notifications.error(`Failed to roll ${ability.toUpperCase()} ability check.`);
@@ -964,8 +963,7 @@ export class FoundCloudSheetSimple extends ActorSheet {
     event.preventDefault();
     const ability = event.currentTarget.dataset.ability;
     try {
-      const options = this._getRollOptions();
-      await this.actor.rollAbilitySave(ability, { event, ...options });
+      await this.actor.rollSavingThrow({ ability });
     } catch (error) {
       console.error("Error rolling saving throw:", error);
       ui.notifications.error(`Failed to roll ${ability.toUpperCase()} saving throw.`);
@@ -976,8 +974,7 @@ export class FoundCloudSheetSimple extends ActorSheet {
     event.preventDefault();
     const skill = event.currentTarget.dataset.skill;
     try {
-      const options = this._getRollOptions();
-      await this.actor.rollSkill(skill, { event, ...options });
+      await this.actor.rollSkill({ skill });
     } catch (error) {
       console.error("Error rolling skill:", error);
       ui.notifications.error("Failed to roll skill check.");
