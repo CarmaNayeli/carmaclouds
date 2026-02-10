@@ -435,6 +435,9 @@ export class DiceCloudImporter {
     const spells = {};
     const spellSlots = parsed.spell_slots || {};
 
+    console.log('🔮 [IMPORTER] Mapping spell slots from Supabase...');
+    console.log('🔮 [IMPORTER] parsed.spell_slots:', spellSlots);
+
     for (let i = 1; i <= 9; i++) {
       const levelKey = `level${i}`;
       const slot = spellSlots[levelKey] || {};
@@ -446,6 +449,7 @@ export class DiceCloudImporter {
       };
     }
 
+    console.log('🔮 [IMPORTER] Final spells object:', spells);
     return spells;
   }
 

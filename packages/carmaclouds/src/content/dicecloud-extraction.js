@@ -965,17 +965,21 @@ export function parseForRollCloud(rawData) {
   // Parse spell slots from variables
   // DiceCloud uses: slotLevel1, slotLevel2, etc.
   const spellSlots = {};
+  console.log('🔮 Parsing spell slots from variables...');
+  console.log('🔮 Available variables:', Object.keys(variables).filter(k => k.toLowerCase().includes('slot')));
   for (let level = 1; level <= 9; level++) {
     const slotVar = variables[`slotLevel${level}`];
     if (slotVar) {
       const current = slotVar.value || 0;
       const max = slotVar.total || slotVar.max || slotVar.value || 0;
+      console.log(`🔮 Level ${level} spell slots:`, { current, max, slotVar });
       spellSlots[`level${level}`] = {
         current: current,
         max: max
       };
     }
   }
+  console.log('🔮 Final spell slots:', spellSlots);
 
   // Parse resources from properties (only resource-type attributes)
   const resources = properties

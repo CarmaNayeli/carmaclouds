@@ -12531,17 +12531,21 @@ ${suffix}`;
       };
     });
     const spellSlots = {};
+    console.log("\u{1F52E} Parsing spell slots from variables...");
+    console.log("\u{1F52E} Available variables:", Object.keys(variables).filter((k) => k.toLowerCase().includes("slot")));
     for (let level2 = 1; level2 <= 9; level2++) {
       const slotVar = variables[`slotLevel${level2}`];
       if (slotVar) {
         const current = slotVar.value || 0;
         const max = slotVar.total || slotVar.max || slotVar.value || 0;
+        console.log(`\u{1F52E} Level ${level2} spell slots:`, { current, max, slotVar });
         spellSlots[`level${level2}`] = {
           current,
           max
         };
       }
     }
+    console.log("\u{1F52E} Final spell slots:", spellSlots);
     const resources = properties.filter((p) => p.type === "resource" || p.type === "attribute" && p.attributeType === "resource").map((resource) => ({
       id: resource._id,
       name: resource.name || "Unnamed Resource",
