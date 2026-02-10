@@ -19,6 +19,84 @@
   debug.log('RollCloud: Roll20 content script loaded');
 
   /**
+   * Process DiceCloud triggers to extract expanded crit range and damage bonuses
+   * @param {Array} triggers - Array of trigger objects
+   * @returns {Object} {expandedCritRange: number|null, spellDamageBonuses: Array}
+   */
+  function processTriggers(triggers) {
+    if (!triggers || !Array.isArray(triggers) || triggers.length === 0) {
+      return { expandedCritRange: null, spellDamageBonuses: [] };
+    }
+
+    const result = {
+      expandedCritRange: null,
+      spellDamageBonuses: []
+    };
+
+    debug.log(`⚡ Processing ${triggers.length} triggers...`);
+
+    triggers.forEach(trigger => {
+      const triggerName = (trigger.name || '').toLowerCase();
+      const desc = (trigger.description || '').toLowerCase();
+      const summary = (trigger.summary || '').toLowerCase();
+
+      // Check for expanded crit range (Improved Critical, Superior Critical)
+      if (triggerName.includes('critical') || triggerName.includes('crit')) {
+        // Look for patterns like "19 or 20", "18-20", "19-20"
+        const fullText = `${triggerName} ${desc} ${summary}`;
+        const critPatterns = [
+          /\b(1[89])[- ]?(?:or[- ])?20\b/,
+          /\b(1[89])[- ]?to[- ]?20\b/,
+          /critical.*?on.*?(?:a|an)\s+(1[89]|20)/,
+          /improved critical/i,
+          /superior critical/i
+        ];
+
+        for (const pattern of critPatterns) {
+          const match = fullText.match(pattern);
+          if (match) {
+            let minCrit = match[1] ? parseInt(match[1]) : null;
+
+            // Special handling for named features
+            if (!minCrit) {
+              if (fullText.includes('superior critical')) {
+                minCrit = 18;
+              } else if (fullText.includes('improved critical')) {
+                minCrit = 19;
+              }
+            }
+
+            if (minCrit && (!result.expandedCritRange || minCrit < result.expandedCritRange)) {
+              result.expandedCritRange = minCrit;
+              debug.log(`⚡ Detected expanded crit range: ${minCrit}-20 from "${trigger.name}"`);
+            }
+            break;
+          }
+        }
+      }
+
+      // Check for damage bonuses (Arcane Firearm, etc.)
+      if (triggerName.includes('damage') || triggerName.includes('bonus') || triggerName.includes('firearm')) {
+        const fullText = `${desc} ${summary}`;
+        // Look for dice patterns like "1d8", "2d6"
+        const dicePattern = /(\d+d\d+)/;
+        const match = fullText.match(dicePattern);
+        if (match) {
+          result.spellDamageBonuses.push({
+            name: trigger.name,
+            formula: match[1],
+            description: trigger.description
+          });
+          debug.log(`⚡ Detected spell damage bonus: ${match[1]} from "${trigger.name}"`);
+        }
+      }
+    });
+
+    debug.log('⚡ Trigger processing complete:', result);
+    return result;
+  }
+
+  /**
    * Posts a message to Roll20 chat
    * Uses Firefox-compatible event handling to avoid CSP/security issues
    */
@@ -114,7 +192,8 @@
         isAttackRoll
       });
 
-      // Apply missing modifiers to rolls
+      // Apply missing modifiers to rolls and process triggers
+      let expandedCritRange = null;
       try {
         const storage = await browserAPI.storage.local.get('characterProfiles');
         const characterProfiles = storage.characterProfiles || {};
@@ -132,6 +211,16 @@
 
         if (characterData) {
           debug.log('📊 Found character data for modifier application:', characterData.name);
+
+          // Process triggers for expanded crit range and damage bonuses
+          if (characterData.triggers && Array.isArray(characterData.triggers)) {
+            const triggerEffects = processTriggers(characterData.triggers);
+            expandedCritRange = triggerEffects.expandedCritRange;
+            if (expandedCritRange) {
+              debug.log(`⚡ Character has expanded crit range: ${expandedCritRange}-20`);
+            }
+            // TODO: Apply spell damage bonuses from triggerEffects.spellDamageBonuses
+          }
 
           // Check if formula already has modifiers (patterns like "+X" or "-X")
           const hasModifier = /[+\-]\s*\d+/.test(rollData.formula);
@@ -277,7 +366,7 @@
         // Wait for Roll20 to process the roll and add it to chat
         // Then parse the actual Roll20 result (not DiceCloud's roll)
         try {
-          observeNextRollResult(rollData);
+          observeNextRollResult(rollData, expandedCritRange);
         } catch (observeError) {
           // Non-fatal - roll was posted, just couldn't observe result
           debug.warn('⚠️ Could not set up roll observer:', observeError.message);
@@ -359,9 +448,14 @@
 
   /**
    * Observes Roll20 chat for the next roll result and checks for natural 1s/20s
+   * @param {Object} originalRollData - Original roll data
+   * @param {number|null} expandedCritRange - Minimum roll for crit (19 or 18), null for normal (20 only)
    */
-  function observeNextRollResult(originalRollData) {
+  function observeNextRollResult(originalRollData, expandedCritRange = null) {
     debug.log('👀 Setting up observer for Roll20 roll result...');
+    if (expandedCritRange) {
+      debug.log(`⚡ Using expanded crit range: ${expandedCritRange}-20`);
+    }
 
     const chatLog = document.querySelector('#textchat .content');
     if (!chatLog) {
@@ -414,13 +508,23 @@
                   // This is an attack roll if it has d20 AND attack keyword AND is not damage/skill/save
                   const isAttackRoll = hasD20 && hasAttackKeyword && !isDamageRoll && !isSkillOrSave;
 
-                  if (rollResult.baseRoll === 20 && isAttackRoll) {
-                    debug.log('💥 Critical hit! Setting crit flag for next damage roll');
+                  // Check for critical hit - use expanded crit range if available
+                  const critThreshold = expandedCritRange || 20;
+                  const isCritical = rollResult.baseRoll >= critThreshold && rollResult.baseRoll === 20;
+
+                  // Also check expanded range (19-20 or 18-20)
+                  const isExpandedCrit = expandedCritRange && rollResult.baseRoll >= expandedCritRange;
+
+                  if ((isCritical || isExpandedCrit) && isAttackRoll) {
+                    const critType = rollResult.baseRoll === 20 ? 'Natural 20' : `Expanded Crit (${rollResult.baseRoll})`;
+                    debug.log(`💥 Critical hit detected! ${critType} - Setting crit flag for next damage roll`);
                     debug.log('💥 Attack name:', originalRollData.name);
+                    debug.log(`💥 Roll: ${rollResult.baseRoll}, Threshold: ${critThreshold}`);
                     browserAPI.storage.local.set({
                       criticalHitPending: {
                         timestamp: Date.now(),
-                        attackName: originalRollData.name
+                        attackName: originalRollData.name,
+                        critRoll: rollResult.baseRoll
                       }
                     });
                     // Auto-clear after 30 seconds

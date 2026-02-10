@@ -12788,6 +12788,25 @@ ${suffix}`;
       attuned: item.attuned || false,
       requiresAttunement: item.requiresAttunement || false
     }));
+    const triggers = properties.filter((p) => p.type === "trigger" && isValidProperty(p)).map((trigger) => {
+      console.log("\u26A1 Found trigger:", {
+        name: trigger.name,
+        condition: trigger.condition,
+        effects: trigger.effects,
+        raw: trigger
+      });
+      return {
+        id: trigger._id,
+        name: trigger.name || "Unnamed Trigger",
+        condition: trigger.condition || "",
+        description: extractText(trigger.description),
+        summary: extractText(trigger.summary),
+        tags: trigger.tags || [],
+        // Store raw trigger data for edge case handlers
+        raw: trigger
+      };
+    });
+    console.log(`\u26A1 Parsed ${triggers.length} triggers:`, triggers.map((t) => t.name));
     const companions = extractCompanions(properties);
     return {
       name: characterName,
@@ -12814,6 +12833,7 @@ ${suffix}`;
       inventory: deduplicateByName(inventory),
       spells: deduplicateByName(spells),
       actions: deduplicateByName(actions),
+      triggers: deduplicateByName(triggers),
       companions
     };
   }

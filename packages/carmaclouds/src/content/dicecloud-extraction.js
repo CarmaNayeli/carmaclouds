@@ -1331,6 +1331,31 @@ export function parseForRollCloud(rawData) {
       requiresAttunement: item.requiresAttunement || false
     }));
 
+  // Parse triggers from properties (conditional modifiers)
+  const triggers = properties
+    .filter(p => p.type === 'trigger' && isValidProperty(p))
+    .map(trigger => {
+      console.log('⚡ Found trigger:', {
+        name: trigger.name,
+        condition: trigger.condition,
+        effects: trigger.effects,
+        raw: trigger
+      });
+
+      return {
+        id: trigger._id,
+        name: trigger.name || 'Unnamed Trigger',
+        condition: trigger.condition || '',
+        description: extractText(trigger.description),
+        summary: extractText(trigger.summary),
+        tags: trigger.tags || [],
+        // Store raw trigger data for edge case handlers
+        raw: trigger
+      };
+    });
+
+  console.log(`⚡ Parsed ${triggers.length} triggers:`, triggers.map(t => t.name));
+
   // Extract companions from features
   const companions = extractCompanions(properties);
 
@@ -1359,6 +1384,7 @@ export function parseForRollCloud(rawData) {
     inventory: deduplicateByName(inventory),
     spells: deduplicateByName(spells),
     actions: deduplicateByName(actions),
+    triggers: deduplicateByName(triggers),
     companions
   };
 }

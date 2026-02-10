@@ -9,6 +9,64 @@
       error: (...args) => console.error("[RollCloud]", ...args)
     };
     debug.log("RollCloud: Roll20 content script loaded");
+    function processTriggers(triggers) {
+      if (!triggers || !Array.isArray(triggers) || triggers.length === 0) {
+        return { expandedCritRange: null, spellDamageBonuses: [] };
+      }
+      const result = {
+        expandedCritRange: null,
+        spellDamageBonuses: []
+      };
+      debug.log(`\u26A1 Processing ${triggers.length} triggers...`);
+      triggers.forEach((trigger) => {
+        const triggerName = (trigger.name || "").toLowerCase();
+        const desc = (trigger.description || "").toLowerCase();
+        const summary = (trigger.summary || "").toLowerCase();
+        if (triggerName.includes("critical") || triggerName.includes("crit")) {
+          const fullText = `${triggerName} ${desc} ${summary}`;
+          const critPatterns = [
+            /\b(1[89])[- ]?(?:or[- ])?20\b/,
+            /\b(1[89])[- ]?to[- ]?20\b/,
+            /critical.*?on.*?(?:a|an)\s+(1[89]|20)/,
+            /improved critical/i,
+            /superior critical/i
+          ];
+          for (const pattern of critPatterns) {
+            const match = fullText.match(pattern);
+            if (match) {
+              let minCrit = match[1] ? parseInt(match[1]) : null;
+              if (!minCrit) {
+                if (fullText.includes("superior critical")) {
+                  minCrit = 18;
+                } else if (fullText.includes("improved critical")) {
+                  minCrit = 19;
+                }
+              }
+              if (minCrit && (!result.expandedCritRange || minCrit < result.expandedCritRange)) {
+                result.expandedCritRange = minCrit;
+                debug.log(`\u26A1 Detected expanded crit range: ${minCrit}-20 from "${trigger.name}"`);
+              }
+              break;
+            }
+          }
+        }
+        if (triggerName.includes("damage") || triggerName.includes("bonus") || triggerName.includes("firearm")) {
+          const fullText = `${desc} ${summary}`;
+          const dicePattern = /(\d+d\d+)/;
+          const match = fullText.match(dicePattern);
+          if (match) {
+            result.spellDamageBonuses.push({
+              name: trigger.name,
+              formula: match[1],
+              description: trigger.description
+            });
+            debug.log(`\u26A1 Detected spell damage bonus: ${match[1]} from "${trigger.name}"`);
+          }
+        }
+      });
+      debug.log("\u26A1 Trigger processing complete:", result);
+      return result;
+    }
     function postChatMessage(message) {
       try {
         const chatInput = document.querySelector("#textchat-input textarea");
@@ -75,6 +133,7 @@
           isDamageRoll,
           isAttackRoll
         });
+        let expandedCritRange = null;
         try {
           const storage = await browserAPI.storage.local.get("characterProfiles");
           const characterProfiles = storage.characterProfiles || {};
@@ -88,6 +147,13 @@
           }
           if (characterData) {
             debug.log("\u{1F4CA} Found character data for modifier application:", characterData.name);
+            if (characterData.triggers && Array.isArray(characterData.triggers)) {
+              const triggerEffects = processTriggers(characterData.triggers);
+              expandedCritRange = triggerEffects.expandedCritRange;
+              if (expandedCritRange) {
+                debug.log(`\u26A1 Character has expanded crit range: ${expandedCritRange}-20`);
+              }
+            }
             const hasModifier = /[+\-]\s*\d+/.test(rollData.formula);
             if (isDamageRoll && !hasModifier) {
               const attributeMods = characterData.attributeMods || {};
@@ -184,7 +250,7 @@
         if (success) {
           debug.log("\u2705 Roll successfully posted to Roll20");
           try {
-            observeNextRollResult(rollData);
+            observeNextRollResult(rollData, expandedCritRange);
           } catch (observeError) {
             debug.warn("\u26A0\uFE0F Could not set up roll observer:", observeError.message);
           }
@@ -241,8 +307,11 @@
       }
       return false;
     }
-    function observeNextRollResult(originalRollData) {
+    function observeNextRollResult(originalRollData, expandedCritRange = null) {
       debug.log("\u{1F440} Setting up observer for Roll20 roll result...");
+      if (expandedCritRange) {
+        debug.log(`\u26A1 Using expanded crit range: ${expandedCritRange}-20`);
+      }
       const chatLog = document.querySelector("#textchat .content");
       if (!chatLog) {
         debug.error("\u274C Could not find Roll20 chat log");
@@ -269,13 +338,19 @@
                     const isDamageRoll = name.includes("damage");
                     const isSkillOrSave = name.includes("check") || name.includes("save") || name.includes("saving throw") || name.includes("skill") || name.includes("ability");
                     const isAttackRoll = hasD20 && hasAttackKeyword && !isDamageRoll && !isSkillOrSave;
-                    if (rollResult.baseRoll === 20 && isAttackRoll) {
-                      debug.log("\u{1F4A5} Critical hit! Setting crit flag for next damage roll");
+                    const critThreshold = expandedCritRange || 20;
+                    const isCritical = rollResult.baseRoll >= critThreshold && rollResult.baseRoll === 20;
+                    const isExpandedCrit = expandedCritRange && rollResult.baseRoll >= expandedCritRange;
+                    if ((isCritical || isExpandedCrit) && isAttackRoll) {
+                      const critType = rollResult.baseRoll === 20 ? "Natural 20" : `Expanded Crit (${rollResult.baseRoll})`;
+                      debug.log(`\u{1F4A5} Critical hit detected! ${critType} - Setting crit flag for next damage roll`);
                       debug.log("\u{1F4A5} Attack name:", originalRollData.name);
+                      debug.log(`\u{1F4A5} Roll: ${rollResult.baseRoll}, Threshold: ${critThreshold}`);
                       browserAPI.storage.local.set({
                         criticalHitPending: {
                           timestamp: Date.now(),
-                          attackName: originalRollData.name
+                          attackName: originalRollData.name,
+                          critRoll: rollResult.baseRoll
                         }
                       });
                       setTimeout(() => {

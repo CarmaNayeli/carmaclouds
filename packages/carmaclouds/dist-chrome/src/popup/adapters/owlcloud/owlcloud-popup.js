@@ -2938,6 +2938,18 @@
       condition: "wielding_heavy_weapon",
       description: "Bonus attack on crit/kill OR -5 to hit for +10 damage"
     },
+    "improved critical": {
+      type: "trigger",
+      triggerType: "expanded_crit_range",
+      critRange: "19-20",
+      description: "Critical hits occur on 19-20 (Champion Fighter feature)"
+    },
+    "superior critical": {
+      type: "trigger",
+      triggerType: "expanded_crit_range",
+      critRange: "18-20",
+      description: "Critical hits occur on 18-20 (Champion Fighter level 15 feature)"
+    },
     "sharpshooter": {
       type: "attack_option",
       choice: "ignore_cover_range_or_minus_5_plus_10",
@@ -3287,6 +3299,40 @@
       effect: "add_wis_mod_to_attack_or_damage",
       appliesTo: ["attack_roll", "damage_roll"],
       description: "Add WIS mod to attack or damage once per turn"
+    },
+    // ===== ARTIFICER FEATURES =====
+    "arcane firearm": {
+      type: "trigger",
+      triggerType: "spell_damage_bonus",
+      spellType: "artificer_spells",
+      bonusDamage: "1d8",
+      description: "Add 1d8 to damage roll of artificer spell (Artillerist feature)"
+    },
+    "infuse item": {
+      type: "item_modification",
+      effect: "add_magical_properties",
+      resource: "infusions_known",
+      description: "Imbue mundane items with magical infusions"
+    },
+    "flash of genius": {
+      type: "reaction",
+      timing: "ally_or_self_fails_ability_check_or_save",
+      effect: "add_int_mod_to_roll",
+      resource: "int_mod_uses_per_long_rest",
+      description: "Reaction to add INT mod to check/save"
+    },
+    "magic item adept": {
+      type: "attunement_bonus",
+      effect: "extra_attunement_slot",
+      bonus: "+1_attunement_slot",
+      description: "Can attune to one extra magic item"
+    },
+    "spell storing item": {
+      type: "action_granting",
+      effect: "cast_1st_or_2nd_level_spell_from_item",
+      uses: "2_times_int_mod",
+      reset: "long_rest",
+      description: "Store spell in item for allies to cast"
     },
     // ===== CLERIC FEATURES =====
     "channel divinity": {
@@ -3858,6 +3904,102 @@
     }
     return { options: modifiedOptions, skipNormalButtons };
   }
+  function processTriggers(triggers, characterData2) {
+    if (!triggers || !Array.isArray(triggers) || triggers.length === 0) {
+      return {
+        expandedCritRange: null,
+        spellDamageBonuses: [],
+        attackModifiers: [],
+        otherEffects: []
+      };
+    }
+    const result = {
+      expandedCritRange: null,
+      // Will be set to 19, 18, etc. if found
+      spellDamageBonuses: [],
+      // Array of {type, formula, condition}
+      attackModifiers: [],
+      // Array of {type, formula, condition}
+      otherEffects: []
+      // Other trigger effects
+    };
+    console.log(`\u26A1 Processing ${triggers.length} triggers...`);
+    triggers.forEach((trigger) => {
+      const triggerName = (trigger.name || "").toLowerCase();
+      console.log(`\u26A1 Processing trigger: "${trigger.name}"`);
+      const edgeCase = getClassFeatureEdgeCase(trigger.name);
+      if (edgeCase) {
+        console.log(`\u26A1 Found edge case for trigger "${trigger.name}":`, edgeCase);
+        if (edgeCase.type === "trigger") {
+          if (edgeCase.triggerType === "expanded_crit_range") {
+            const critRangeMatch = edgeCase.critRange.match(/(\d+)-20/);
+            if (critRangeMatch) {
+              const minCrit = parseInt(critRangeMatch[1]);
+              if (!result.expandedCritRange || minCrit < result.expandedCritRange) {
+                result.expandedCritRange = minCrit;
+                console.log(`\u26A1 Set expanded crit range to ${minCrit}-20`);
+              }
+            }
+          } else if (edgeCase.triggerType === "spell_damage_bonus") {
+            result.spellDamageBonuses.push({
+              name: trigger.name,
+              formula: edgeCase.bonusDamage,
+              spellType: edgeCase.spellType,
+              description: edgeCase.description
+            });
+            console.log(`\u26A1 Added spell damage bonus: ${edgeCase.bonusDamage}`);
+          }
+        }
+      } else {
+        console.log(`\u26A1 Trigger "${trigger.name}" is not an edge case, parsing generically...`);
+        if (triggerName.includes("critical") || triggerName.includes("crit")) {
+          const desc = (trigger.description || "").toLowerCase();
+          const summary = (trigger.summary || "").toLowerCase();
+          const fullText = `${triggerName} ${desc} ${summary}`;
+          const critPatterns = [
+            /\b(1[89])[- ]?(?:or[- ])?20\b/,
+            /\b(1[89])[- ]?to[- ]?20\b/,
+            /critical.*?on.*?(?:a|an)\s+(1[89]|20)/
+          ];
+          for (const pattern of critPatterns) {
+            const match = fullText.match(pattern);
+            if (match) {
+              const minCrit = parseInt(match[1] || 19);
+              if (!result.expandedCritRange || minCrit < result.expandedCritRange) {
+                result.expandedCritRange = minCrit;
+                console.log(`\u26A1 Detected expanded crit range from description: ${minCrit}-20`);
+              }
+              break;
+            }
+          }
+        }
+        if (triggerName.includes("damage") || triggerName.includes("bonus")) {
+          const desc = (trigger.description || "").toLowerCase();
+          const summary = (trigger.summary || "").toLowerCase();
+          const fullText = `${desc} ${summary}`;
+          const dicePattern = /(\d+d\d+)/;
+          const match = fullText.match(dicePattern);
+          if (match) {
+            result.spellDamageBonuses.push({
+              name: trigger.name,
+              formula: match[1],
+              description: trigger.description,
+              generic: true
+            });
+            console.log(`\u26A1 Detected generic damage bonus: ${match[1]}`);
+          }
+        }
+        result.otherEffects.push({
+          name: trigger.name,
+          description: trigger.description,
+          condition: trigger.condition,
+          raw: trigger.raw
+        });
+      }
+    });
+    console.log("\u26A1 Trigger processing complete:", result);
+    return result;
+  }
   if (typeof globalThis !== "undefined") {
     globalThis.CLASS_FEATURE_EDGE_CASES = CLASS_FEATURE_EDGE_CASES;
     globalThis.isClassFeatureEdgeCase = isClassFeatureEdgeCase2;
@@ -3865,6 +4007,7 @@
     globalThis.applyClassFeatureEdgeCaseModifications = applyClassFeatureEdgeCaseModifications2;
     globalThis.getClassFeaturesByType = getClassFeaturesByType;
     globalThis.getAllClassFeatureEdgeCaseTypes = getAllClassFeatureEdgeCaseTypes;
+    globalThis.processTriggers = processTriggers;
   }
 
   // ../core/src/modules/racial-feature-edge-cases.js
