@@ -1061,6 +1061,8 @@ async function initializeSupabaseAuth() {
     });
   } catch (error) {
     console.error('Failed to initialize Supabase Auth:', error);
+    // Still show the auth UI even if initialization fails
+    updateAuthUI();
   }
 }
 
