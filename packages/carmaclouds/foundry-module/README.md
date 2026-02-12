@@ -2,7 +2,7 @@
 
 Companion module for the FoundCloud browser extension. Syncs DiceCloud V2 characters to Foundry VTT with Discord integration.
 
-**Version:** 2.3.0
+**Version:** 2.4.0
 **Compatibility:** Foundry VTT v11-v13
 **System:** D&D 5e
 

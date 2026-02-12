@@ -14839,6 +14839,11 @@ This cannot be undone.`)) {
   }
   async function init4() {
     console.log("Initializing CarmaClouds popup...");
+    const manifest = browserAPI5.runtime.getManifest();
+    const versionElement = document.querySelector(".info-value");
+    if (versionElement && manifest.version) {
+      versionElement.textContent = manifest.version;
+    }
     const settings = await getSettings();
     const lastTab = settings.lastActiveTab || "rollcloud";
     document.querySelectorAll(".tab-button").forEach((btn) => {

@@ -840,6 +840,13 @@ function updateSupabaseAuthUI(user) {
 async function init() {
   console.log('Initializing CarmaClouds popup...');
 
+  // Populate version from manifest
+  const manifest = browserAPI.runtime.getManifest();
+  const versionElement = document.querySelector('.info-value');
+  if (versionElement && manifest.version) {
+    versionElement.textContent = manifest.version;
+  }
+
   // Get settings
   const settings = await getSettings();
   const lastTab = settings.lastActiveTab || 'rollcloud';
