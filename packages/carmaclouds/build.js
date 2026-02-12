@@ -164,3 +164,27 @@ if (fs.existsSync(foundryModuleSource)) {
 } else {
   console.log('⚠️  Foundry module not found at foundry-module/');
 }
+
+// Sync Owlbear extension to website directory
+console.log('\n📋 Syncing Owlbear extension to website...');
+const owlbearExtensionSource = path.join('.', 'dist-chrome', 'owlbear-extension');
+const owlbearExtensionDest = path.join('..', '..', 'website', 'public', 'extension', 'owlbear-extension');
+
+if (fs.existsSync(owlbearExtensionSource)) {
+  // Remove existing destination if it exists
+  if (fs.existsSync(owlbearExtensionDest)) {
+    fs.rmSync(owlbearExtensionDest, { recursive: true, force: true });
+  }
+
+  // Ensure parent directory exists
+  const owlbearExtensionParent = path.dirname(owlbearExtensionDest);
+  if (!fs.existsSync(owlbearExtensionParent)) {
+    fs.mkdirSync(owlbearExtensionParent, { recursive: true });
+  }
+
+  // Copy owlbear extension to website
+  fs.cpSync(owlbearExtensionSource, owlbearExtensionDest, { recursive: true });
+  console.log('✅ Synced Owlbear extension to website/public/extension/owlbear-extension/');
+} else {
+  console.log('⚠️  Owlbear extension not found at dist-chrome/owlbear-extension/');
+}
