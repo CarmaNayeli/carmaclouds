@@ -654,7 +654,7 @@ initializeTabs();
 OBR.onReady(async () => {
   isOwlbearReady = true;
   console.log('🦉 Owlbear SDK ready');
-  statusText.textContent = 'Connected to Owlbear Rodeo';
+  if (statusText) statusText.textContent = 'Connected to Owlbear Rodeo';
 
   // Set character sheet height to half viewport minus action bar
   // TODO: Make this dynamic based on actual viewport height
@@ -2949,7 +2949,7 @@ function populateInventoryTab(character) {
 function showNoCharacter() {
   characterSection.style.display = 'none';
   noCharacterSection.style.display = 'block';
-  statusText.textContent = 'No character selected';
+  if (statusText) statusText.textContent = 'No character selected';
 }
 
 // ============== Event Handlers ==============
@@ -2972,7 +2972,7 @@ syncCharacterBtn.addEventListener('click', () => {
   }
 
   // Update status
-  statusText.textContent = 'Syncing character...';
+  if (statusText) statusText.textContent = 'Syncing character...';
 
   // Refresh character data after a delay
   setTimeout(checkForActiveCharacter, 2000);
@@ -3129,7 +3129,7 @@ window.addEventListener('message', (event) => {
       if (isOwlbearReady) {
         OBR.notification.show('Character synced successfully', 'SUCCESS');
       }
-      statusText.textContent = 'Connected to Owlbear Rodeo';
+      if (statusText) statusText.textContent = 'Connected to Owlbear Rodeo';
       checkForActiveCharacter();
       break;
 
@@ -3137,7 +3137,7 @@ window.addEventListener('message', (event) => {
       if (isOwlbearReady) {
         OBR.notification.show(`Error: ${data.message}`, 'ERROR');
       }
-      statusText.textContent = `Error: ${data.message}`;
+      if (statusText) statusText.textContent = `Error: ${data.message}`;
       break;
 
     default:
@@ -4145,7 +4145,7 @@ window.toggleFeatureCard = function(cardId) {
 // ============== Initialization ==============
 
 console.log('🎲 OwlCloud Owlbear extension popover loaded');
-statusText.textContent = 'Initializing...';
+if (statusText) statusText.textContent = 'Initializing...';
 
 // Wait for DOM to be ready before initializing themes
 if (document.readyState === 'loading') {
@@ -4163,7 +4163,7 @@ if (document.readyState === 'loading') {
 
 // Initial check for character (will happen after OBR.onReady)
 setTimeout(() => {
-  if (!isOwlbearReady) {
+  if (!isOwlbearReady && statusText) {
     statusText.textContent = 'Waiting for Owlbear SDK...';
   }
 }, 1000);
