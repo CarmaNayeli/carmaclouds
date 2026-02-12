@@ -1737,6 +1737,9 @@ async function checkForActiveCharacter() {
     const etag = response.headers.get('etag');
 
     console.log('📦 Response data:', data);
+    console.log('📦 data.success:', data.success);
+    console.log('📦 data.character:', data.character);
+    console.log('📦 Condition check:', data.success && data.character ? 'TRUE - will display' : 'FALSE - will show no character');
 
     if (data.success && data.character) {
       console.log('📦 Character data received:', data.character);
@@ -1780,6 +1783,11 @@ async function checkForActiveCharacter() {
       updateAuthUI();
     } else {
       // Clear cache if no character found
+      console.log('⚠️ No character found in response - showing no character message');
+      console.log('  data.success:', data.success);
+      console.log('  data.character:', data.character);
+      console.log('  data.error:', data.error);
+      console.log('  data.message:', data.message);
       localStorage.removeItem(cacheKey);
       localStorage.removeItem(versionKey);
       showNoCharacter();
