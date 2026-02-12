@@ -1,1117 +1,1280 @@
-(() => {
-  // owlbear-extension/popover.js
-  var currentCharacter = null;
-  var allCharacters = [];
-  var isOwlbearReady = false;
-  var rollMode = "normal";
-  var concentratingSpell = null;
-  var concentrationByCharacter = /* @__PURE__ */ new Map();
-  var OWLCLOUD_EXTENSION_ID = "com.owlcloud.extension";
-  var dicePlusReady = false;
-  var pendingRolls = /* @__PURE__ */ new Map();
-  var SUPABASE_URL = "https://luiesmfjdcmpywavvfqm.supabase.co";
-  var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aWVzbWZqZGNtcHl3YXZ2ZnFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4ODYxNDksImV4cCI6MjA4NTQ2MjE0OX0.oqjHFf2HhCLcanh0HVryoQH7iSV7E9dHHZJdYehxZ0U";
-  var SUPABASE_HEADERS = {
-    "apikey": SUPABASE_ANON_KEY,
-    "Content-Type": "application/json"
-  };
-  var supabase = null;
-  var currentUser = null;
-  function evaluateDiceCloudFormula(formula2, character) {
-    if (!formula2 || typeof formula2 !== "string")
-      return formula2;
-    if (/\d+d\d+/i.test(formula2))
-      return formula2;
-    if (!/[a-zA-Z]/.test(formula2))
-      return formula2;
-    try {
-      let variables = null;
-      if (character.raw_dicecloud_data) {
-        const rawData = typeof character.raw_dicecloud_data === "string" ? JSON.parse(character.raw_dicecloud_data) : character.raw_dicecloud_data;
-        variables = rawData.variables || rawData.creatureVariables?.[0];
-      }
-      if (!variables)
-        return formula2;
-      let evaluated = formula2;
-      for (const [key, value] of Object.entries(variables)) {
-        if (typeof value === "number" || typeof value === "string" && /^\d+d\d+/.test(value)) {
-          const regex = new RegExp("\\b" + key + "\\b", "g");
-          evaluated = evaluated.replace(regex, value);
-        }
-      }
-      if (/\d+d\d+/i.test(evaluated) && !/[a-zA-Z]/.test(evaluated.replace(/d/gi, ""))) {
-        return evaluated;
-      }
-      if (!/[a-zA-Z]/.test(evaluated)) {
-        try {
-          const result = new Function("return " + evaluated)();
-          if (typeof result === "number" && !isNaN(result)) {
-            return String(result);
-          }
-        } catch (e) {
-        }
-      }
-      return formula2;
-    } catch (error) {
-      console.warn("Failed to evaluate formula:", formula2, error);
-      return formula2;
-    }
-  }
-  var statusText = document.getElementById("status-text");
-  var characterSection = document.getElementById("character-section");
-  var noCharacterSection = document.getElementById("no-character-section");
-  var characterInfo = document.getElementById("character-info");
-  var syncCharacterBtn = document.getElementById("sync-character-btn");
-  var openChatWindowBtn = document.getElementById("open-chat-window-btn");
-  function generateComplementaryBackgrounds(primaryColor) {
-    const hex = primaryColor.replace("#", "");
-    const r = parseInt(hex.substr(0, 2), 16);
-    const g = parseInt(hex.substr(2, 2), 16);
-    const b = parseInt(hex.substr(4, 2), 16);
-    const backgrounds = {
-      // Dark gradient background (complementary to primary)
-      bgPrimary: `linear-gradient(135deg, 
+/**
+ * OwlCloud Owlbear Extension - Popover Script
+ *
+ * This script runs inside the Owlbear extension popover and:
+ * 1. Communicates with the browser extension via window.postMessage
+ * 2. Uses the Owlbear SDK to interact with the scene
+ * 3. Displays character information and controls
+ */
+
+/* global OBR, buildImage */
+
+// ============== State ==============
+
+let currentCharacter = null;
+let allCharacters = [];
+let isOwlbearReady = false;
+let rollMode = 'normal'; // 'advantage', 'normal', or 'disadvantage'
+
+// Dice+ integration
+const OWLCLOUD_EXTENSION_ID = 'com.owlcloud.extension';
+let dicePlusReady = false;
+let pendingRolls = new Map(); // Track rolls waiting for results from Dice+
+
+// Supabase configuration
+const SUPABASE_URL = 'https://luiesmfjdcmpywavvfqm.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aWVzbWZqZGNtcHl3YXZ2ZnFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4ODYxNDksImV4cCI6MjA4NTQ2MjE0OX0.oqjHFf2HhCLcanh0HVryoQH7iSV7E9dHHZJdYehxZ0U';
+const SUPABASE_HEADERS = {
+  'apikey': SUPABASE_ANON_KEY,
+  'Content-Type': 'application/json'
+};
+
+// Supabase Auth
+let supabase = null;
+let currentUser = null;
+
+// ============== DOM Elements ==============
+
+const statusText = document.getElementById('status-text');
+const characterSection = document.getElementById('character-section');
+const noCharacterSection = document.getElementById('no-character-section');
+const characterInfo = document.getElementById('character-info');
+const syncCharacterBtn = document.getElementById('sync-character-btn');
+const openExtensionBtn = document.getElementById('open-extension-btn');
+const linkExtensionBtn = document.getElementById('link-extension-btn');
+const openChatWindowBtn = document.getElementById('open-chat-window-btn');
+
+// ============== Theme Management ==============
+
+/**
+ * Helper function to generate complementary background colors
+ * This creates a harmonious color palette based on the primary color
+ */
+function generateComplementaryBackgrounds(primaryColor) {
+  // Convert hex to RGB
+  const hex = primaryColor.replace('#', '');
+  const r = parseInt(hex.substr(0, 2), 16);
+  const g = parseInt(hex.substr(2, 2), 16);
+  const b = parseInt(hex.substr(4, 2), 16);
+  
+  // Create complementary background variations
+  // These are carefully crafted to provide good contrast and harmony
+  const backgrounds = {
+    // Dark gradient background (complementary to primary)
+    bgPrimary: `linear-gradient(135deg, 
       rgba(${Math.max(0, r - 80)}, ${Math.max(0, g - 80)}, ${Math.max(0, b - 80)}, 1) 0%, 
       rgba(${Math.max(0, r - 60)}, ${Math.max(0, g - 60)}, ${Math.max(0, b - 60)}, 1) 50%, 
       rgba(${Math.max(0, r - 40)}, ${Math.max(0, g - 40)}, ${Math.max(0, b - 40)}, 1) 100%)`,
-      // Semi-transparent secondary background
-      bgSecondary: `rgba(${Math.max(0, r - 100)}, ${Math.max(0, g - 100)}, ${Math.max(0, b - 100)}, 0.8)`,
-      // Light accent background
-      bgAccent: `rgba(${r}, ${g}, ${b}, 0.15)`,
-      // Card background
-      bgCard: `rgba(${r}, ${g}, ${b}, 0.1)`,
-      // Hover state
-      bgHover: `rgba(${r}, ${g}, ${b}, 0.2)`
-    };
-    return backgrounds;
-  }
-  var ThemeManager = {
-    // Predefined themes
-    themes: {
-      purple: {
-        name: "Purple",
-        primary: "#8B5CF6",
-        primaryLight: "#A78BFA",
-        primaryLighter: "#C4B5FD",
-        gradient: "linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%)",
-        background: "rgba(139, 92, 246, 0.1)",
-        border: "rgba(139, 92, 246, 0.3)",
-        shadow: "rgba(139, 92, 246, 0.4)",
-        // Complementary background colors
-        bgPrimary: "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
-        bgSecondary: "rgba(26, 26, 46, 0.8)",
-        bgAccent: "rgba(139, 92, 246, 0.15)",
-        bgCard: "rgba(139, 92, 246, 0.1)",
-        bgHover: "rgba(139, 92, 246, 0.2)",
-        // Text colors with proper contrast
-        textPrimary: "#e0e0e0",
-        textSecondary: "#c0c0c0",
-        textMuted: "#9ca3af",
-        textOnPrimary: "#ffffff",
-        textOnLight: "#1f2937"
-      },
-      blue: {
-        name: "Blue",
-        primary: "#3B82F6",
-        primaryLight: "#60A5FA",
-        primaryLighter: "#93C5FD",
-        gradient: "linear-gradient(135deg, #3B82F6 0%, #60A5FA 100%)",
-        background: "rgba(59, 130, 246, 0.1)",
-        border: "rgba(59, 130, 246, 0.3)",
-        shadow: "rgba(59, 130, 246, 0.4)",
-        // Complementary background colors
-        bgPrimary: "linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)",
-        bgSecondary: "rgba(15, 23, 42, 0.8)",
-        bgAccent: "rgba(59, 130, 246, 0.15)",
-        bgCard: "rgba(59, 130, 246, 0.1)",
-        bgHover: "rgba(59, 130, 246, 0.2)",
-        // Text colors with proper contrast
-        textPrimary: "#e0e0e0",
-        textSecondary: "#c0c0c0",
-        textMuted: "#9ca3af",
-        textOnPrimary: "#ffffff",
-        textOnLight: "#1f2937"
-      },
-      green: {
-        name: "Green",
-        primary: "#10B981",
-        primaryLight: "#34D399",
-        primaryLighter: "#6EE7B7",
-        gradient: "linear-gradient(135deg, #10B981 0%, #34D399 100%)",
-        background: "rgba(16, 185, 129, 0.1)",
-        border: "rgba(16, 185, 129, 0.3)",
-        shadow: "rgba(16, 185, 129, 0.4)",
-        // Complementary background colors
-        bgPrimary: "linear-gradient(135deg, #052e16 0%, #0a4d2a 50%, #0f6b3e 100%)",
-        bgSecondary: "rgba(5, 46, 22, 0.8)",
-        bgAccent: "rgba(16, 185, 129, 0.15)",
-        bgCard: "rgba(16, 185, 129, 0.1)",
-        bgHover: "rgba(16, 185, 129, 0.2)",
-        // Text colors with proper contrast
-        textPrimary: "#e0e0e0",
-        textSecondary: "#c0c0c0",
-        textMuted: "#9ca3af",
-        textOnPrimary: "#ffffff",
-        textOnLight: "#1f2937"
-      },
-      red: {
-        name: "Red",
-        primary: "#EF4444",
-        primaryLight: "#F87171",
-        primaryLighter: "#FCA5A5",
-        gradient: "linear-gradient(135deg, #EF4444 0%, #F87171 100%)",
-        background: "rgba(239, 68, 68, 0.1)",
-        border: "rgba(239, 68, 68, 0.3)",
-        shadow: "rgba(239, 68, 68, 0.4)",
-        // Complementary background colors
-        bgPrimary: "linear-gradient(135deg, #450a0a 0%, #7f1d1d 50%, #991b1b 100%)",
-        bgSecondary: "rgba(69, 10, 10, 0.8)",
-        bgAccent: "rgba(239, 68, 68, 0.15)",
-        bgCard: "rgba(239, 68, 68, 0.1)",
-        bgHover: "rgba(239, 68, 68, 0.2)",
-        // Text colors with proper contrast
-        textPrimary: "#e0e0e0",
-        textSecondary: "#c0c0c0",
-        textMuted: "#9ca3af",
-        textOnPrimary: "#ffffff",
-        textOnLight: "#1f2937"
-      },
-      orange: {
-        name: "Orange",
-        primary: "#F97316",
-        primaryLight: "#FB923C",
-        primaryLighter: "#FDBA74",
-        gradient: "linear-gradient(135deg, #F97316 0%, #FB923C 100%)",
-        background: "rgba(249, 115, 22, 0.1)",
-        border: "rgba(249, 115, 22, 0.3)",
-        shadow: "rgba(249, 115, 22, 0.4)",
-        // Complementary background colors
-        bgPrimary: "linear-gradient(135deg, #431407 0%, #7c2d12 50%, #9a3412 100%)",
-        bgSecondary: "rgba(67, 20, 7, 0.8)",
-        bgAccent: "rgba(249, 115, 22, 0.15)",
-        bgCard: "rgba(249, 115, 22, 0.1)",
-        bgHover: "rgba(249, 115, 22, 0.2)",
-        // Text colors with proper contrast
-        textPrimary: "#e0e0e0",
-        textSecondary: "#c0c0c0",
-        textMuted: "#9ca3af",
-        textOnPrimary: "#ffffff",
-        textOnLight: "#1f2937"
-      },
-      yellow: {
-        name: "Gold",
-        primary: "#EAB308",
-        primaryLight: "#FACC15",
-        primaryLighter: "#FDE047",
-        gradient: "linear-gradient(135deg, #EAB308 0%, #FACC15 100%)",
-        background: "rgba(234, 179, 8, 0.1)",
-        border: "rgba(234, 179, 8, 0.3)",
-        shadow: "rgba(234, 179, 8, 0.4)",
-        // Complementary background colors
-        bgPrimary: "linear-gradient(135deg, #422006 0%, #713f12 50%, #854d0e 100%)",
-        bgSecondary: "rgba(66, 34, 6, 0.8)",
-        bgAccent: "rgba(234, 179, 8, 0.15)",
-        bgCard: "rgba(234, 179, 8, 0.1)",
-        bgHover: "rgba(234, 179, 8, 0.2)",
-        // Text colors with proper contrast
-        textPrimary: "#e0e0e0",
-        textSecondary: "#c0c0c0",
-        textMuted: "#9ca3af",
-        textOnPrimary: "#ffffff",
-        textOnLight: "#1f2937"
-      },
-      pink: {
-        name: "Pink",
-        primary: "#EC4899",
-        primaryLight: "#F472B6",
-        primaryLighter: "#F9A8D4",
-        gradient: "linear-gradient(135deg, #EC4899 0%, #F472B6 100%)",
-        background: "rgba(236, 72, 153, 0.1)",
-        border: "rgba(236, 72, 153, 0.3)",
-        shadow: "rgba(236, 72, 153, 0.4)",
-        // Complementary background colors
-        bgPrimary: "linear-gradient(135deg, #500724 0%, #831843 50%, #9f1239 100%)",
-        bgSecondary: "rgba(80, 7, 36, 0.8)",
-        bgAccent: "rgba(236, 72, 153, 0.15)",
-        bgCard: "rgba(236, 72, 153, 0.1)",
-        bgHover: "rgba(236, 72, 153, 0.2)",
-        // Text colors with proper contrast
-        textPrimary: "#e0e0e0",
-        textSecondary: "#c0c0c0",
-        textMuted: "#9ca3af",
-        textOnPrimary: "#ffffff",
-        textOnLight: "#1f2937"
-      },
-      brown: {
-        name: "Brown",
-        primary: "#92400E",
-        primaryLight: "#B45309",
-        primaryLighter: "#D97706",
-        gradient: "linear-gradient(135deg, #92400E 0%, #B45309 100%)",
-        background: "rgba(146, 64, 14, 0.1)",
-        border: "rgba(146, 64, 14, 0.3)",
-        shadow: "rgba(146, 64, 14, 0.4)",
-        // Complementary background colors
-        bgPrimary: "linear-gradient(135deg, #1c0f0a 0%, #442c1e 50%, #5c341e 100%)",
-        bgSecondary: "rgba(28, 15, 10, 0.8)",
-        bgAccent: "rgba(146, 64, 14, 0.15)",
-        bgCard: "rgba(146, 64, 14, 0.1)",
-        bgHover: "rgba(146, 64, 14, 0.2)",
-        // Text colors with proper contrast
-        textPrimary: "#e0e0e0",
-        textSecondary: "#c0c0c0",
-        textMuted: "#9ca3af",
-        textOnPrimary: "#ffffff",
-        textOnLight: "#1f2937"
-      },
-      grey: {
-        name: "Grey",
-        primary: "#6B7280",
-        primaryLight: "#9CA3AF",
-        primaryLighter: "#D1D5DB",
-        gradient: "linear-gradient(135deg, #6B7280 0%, #9CA3AF 100%)",
-        background: "rgba(107, 114, 128, 0.1)",
-        border: "rgba(107, 114, 128, 0.3)",
-        shadow: "rgba(107, 114, 128, 0.4)",
-        // Complementary background colors
-        bgPrimary: "linear-gradient(135deg, #1f2937 0%, #374151 50%, #4b5563 100%)",
-        bgSecondary: "rgba(31, 41, 55, 0.8)",
-        bgAccent: "rgba(107, 114, 128, 0.15)",
-        bgCard: "rgba(107, 114, 128, 0.1)",
-        bgHover: "rgba(107, 114, 128, 0.2)",
-        // Text colors with proper contrast
-        textPrimary: "#e0e0e0",
-        textSecondary: "#c0c0c0",
-        textMuted: "#9ca3af",
-        textOnPrimary: "#ffffff",
-        textOnLight: "#1f2937"
-      },
-      black: {
-        name: "Black",
-        primary: "#1F2937",
-        primaryLight: "#374151",
-        primaryLighter: "#4B5563",
-        gradient: "linear-gradient(135deg, #1F2937 0%, #374151 100%)",
-        background: "rgba(31, 41, 55, 0.1)",
-        border: "rgba(31, 41, 55, 0.3)",
-        shadow: "rgba(31, 41, 55, 0.4)",
-        // Complementary background colors
-        bgPrimary: "linear-gradient(135deg, #000000 0%, #111827 50%, #1f2937 100%)",
-        bgSecondary: "rgba(0, 0, 0, 0.8)",
-        bgAccent: "rgba(31, 41, 55, 0.15)",
-        bgCard: "rgba(31, 41, 55, 0.1)",
-        bgHover: "rgba(31, 41, 55, 0.2)",
-        // Text colors with proper contrast (dark theme - white text)
-        textPrimary: "#ffffff",
-        textSecondary: "#e5e7eb",
-        textMuted: "#9ca3af",
-        textOnPrimary: "#ffffff",
-        textOnLight: "#1f2937"
-      },
-      white: {
-        name: "White",
-        primary: "#F9FAFB",
-        primaryLight: "#F3F4F6",
-        primaryLighter: "#E5E7EB",
-        gradient: "linear-gradient(135deg, #F9FAFB 0%, #F3F4F6 100%)",
-        background: "rgba(249, 250, 251, 0.1)",
-        border: "rgba(249, 250, 251, 0.3)",
-        shadow: "rgba(249, 250, 251, 0.4)",
-        // Complementary background colors (light theme)
-        bgPrimary: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%)",
-        bgSecondary: "rgba(248, 250, 252, 0.9)",
-        bgAccent: "rgba(249, 250, 251, 0.5)",
-        bgCard: "rgba(249, 250, 251, 0.8)",
-        bgHover: "rgba(241, 245, 249, 0.9)",
-        // Text colors with proper contrast (light theme - dark text)
-        textPrimary: "#1f2937",
-        textSecondary: "#374151",
-        textMuted: "#6b7280",
-        textOnPrimary: "#ffffff",
-        textOnLight: "#1f2937"
-      }
-    },
-    // Current active theme
-    currentTheme: "purple",
-    /**
-     * Initialize theme manager
-     */
-    init() {
-      const savedTheme = localStorage.getItem("owlcloud-theme");
-      if (savedTheme && this.themes[savedTheme]) {
-        this.currentTheme = savedTheme;
-      }
-      this.applyTheme();
-    },
-    /**
-     * Apply current theme to all elements
-     */
-    applyTheme() {
-      const theme = this.themes[this.currentTheme];
-      if (!theme)
-        return;
-      this.updateCSSVariables(theme);
-      this.updateInlineStyles(theme);
-      this.updateTextColors(theme);
-      localStorage.setItem("owlcloud-theme", this.currentTheme);
-      console.log(`\u{1F3A8} Applied theme: ${theme.name}`);
-    },
-    /**
-     * Update text colors for light themes to ensure readability
-     */
-    updateTextColors(theme) {
-      const root = document.documentElement;
-      if (theme.name === "White") {
-        root.style.setProperty("--theme-text-primary", "#1f2937");
-        root.style.setProperty("--theme-text-secondary", "#374151");
-        root.style.setProperty("--theme-text-muted", "#6b7280");
-        root.style.setProperty("--theme-text-on-primary", "#ffffff");
-        root.style.setProperty("--theme-text-on-light", "#1f2937");
-      } else if (theme.name === "Black") {
-        root.style.setProperty("--theme-text-primary", "#ffffff");
-        root.style.setProperty("--theme-text-secondary", "#e5e7eb");
-        root.style.setProperty("--theme-text-muted", "#9ca3af");
-        root.style.setProperty("--theme-text-on-primary", "#ffffff");
-        root.style.setProperty("--theme-text-on-light", "#1f2937");
-      } else if (theme.name === "Gold") {
-        root.style.setProperty("--theme-text-primary", "#1f2937");
-        root.style.setProperty("--theme-text-secondary", "#374151");
-        root.style.setProperty("--theme-text-muted", "#6b7280");
-        root.style.setProperty("--theme-text-on-primary", "#ffffff");
-        root.style.setProperty("--theme-text-on-light", "#1f2937");
-      } else {
-        root.style.setProperty("--theme-text-primary", "#e0e0e0");
-        root.style.setProperty("--theme-text-secondary", "#c0c0c0");
-        root.style.setProperty("--theme-text-muted", "#9ca3af");
-        root.style.setProperty("--theme-text-on-primary", "#ffffff");
-        root.style.setProperty("--theme-text-on-light", "#1f2937");
-      }
-    },
-    /**
-     * Update CSS custom properties
-     */
-    updateCSSVariables(theme) {
-      const root = document.documentElement;
-      root.style.setProperty("--theme-primary", theme.primary);
-      root.style.setProperty("--theme-primary-light", theme.primaryLight);
-      root.style.setProperty("--theme-primary-lighter", theme.primaryLighter);
-      root.style.setProperty("--theme-gradient", theme.gradient);
-      root.style.setProperty("--theme-background", theme.background);
-      root.style.setProperty("--theme-border", theme.border);
-      root.style.setProperty("--theme-shadow", theme.shadow);
-      if (theme.bgPrimary) {
-        root.style.setProperty("--theme-bg-primary", theme.bgPrimary);
-        document.body.style.background = theme.bgPrimary;
-      }
-      if (theme.bgSecondary) {
-        root.style.setProperty("--theme-bg-secondary", theme.bgSecondary);
-        const container = document.querySelector(".container");
-        if (container) {
-          container.style.background = theme.bgSecondary;
-        }
-      }
-      if (theme.bgAccent) {
-        root.style.setProperty("--theme-bg-accent", theme.bgAccent);
-      }
-      if (theme.bgCard) {
-        root.style.setProperty("--theme-bg-card", theme.bgCard);
-      }
-      if (theme.bgHover) {
-        root.style.setProperty("--theme-bg-hover", theme.bgHover);
-      }
-      if (theme.textPrimary) {
-        root.style.setProperty("--theme-text-primary", theme.textPrimary);
-        document.body.style.color = theme.textPrimary;
-      }
-      if (theme.textSecondary) {
-        root.style.setProperty("--theme-text-secondary", theme.textSecondary);
-      }
-      if (theme.textMuted) {
-        root.style.setProperty("--theme-text-muted", theme.textMuted);
-      }
-      if (theme.textOnPrimary) {
-        root.style.setProperty("--theme-text-on-primary", theme.textOnPrimary);
-      }
-      if (theme.textOnLight) {
-        root.style.setProperty("--theme-text-on-light", theme.textOnLight);
-      }
-    },
-    /**
-     * Update inline styles that use hardcoded colors
-     */
-    updateInlineStyles(theme) {
-      this.updateCharacterPortraits(theme);
-      this.updateCircularImageBorders(theme);
-    },
-    /**
-     * Update character portrait borders
-     */
-    updateCharacterPortraits(theme) {
-      const portraits = document.querySelectorAll("#settings-portrait, .character-portrait");
-      portraits.forEach((portrait) => {
-        if (portrait) {
-          portrait.style.borderColor = theme.primary;
-          portrait.style.boxShadow = `0 4px 12px ${theme.shadow}`;
-        }
-      });
-    },
-    /**
-     * Update circular image borders (for tokens)
-     */
-    updateCircularImageBorders(theme) {
-    },
-    /**
-     * Switch to a different theme
-     */
-    switchTheme(themeName) {
-      if (this.themes[themeName]) {
-        this.currentTheme = themeName;
-        this.applyTheme();
-        return true;
-      }
-      return false;
-    },
-    /**
-     * Get current theme
-     */
-    getCurrentTheme() {
-      return this.themes[this.currentTheme];
-    },
-    /**
-     * Get all available themes
-     */
-    getAvailableThemes() {
-      return Object.keys(this.themes).map((key) => ({
-        key,
-        ...this.themes[key]
-      }));
-    }
+    
+    // Semi-transparent secondary background
+    bgSecondary: `rgba(${Math.max(0, r - 100)}, ${Math.max(0, g - 100)}, ${Math.max(0, b - 100)}, 0.8)`,
+    
+    // Light accent background
+    bgAccent: `rgba(${r}, ${g}, ${b}, 0.15)`,
+    
+    // Card background
+    bgCard: `rgba(${r}, ${g}, ${b}, 0.1)`,
+    
+    // Hover state
+    bgHover: `rgba(${r}, ${g}, ${b}, 0.2)`
   };
-  function initializeThemeSelector() {
-    const themeSelector = document.getElementById("theme-selector");
-    if (!themeSelector) {
-      console.error("\u274C Theme selector element not found");
-      return;
+  
+  return backgrounds;
+}
+
+/**
+ * Theme manager for OBR extension
+ */
+const ThemeManager = {
+  // Predefined themes
+  themes: {
+    purple: {
+      name: 'Purple',
+      primary: '#8B5CF6',
+      primaryLight: '#A78BFA',
+      primaryLighter: '#C4B5FD',
+      gradient: 'linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%)',
+      background: 'rgba(139, 92, 246, 0.1)',
+      border: 'rgba(139, 92, 246, 0.3)',
+      shadow: 'rgba(139, 92, 246, 0.4)',
+      // Complementary background colors
+      bgPrimary: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+      bgSecondary: 'rgba(26, 26, 46, 0.8)',
+      bgAccent: 'rgba(139, 92, 246, 0.15)',
+      bgCard: 'rgba(139, 92, 246, 0.1)',
+      bgHover: 'rgba(139, 92, 246, 0.2)',
+      // Text colors with proper contrast
+      textPrimary: '#e0e0e0',
+      textSecondary: '#c0c0c0',
+      textMuted: '#9ca3af',
+      textOnPrimary: '#ffffff',
+      textOnLight: '#1f2937'
+    },
+    blue: {
+      name: 'Blue',
+      primary: '#3B82F6',
+      primaryLight: '#60A5FA',
+      primaryLighter: '#93C5FD',
+      gradient: 'linear-gradient(135deg, #3B82F6 0%, #60A5FA 100%)',
+      background: 'rgba(59, 130, 246, 0.1)',
+      border: 'rgba(59, 130, 246, 0.3)',
+      shadow: 'rgba(59, 130, 246, 0.4)',
+      // Complementary background colors
+      bgPrimary: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)',
+      bgSecondary: 'rgba(15, 23, 42, 0.8)',
+      bgAccent: 'rgba(59, 130, 246, 0.15)',
+      bgCard: 'rgba(59, 130, 246, 0.1)',
+      bgHover: 'rgba(59, 130, 246, 0.2)',
+      // Text colors with proper contrast
+      textPrimary: '#e0e0e0',
+      textSecondary: '#c0c0c0',
+      textMuted: '#9ca3af',
+      textOnPrimary: '#ffffff',
+      textOnLight: '#1f2937'
+    },
+    green: {
+      name: 'Green',
+      primary: '#10B981',
+      primaryLight: '#34D399',
+      primaryLighter: '#6EE7B7',
+      gradient: 'linear-gradient(135deg, #10B981 0%, #34D399 100%)',
+      background: 'rgba(16, 185, 129, 0.1)',
+      border: 'rgba(16, 185, 129, 0.3)',
+      shadow: 'rgba(16, 185, 129, 0.4)',
+      // Complementary background colors
+      bgPrimary: 'linear-gradient(135deg, #052e16 0%, #0a4d2a 50%, #0f6b3e 100%)',
+      bgSecondary: 'rgba(5, 46, 22, 0.8)',
+      bgAccent: 'rgba(16, 185, 129, 0.15)',
+      bgCard: 'rgba(16, 185, 129, 0.1)',
+      bgHover: 'rgba(16, 185, 129, 0.2)',
+      // Text colors with proper contrast
+      textPrimary: '#e0e0e0',
+      textSecondary: '#c0c0c0',
+      textMuted: '#9ca3af',
+      textOnPrimary: '#ffffff',
+      textOnLight: '#1f2937'
+    },
+    red: {
+      name: 'Red',
+      primary: '#EF4444',
+      primaryLight: '#F87171',
+      primaryLighter: '#FCA5A5',
+      gradient: 'linear-gradient(135deg, #EF4444 0%, #F87171 100%)',
+      background: 'rgba(239, 68, 68, 0.1)',
+      border: 'rgba(239, 68, 68, 0.3)',
+      shadow: 'rgba(239, 68, 68, 0.4)',
+      // Complementary background colors
+      bgPrimary: 'linear-gradient(135deg, #450a0a 0%, #7f1d1d 50%, #991b1b 100%)',
+      bgSecondary: 'rgba(69, 10, 10, 0.8)',
+      bgAccent: 'rgba(239, 68, 68, 0.15)',
+      bgCard: 'rgba(239, 68, 68, 0.1)',
+      bgHover: 'rgba(239, 68, 68, 0.2)',
+      // Text colors with proper contrast
+      textPrimary: '#e0e0e0',
+      textSecondary: '#c0c0c0',
+      textMuted: '#9ca3af',
+      textOnPrimary: '#ffffff',
+      textOnLight: '#1f2937'
+    },
+    orange: {
+      name: 'Orange',
+      primary: '#F97316',
+      primaryLight: '#FB923C',
+      primaryLighter: '#FDBA74',
+      gradient: 'linear-gradient(135deg, #F97316 0%, #FB923C 100%)',
+      background: 'rgba(249, 115, 22, 0.1)',
+      border: 'rgba(249, 115, 22, 0.3)',
+      shadow: 'rgba(249, 115, 22, 0.4)',
+      // Complementary background colors
+      bgPrimary: 'linear-gradient(135deg, #431407 0%, #7c2d12 50%, #9a3412 100%)',
+      bgSecondary: 'rgba(67, 20, 7, 0.8)',
+      bgAccent: 'rgba(249, 115, 22, 0.15)',
+      bgCard: 'rgba(249, 115, 22, 0.1)',
+      bgHover: 'rgba(249, 115, 22, 0.2)',
+      // Text colors with proper contrast
+      textPrimary: '#e0e0e0',
+      textSecondary: '#c0c0c0',
+      textMuted: '#9ca3af',
+      textOnPrimary: '#ffffff',
+      textOnLight: '#1f2937'
+    },
+    yellow: {
+      name: 'Gold',
+      primary: '#EAB308',
+      primaryLight: '#FACC15',
+      primaryLighter: '#FDE047',
+      gradient: 'linear-gradient(135deg, #EAB308 0%, #FACC15 100%)',
+      background: 'rgba(234, 179, 8, 0.1)',
+      border: 'rgba(234, 179, 8, 0.3)',
+      shadow: 'rgba(234, 179, 8, 0.4)',
+      // Complementary background colors
+      bgPrimary: 'linear-gradient(135deg, #422006 0%, #713f12 50%, #854d0e 100%)',
+      bgSecondary: 'rgba(66, 34, 6, 0.8)',
+      bgAccent: 'rgba(234, 179, 8, 0.15)',
+      bgCard: 'rgba(234, 179, 8, 0.1)',
+      bgHover: 'rgba(234, 179, 8, 0.2)',
+      // Text colors with proper contrast
+      textPrimary: '#e0e0e0',
+      textSecondary: '#c0c0c0',
+      textMuted: '#9ca3af',
+      textOnPrimary: '#ffffff',
+      textOnLight: '#1f2937'
+    },
+    pink: {
+      name: 'Pink',
+      primary: '#EC4899',
+      primaryLight: '#F472B6',
+      primaryLighter: '#F9A8D4',
+      gradient: 'linear-gradient(135deg, #EC4899 0%, #F472B6 100%)',
+      background: 'rgba(236, 72, 153, 0.1)',
+      border: 'rgba(236, 72, 153, 0.3)',
+      shadow: 'rgba(236, 72, 153, 0.4)',
+      // Complementary background colors
+      bgPrimary: 'linear-gradient(135deg, #500724 0%, #831843 50%, #9f1239 100%)',
+      bgSecondary: 'rgba(80, 7, 36, 0.8)',
+      bgAccent: 'rgba(236, 72, 153, 0.15)',
+      bgCard: 'rgba(236, 72, 153, 0.1)',
+      bgHover: 'rgba(236, 72, 153, 0.2)',
+      // Text colors with proper contrast
+      textPrimary: '#e0e0e0',
+      textSecondary: '#c0c0c0',
+      textMuted: '#9ca3af',
+      textOnPrimary: '#ffffff',
+      textOnLight: '#1f2937'
+    },
+    brown: {
+      name: 'Brown',
+      primary: '#92400E',
+      primaryLight: '#B45309',
+      primaryLighter: '#D97706',
+      gradient: 'linear-gradient(135deg, #92400E 0%, #B45309 100%)',
+      background: 'rgba(146, 64, 14, 0.1)',
+      border: 'rgba(146, 64, 14, 0.3)',
+      shadow: 'rgba(146, 64, 14, 0.4)',
+      // Complementary background colors
+      bgPrimary: 'linear-gradient(135deg, #1c0f0a 0%, #442c1e 50%, #5c341e 100%)',
+      bgSecondary: 'rgba(28, 15, 10, 0.8)',
+      bgAccent: 'rgba(146, 64, 14, 0.15)',
+      bgCard: 'rgba(146, 64, 14, 0.1)',
+      bgHover: 'rgba(146, 64, 14, 0.2)',
+      // Text colors with proper contrast
+      textPrimary: '#e0e0e0',
+      textSecondary: '#c0c0c0',
+      textMuted: '#9ca3af',
+      textOnPrimary: '#ffffff',
+      textOnLight: '#1f2937'
+    },
+    grey: {
+      name: 'Grey',
+      primary: '#6B7280',
+      primaryLight: '#9CA3AF',
+      primaryLighter: '#D1D5DB',
+      gradient: 'linear-gradient(135deg, #6B7280 0%, #9CA3AF 100%)',
+      background: 'rgba(107, 114, 128, 0.1)',
+      border: 'rgba(107, 114, 128, 0.3)',
+      shadow: 'rgba(107, 114, 128, 0.4)',
+      // Complementary background colors
+      bgPrimary: 'linear-gradient(135deg, #1f2937 0%, #374151 50%, #4b5563 100%)',
+      bgSecondary: 'rgba(31, 41, 55, 0.8)',
+      bgAccent: 'rgba(107, 114, 128, 0.15)',
+      bgCard: 'rgba(107, 114, 128, 0.1)',
+      bgHover: 'rgba(107, 114, 128, 0.2)',
+      // Text colors with proper contrast
+      textPrimary: '#e0e0e0',
+      textSecondary: '#c0c0c0',
+      textMuted: '#9ca3af',
+      textOnPrimary: '#ffffff',
+      textOnLight: '#1f2937'
+    },
+    black: {
+      name: 'Black',
+      primary: '#1F2937',
+      primaryLight: '#374151',
+      primaryLighter: '#4B5563',
+      gradient: 'linear-gradient(135deg, #1F2937 0%, #374151 100%)',
+      background: 'rgba(31, 41, 55, 0.1)',
+      border: 'rgba(31, 41, 55, 0.3)',
+      shadow: 'rgba(31, 41, 55, 0.4)',
+      // Complementary background colors
+      bgPrimary: 'linear-gradient(135deg, #000000 0%, #111827 50%, #1f2937 100%)',
+      bgSecondary: 'rgba(0, 0, 0, 0.8)',
+      bgAccent: 'rgba(31, 41, 55, 0.15)',
+      bgCard: 'rgba(31, 41, 55, 0.1)',
+      bgHover: 'rgba(31, 41, 55, 0.2)',
+      // Text colors with proper contrast (dark theme - white text)
+      textPrimary: '#ffffff',
+      textSecondary: '#e5e7eb',
+      textMuted: '#9ca3af',
+      textOnPrimary: '#ffffff',
+      textOnLight: '#1f2937'
+    },
+    white: {
+      name: 'White',
+      primary: '#F9FAFB',
+      primaryLight: '#F3F4F6',
+      primaryLighter: '#E5E7EB',
+      gradient: 'linear-gradient(135deg, #F9FAFB 0%, #F3F4F6 100%)',
+      background: 'rgba(249, 250, 251, 0.1)',
+      border: 'rgba(249, 250, 251, 0.3)',
+      shadow: 'rgba(249, 250, 251, 0.4)',
+      // Complementary background colors (light theme)
+      bgPrimary: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%)',
+      bgSecondary: 'rgba(248, 250, 252, 0.9)',
+      bgAccent: 'rgba(249, 250, 251, 0.5)',
+      bgCard: 'rgba(249, 250, 251, 0.8)',
+      bgHover: 'rgba(241, 245, 249, 0.9)',
+      // Text colors with proper contrast (light theme - dark text)
+      textPrimary: '#1f2937',
+      textSecondary: '#374151',
+      textMuted: '#6b7280',
+      textOnPrimary: '#ffffff',
+      textOnLight: '#1f2937'
     }
-    const themes = ThemeManager.getAvailableThemes();
-    const currentTheme = ThemeManager.getCurrentTheme();
-    console.log("\u{1F3A8} Initializing theme selector with", themes.length, "themes");
-    themes.forEach((theme) => {
-      const themeOption = document.createElement("div");
-      themeOption.className = `theme-option ${theme.key === ThemeManager.currentTheme ? "active" : ""}`;
-      themeOption.dataset.theme = theme.key;
-      themeOption.innerHTML = `
+  },
+
+  // Current active theme
+  currentTheme: 'purple',
+
+  /**
+   * Initialize theme manager
+   */
+  init() {
+    // Load saved theme from localStorage
+    const savedTheme = localStorage.getItem('owlcloud-theme');
+    if (savedTheme && this.themes[savedTheme]) {
+      this.currentTheme = savedTheme;
+    }
+    this.applyTheme();
+  },
+
+  /**
+   * Apply current theme to all elements
+   */
+  applyTheme() {
+    const theme = this.themes[this.currentTheme];
+    if (!theme) return;
+
+    // Update CSS variables
+    this.updateCSSVariables(theme);
+    
+    // Update inline styles in JavaScript
+    this.updateInlineStyles(theme);
+    
+    // Handle special text color adjustments for light themes
+    this.updateTextColors(theme);
+    
+    // Save to localStorage
+    localStorage.setItem('owlcloud-theme', this.currentTheme);
+    
+    console.log(`🎨 Applied theme: ${theme.name}`);
+  },
+
+  /**
+   * Update text colors for light themes to ensure readability
+   */
+  updateTextColors(theme) {
+    const root = document.documentElement;
+    
+    // Adjust text colors for specific themes
+    if (theme.name === 'White') {
+      // Light theme - use dark text throughout
+      root.style.setProperty('--theme-text-primary', '#1f2937');
+      root.style.setProperty('--theme-text-secondary', '#374151');
+      root.style.setProperty('--theme-text-muted', '#6b7280');
+      root.style.setProperty('--theme-text-on-primary', '#ffffff');
+      root.style.setProperty('--theme-text-on-light', '#1f2937');
+    } else if (theme.name === 'Black') {
+      // Dark theme - use white text throughout
+      root.style.setProperty('--theme-text-primary', '#ffffff');
+      root.style.setProperty('--theme-text-secondary', '#e5e7eb');
+      root.style.setProperty('--theme-text-muted', '#9ca3af');
+      root.style.setProperty('--theme-text-on-primary', '#ffffff');
+      root.style.setProperty('--theme-text-on-light', '#1f2937');
+    } else if (theme.name === 'Gold') {
+      // Gold theme - use dark text for readability
+      root.style.setProperty('--theme-text-primary', '#1f2937');
+      root.style.setProperty('--theme-text-secondary', '#374151');
+      root.style.setProperty('--theme-text-muted', '#6b7280');
+      root.style.setProperty('--theme-text-on-primary', '#ffffff');
+      root.style.setProperty('--theme-text-on-light', '#1f2937');
+    } else {
+      // All other themes - use light text on dark backgrounds
+      root.style.setProperty('--theme-text-primary', '#e0e0e0');
+      root.style.setProperty('--theme-text-secondary', '#c0c0c0');
+      root.style.setProperty('--theme-text-muted', '#9ca3af');
+      root.style.setProperty('--theme-text-on-primary', '#ffffff');
+      root.style.setProperty('--theme-text-on-light', '#1f2937');
+    }
+  },
+
+  /**
+   * Update CSS custom properties
+   */
+  updateCSSVariables(theme) {
+    const root = document.documentElement;
+    root.style.setProperty('--theme-primary', theme.primary);
+    root.style.setProperty('--theme-primary-light', theme.primaryLight);
+    root.style.setProperty('--theme-primary-lighter', theme.primaryLighter);
+    root.style.setProperty('--theme-gradient', theme.gradient);
+    root.style.setProperty('--theme-background', theme.background);
+    root.style.setProperty('--theme-border', theme.border);
+    root.style.setProperty('--theme-shadow', theme.shadow);
+    
+    // Apply complementary background colors
+    if (theme.bgPrimary) {
+      root.style.setProperty('--theme-bg-primary', theme.bgPrimary);
+      document.body.style.background = theme.bgPrimary;
+    }
+    if (theme.bgSecondary) {
+      root.style.setProperty('--theme-bg-secondary', theme.bgSecondary);
+      // Update container background
+      const container = document.querySelector('.container');
+      if (container) {
+        container.style.background = theme.bgSecondary;
+      }
+    }
+    if (theme.bgAccent) {
+      root.style.setProperty('--theme-bg-accent', theme.bgAccent);
+    }
+    if (theme.bgCard) {
+      root.style.setProperty('--theme-bg-card', theme.bgCard);
+    }
+    if (theme.bgHover) {
+      root.style.setProperty('--theme-bg-hover', theme.bgHover);
+    }
+    
+    // Apply text colors with proper contrast
+    if (theme.textPrimary) {
+      root.style.setProperty('--theme-text-primary', theme.textPrimary);
+      document.body.style.color = theme.textPrimary;
+    }
+    if (theme.textSecondary) {
+      root.style.setProperty('--theme-text-secondary', theme.textSecondary);
+    }
+    if (theme.textMuted) {
+      root.style.setProperty('--theme-text-muted', theme.textMuted);
+    }
+    if (theme.textOnPrimary) {
+      root.style.setProperty('--theme-text-on-primary', theme.textOnPrimary);
+    }
+    if (theme.textOnLight) {
+      root.style.setProperty('--theme-text-on-light', theme.textOnLight);
+    }
+  },
+
+  /**
+   * Update inline styles that use hardcoded colors
+   */
+  updateInlineStyles(theme) {
+    // This will be expanded to update all hardcoded color references
+    // For now, we'll focus on the most common ones
+    this.updateCharacterPortraits(theme);
+    this.updateCircularImageBorders(theme);
+  },
+
+  /**
+   * Update character portrait borders
+   */
+  updateCharacterPortraits(theme) {
+    const portraits = document.querySelectorAll('#settings-portrait, .character-portrait');
+    portraits.forEach(portrait => {
+      if (portrait) {
+        portrait.style.borderColor = theme.primary;
+        portrait.style.boxShadow = `0 4px 12px ${theme.shadow}`;
+      }
+    });
+  },
+
+  /**
+   * Update circular image borders (for tokens)
+   */
+  updateCircularImageBorders(theme) {
+    // This will be called when creating circular images
+    // The actual border color will be updated in the createCircularImage function
+  },
+
+  /**
+   * Switch to a different theme
+   */
+  switchTheme(themeName) {
+    if (this.themes[themeName]) {
+      this.currentTheme = themeName;
+      this.applyTheme();
+      return true;
+    }
+    return false;
+  },
+
+  /**
+   * Get current theme
+   */
+  getCurrentTheme() {
+    return this.themes[this.currentTheme];
+  },
+
+  /**
+   * Get all available themes
+   */
+  getAvailableThemes() {
+    return Object.keys(this.themes).map(key => ({
+      key,
+      ...this.themes[key]
+    }));
+  }
+};
+
+/**
+ * Initialize theme selector
+ */
+function initializeThemeSelector() {
+  const themeSelector = document.getElementById('theme-selector');
+  if (!themeSelector) return;
+
+  const themes = ThemeManager.getAvailableThemes();
+  const currentTheme = ThemeManager.getCurrentTheme();
+
+  themes.forEach(theme => {
+    const themeOption = document.createElement('div');
+    themeOption.className = `theme-option ${theme.key === ThemeManager.currentTheme ? 'active' : ''}`;
+    themeOption.dataset.theme = theme.key;
+    
+    themeOption.innerHTML = `
       <div class="theme-color-preview" style="background: ${theme.primary}"></div>
       <div class="theme-name">${theme.name}</div>
     `;
-      themeOption.addEventListener("click", () => {
-        console.log("\u{1F3A8} Theme option clicked:", theme.key, theme.name);
-        document.querySelectorAll(".theme-option").forEach((opt) => opt.classList.remove("active"));
-        themeOption.classList.add("active");
-        const success = ThemeManager.switchTheme(theme.key);
-        console.log("\u{1F3A8} Theme switch", success ? "successful" : "failed");
-      });
-      themeSelector.appendChild(themeOption);
+
+    themeOption.addEventListener('click', () => {
+      // Remove active class from all options
+      document.querySelectorAll('.theme-option').forEach(opt => opt.classList.remove('active'));
+      
+      // Add active class to clicked option
+      themeOption.classList.add('active');
+      
+      // Switch theme
+      ThemeManager.switchTheme(theme.key);
     });
-    initializeCollapsibleThemeSection();
-    initializeCollapsibleAuthSection();
-    initializeHPModal();
-  }
-  function initializeCollapsibleThemeSection() {
-    const themeHeader = document.getElementById("theme-section-header");
-    const themeContent = document.getElementById("theme-section-content");
-    if (!themeHeader || !themeContent)
-      return;
-    let isExpanded = false;
-    themeContent.classList.add("collapsed");
-    themeHeader.classList.add("collapsed");
-    const arrow = themeHeader.querySelector("span");
-    if (arrow) {
-      arrow.style.transform = "rotate(-90deg)";
-    }
-    themeHeader.addEventListener("click", () => {
-      isExpanded = !isExpanded;
-      if (isExpanded) {
-        themeContent.classList.remove("collapsed");
-        themeHeader.classList.remove("collapsed");
-        if (arrow) {
-          arrow.style.transform = "rotate(0deg)";
-        }
-      } else {
-        themeContent.classList.add("collapsed");
-        themeHeader.classList.add("collapsed");
-        if (arrow) {
-          arrow.style.transform = "rotate(-90deg)";
-        }
-      }
-    });
-  }
-  function initializeCollapsibleAuthSection() {
-    const authHeader = document.getElementById("auth-section-header");
-    const authContent = document.getElementById("auth-section-content");
-    if (!authHeader || !authContent)
-      return;
-    const arrow = authHeader.querySelector("span");
-    authHeader.addEventListener("click", () => {
-      const isCurrentlyCollapsed = authContent.classList.contains("collapsed");
-      if (isCurrentlyCollapsed) {
-        authContent.classList.remove("collapsed");
-        authHeader.classList.remove("collapsed");
-        if (arrow) {
-          arrow.style.transform = "rotate(0deg)";
-        }
-      } else {
-        authContent.classList.add("collapsed");
-        authHeader.classList.add("collapsed");
-        if (arrow) {
-          arrow.style.transform = "rotate(-90deg)";
-        }
-      }
-    });
-  }
-  function initializeTabs() {
-    const tabButtons = document.querySelectorAll(".tab-button");
-    const tabContents = document.querySelectorAll(".tab-content");
-    const brandingHeader = document.getElementById("branding-header");
-    const characterHeader = document.getElementById("character-header");
-    const tabsNav = document.querySelector(".tabs-nav");
-    if (tabsNav) {
-      tabsNav.addEventListener("wheel", (e) => {
-        e.preventDefault();
-        tabsNav.scrollLeft += e.deltaY;
-      });
-    }
-    tabButtons.forEach((button) => {
-      button.addEventListener("click", () => {
-        const tabName = button.getAttribute("data-tab");
-        tabButtons.forEach((btn) => btn.classList.remove("active"));
-        tabContents.forEach((content) => content.classList.remove("active"));
-        button.classList.add("active");
-        document.getElementById(`tab-${tabName}`).classList.add("active");
-        if (tabName === "settings") {
-          brandingHeader.style.display = "block";
-          characterHeader.style.display = "none";
-        } else {
-          brandingHeader.style.display = "none";
-          characterHeader.style.display = "block";
-        }
-        console.log(`\u{1F4D1} Switched to tab: ${tabName}`);
-      });
-    });
-  }
-  initializeTabs();
-  OBR.onReady(async () => {
-    isOwlbearReady = true;
-    console.log("\u{1F989} Owlbear SDK ready");
-    if (statusText)
-      statusText.textContent = "Connected to Owlbear Rodeo";
-    const sheetHeight = 460;
-    try {
-      await OBR.popover.setHeight(sheetHeight);
-    } catch (error) {
-      console.error("Error setting popover height:", error);
-    }
-    await initializeSupabaseAuth();
-    checkForActiveCharacter();
-    checkDicePlusReady();
-    setupDicePlusListeners();
+
+    themeSelector.appendChild(themeOption);
   });
-  async function checkDicePlusReady() {
-    if (!isOwlbearReady)
-      return;
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    try {
-      const requestId = `ready_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      console.log("\u{1F50D} Checking for Dice+ extension...");
-      let responseReceived = false;
-      let unsubscribed = false;
-      const debugUnsubscribe = OBR.broadcast.onMessage("*", (event) => {
-        if (event.id.includes("dice-plus") || event.id.includes("dice+")) {
-          console.log("\u{1F41B} DEBUG - Received broadcast on channel:", event.id, "data:", event.data);
-        }
-      });
-      const unsubscribe = OBR.broadcast.onMessage("dice-plus/isReady", (event) => {
-        console.log("\u{1F4E8} Received dice-plus/isReady message:", event.data);
-        if (event.data.requestId === requestId) {
-          console.log("\u2705 RequestId matches:", requestId);
-          if (event.data.ready || event.data.timestamp) {
-            responseReceived = true;
-            dicePlusReady = true;
-            console.log("\u2705 Dice+ broadcast received - 3D dice enabled!");
-          }
-          if (!unsubscribed) {
-            unsubscribed = true;
-            unsubscribe();
-          }
-        } else {
-          console.log("\u26A0\uFE0F RequestId mismatch. Expected:", requestId, "Got:", event.data.requestId);
-        }
-      });
-      console.log("\u{1F4E1} Sending dice-plus/isReady broadcast with requestId:", requestId);
-      await OBR.broadcast.sendMessage("dice-plus/isReady", {
-        requestId,
-        timestamp: Date.now()
-      }, { destination: "ALL" });
-      console.log("\u2705 Broadcast sent, waiting 3 seconds for response...");
-      await new Promise((resolve) => setTimeout(resolve, 3e3));
-      if (!unsubscribed) {
-        unsubscribed = true;
-        unsubscribe();
+  
+  // Initialize collapsible theme section
+  initializeCollapsibleThemeSection();
+}
+
+/**
+ * Initialize collapsible theme section
+ */
+function initializeCollapsibleThemeSection() {
+  const themeHeader = document.getElementById('theme-section-header');
+  const themeContent = document.getElementById('theme-section-content');
+  
+  if (!themeHeader || !themeContent) return;
+  
+  // Set initial state (collapsed by default)
+  let isExpanded = false;
+  themeContent.classList.add('collapsed');
+  themeHeader.classList.add('collapsed');
+  
+  // Set initial arrow state (pointing right when collapsed)
+  const arrow = themeHeader.querySelector('span');
+  if (arrow) {
+    arrow.style.transform = 'rotate(-90deg)';
+  }
+  
+  themeHeader.addEventListener('click', () => {
+    isExpanded = !isExpanded;
+    
+    if (isExpanded) {
+      themeContent.classList.remove('collapsed');
+      themeHeader.classList.remove('collapsed');
+      if (arrow) {
+        arrow.style.transform = 'rotate(0deg)';
       }
-      debugUnsubscribe();
-      if (!responseReceived) {
-        console.warn("\u26A0\uFE0F Dice+ not detected - 3D dice disabled, using built-in roller");
-        dicePlusReady = false;
+    } else {
+      themeContent.classList.add('collapsed');
+      themeHeader.classList.add('collapsed');
+      if (arrow) {
+        arrow.style.transform = 'rotate(-90deg)';
       }
-    } catch (error) {
-      console.warn("Failed to check Dice+ status:", error);
+    }
+  });
+}
+
+// ============== Tab Management ==============
+
+/**
+ * Initialize tab switching functionality
+ */
+function initializeTabs() {
+  const tabButtons = document.querySelectorAll('.tab-button');
+  const tabContents = document.querySelectorAll('.tab-content');
+  const brandingHeader = document.getElementById('branding-header');
+  const characterHeader = document.getElementById('character-header');
+  const tabsNav = document.querySelector('.tabs-nav');
+
+  // Add mouse wheel scrolling to tab navigation
+  if (tabsNav) {
+    tabsNav.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      tabsNav.scrollLeft += e.deltaY;
+    });
+  }
+
+  tabButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const tabName = button.getAttribute('data-tab');
+
+      // Remove active class from all tabs and contents
+      tabButtons.forEach(btn => btn.classList.remove('active'));
+      tabContents.forEach(content => content.classList.remove('active'));
+
+      // Add active class to clicked tab and corresponding content
+      button.classList.add('active');
+      document.getElementById(`tab-${tabName}`).classList.add('active');
+
+      // Toggle header based on tab
+      if (tabName === 'settings') {
+        brandingHeader.style.display = 'block';
+        characterHeader.style.display = 'none';
+      } else {
+        brandingHeader.style.display = 'none';
+        characterHeader.style.display = 'block';
+      }
+
+      console.log(`📑 Switched to tab: ${tabName}`);
+    });
+  });
+}
+
+// Initialize tabs when DOM is ready
+initializeTabs();
+
+// ============== Owlbear SDK Initialization ==============
+
+OBR.onReady(async () => {
+  isOwlbearReady = true;
+  console.log('🦉 Owlbear SDK ready');
+  statusText.textContent = 'Connected to Owlbear Rodeo';
+
+  // Set character sheet height to half viewport minus action bar
+  // TODO: Make this dynamic based on actual viewport height
+  // Currently using fixed 460px as workaround since window.innerHeight doesn't work in popovers
+  const sheetHeight = 460;
+
+  try {
+    await OBR.popover.setHeight(sheetHeight);
+  } catch (error) {
+    console.error('Error setting popover height:', error);
+  }
+
+  // Initialize Supabase Auth
+  initializeSupabaseAuth();
+
+  // Check for active character
+  checkForActiveCharacter();
+
+  // Note: We don't auto-refresh character data because the local sheet state
+  // is the source of truth during gameplay. Only sync when user explicitly requests it.
+
+  // Check if Dice+ is available
+  checkDicePlusReady();
+
+  // Set up Dice+ result listeners
+  setupDicePlusListeners();
+});
+
+// ============== Dice+ Integration ==============
+
+/**
+ * Check if Dice+ extension is ready
+ */
+async function checkDicePlusReady() {
+  if (!isOwlbearReady) return;
+
+  // Wait a bit for other extensions to load
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  try {
+    const requestId = `ready_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    console.log('🔍 Checking for Dice+ extension...');
+
+    let responseReceived = false;
+    let unsubscribed = false;
+
+    // DEBUG: Listen to ALL broadcast channels temporarily
+    const debugUnsubscribe = OBR.broadcast.onMessage('*', (event) => {
+      if (event.id.includes('dice-plus') || event.id.includes('dice+')) {
+        console.log('🐛 DEBUG - Received broadcast on channel:', event.id, 'data:', event.data);
+      }
+    });
+
+    // Set up one-time listener for ready response BEFORE sending the request
+    const unsubscribe = OBR.broadcast.onMessage('dice-plus/isReady', (event) => {
+      console.log('📨 Received dice-plus/isReady message:', event.data);
+
+      // Only process messages that match our requestId to avoid console spam
+      if (event.data.requestId === requestId) {
+        console.log('✅ RequestId matches:', requestId);
+
+        // Accept either explicit ready:true OR the echo (which proves broadcast works)
+        // If we get our own message back, it means OBR broadcast is working
+        // and Dice+ will receive it too (even if it doesn't respond)
+        if (event.data.ready || event.data.timestamp) {
+          responseReceived = true;
+          dicePlusReady = true;
+          console.log('✅ Dice+ broadcast received - 3D dice enabled!');
+        }
+
+        if (!unsubscribed) {
+          unsubscribed = true;
+          unsubscribe(); // Clean up listener
+        }
+      } else {
+        console.log('⚠️ RequestId mismatch. Expected:', requestId, 'Got:', event.data.requestId);
+      }
+    });
+
+    // Send ready check after listener is set up
+    console.log('📡 Sending dice-plus/isReady broadcast with requestId:', requestId);
+    await OBR.broadcast.sendMessage('dice-plus/isReady', {
+      requestId,
+      timestamp: Date.now()
+    }, { destination: 'ALL' });
+    console.log('✅ Broadcast sent, waiting 3 seconds for response...');
+
+    // Wait for response with timeout
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    // Clean up listener if not already unsubscribed
+    if (!unsubscribed) {
+      unsubscribed = true;
+      unsubscribe();
+    }
+
+    // Clean up debug listener
+    debugUnsubscribe();
+
+    if (!responseReceived) {
+      console.warn('⚠️ Dice+ not detected - 3D dice disabled, using built-in roller');
       dicePlusReady = false;
     }
+
+  } catch (error) {
+    console.warn('Failed to check Dice+ status:', error);
+    dicePlusReady = false;
   }
-  function setupDicePlusListeners() {
-    if (!isOwlbearReady)
+}
+
+/**
+ * Set up listeners for Dice+ roll results
+ */
+function setupDicePlusListeners() {
+  if (!isOwlbearReady) return;
+
+  // Listen for roll results
+  OBR.broadcast.onMessage(`${OWLCLOUD_EXTENSION_ID}/roll-result`, (event) => {
+    const { rollId, totalValue, rollSummary, groups } = event.data;
+
+    // Validate result structure before processing
+    if (!rollId || totalValue === undefined) {
+      console.warn('🚫 Invalid roll result structure, ignoring:', event.data);
       return;
-    OBR.broadcast.onMessage(`${OWLCLOUD_EXTENSION_ID}/roll-result`, (event) => {
-      const { rollId, totalValue, rollSummary, groups } = event.data;
-      if (!rollId || totalValue === void 0) {
-        console.warn("\u{1F6AB} Invalid roll result structure, ignoring:", event.data);
-        return;
-      }
-      const pendingRoll = pendingRolls.get(rollId);
-      if (!pendingRoll) {
-        console.warn("Received result for unknown roll:", rollId);
-        return;
-      }
+    }
+
+    // Find the pending roll
+    const pendingRoll = pendingRolls.get(rollId);
+    if (!pendingRoll) {
+      console.warn('Received result for unknown roll:', rollId);
+      return;
+    }
+
+    // Remove from pending
+    pendingRolls.delete(rollId);
+
+    // Process the result
+    handleDicePlusResult(pendingRoll, totalValue, rollSummary, groups);
+  });
+
+  // Listen for roll errors
+  OBR.broadcast.onMessage(`${OWLCLOUD_EXTENSION_ID}/roll-error`, (event) => {
+    const { rollId, error } = event.data;
+    console.error('Dice+ roll error:', error);
+
+    const pendingRoll = pendingRolls.get(rollId);
+    if (pendingRoll) {
       pendingRolls.delete(rollId);
-      handleDicePlusResult(pendingRoll, totalValue, rollSummary, groups);
-    });
-    OBR.broadcast.onMessage(`${OWLCLOUD_EXTENSION_ID}/roll-error`, (event) => {
-      const { rollId, error } = event.data;
-      console.error("Dice+ roll error:", error);
-      const pendingRoll = pendingRolls.get(rollId);
-      if (pendingRoll) {
-        pendingRolls.delete(rollId);
-        console.warn("Falling back to built-in dice roller");
-        executeLocalRoll(pendingRoll);
-      }
-    });
-    OBR.broadcast.onMessage("dice-plus/roll-result", (event) => {
-      console.log("\u{1F4E8} Dice+ roll-result received:", event.data);
-      const { result } = event.data;
-      if (!result || !result.rollId || result.totalValue === void 0) {
-        console.warn("\u{1F6AB} Invalid Dice+ result structure, ignoring:", result);
-        return;
-      }
-      const { rollId, totalValue, rollSummary, groups } = result;
-      const pendingRoll = pendingRolls.get(rollId);
-      if (!pendingRoll) {
-        console.warn("Received result for unknown roll:", rollId);
-        return;
-      }
-      pendingRolls.delete(rollId);
-      handleDicePlusResult(pendingRoll, totalValue, rollSummary, groups);
-    });
-  }
-  function simplifyDiceFormula(formula) {
-    if (!formula || !currentCharacter)
-      return formula;
-    let simplified = formula;
-    if (simplified.includes("~target.level")) {
-      const level = currentCharacter.level || 1;
-      simplified = simplified.replace(/~target\.level/g, level.toString());
+      // Fall back to local roll
+      console.warn('Falling back to built-in dice roller');
+      executeLocalRoll(pendingRoll);
     }
-    const diceMatch = simplified.match(/^(.+?)d(\d+)([+-]\d+)?$/i);
-    if (diceMatch) {
-      const countExpression = diceMatch[1];
-      const sides = diceMatch[2];
-      const modifier = diceMatch[3] || "";
-      try {
-        let safeExpression = countExpression.replace(/floor\(/g, "Math.floor(").replace(/ceil\(/g, "Math.ceil(").replace(/round\(/g, "Math.round(").replace(/max\(/g, "Math.max(").replace(/min\(/g, "Math.min(");
-        if (/^[\d+\-*/().,\s\w]+$/.test(safeExpression) && safeExpression.includes("Math.")) {
-          const count = Math.floor(eval(safeExpression));
-          if (count > 0 && count < 100) {
-            simplified = `${count}d${sides}${modifier}`;
-            console.log(`\u{1F4D0} Simplified formula: ${formula} \u2192 ${simplified}`);
-          }
-        }
-      } catch (error) {
-        console.warn("Failed to simplify formula:", formula, error);
-      }
-    }
-    return simplified;
-  }
-  async function sendToDicePlus(diceNotation, rollContext) {
-    const simplifiedNotation = simplifyDiceFormula(diceNotation);
-    console.log("\u{1F3B2} sendToDicePlus called:", {
-      original: diceNotation,
-      simplified: simplifiedNotation,
-      isOwlbearReady,
-      dicePlusReady
-    });
-    if (!isOwlbearReady || !dicePlusReady) {
-      console.log("\u26A0\uFE0F Falling back to local roll - OBR ready:", isOwlbearReady, "Dice+ ready:", dicePlusReady);
-      return null;
-    }
-    try {
-      const rollId = `roll_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const playerId = await OBR.player.getId();
-      const playerName = await OBR.player.getName();
-      pendingRolls.set(rollId, rollContext);
-      console.log("\u{1F4E1} Sending roll request to Dice+:", { rollId, diceNotation: simplifiedNotation });
-      await OBR.broadcast.sendMessage("dice-plus/roll-request", {
-        rollId,
-        playerId,
-        playerName,
-        rollTarget: "everyone",
-        // Show to all players
-        diceNotation: simplifiedNotation,
-        showResults: false,
-        // Hide Dice+ popup (OwlCloud chat shows results instead)
-        timestamp: Date.now(),
-        source: OWLCLOUD_EXTENSION_ID
-      }, { destination: "ALL" });
-      return rollId;
-    } catch (error) {
-      console.error("Failed to send to Dice+:", error);
-      return null;
-    }
-  }
-  async function handleDicePlusResult(rollContext, totalValue, rollSummary, groups) {
-    const { name, modifier: modifier2, type, isDeathSave, isDamageRoll, actionName, damageFormula } = rollContext;
-    console.log("\u{1F3B2} Dice+ result received:", {
-      totalValue,
-      totalValueType: typeof totalValue,
-      rollSummary,
-      modifier: modifier2,
-      rollContext
-    });
-    const numericTotal = typeof totalValue === "number" ? totalValue : parseInt(totalValue) || 0;
-    console.log("\u{1F3B2} After parsing:", { numericTotal, modifier: modifier2, willSubtract: modifier2 || 0 });
-    if (isDeathSave && currentCharacter) {
-      const roll = numericTotal;
-      let message = "";
-      let messageType = "combat";
-      if (roll === 20) {
-        message = `\u{1F480} Death Save: <strong>20 (Natural 20!)</strong> - Regain 1 HP!`;
-        if (!currentCharacter.hitPoints) {
-          currentCharacter.hitPoints = { current: 0, max: 0 };
-        }
-        currentCharacter.hitPoints.current = 1;
-        populateStatsTab(currentCharacter);
-      } else if (roll === 1) {
-        message = `\u{1F480} Death Save: <strong>1 (Natural 1!)</strong> - Two failures!`;
-      } else if (roll >= 10) {
-        message = `\u{1F480} Death Save: <strong>${roll}</strong> - Success`;
-      } else {
-        message = `\u{1F480} Death Save: <strong>${roll}</strong> - Failure`;
-      }
-      if (isOwlbearReady) {
-        OBR.notification.show(`${currentCharacter.name}: Death Save = ${roll}`, roll >= 10 ? "SUCCESS" : "ERROR");
-      }
-      console.log("\u{1F480}", message);
-      await addChatMessage(message, messageType, currentCharacter.name);
+  });
+
+  // ALSO listen on Dice+ channel for roll results
+  OBR.broadcast.onMessage('dice-plus/roll-result', (event) => {
+    console.log('📨 Dice+ roll-result received:', event.data);
+    const { result } = event.data;
+    
+    // Validate result structure before processing
+    if (!result || !result.rollId || result.totalValue === undefined) {
+      console.warn('🚫 Invalid Dice+ result structure, ignoring:', result);
       return;
     }
-    if (isDamageRoll) {
-      const rolls = groups && groups[0] ? groups[0].dice.filter((d) => d.kept).map((d) => d.value) : [];
-      const message = `${actionName} Damage: <strong>${numericTotal}</strong>`;
-      let detailsHtml = `<strong>Formula:</strong> ${damageFormula}<br>
-                       <strong>Rolls:</strong> ${rolls.join(", ")}`;
-      if (modifier2) {
-        detailsHtml += `<br>Modifier: ${modifier2 >= 0 ? "+" : ""}${modifier2}`;
-      }
-      detailsHtml += `<br>Calculation: ${rolls.join(" + ")}`;
-      if (modifier2) {
-        detailsHtml += ` ${modifier2 >= 0 ? "+" : ""}${modifier2}`;
-      }
-      detailsHtml += ` = ${numericTotal}`;
-      if (isOwlbearReady) {
-        OBR.notification.show(`${currentCharacter?.name || "Character"}: ${actionName} Damage = ${numericTotal}`, "INFO");
-      }
-      console.log("\u2694\uFE0F", message);
-      await addChatMessage(message, "combat", currentCharacter?.name, detailsHtml);
+    
+    const { rollId, totalValue, rollSummary, groups } = result;
+
+    // Find the pending roll
+    const pendingRoll = pendingRolls.get(rollId);
+    if (!pendingRoll) {
+      console.warn('Received result for unknown roll:', rollId);
       return;
     }
-    let rawRoll = numericTotal;
-    let finalTotal = numericTotal;
-    if (rollSummary) {
-      const rollMatch = rollSummary.match(/^\[(\d+)\]/);
-      if (rollMatch) {
-        rawRoll = parseInt(rollMatch[1]);
-      }
-    }
-    finalTotal = numericTotal;
-    console.log("\u{1F50D} Dice+ calculation debug:", {
-      numericTotal,
-      modifier: modifier2,
-      rollContext,
-      rollSummary,
-      parsedRawRoll: rawRoll,
-      finalTotal,
-      willCalculateFinal: finalTotal
-    });
-    const result = {
-      total: rawRoll,
-      rolls: groups && groups[0] ? groups[0].dice.filter((d) => d.kept).map((d) => d.value) : [rawRoll],
-      modifier: modifier2 || 0,
-      formula: rollSummary,
-      mode: rollContext.mode || "normal",
-      // Override the final calculation in showRollResult
-      _overrideFinal: finalTotal
-    };
-    await showRollResult(name, result);
+
+    // Remove from pending
+    pendingRolls.delete(rollId);
+
+    // Process the result
+    handleDicePlusResult(pendingRoll, totalValue, rollSummary, groups);
+  });
+}
+
+/**
+ * Send a roll request to Dice+
+ * @param {string} diceNotation - Standard dice notation (e.g., "1d20+5", "2d20kh1+3")
+ * @param {object} rollContext - Context about the roll (name, modifier, etc.)
+ * @returns {Promise<string>} - Roll ID
+ */
+async function sendToDicePlus(diceNotation, rollContext) {
+  console.log('🎲 sendToDicePlus called:', { diceNotation, isOwlbearReady, dicePlusReady });
+
+  if (!isOwlbearReady || !dicePlusReady) {
+    // Fall back to local rolling
+    console.log('⚠️ Falling back to local roll - OBR ready:', isOwlbearReady, 'Dice+ ready:', dicePlusReady);
+    return null;
   }
-  async function executeLocalRoll(rollContext) {
-    const { name, modifier: modifier2, type, mode } = rollContext;
-    let result;
-    if (type === "d20") {
-      result = rollD20Local();
+
+  try {
+    const rollId = `roll_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const playerId = await OBR.player.getId();
+    const playerName = await OBR.player.getName();
+
+    // Store pending roll
+    pendingRolls.set(rollId, rollContext);
+
+    console.log('📡 Sending roll request to Dice+:', { rollId, diceNotation });
+
+    // Send roll request to Dice+
+    await OBR.broadcast.sendMessage('dice-plus/roll-request', {
+      rollId,
+      playerId,
+      playerName,
+      rollTarget: 'everyone', // Show to all players
+      diceNotation,
+      showResults: false, // Hide Dice+ popup (OwlCloud chat shows results instead)
+      timestamp: Date.now(),
+      source: OWLCLOUD_EXTENSION_ID
+    }, { destination: 'ALL' });
+
+    return rollId;
+
+  } catch (error) {
+    console.error('Failed to send to Dice+:', error);
+    return null;
+  }
+}
+
+/**
+ * Handle result from Dice+
+ */
+async function handleDicePlusResult(rollContext, totalValue, rollSummary, groups) {
+  const { name, modifier, type, isDeathSave, isDamageRoll, actionName, damageFormula } = rollContext;
+
+  console.log('🎲 Dice+ result received:', {
+    totalValue,
+    totalValueType: typeof totalValue,
+    rollSummary,
+    modifier,
+    rollContext
+  });
+
+  // Ensure totalValue is a number (parse if needed)
+
+  // Ensure totalValue is a number
+  const numericTotal = typeof totalValue === 'number' ? totalValue : parseInt(totalValue) || 0;
+
+  console.log('🎲 After parsing:', { numericTotal, modifier, willSubtract: (modifier || 0) });
+
+  // Special handling for death saves
+  if (isDeathSave && currentCharacter) {
+    const roll = numericTotal;
+    let message = '';
+    let messageType = 'combat';
+
+    if (roll === 20) {
+      message = `💀 Death Save: <strong>20 (Natural 20!)</strong> - Regain 1 HP!`;
+      if (!currentCharacter.hitPoints) {
+        currentCharacter.hitPoints = { current: 0, max: 0 };
+      }
+      currentCharacter.hitPoints.current = 1;
+      populateStatsTab(currentCharacter);
+    } else if (roll === 1) {
+      message = `💀 Death Save: <strong>1 (Natural 1!)</strong> - Two failures!`;
+    } else if (roll >= 10) {
+      message = `💀 Death Save: <strong>${roll}</strong> - Success`;
     } else {
-      result = rollDiceLocal(rollContext.formula);
+      message = `💀 Death Save: <strong>${roll}</strong> - Failure`;
     }
-    result.total += modifier2 || 0;
-    result.modifier = modifier2 || 0;
-    await showRollResult(name, result);
+
+    if (isOwlbearReady) {
+      OBR.notification.show(`${currentCharacter.name}: Death Save = ${roll}`, roll >= 10 ? 'SUCCESS' : 'ERROR');
+    }
+    console.log('💀', message);
+    await addChatMessage(message, messageType, currentCharacter.name);
+    return;
   }
-  async function initializeSupabaseAuth() {
-    console.log("\u{1F680} [Owlbear] Initializing Supabase auth...");
-    try {
-      console.log("\u{1F527} [Owlbear] Creating Supabase client with URL:", SUPABASE_URL);
-      supabase = window.createSupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        auth: {
-          persistSession: true,
-          autoRefreshToken: true,
-          detectSessionInUrl: false
-        }
-      });
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        currentUser = session.user;
-        console.log("\u2705 User already signed in:", currentUser.email);
-        updateAuthUI();
-        await linkExistingCharacterToUser();
-      } else {
-        console.log("\u2139\uFE0F No active session");
-        updateAuthUI();
+
+  // Special handling for damage rolls
+  if (isDamageRoll) {
+    const rolls = groups && groups[0] ? groups[0].dice.filter(d => d.kept).map(d => d.value) : [];
+    const message = `${actionName} Damage: <strong>${numericTotal}</strong>`;
+
+    let detailsHtml = `<strong>Formula:</strong> ${damageFormula}<br>
+                       <strong>Rolls:</strong> ${rolls.join(', ')}`;
+    if (modifier) {
+      detailsHtml += `<br>Modifier: ${modifier >= 0 ? '+' : ''}${modifier}`;
+    }
+    detailsHtml += `<br>Calculation: ${rolls.join(' + ')}`;
+    if (modifier) {
+      detailsHtml += ` ${modifier >= 0 ? '+' : ''}${modifier}`;
+    }
+    detailsHtml += ` = ${numericTotal}`;
+
+    if (isOwlbearReady) {
+      OBR.notification.show(`${currentCharacter?.name || 'Character'}: ${actionName} Damage = ${numericTotal}`, 'INFO');
+    }
+    console.log('⚔️', message);
+    await addChatMessage(message, 'combat', currentCharacter?.name, detailsHtml);
+    return;
+  }
+
+  // Create result object similar to local rolls
+  // Parse the rollSummary to extract the raw roll and use totalValue as final result
+  let rawRoll = numericTotal; // fallback
+  let finalTotal = numericTotal;
+  
+  if (rollSummary) {
+    // Extract raw roll from rollSummary format "[7] 7 + 8 = 15"
+    const rollMatch = rollSummary.match(/^\[(\d+)\]/);
+    if (rollMatch) {
+      rawRoll = parseInt(rollMatch[1]);
+    }
+  }
+  
+  // Use totalValue as the final result since Dice+ already calculated it
+  finalTotal = numericTotal;
+  
+  console.log('🔍 Dice+ calculation debug:', {
+    numericTotal,
+    modifier,
+    rollContext,
+    rollSummary,
+    parsedRawRoll: rawRoll,
+    finalTotal,
+    willCalculateFinal: finalTotal
+  });
+  
+  const result = {
+    total: rawRoll,
+    rolls: groups && groups[0] ? groups[0].dice.filter(d => d.kept).map(d => d.value) : [rawRoll],
+    modifier: modifier || 0,
+    formula: rollSummary,
+    mode: rollContext.mode || 'normal',
+    // Override the final calculation in showRollResult
+    _overrideFinal: finalTotal
+  };
+
+  // Show the result using existing UI
+  await showRollResult(name, result);
+}
+
+/**
+ * Execute a local roll (fallback when Dice+ unavailable)
+ */
+async function executeLocalRoll(rollContext) {
+  const { name, modifier, type, mode } = rollContext;
+
+  let result;
+  if (type === 'd20') {
+    result = rollD20Local();
+  } else {
+    result = rollDiceLocal(rollContext.formula);
+  }
+
+  result.total += (modifier || 0);
+  result.modifier = modifier || 0;
+
+  await showRollResult(name, result);
+}
+
+// ============== Supabase Auth ==============
+
+/**
+ * Initialize Supabase Auth client and check for existing session
+ */
+async function initializeSupabaseAuth() {
+  try {
+    // Initialize Supabase client (createSupabaseClient is loaded from popover.html)
+    supabase = window.createSupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: false
       }
-      supabase.auth.onAuthStateChange(async (event, session2) => {
-        console.log("\u{1F510} Auth state changed:", event);
-        currentUser = session2?.user || null;
-        updateAuthUI();
-        if (event === "SIGNED_IN") {
-          await linkExistingCharacterToUser();
-        }
-        if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
-          await checkForActiveCharacter();
-          await fetchAllCharacters();
-          displayCharacterList();
-          updateAuthUI();
-        }
-      });
-    } catch (error) {
-      console.error("Failed to initialize Supabase Auth:", error);
-    }
-  }
-  async function signIn(email, password) {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-      if (error)
-        throw error;
-      console.log("\u2705 Signed in successfully");
-      return { success: true };
-    } catch (error) {
-      console.error("Sign in error:", error);
-      return { success: false, error: error.message };
-    }
-  }
-  async function signUp(email, password) {
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password
-      });
-      if (error)
-        throw error;
-      console.log("\u2705 Signed up successfully");
-      return { success: true };
-    } catch (error) {
-      console.error("Sign up error:", error);
-      return { success: false, error: error.message };
-    }
-  }
-  async function signOut() {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error)
-        throw error;
-      console.log("\u2705 Signed out successfully");
-      currentUser = null;
+    });
+
+    // Check for existing session
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (session) {
+      currentUser = session.user;
+      console.log('✅ User already signed in:', currentUser.email);
       updateAuthUI();
-      checkForActiveCharacter();
-      return { success: true };
-    } catch (error) {
-      console.error("Sign out error:", error);
-      return { success: false, error: error.message };
+    } else {
+      console.log('ℹ️ No active session');
+      updateAuthUI();
     }
+
+    // Listen for auth state changes
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('🔐 Auth state changed:', event);
+      currentUser = session?.user || null;
+      updateAuthUI();
+
+      // When user signs in, link any existing character to their account
+      if (event === 'SIGNED_IN') {
+        await linkExistingCharacterToUser();
+      }
+
+      // Refresh character data when user signs in/out
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        checkForActiveCharacter();
+      }
+    });
+  } catch (error) {
+    console.error('Failed to initialize Supabase Auth:', error);
   }
-  window.signOut = signOut;
-  async function linkExistingCharacterToUser() {
-    if (!currentUser)
+}
+
+/**
+ * Sign in with email/password
+ */
+async function signIn(email, password) {
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) throw error;
+
+    console.log('✅ Signed in successfully');
+    return { success: true };
+  } catch (error) {
+    console.error('Sign in error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Sign up with email/password
+ */
+async function signUp(email, password) {
+  try {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password
+    });
+
+    if (error) throw error;
+
+    console.log('✅ Signed up successfully');
+    return { success: true };
+  } catch (error) {
+    console.error('Sign up error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Sign out
+ */
+async function signOut() {
+  try {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+
+    console.log('✅ Signed out successfully');
+    return { success: true };
+  } catch (error) {
+    console.error('Sign out error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Expose signOut to window for onclick handler
+window.signOut = signOut;
+
+/**
+ * Link existing character (by owlbear_player_id) to the signed-in user's account
+ * This handles the case where a user had a character before creating an account
+ */
+async function linkExistingCharacterToUser() {
+  if (!currentUser) return;
+
+  try {
+    const playerId = await OBR.player.getId();
+
+    console.log('🔗 Checking for existing character to link...');
+
+    // First check if user already has a character linked
+    const userCharResponse = await fetch(
+      `${SUPABASE_URL}/functions/v1/characters?supabase_user_id=${encodeURIComponent(currentUser.id)}&active_only=true&fields=essential`,
+      { headers: SUPABASE_HEADERS }
+    );
+
+    if (userCharResponse.ok) {
+      const userData = await userCharResponse.json();
+      if (userData.success && userData.character) {
+        console.log('✅ User already has a linked character');
+        return; // User already has a character, no need to link
+      }
+    }
+
+    // No character found by supabase_user_id, check by owlbear_player_id
+    const playerCharResponse = await fetch(
+      `${SUPABASE_URL}/functions/v1/characters?owlbear_player_id=${encodeURIComponent(playerId)}&active_only=true&fields=full`,
+      { headers: SUPABASE_HEADERS }
+    );
+
+    if (!playerCharResponse.ok) {
+      console.log('ℹ️ No existing character found to link');
       return;
-    try {
-      const playerId = await OBR.player.getId();
-      console.log("\u{1F517} Checking for existing character to link...");
-      console.log("  - Current user ID:", currentUser.id);
-      console.log("  - Owlbear player ID:", playerId);
-      const authHeaders = { ...SUPABASE_HEADERS };
-      if (supabase) {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.access_token) {
-          authHeaders["Authorization"] = `Bearer ${session.access_token}`;
+    }
+
+    const playerData = await playerCharResponse.json();
+
+    if (playerData.success && playerData.character) {
+      console.log('🔗 Linking existing character to user account...');
+
+      // Update the character to include supabase_user_id
+      const character = playerData.character.raw_dicecloud_data || playerData.character;
+      const linkResponse = await fetch(
+        `${SUPABASE_URL}/functions/v1/characters`,
+        {
+          method: 'POST',
+          headers: SUPABASE_HEADERS,
+          body: JSON.stringify({
+            owlbearPlayerId: playerId,
+            supabaseUserId: currentUser.id,
+            character: character
+          })
         }
-      }
-      console.log("\u{1F4E1} Checking if user already has a character...");
-      const userCharResponse = await fetch(
-        `${SUPABASE_URL}/functions/v1/characters?supabase_user_id=${encodeURIComponent(currentUser.id)}&fields=essential`,
-        { headers: authHeaders }
       );
-      console.log("\u{1F4E1} User character check response:", userCharResponse.status);
-      if (userCharResponse.ok) {
-        const userData = await userCharResponse.json();
-        console.log("\u{1F4E6} User character data:", userData);
-        if (userData.success && (userData.character || userData.characters && userData.characters.length > 0)) {
-          console.log("\u2705 User already has a linked character");
-          return;
-        }
-      }
-      console.log("\u{1F50D} Checking for character by owlbear_player_id...");
-      const playerCharResponse = await fetch(
-        `${SUPABASE_URL}/functions/v1/characters?owlbear_player_id=${encodeURIComponent(playerId)}&fields=full`,
-        { headers: SUPABASE_HEADERS }
-      );
-      console.log("\u{1F4E1} Player character check response:", playerCharResponse.status);
-      if (!playerCharResponse.ok) {
-        console.log("\u2139\uFE0F No existing character found to link");
-        return;
-      }
-      const playerData = await playerCharResponse.json();
-      console.log("\u{1F4E6} Player character data:", playerData);
-      const charactersToLink = playerData.success && playerData.characters && playerData.characters.length > 0 ? playerData.characters : playerData.success && playerData.character ? [playerData.character] : [];
-      if (charactersToLink.length > 0) {
-        console.log(`\u{1F517} Linking ${charactersToLink.length} existing character(s) to user account...`);
-        for (const char of charactersToLink) {
-          const character = char.raw_dicecloud_data ? {
-            ...char.raw_dicecloud_data,
-            userId: char.user_id_dicecloud,
-            id: char.dicecloud_character_id,
-            name: char.character_name
-          } : {
-            userId: char.user_id_dicecloud,
-            id: char.dicecloud_character_id,
-            name: char.character_name,
-            class: char.class,
-            race: char.race,
-            level: char.level
-          };
-          const linkResponse = await fetch(
-            `${SUPABASE_URL}/functions/v1/characters`,
-            {
-              method: "POST",
-              headers: authHeaders,
-              body: JSON.stringify({
-                owlbearPlayerId: playerId,
-                supabaseUserId: currentUser.id,
-                character
-              })
-            }
-          );
-          if (linkResponse.ok) {
-            const linkData = await linkResponse.json();
-            console.log(`\u2705 Character "${char.character_name}" successfully linked!`);
-          } else {
-            const errorText = await linkResponse.text();
-            console.error(`\u274C Failed to link character "${char.character_name}":`, errorText);
-          }
-        }
+
+      if (linkResponse.ok) {
+        const linkData = await linkResponse.json();
+        console.log('✅ Character successfully linked to account!', linkData);
+
         if (isOwlbearReady) {
-          OBR.notification.show(`${charactersToLink.length} character(s) linked to your account!`, "SUCCESS");
+          OBR.notification.show('Character linked to your account!', 'SUCCESS');
         }
-        await checkForActiveCharacter();
+
+        // Use the character data from the link response instead of fetching again
+        if (linkData.success && linkData.character) {
+          const characterData = linkData.character.raw_dicecloud_data || linkData.character;
+
+          // Cache under the new Supabase user ID key
+          const cacheKey = `owlcloud_char_${currentUser.id}`;
+          localStorage.setItem(cacheKey, JSON.stringify(characterData));
+
+          // Display the character immediately
+          displayCharacter(characterData);
+
+          // Fetch all characters to update the list
+          await fetchAllCharacters();
+        } else {
+          // Fallback: fetch character if link response doesn't include it
+          await checkForActiveCharacter();
+        }
+
+        // Update auth UI to show unsync button
         updateAuthUI();
+      } else {
+        const errorText = await linkResponse.text();
+        console.error('❌ Failed to link character:', errorText);
+        if (isOwlbearReady) {
+          OBR.notification.show('Failed to link character to account', 'ERROR');
+        }
       }
-    } catch (error) {
-      console.error("Error linking character to user:", error);
-      if (isOwlbearReady) {
-        OBR.notification.show("Error linking character: " + (error.message || "Unknown error"), "ERROR");
-      }
+    }
+  } catch (error) {
+    console.error('Error linking character to user:', error);
+    if (isOwlbearReady) {
+      OBR.notification.show('Error linking character: ' + (error.message || 'Unknown error'), 'ERROR');
     }
   }
-  function updateAuthUI() {
-    console.log("\u{1F504} [Owlbear] Updating auth UI, currentUser:", currentUser);
-    const authSection = document.getElementById("auth-section");
-    const authHeader = document.getElementById("auth-section-header");
-    const authContent = document.getElementById("auth-section-content");
-    const authHeaderText = authHeader?.querySelector("div");
-    console.log("\u{1F50D} [Owlbear] auth-section element:", authSection);
-    if (!authSection) {
-      console.error("\u274C [Owlbear] auth-section element not found!");
-      return;
-    }
-    if (currentUser) {
-      console.log("\u2705 [Owlbear] User signed in, showing logged in view");
-      const fetchStandaloneBtn = document.getElementById("fetch-character-standalone-btn");
-      if (fetchStandaloneBtn) {
-        fetchStandaloneBtn.style.display = "block";
-      }
-      if (authHeaderText) {
-        authHeaderText.textContent = "\u{1F513} Sign Out";
-      }
-      if (authContent && authHeader) {
-        authContent.classList.add("collapsed");
-        authHeader.classList.add("collapsed");
-        const arrow = authHeader.querySelector("span");
-        if (arrow) {
-          arrow.style.transform = "rotate(-90deg)";
-        }
-      }
-      authSection.innerHTML = `
+}
+
+/**
+ * Update auth UI based on current user state
+ */
+function updateAuthUI() {
+  console.log('🔄 [Owlbear] Updating auth UI, currentUser:', currentUser);
+  const authSection = document.getElementById('auth-section');
+  console.log('🔍 [Owlbear] auth-section element:', authSection);
+  if (!authSection) {
+    console.error('❌ [Owlbear] auth-section element not found!');
+    return;
+  }
+
+  if (currentUser) {
+    // User is signed in
+    console.log('✅ [Owlbear] User signed in, showing logged in view');
+    authSection.innerHTML = `
       <div style="padding: 16px; background: var(--theme-background); border-radius: 8px; border: 1px solid var(--theme-border);">
         <div style="margin-bottom: 12px;">
           <div style="font-size: 12px; color: var(--theme-primary-light); margin-bottom: 4px;">Signed in as</div>
           <div style="font-weight: 600; color: #e0e0e0;">${currentUser.email}</div>
         </div>
-        <button
-          onclick="signOut()"
-          style="width: 100%; padding: 8px; background: rgba(239, 68, 68, 0.2); border: 1px solid #EF4444; border-radius: 6px; color: #EF4444; font-weight: 600; cursor: pointer; transition: all 0.2s;">
-          Sign Out
-        </button>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <button
+            onclick="handleFetchCharacter()"
+            id="fetch-character-btn"
+            style="width: 100%; padding: 8px; background: var(--theme-gradient); border: none; border-radius: 6px; color: white; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+            🔄 Fetch Character
+          </button>
+          ${currentCharacter ? `
+          <button
+            onclick="handleUnsyncCharacter()"
+            id="unsync-character-btn"
+            style="width: 100%; padding: 8px; background: rgba(251, 146, 60, 0.2); border: 1px solid #FB923C; border-radius: 6px; color: #FB923C; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+            🔓 Unsync from Owlbear
+          </button>
+          ` : ''}
+          <button
+            onclick="signOut()"
+            style="width: 100%; padding: 8px; background: rgba(239, 68, 68, 0.2); border: 1px solid #EF4444; border-radius: 6px; color: #EF4444; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+            Sign Out
+          </button>
+        </div>
         <div id="fetch-status" style="margin-top: 8px; font-size: 12px; display: none;"></div>
       </div>
     `;
-    } else {
-      console.log("\u274C [Owlbear] User not signed in, showing login form");
-      const fetchStandaloneBtn = document.getElementById("fetch-character-standalone-btn");
-      if (fetchStandaloneBtn) {
-        fetchStandaloneBtn.style.display = "none";
-      }
-      if (authHeaderText) {
-        authHeaderText.textContent = "\u{1F510} Sign In / Sign Up";
-      }
-      if (authContent && authHeader) {
-        authContent.classList.remove("collapsed");
-        authHeader.classList.remove("collapsed");
-        const arrow = authHeader.querySelector("span");
-        if (arrow) {
-          arrow.style.transform = "rotate(0deg)";
-        }
-      }
-      authSection.innerHTML = `
+  } else {
+    // User is not signed in
+    authSection.innerHTML = `
       <div style="padding: 16px; background: rgba(59, 130, 246, 0.1); border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.3);">
         <div style="font-weight: 600; color: var(--theme-primary-light); font-size: 14px; margin-bottom: 8px;">
-          \u{1F510} Cross-Device Character Sync
+          🔐 Cross-Device Character Sync
         </div>
         <div style="margin-bottom: 12px; color: #c0c0c0; font-size: 12px; line-height: 1.4;">
           Create a free account to access your characters from any device. This is separate from your DiceCloud login.
@@ -1165,737 +1328,897 @@
         </form>
       </div>
     `;
-    }
   }
-  function formatAuthError(error) {
-    const message = error?.message || "";
-    if (message.includes("Invalid login credentials")) {
-      return "Incorrect email or password. Please try again.";
-    }
-    if (message.includes("Email not confirmed")) {
-      return "Please check your email and click the confirmation link before signing in.";
-    }
-    if (message.includes("User already registered")) {
-      return "An account with this email already exists. Try signing in instead.";
-    }
-    if (message.includes("Password should be at least 6 characters")) {
-      return "Password must be at least 6 characters long.";
-    }
-    if (message.includes("invalid format") || message.includes("Unable to validate email")) {
-      return "Please enter a valid email address.";
-    }
-    if (message.includes("rate limit") || message.includes("Email rate limit exceeded")) {
-      return "Too many attempts. Please wait a few minutes and try again.";
-    }
-    if (message.includes("Signup requires email")) {
-      return "Please enter your email address.";
-    }
-    if (message.includes("network") || message.includes("fetch")) {
-      return "Network error. Please check your connection and try again.";
-    }
-    return "Authentication failed. Please try again.";
-  }
-  function showAuthSuccess(message) {
-    const successDiv = document.getElementById("auth-success");
-    const errorDiv = document.getElementById("auth-error");
-    if (!successDiv)
-      return;
-    if (errorDiv)
-      errorDiv.style.display = "none";
-    successDiv.textContent = message;
-    successDiv.style.display = "block";
-    successDiv.style.opacity = "1";
-    setTimeout(() => {
-      successDiv.style.opacity = "0";
-      setTimeout(() => {
-        successDiv.style.display = "none";
-      }, 300);
-    }, 2e3);
-  }
-  window.togglePasswordVisibility = function(passwordFieldId, toggleButtonId) {
-    const passwordField = document.getElementById(passwordFieldId);
-    const toggleButton = document.getElementById(toggleButtonId);
-    if (!passwordField || !toggleButton)
-      return;
-    const eyeIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
-    const eyeSlashIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
-    if (passwordField.type === "password") {
-      passwordField.type = "text";
-      toggleButton.innerHTML = eyeSlashIcon;
-      toggleButton.setAttribute("aria-label", "Hide password");
-    } else {
-      passwordField.type = "password";
-      toggleButton.innerHTML = eyeIcon;
-      toggleButton.setAttribute("aria-label", "Show password");
-    }
-  };
-  window.handleSignIn = async function() {
-    const email = document.getElementById("auth-email").value.trim();
-    const password = document.getElementById("auth-password").value;
-    const errorDiv = document.getElementById("auth-error");
-    const signInBtn = document.querySelector('#auth-form button[type="submit"]');
-    if (!email || !password) {
-      errorDiv.textContent = "Please enter email and password";
-      errorDiv.style.display = "block";
-      return;
-    }
-    if (signInBtn) {
-      signInBtn.disabled = true;
-      signInBtn.textContent = "Signing in...";
-    }
-    const result = await signIn(email, password);
-    if (signInBtn) {
-      signInBtn.disabled = false;
-      signInBtn.textContent = "Sign In";
-    }
-    if (!result.success) {
-      errorDiv.textContent = formatAuthError(result);
-      errorDiv.style.display = "block";
-    } else {
-      errorDiv.style.display = "none";
-      showAuthSuccess("\u2705 Signed in successfully!");
-    }
-  };
-  window.handleSignUp = async function() {
-    const email = document.getElementById("auth-email").value.trim();
-    const password = document.getElementById("auth-password").value;
-    const errorDiv = document.getElementById("auth-error");
-    const signUpBtn = document.querySelector('button[onclick="handleSignUp()"]');
-    errorDiv.style.color = "#EF4444";
-    if (!email || !password) {
-      errorDiv.textContent = "Please enter email and password";
-      errorDiv.style.display = "block";
-      return;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      errorDiv.textContent = "Please enter a valid email address";
-      errorDiv.style.display = "block";
-      return;
-    }
-    if (password.length < 6) {
-      errorDiv.textContent = "Password must be at least 6 characters long";
-      errorDiv.style.display = "block";
-      return;
-    }
-    if (signUpBtn) {
-      signUpBtn.disabled = true;
-      signUpBtn.textContent = "Creating account...";
-    }
-    const result = await signUp(email, password);
-    if (signUpBtn) {
-      signUpBtn.disabled = false;
-      signUpBtn.textContent = "Sign Up";
-    }
-    if (!result.success) {
-      errorDiv.textContent = formatAuthError(result);
-      errorDiv.style.display = "block";
-    } else {
-      errorDiv.style.display = "none";
-      showAuthSuccess("\u2705 Account created successfully!");
-    }
-  };
-  window.handleFetchCharacter = async function() {
-    const fetchBtn = document.getElementById("fetch-character-btn");
-    const statusDiv = document.getElementById("fetch-status");
-    if (!fetchBtn || !statusDiv)
-      return;
-    localStorage.removeItem("owlcloud_manual_unsync");
-    fetchBtn.disabled = true;
-    fetchBtn.textContent = "\u23F3 Fetching...";
-    statusDiv.style.display = "block";
-    statusDiv.style.color = "var(--theme-primary-light)";
-    statusDiv.textContent = "Loading character...";
-    try {
-      await checkForActiveCharacter();
-      statusDiv.style.color = "#10B981";
-      statusDiv.textContent = "\u2713 Character loaded successfully!";
-      setTimeout(() => {
-        statusDiv.style.display = "none";
-      }, 3e3);
-    } catch (error) {
-      console.error("Fetch character error:", error);
-      statusDiv.style.color = "#EF4444";
-      statusDiv.textContent = `\u2717 Error: ${error.message || "Failed to fetch character"}`;
-    } finally {
-      fetchBtn.disabled = false;
-      fetchBtn.textContent = "\u{1F504} Fetch Character";
-    }
-  };
-  window.handleUnsyncCharacter = async function() {
-    const unsyncBtn = document.getElementById("unsync-character-btn");
-    const statusDiv = document.getElementById("status-text");
-    if (!unsyncBtn) {
-      console.error("Unsync button not found");
-      return;
-    }
-    if (!statusDiv) {
-      console.error("Status div not found");
-      return;
-    }
-    const playerId = await OBR.player.getId();
-    const cacheKey = currentUser ? `owlcloud_char_${currentUser.id}` : `owlcloud_char_${playerId}`;
-    const cachedData = localStorage.getItem(cacheKey);
-    if (!currentCharacter && !cachedData) {
-      console.warn("No character to unsync");
-      statusDiv.style.display = "block";
-      statusDiv.style.color = "#EF4444";
-      statusDiv.textContent = "No character data to unsync";
-      setTimeout(() => {
-        statusDiv.style.display = "none";
-      }, 3e3);
-      return;
-    }
-    const characterName = currentCharacter?.name || "this character";
-    if (!confirm(`Unsync ${characterName} from this Owlbear session?
+}
 
-This will disconnect the character from this room. You can sync a different character afterwards.`)) {
+/**
+ * Format Supabase auth errors to be more user-friendly
+ */
+function formatAuthError(error) {
+  const message = error?.message || '';
+
+  if (message.includes('Invalid login credentials')) {
+    return 'Incorrect email or password. Please try again.';
+  }
+  if (message.includes('Email not confirmed')) {
+    return 'Please check your email and click the confirmation link before signing in.';
+  }
+  if (message.includes('User already registered')) {
+    return 'An account with this email already exists. Try signing in instead.';
+  }
+  if (message.includes('Password should be at least 6 characters')) {
+    return 'Password must be at least 6 characters long.';
+  }
+  if (message.includes('invalid format') || message.includes('Unable to validate email')) {
+    return 'Please enter a valid email address.';
+  }
+  if (message.includes('rate limit') || message.includes('Email rate limit exceeded')) {
+    return 'Too many attempts. Please wait a few minutes and try again.';
+  }
+  if (message.includes('Signup requires email')) {
+    return 'Please enter your email address.';
+  }
+  if (message.includes('network') || message.includes('fetch')) {
+    return 'Network error. Please check your connection and try again.';
+  }
+
+  // Fallback to generic message
+  return 'Authentication failed. Please try again.';
+}
+
+/**
+ * Show success message that fades out after 2 seconds
+ */
+function showAuthSuccess(message) {
+  const successDiv = document.getElementById('auth-success');
+  const errorDiv = document.getElementById('auth-error');
+
+  if (!successDiv) return;
+
+  // Hide error message
+  if (errorDiv) errorDiv.style.display = 'none';
+
+  // Show success message
+  successDiv.textContent = message;
+  successDiv.style.display = 'block';
+  successDiv.style.opacity = '1';
+
+  // Fade out after 2 seconds
+  setTimeout(() => {
+    successDiv.style.opacity = '0';
+    setTimeout(() => {
+      successDiv.style.display = 'none';
+    }, 300); // Wait for fade animation to complete
+  }, 2000);
+}
+
+/**
+ * Toggle password visibility
+ */
+window.togglePasswordVisibility = function(passwordFieldId, toggleButtonId) {
+  const passwordField = document.getElementById(passwordFieldId);
+  const toggleButton = document.getElementById(toggleButtonId);
+
+  if (!passwordField || !toggleButton) return;
+
+  const eyeIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+  const eyeSlashIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
+
+  if (passwordField.type === 'password') {
+    passwordField.type = 'text';
+    toggleButton.innerHTML = eyeSlashIcon;
+    toggleButton.setAttribute('aria-label', 'Hide password');
+  } else {
+    passwordField.type = 'password';
+    toggleButton.innerHTML = eyeIcon;
+    toggleButton.setAttribute('aria-label', 'Show password');
+  }
+};
+
+/**
+ * Handle sign in button click
+ */
+window.handleSignIn = async function() {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const errorDiv = document.getElementById('auth-error');
+  const signInBtn = document.querySelector('#auth-form button[type="submit"]');
+
+  if (!email || !password) {
+    errorDiv.textContent = 'Please enter email and password';
+    errorDiv.style.display = 'block';
+    return;
+  }
+
+  // Disable button and show loading state
+  if (signInBtn) {
+    signInBtn.disabled = true;
+    signInBtn.textContent = 'Signing in...';
+  }
+
+  const result = await signIn(email, password);
+
+  // Re-enable button
+  if (signInBtn) {
+    signInBtn.disabled = false;
+    signInBtn.textContent = 'Sign In';
+  }
+
+  if (!result.success) {
+    errorDiv.textContent = formatAuthError(result);
+    errorDiv.style.display = 'block';
+  } else {
+    errorDiv.style.display = 'none';
+    showAuthSuccess('✅ Signed in successfully!');
+  }
+};
+
+/**
+ * Handle sign up button click
+ */
+window.handleSignUp = async function() {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const errorDiv = document.getElementById('auth-error');
+  const signUpBtn = document.querySelector('button[onclick="handleSignUp()"]');
+
+  // Reset error styling
+  errorDiv.style.color = '#EF4444';
+
+  if (!email || !password) {
+    errorDiv.textContent = 'Please enter email and password';
+    errorDiv.style.display = 'block';
+    return;
+  }
+
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    errorDiv.textContent = 'Please enter a valid email address';
+    errorDiv.style.display = 'block';
+    return;
+  }
+
+  if (password.length < 6) {
+    errorDiv.textContent = 'Password must be at least 6 characters long';
+    errorDiv.style.display = 'block';
+    return;
+  }
+
+  // Disable button and show loading state
+  if (signUpBtn) {
+    signUpBtn.disabled = true;
+    signUpBtn.textContent = 'Creating account...';
+  }
+
+  const result = await signUp(email, password);
+
+  // Re-enable button
+  if (signUpBtn) {
+    signUpBtn.disabled = false;
+    signUpBtn.textContent = 'Sign Up';
+  }
+
+  if (!result.success) {
+    errorDiv.textContent = formatAuthError(result);
+    errorDiv.style.display = 'block';
+  } else {
+    errorDiv.style.display = 'none';
+    showAuthSuccess('✅ Account created successfully!');
+  }
+};
+
+/**
+ * Handle fetch character button click
+ */
+window.handleFetchCharacter = async function() {
+  const fetchBtn = document.getElementById('fetch-character-btn');
+  const statusDiv = document.getElementById('fetch-status');
+
+  if (!fetchBtn || !statusDiv) return;
+
+  // Show loading state
+  fetchBtn.disabled = true;
+  fetchBtn.textContent = '⏳ Fetching...';
+  statusDiv.style.display = 'block';
+  statusDiv.style.color = 'var(--theme-primary-light)';
+  statusDiv.textContent = 'Loading character...';
+
+  try {
+    await checkForActiveCharacter();
+
+    // Success
+    statusDiv.style.color = '#10B981';
+    statusDiv.textContent = '✓ Character loaded successfully!';
+
+    // Hide status after 3 seconds
+    setTimeout(() => {
+      statusDiv.style.display = 'none';
+    }, 3000);
+  } catch (error) {
+    console.error('Fetch character error:', error);
+    statusDiv.style.color = '#EF4444';
+    statusDiv.textContent = `✗ Error: ${error.message || 'Failed to fetch character'}`;
+  } finally {
+    // Reset button state
+    fetchBtn.disabled = false;
+    fetchBtn.textContent = '🔄 Fetch Character';
+  }
+};
+
+/**
+ * Handle unsync character button click
+ * Clears the Owlbear sync for the current character, allowing a new character to be synced
+ */
+window.handleUnsyncCharacter = async function() {
+  if (!currentCharacter) {
+    console.warn('No character to unsync');
+    return;
+  }
+
+  const unsyncBtn = document.getElementById('unsync-character-btn');
+  const statusDiv = document.getElementById('fetch-status');
+
+  if (!unsyncBtn || !statusDiv) return;
+
+  // Confirm with user
+  if (!confirm(`Unsync ${currentCharacter.name} from this Owlbear session?\n\nThis will disconnect the character from this room. You can sync a different character afterwards.`)) {
+    return;
+  }
+
+  // Show loading state
+  unsyncBtn.disabled = true;
+  unsyncBtn.textContent = '⏳ Unsyncing...';
+  statusDiv.style.display = 'block';
+  statusDiv.style.color = '#FB923C';
+  statusDiv.textContent = 'Unsyncing character...';
+
+  try {
+    const playerId = await OBR.player.getId();
+    let cloudUnsyncSuccess = false;
+
+    // Try to unsync from cloud if authenticated
+    if (currentUser && SUPABASE_HEADERS) {
+      try {
+        // Call Supabase function to clear the owlbear_player_id
+        const response = await fetch(
+          `${SUPABASE_URL}/functions/v1/unsync-character`,
+          {
+            method: 'POST',
+            headers: SUPABASE_HEADERS,
+            body: JSON.stringify({
+              owlbearPlayerId: playerId,
+              supabaseUserId: currentUser.id
+            })
+          }
+        );
+
+        if (response.ok) {
+          const result = await response.json();
+          cloudUnsyncSuccess = result.success;
+          console.log('✅ Character unsynced from cloud');
+        } else {
+          console.warn('⚠️ Failed to unsync from cloud, continuing with local unsync');
+        }
+      } catch (cloudError) {
+        console.warn('⚠️ Cloud unsync failed, continuing with local unsync:', cloudError);
+      }
+    } else {
+      console.log('ℹ️ Not authenticated, skipping cloud unsync');
+    }
+
+    // Always clear local cache regardless of cloud unsync result
+    const cacheKey = currentUser
+      ? `owlcloud_char_${currentUser.id}`
+      : `owlcloud_char_${playerId}`;
+    const versionKey = `${cacheKey}_version`;
+    localStorage.removeItem(cacheKey);
+    localStorage.removeItem(versionKey);
+
+    // Clear current character state
+    currentCharacter = null;
+    allCharacters = [];
+
+    // Show success with appropriate message
+    statusDiv.style.color = '#10B981';
+    if (cloudUnsyncSuccess) {
+      statusDiv.textContent = '✓ Character unsynced! You can now sync a different character.';
+    } else if (currentUser) {
+      statusDiv.textContent = '✓ Character disconnected locally (cloud unsync unavailable)';
+    } else {
+      statusDiv.textContent = '✓ Character disconnected locally';
+    }
+
+    // Show notification
+    if (isOwlbearReady) {
+      OBR.notification.show(cloudUnsyncSuccess ? 'Character unsynced from Owlbear session' : 'Character disconnected locally', 'SUCCESS');
+    }
+
+    // Update UI to show no character
+    showNoCharacter();
+
+    // Update auth UI to remove the unsync button
+    updateAuthUI();
+
+    // Hide status after 5 seconds
+    setTimeout(() => {
+      statusDiv.style.display = 'none';
+    }, 5000);
+  } catch (error) {
+    console.error('Unsync error:', error);
+    statusDiv.style.color = '#EF4444';
+    statusDiv.textContent = `✗ Error: ${error.message || 'Failed to unsync character'}`;
+
+    if (isOwlbearReady) {
+      OBR.notification.show(`Error unsyncing character: ${error.message}`, 'ERROR');
+    }
+
+    // Re-enable button
+    unsyncBtn.disabled = false;
+    unsyncBtn.textContent = '🔓 Unsync from Owlbear';
+  }
+};
+
+// ============== Character Management ==============
+
+/**
+ * Check if there's an active character from Supabase using Owlbear player ID
+ */
+async function checkForActiveCharacter() {
+  try {
+    // Get current player's Owlbear ID
+    const playerId = await OBR.player.getId();
+
+    // Determine query parameter based on auth status
+    let queryParam;
+    let cacheKey;
+
+    if (currentUser) {
+      // User is authenticated - query by supabase_user_id
+      queryParam = `supabase_user_id=${encodeURIComponent(currentUser.id)}&active_only=true`;
+      cacheKey = `owlcloud_char_${currentUser.id}`;
+      console.log('🎭 Checking for character with user ID:', currentUser.id);
+    } else {
+      // User not authenticated - query by owlbear_player_id
+      queryParam = `owlbear_player_id=${encodeURIComponent(playerId)}`;
+      cacheKey = `owlcloud_char_${playerId}`;
+      console.log('🎭 Checking for character with player ID:', playerId);
+    }
+
+    // Check localStorage cache first
+    const versionKey = `${cacheKey}_version`;
+    const cachedChar = localStorage.getItem(cacheKey);
+    const cachedVersion = localStorage.getItem(versionKey);
+
+    // Display cached data immediately for better UX
+    if (cachedChar) {
+      try {
+        displayCharacter(JSON.parse(cachedChar));
+      } catch (e) {
+        console.warn('Failed to parse cached character:', e);
+      }
+    }
+
+    // Prepare headers for conditional fetch
+    const headers = { ...SUPABASE_HEADERS };
+    if (cachedVersion) {
+      headers['If-None-Match'] = cachedVersion;
+    }
+
+    // Call unified characters edge function with conditional request
+    const fetchUrl = `${SUPABASE_URL}/functions/v1/characters?${queryParam}&fields=full`;
+    console.log('🌐 Fetching character from:', fetchUrl);
+    console.log('🔑 Headers:', headers);
+
+    const response = await fetch(fetchUrl, { headers });
+
+    console.log('📡 Response received:', response.status, response.statusText);
+
+    // Handle 304 Not Modified - character hasn't changed
+    if (response.status === 304) {
+      console.log('✅ Character unchanged, using cache');
+      if (cachedChar) {
+        await fetchAllCharacters(); // Still check for other characters
+      }
       return;
     }
-    unsyncBtn.disabled = true;
-    unsyncBtn.textContent = "\u23F3 Unsyncing...";
-    statusDiv.style.display = "block";
-    statusDiv.style.color = "#FB923C";
-    statusDiv.textContent = "Unsyncing character...";
-    try {
-      let cloudUnsyncSuccess = false;
-      if (currentUser && SUPABASE_HEADERS) {
-        try {
-          const response = await fetch(
-            `${SUPABASE_URL}/functions/v1/unsync-character`,
-            {
-              method: "POST",
-              headers: SUPABASE_HEADERS,
-              body: JSON.stringify({
-                owlbearPlayerId: playerId,
-                supabaseUserId: currentUser.id
-              })
-            }
-          );
-          if (response.ok) {
-            const result = await response.json();
-            cloudUnsyncSuccess = result.success;
-            console.log("\u2705 Character unsynced from cloud");
-          } else {
-            console.warn("\u26A0\uFE0F Failed to unsync from cloud, continuing with local unsync");
-          }
-        } catch (cloudError) {
-          console.warn("\u26A0\uFE0F Cloud unsync failed, continuing with local unsync:", cloudError);
-        }
-      } else {
-        console.log("\u2139\uFE0F Not authenticated, skipping cloud unsync");
+
+    if (!response.ok) {
+      console.error('Failed to get character:', response.statusText);
+      if (!cachedChar) {
+        showNoCharacter();
       }
-      const versionKey = `${cacheKey}_version`;
+      return;
+    }
+
+    const data = await response.json();
+    const etag = response.headers.get('etag');
+
+    console.log('📦 Response data:', data);
+
+    if (data.success && data.character) {
+      console.log('📦 Character data received:', data.character);
+      console.log('  - Has raw_dicecloud_data:', !!data.character.raw_dicecloud_data);
+      console.log('  - Has character_name:', !!data.character.character_name);
+
+      // Use raw_dicecloud_data if available (has proper field names)
+      let characterData = data.character.raw_dicecloud_data || data.character;
+
+      // If no raw_dicecloud_data, transform database fields to expected format
+      if (!data.character.raw_dicecloud_data && data.character.character_name) {
+        console.log('🔄 Transforming database fields to UI format');
+        characterData = {
+          ...characterData,
+          id: characterData.dicecloud_character_id,
+          name: characterData.character_name,
+          class: characterData.class,
+          race: characterData.race,
+          level: characterData.level,
+          hitPoints: {
+            current: characterData.hp_current || 0,
+            max: characterData.hp_max || 0
+          },
+          armorClass: characterData.armor_class,
+          proficiencyBonus: characterData.proficiency_bonus
+        };
+      }
+
+      console.log('✅ Final character data for display:', characterData);
+
+      // Update cache
+      localStorage.setItem(cacheKey, JSON.stringify(characterData));
+      if (etag) {
+        localStorage.setItem(versionKey, etag);
+      }
+
+      displayCharacter(characterData);
+      await fetchAllCharacters();
+
+      // Update auth UI to show unsync button if user is signed in
+      updateAuthUI();
+    } else {
+      // Clear cache if no character found
       localStorage.removeItem(cacheKey);
       localStorage.removeItem(versionKey);
-      localStorage.setItem("owlcloud_manual_unsync", "true");
-      currentCharacter = null;
-      allCharacters = [];
-      statusDiv.style.color = "#10B981";
-      if (cloudUnsyncSuccess) {
-        statusDiv.textContent = "\u2713 Character unsynced! You can now sync a different character.";
-      } else if (currentUser) {
-        statusDiv.textContent = "\u2713 Character disconnected locally (cloud unsync unavailable)";
-      } else {
-        statusDiv.textContent = "\u2713 Character disconnected locally";
-      }
-      if (isOwlbearReady) {
-        OBR.notification.show(cloudUnsyncSuccess ? "Character unsynced from Owlbear session" : "Character disconnected locally", "SUCCESS");
-      }
-      showNoCharacter();
-      setTimeout(() => {
-        statusDiv.style.display = "none";
-      }, 5e3);
-    } catch (error) {
-      console.error("Unsync error:", error);
-      statusDiv.style.color = "#EF4444";
-      statusDiv.textContent = `\u2717 Error: ${error.message || "Failed to unsync character"}`;
-      if (isOwlbearReady) {
-        OBR.notification.show(`Error unsyncing character: ${error.message}`, "ERROR");
-      }
-      unsyncBtn.disabled = false;
-      unsyncBtn.textContent = "\u{1F513} Unsync from Owlbear";
-    }
-  };
-  async function checkForActiveCharacter() {
-    try {
-      const playerId = await OBR.player.getId();
-      let queryParam;
-      let cacheKey;
-      if (currentUser) {
-        queryParam = `supabase_user_id=${encodeURIComponent(currentUser.id)}`;
-        cacheKey = `owlcloud_char_${currentUser.id}`;
-        console.log("\u{1F3AD} Checking for character with user ID:", currentUser.id);
-      } else {
-        queryParam = `owlbear_player_id=${encodeURIComponent(playerId)}`;
-        cacheKey = `owlcloud_char_${playerId}`;
-        console.log("\u{1F3AD} Checking for character with player ID:", playerId);
-      }
-      const versionKey = `${cacheKey}_version`;
-      const cachedChar = localStorage.getItem(cacheKey);
-      const cachedVersion = localStorage.getItem(versionKey);
-      if (cachedChar) {
-        try {
-          displayCharacter(JSON.parse(cachedChar));
-        } catch (e) {
-          console.warn("Failed to parse cached character:", e);
-        }
-      }
-      const headers = { ...SUPABASE_HEADERS };
-      if (cachedVersion) {
-        headers["If-None-Match"] = cachedVersion;
-      }
-      const fetchUrl = `${SUPABASE_URL}/functions/v1/characters?${queryParam}&fields=full`;
-      console.log("\u{1F310} Fetching character from:", fetchUrl);
-      console.log("\u{1F511} Headers:", headers);
-      console.log("\u{1F464} Current user:", currentUser?.id || "not authenticated");
-      const response = await fetch(fetchUrl, { headers });
-      console.log("\u{1F4E1} Response received:", response.status, response.statusText);
-      if (response.status === 304) {
-        console.log("\u2705 Character unchanged, using cache");
-        if (cachedChar) {
-          await fetchAllCharacters();
-        }
-        return;
-      }
-      if (!response.ok) {
-        console.error("Failed to get character:", response.statusText);
-        if (!cachedChar) {
-          showNoCharacter();
-        }
-        return;
-      }
-      const data = await response.json();
-      const etag = response.headers.get("etag");
-      console.log("\u{1F4E6} Response data:", data);
-      let character = null;
-      if (data.success && data.characters && data.characters.length > 0) {
-        character = data.characters[0];
-        console.log("\u{1F4E6} Character data received from array (taking first):", character);
-      } else if (data.success && data.character) {
-        character = data.character;
-        console.log("\u{1F4E6} Character data received:", character);
-      }
-      if (character) {
-        console.log("  - Has raw_dicecloud_data:", !!character.raw_dicecloud_data);
-        console.log("  - Has character_name:", !!character.character_name);
-        let characterData;
-        if (character.raw_dicecloud_data) {
-          let rawData = character.raw_dicecloud_data;
-          if (typeof rawData === "string") {
-            console.log("\u{1F504} raw_dicecloud_data is a string, parsing JSON...");
-            try {
-              rawData = JSON.parse(rawData);
-              console.log("\u2705 Successfully parsed JSON string");
-            } catch (e) {
-              console.error("\u274C Failed to parse raw_dicecloud_data JSON:", e);
-            }
-          }
-          console.log("\u{1F50D} Raw data structure check:", {
-            hasCreatures: !!rawData.creatures,
-            hasCreatureVariables: !!rawData.creatureVariables,
-            hasCreatureProperties: !!rawData.creatureProperties,
-            hasCreature: !!rawData.creature,
-            hasVariables: !!rawData.variables,
-            hasProperties: !!rawData.properties,
-            topLevelKeys: Object.keys(rawData),
-            rawDataType: typeof rawData,
-            isArray: Array.isArray(rawData)
-          });
-          console.log("\u{1F50D} Full topLevelKeys array:", Object.keys(rawData));
-          if (typeof rawData === "object" && Object.keys(rawData).length > 0) {
-            const firstKey = Object.keys(rawData)[0];
-            console.log(`\u{1F50D} Sample field "${firstKey}":`, rawData[firstKey]);
-          }
-          if (rawData.creatures && rawData.creatureVariables && rawData.creatureProperties) {
-            console.log("\u{1F504} Parsing raw API response...");
-            try {
-              characterData = parseCharacterData(rawData, character.dicecloud_character_id);
-              console.log("\u2705 Parsed character data:", characterData);
-            } catch (parseError) {
-              console.error("\u274C Failed to parse character data:", parseError);
-              characterData = rawData;
-            }
-          } else if (rawData.creature && rawData.variables && rawData.properties) {
-            console.log("\u2705 Using pre-extracted character data");
-            console.log("\u{1F50D} Creature object keys:", Object.keys(rawData.creature));
-            console.log("\u{1F50D} Creature picture fields:", {
-              picture: rawData.creature.picture,
-              avatarPicture: rawData.creature.avatarPicture,
-              avatar: rawData.creature.avatar,
-              image: rawData.creature.image,
-              pictureUrl: rawData.creature.pictureUrl
-            });
-            const portraitUrl = rawData.creature.picture || rawData.creature.avatarPicture || rawData.creature.avatar || rawData.creature.image;
-            const propertyTypes = new Set(rawData.properties.map((p) => p.type));
-            console.log("\u{1F50D} Property types in character data:", Array.from(propertyTypes).sort());
-            try {
-              characterData = window.parseForRollCloud ? window.parseForRollCloud(rawData) : parseForRollCloud(rawData);
-              if (portraitUrl) {
-                characterData.picture = portraitUrl;
-              }
-              console.log("\u2705 Parsed extracted data:", characterData);
-              console.log("\u{1F50D} Features count:", characterData.features?.length || 0);
-            } catch (parseError) {
-              console.error("\u274C Failed to parse extracted data:", parseError);
-              const vars = rawData.variables;
-              characterData = {
-                ...rawData,
-                name: rawData.creature.name || character.character_name,
-                race: rawData.creature.race || character.race,
-                class: rawData.creature.class || character.class,
-                level: rawData.creature.level || character.level,
-                picture: portraitUrl
-              };
-            }
-          } else {
-            console.warn("\u26A0\uFE0F Unknown data format, using as-is");
-            characterData = rawData;
-          }
-        } else {
-          characterData = character;
-        }
-        console.log("\u2705 Final character data for display:", characterData);
-        localStorage.setItem(cacheKey, JSON.stringify(characterData));
-        if (etag) {
-          localStorage.setItem(versionKey, etag);
-        }
-        displayCharacter(characterData);
-        await fetchAllCharacters();
-        updateAuthUI();
-      } else {
-        localStorage.removeItem(cacheKey);
-        localStorage.removeItem(versionKey);
-        showNoCharacter();
-        await fetchAllCharacters();
-      }
-    } catch (error) {
-      console.error("\u274C Error checking for active character:", error);
-      console.error("Error details:", {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      });
       showNoCharacter();
     }
+  } catch (error) {
+    console.error('❌ Error checking for active character:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    showNoCharacter();
   }
-  async function fetchAllCharacters() {
-    try {
-      const playerId = await OBR.player.getId();
-      let queryParams = "fields=list";
-      if (currentUser) {
-        queryParams += `&supabase_user_id=${encodeURIComponent(currentUser.id)}`;
-      } else {
-        queryParams += `&owlbear_player_id=${encodeURIComponent(playerId)}`;
-      }
-      console.log("\u{1F50D} Fetching all characters with query:", queryParams);
-      const response = await fetch(
-        `${SUPABASE_URL}/functions/v1/characters?${queryParams}`,
-        { headers: SUPABASE_HEADERS }
-      );
-      if (!response.ok) {
-        console.error("Failed to get characters:", response.statusText);
-        return;
-      }
-      const data = await response.json();
-      console.log("\u{1F4CB} Received characters response:", data);
-      console.log("\u{1F4CB} Number of characters:", data.characters?.length || 0);
-      if (data.characters && data.characters.length > 0) {
-        console.log("\u{1F4CB} Character names:", data.characters.map((c) => c.name || c.character_name).join(", "));
-      }
-      if (data.success && data.characters && data.characters.length > 0) {
-        allCharacters = data.characters;
-        console.log("\u{1F4CB} Set allCharacters array with", allCharacters.length, "characters");
-        displayCharacterList();
-      } else {
-        console.log("\u2139\uFE0F No characters found, hiding character list");
-        allCharacters = [];
-        const characterListSection = document.getElementById("character-list-section");
-        if (characterListSection) {
-          characterListSection.style.display = "none";
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching all characters:", error);
-    }
-  }
-  function displayCharacterList() {
-    const characterListSection = document.getElementById("character-list-section");
-    const characterList = document.getElementById("character-list");
-    if (!characterListSection || !characterList) {
-      console.error("Character list elements not found");
+}
+
+/**
+ * Fetch all available characters for the current player
+ */
+async function fetchAllCharacters() {
+  try {
+    const playerId = await OBR.player.getId();
+
+    // Call unified characters edge function to get all characters
+    // Note: Getting all characters by owlbear_player_id may require backend enhancement
+    const response = await fetch(
+      `${SUPABASE_URL}/functions/v1/characters?owlbear_player_id=${encodeURIComponent(playerId)}&fields=list`,
+      { headers: SUPABASE_HEADERS }
+    );
+
+    if (!response.ok) {
+      console.error('Failed to get characters:', response.statusText);
       return;
     }
-    if (!allCharacters || allCharacters.length === 0) {
-      console.log("Hiding character list - no characters found");
-      characterListSection.style.display = "none";
-      return;
+
+    const data = await response.json();
+
+    if (data.success && data.characters && data.characters.length > 0) {
+      allCharacters = data.characters;
+      displayCharacterList();
     }
-    console.log("Showing character list with", allCharacters.length, "character(s)");
-    characterListSection.style.display = "block";
-    characterList.innerHTML = "";
-    allCharacters.forEach((character) => {
-      const characterName = character.name || character.character_name || character.creature?.name || "Unknown Character";
-      const currentCharName = currentCharacter?.name || currentCharacter?.character_name;
-      const isActive = currentCharacter && characterName === currentCharName;
-      const card = document.createElement("div");
-      card.className = `character-list-item ${isActive ? "active" : ""}`;
-      card.innerHTML = `
-      <div class="character-list-item-name">${characterName}</div>
-      <div class="character-list-item-details">
-        Level ${character.level || "?"} ${character.race || ""} ${character.class || ""}
-        ${isActive ? "\u2022 Active" : ""}
+  } catch (error) {
+    console.error('Error fetching all characters:', error);
+  }
+}
+
+/**
+ * Display the character list in the Settings tab
+ */
+function displayCharacterList() {
+  const characterListSection = document.getElementById('character-list-section');
+  const characterList = document.getElementById('character-list');
+
+  if (!allCharacters || allCharacters.length <= 1) {
+    // Hide character list if there's only one or no characters
+    characterListSection.style.display = 'none';
+    return;
+  }
+
+  // Show character list
+  characterListSection.style.display = 'block';
+
+  let html = '';
+  allCharacters.forEach((character) => {
+    const isActive = currentCharacter && character.id === currentCharacter.id;
+    html += `
+      <div class="character-list-item ${isActive ? 'active' : ''}" onclick="switchToCharacter('${character.id}')">
+        <div class="character-list-item-name">${character.name || 'Unknown Character'}</div>
+        <div class="character-list-item-details">
+          Level ${character.level || '?'} ${character.race || ''} ${character.class || ''}
+          ${isActive ? '• Active' : ''}
+        </div>
       </div>
     `;
-      card.addEventListener("click", () => {
-        console.log("\u{1F5B1}\uFE0F Character card clicked:", characterName);
-        window.switchToCharacter(characterName);
-      });
-      characterList.appendChild(card);
-    });
-  }
-  window.switchToCharacter = async function(characterName) {
-    try {
-      console.log("\u{1F504} Attempting to switch to character:", characterName);
-      const character = allCharacters.find(
-        (c) => (c.name || c.character_name) === characterName
-      );
-      if (!character) {
-        console.error("\u274C Character not found:", characterName);
-        console.log("Available characters:", allCharacters.map((c) => ({
-          name: c.name || c.character_name
-        })));
-        return;
+  });
+
+  characterList.innerHTML = html;
+}
+
+/**
+ * Switch to a different character
+ */
+window.switchToCharacter = async function(characterId) {
+  try {
+    // Find the character in the list
+    const character = allCharacters.find(c => c.id === characterId);
+    if (!character) {
+      console.error('Character not found:', characterId);
+      return;
+    }
+
+    // Update active character using unified characters edge function
+    const playerId = await OBR.player.getId();
+    const requestBody = {
+      owlbearPlayerId: playerId,
+      character: character
+    };
+
+    // Include supabase_user_id if authenticated for cross-device sync
+    if (currentUser) {
+      requestBody.supabaseUserId = currentUser.id;
+    }
+
+    const response = await fetch(
+      `${SUPABASE_URL}/functions/v1/characters`,
+      {
+        method: 'POST',
+        headers: SUPABASE_HEADERS,
+        body: JSON.stringify(requestBody)
       }
-      console.log("\u2705 Found character:", characterName);
-      const requestBody = {
-        characterName
-      };
-      if (currentUser) {
-        requestBody.supabaseUserId = currentUser.id;
-      }
-      const response = await fetch(
-        `${SUPABASE_URL}/functions/v1/characters`,
-        {
-          method: "POST",
-          headers: SUPABASE_HEADERS,
-          body: JSON.stringify(requestBody)
-        }
-      );
-      const result = await response.json();
-      if (response.ok && result.success) {
-        console.log("\u2705 Successfully switched to:", characterName);
-        await checkForActiveCharacter();
-        await fetchAllCharacters();
-        displayCharacterList();
-        updateAuthUI();
-        if (isOwlbearReady) {
-          OBR.notification.show(`Switched to ${characterName}`, "SUCCESS");
-        }
-      } else {
-        console.error("Failed to switch character:", result.error);
-        if (isOwlbearReady) {
-          OBR.notification.show("Failed to switch character", "ERROR");
-        }
-      }
-    } catch (error) {
-      console.error("Error switching character:", error);
+    );
+
+    const result = await response.json();
+
+    if (response.ok && result.success) {
+      // Display the new character
+      displayCharacter(character);
+      displayCharacterList(); // Refresh the list to update active state
+      updateAuthUI(); // Update auth UI to show unsync button
+
       if (isOwlbearReady) {
-        OBR.notification.show("Error switching character", "ERROR");
+        OBR.notification.show(`Switched to ${character.name}`, 'SUCCESS');
+      }
+    } else {
+      console.error('Failed to switch character:', result.error);
+      if (isOwlbearReady) {
+        OBR.notification.show('Failed to switch character', 'ERROR');
       }
     }
-  };
-  function displayCharacter(character) {
-    const characterId = character._id || character.id || character.name;
-    concentratingSpell = concentrationByCharacter.get(characterId) || null;
-    currentCharacter = character;
-    characterSection.style.display = "block";
-    noCharacterSection.style.display = "none";
-    const unsyncBtn = document.getElementById("unsync-character-btn");
-    if (unsyncBtn) {
-      unsyncBtn.style.display = "block";
+  } catch (error) {
+    console.error('Error switching character:', error);
+    if (isOwlbearReady) {
+      OBR.notification.show('Error switching character', 'ERROR');
     }
-    console.log("\u{1F5BC}\uFE0F Checking for portrait in character data:");
-    console.log("  character.picture:", character.picture);
-    console.log("  character.avatarPicture:", character.avatarPicture);
-    console.log("  character.creature?.picture:", character.creature?.picture);
-    console.log("  character.creature?.avatarPicture:", character.creature?.avatarPicture);
-    const portraitUrl = character.picture || character.avatarPicture || character.creature?.picture || character.creature?.avatarPicture;
-    characterInfo.innerHTML = `
-    <div class="character-info-container">
-      ${portraitUrl ? `<img id="settings-portrait" src="${portraitUrl}" alt="Character Portrait">` : ""}
+  }
+};
+
+/**
+ * Display character information
+ */
+function displayCharacter(character) {
+  // TODO: Save previous character's local state (HP, spell slots, etc.) before switching
+  // so that it persists when switching back. Could use a Map keyed by character ID
+  // or store in room metadata per character.
+
+  currentCharacter = character;
+
+  // Save to localStorage so chat window can access it
+  try {
+    localStorage.setItem('owlcloud-active-character', JSON.stringify({
+      id: character.id,
+      name: character.name,
+      race: character.race,
+      class: character.class,
+      level: character.level
+    }));
+    console.log('✅ Saved active character to localStorage for chat window');
+  } catch (e) {
+    console.warn('Failed to save character to localStorage:', e);
+  }
+
+  // Update UI
+  characterSection.style.display = 'block';
+  noCharacterSection.style.display = 'none';
+
+  // Get portrait URL for use in multiple places
+  // Portrait data is stored in rawDiceCloudData.creature
+  console.log('🖼️ Checking for portrait in character data:');
+  console.log('  character.picture:', character.picture);
+  console.log('  character.avatarPicture:', character.avatarPicture);
+  console.log('  character.rawDiceCloudData?.creature?.picture:', character.rawDiceCloudData?.creature?.picture);
+  console.log('  character.rawDiceCloudData?.creature?.avatarPicture:', character.rawDiceCloudData?.creature?.avatarPicture);
+
+  // Try top-level fields first, then check inside rawDiceCloudData.creature
+  const portraitUrl = character.picture ||
+                      character.avatarPicture ||
+                      character.rawDiceCloudData?.creature?.picture ||
+                      character.rawDiceCloudData?.creature?.avatarPicture;
+
+  // Populate character info in Settings tab
+  characterInfo.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 16px;">
+      ${portraitUrl ? `<img id="settings-portrait" src="${portraitUrl}" alt="Character Portrait" style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--theme-primary); object-fit: cover; box-shadow: 0 4px 12px var(--theme-shadow);">` : ''}
       <div style="flex: 1;">
-        <div class="character-name">${character.name || "Unknown Character"}</div>
-        <div class="character-detail">Level ${character.level || "?"} ${character.race || ""} ${character.class || ""}</div>
+        <div class="character-name">${character.name || 'Unknown Character'}</div>
+        <div class="character-detail">Level ${character.level || '?'} ${character.race || ''} ${character.class || ''}</div>
         <div class="character-detail">HP: ${character.hitPoints?.current || 0} / ${character.hitPoints?.max || 0}</div>
       </div>
     </div>
   `;
-    const settingsPortrait = document.getElementById("settings-portrait");
-    if (settingsPortrait && portraitUrl) {
-      setupPortraitDrag(settingsPortrait, character, portraitUrl);
-    }
-    const characterHeaderName = document.getElementById("character-header-name");
-    const characterHeaderDetails = document.getElementById("character-header-details");
-    const characterPortrait = document.getElementById("character-portrait");
-    if (characterHeaderName && characterHeaderDetails) {
-      characterHeaderName.textContent = character.name || "Unknown Character";
-      characterHeaderDetails.textContent = `Level ${character.level || "?"} ${character.race || ""} ${character.class || ""}`;
-    }
-    if (characterPortrait) {
-      if (portraitUrl) {
-        characterPortrait.src = portraitUrl;
-        characterPortrait.style.display = "block";
-        console.log("\u2705 Portrait loaded from:", portraitUrl);
-        setupPortraitDrag(characterPortrait, character, portraitUrl);
-      } else {
-        characterPortrait.style.display = "none";
-        console.log("\u274C No portrait found");
-      }
-    }
-    populateStatsTab(character);
-    populateAbilitiesTab(character);
-    populateFeaturesTab(character);
-    populateActionsTab(character);
-    populateSpellsTab(character);
-    populateInventoryTab(character);
-    console.log("\u{1F3AD} Displaying character:", character.name);
+
+  // Set up drag-and-drop for settings tab portrait
+  const settingsPortrait = document.getElementById('settings-portrait');
+  if (settingsPortrait && portraitUrl) {
+    setupPortraitDrag(settingsPortrait, character, portraitUrl);
   }
-  async function uploadCircularTokenToSupabase(dataUrl, characterId) {
+
+  // Update character header for other tabs
+  const characterHeaderName = document.getElementById('character-header-name');
+  const characterHeaderDetails = document.getElementById('character-header-details');
+  const characterPortrait = document.getElementById('character-portrait');
+
+  if (characterHeaderName && characterHeaderDetails) {
+    characterHeaderName.textContent = character.name || 'Unknown Character';
+    characterHeaderDetails.textContent = `Level ${character.level || '?'} ${character.race || ''} ${character.class || ''}`;
+  }
+
+  // Set character portrait if available
+  if (characterPortrait) {
+    if (portraitUrl) {
+      characterPortrait.src = portraitUrl;
+      characterPortrait.style.display = 'block';
+      console.log('✅ Portrait loaded from:', portraitUrl);
+
+      // Set up drag-and-drop to create token
+      setupPortraitDrag(characterPortrait, character, portraitUrl);
+    } else {
+      characterPortrait.style.display = 'none';
+      console.log('❌ No portrait found');
+    }
+  }
+
+  // Populate other tabs
+  populateStatsTab(character);
+  populateAbilitiesTab(character);
+  populateFeaturesTab(character);
+  populateActionsTab(character);
+  populateSpellsTab(character);
+  populateInventoryTab(character);
+
+  console.log('🎭 Displaying character:', character.name);
+}
+
+/**
+ * Upload circular token image to Supabase Storage and return public URL
+ */
+async function uploadCircularTokenToSupabase(dataUrl, characterId) {
+  try {
+    // Convert data URL to blob
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
+
+    // Create unique filename
+    const filename = `token-${characterId}-${Date.now()}.png`;
+
+    // Upload to Supabase Storage
+    const formData = new FormData();
+    formData.append('file', blob, filename);
+    formData.append('characterId', characterId);
+
+    const uploadResponse = await fetch(
+      `${SUPABASE_URL}/functions/v1/upload-token-image`,
+      {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        },
+        body: formData
+      }
+    );
+
+    if (!uploadResponse.ok) {
+      throw new Error(`Upload failed: ${uploadResponse.statusText}`);
+    }
+
+    const data = await uploadResponse.json();
+    return data.url;
+  } catch (error) {
+    console.error('Failed to upload token image:', error);
+    throw error;
+  }
+}
+
+/**
+ * Create a circular version of an image using Canvas
+ */
+async function createCircularImage(imageUrl, size) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous'; // Handle CORS
+
+    img.onload = () => {
+      // Create canvas with extra space for border
+      const borderWidth = Math.max(8, size * 0.04); // 4% of size, minimum 8px
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+
+      // Save context before clipping
+      ctx.save();
+
+      // Draw circular clip (slightly smaller to account for border)
+      const radius = (size / 2) - (borderWidth / 2);
+      ctx.beginPath();
+      ctx.arc(size / 2, size / 2, radius, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+
+      // Draw image centered and scaled to fill circle
+      const scale = Math.max(size / img.width, size / img.height);
+      const x = (size / 2) - (img.width / 2) * scale;
+      const y = (size / 2) - (img.height / 2) * scale;
+      ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+
+      // Restore context to remove clipping
+      ctx.restore();
+
+      // Draw theme-colored outline
+      ctx.beginPath();
+      ctx.arc(size / 2, size / 2, radius, 0, Math.PI * 2);
+      const theme = ThemeManager.getCurrentTheme();
+      ctx.strokeStyle = theme ? theme.primary : '#8B5CF6'; // Use theme color or fallback purple
+      ctx.lineWidth = borderWidth;
+      ctx.stroke();
+
+      // Convert to data URL
+      resolve(canvas.toDataURL('image/png'));
+    };
+
+    img.onerror = () => {
+      console.warn('Failed to load image for circular crop, using original');
+      resolve(imageUrl); // Fallback to original if loading fails
+    };
+
+    img.src = imageUrl;
+  });
+}
+
+/**
+ * Set up click handler for character portrait to create tokens
+ */
+function setupPortraitDrag(portraitElement, character, portraitUrl) {
+  if (!isOwlbearReady) return;
+
+  // Enable HTML5 drag-and-drop for GMs to drag onto map
+  portraitElement.draggable = true;
+  portraitElement.style.cursor = 'grab';
+  portraitElement.title = 'Drag to map (GM) or click to add token';
+
+  // Handle drag start
+  portraitElement.addEventListener('dragstart', (e) => {
+    portraitElement.style.cursor = 'grabbing';
+    e.dataTransfer.effectAllowed = 'copy';
+
+    // Set multiple data formats for compatibility
+    e.dataTransfer.setData('text/uri-list', portraitUrl);
+    e.dataTransfer.setData('text/plain', portraitUrl);
+    e.dataTransfer.setData('text/html', `<img src="${portraitUrl}" alt="${character.name}">`);
+    e.dataTransfer.setData('DownloadURL', `image/png:${character.name}.png:${portraitUrl}`);
+
+    // Set drag image
+    const img = new Image();
+    img.src = portraitUrl;
+    e.dataTransfer.setDragImage(portraitElement, 50, 50);
+
+    console.log('🎨 Dragging portrait for', character.name, '- URL:', portraitUrl);
+  });
+
+  portraitElement.addEventListener('dragend', () => {
+    portraitElement.style.cursor = 'grab';
+  });
+
+  // Also support click for programmatic creation (fallback for players)
+  portraitElement.onclick = async (e) => {
+    // Prevent drag from also triggering click
+    if (e.detail === 0) return;
+
     try {
-      const response = await fetch(dataUrl);
-      const blob = await response.blob();
-      const filename = `token-${characterId}-${Date.now()}.png`;
-      const formData = new FormData();
-      formData.append("file", blob, filename);
-      formData.append("characterId", characterId);
-      const uploadResponse = await fetch(
-        `${SUPABASE_URL}/functions/v1/upload-token-image`,
+      console.log('🎨 Creating token for', character.name);
+
+      // Get grid DPI for sizing (1 grid square)
+      const dpi = await OBR.scene.grid.getDpi();
+
+      // Create circular version and upload to Supabase
+      console.log('🎨 Creating circular token image...');
+      const circularDataUrl = await createCircularImage(portraitUrl, dpi * 2); // 2x for quality
+
+      console.log('📤 Uploading to Supabase...');
+      const circularImageUrl = await uploadCircularTokenToSupabase(circularDataUrl, character.id);
+
+      // Get current player ID to set ownership
+      const playerId = await OBR.player.getId();
+
+      // Build token using buildImage with circular image
+      const token = buildImage(
         {
-          method: "POST",
-          headers: {
-            "apikey": SUPABASE_ANON_KEY,
-            "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
-          },
-          body: formData
+          height: dpi,
+          width: dpi,
+          url: circularImageUrl,
+          mime: 'image/png'
+        },
+        {
+          dpi: dpi,
+          offset: { x: 0, y: 0 }
         }
-      );
-      if (!uploadResponse.ok) {
-        throw new Error(`Upload failed: ${uploadResponse.statusText}`);
-      }
-      const data = await uploadResponse.json();
-      return data.url;
-    } catch (error) {
-      console.error("Failed to upload token image:", error);
-      throw error;
-    }
-  }
-  async function createCircularImage(imageUrl, size) {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => {
-        const borderWidth = Math.max(8, size * 0.04);
-        const canvas = document.createElement("canvas");
-        canvas.width = size;
-        canvas.height = size;
-        const ctx = canvas.getContext("2d");
-        ctx.save();
-        const radius = size / 2 - borderWidth / 2;
-        ctx.beginPath();
-        ctx.arc(size / 2, size / 2, radius, 0, Math.PI * 2);
-        ctx.closePath();
-        ctx.clip();
-        const scale = Math.max(size / img.width, size / img.height);
-        const x = size / 2 - img.width / 2 * scale;
-        const y = size / 2 - img.height / 2 * scale;
-        ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
-        ctx.restore();
-        ctx.beginPath();
-        ctx.arc(size / 2, size / 2, radius, 0, Math.PI * 2);
-        const theme = ThemeManager.getCurrentTheme();
-        ctx.strokeStyle = theme ? theme.primary : "#8B5CF6";
-        ctx.lineWidth = borderWidth;
-        ctx.stroke();
-        resolve(canvas.toDataURL("image/png"));
-      };
-      img.onerror = () => {
-        console.warn("Failed to load image for circular crop, using original");
-        resolve(imageUrl);
-      };
-      img.src = imageUrl;
-    });
-  }
-  function setupPortraitDrag(portraitElement, character, portraitUrl) {
-    if (!isOwlbearReady)
-      return;
-    portraitElement.draggable = true;
-    portraitElement.style.cursor = "grab";
-    portraitElement.title = "Drag to map (GM) or click to add token";
-    portraitElement.addEventListener("dragstart", (e) => {
-      portraitElement.style.cursor = "grabbing";
-      e.dataTransfer.effectAllowed = "copy";
-      e.dataTransfer.setData("text/uri-list", portraitUrl);
-      e.dataTransfer.setData("text/plain", portraitUrl);
-      e.dataTransfer.setData("text/html", `<img src="${portraitUrl}" alt="${character.name}">`);
-      e.dataTransfer.setData("DownloadURL", `image/png:${character.name}.png:${portraitUrl}`);
-      const img = new Image();
-      img.src = portraitUrl;
-      e.dataTransfer.setDragImage(portraitElement, 50, 50);
-      console.log("\u{1F3A8} Dragging portrait for", character.name, "- URL:", portraitUrl);
-    });
-    portraitElement.addEventListener("dragend", () => {
-      portraitElement.style.cursor = "grab";
-    });
-    portraitElement.onclick = async (e) => {
-      if (e.detail === 0)
-        return;
-      try {
-        console.log("\u{1F3A8} Creating token for", character.name);
-        const dpi = await OBR.scene.grid.getDpi();
-        console.log("\u{1F3A8} Creating circular token image...");
-        const circularDataUrl = await createCircularImage(portraitUrl, dpi * 2);
-        console.log("\u{1F4E4} Uploading to Supabase...");
-        const circularImageUrl = await uploadCircularTokenToSupabase(circularDataUrl, character.id);
-        const playerId = await OBR.player.getId();
-        const token = buildImage(
-          {
-            height: dpi,
-            width: dpi,
-            url: circularImageUrl,
-            mime: "image/png"
-          },
-          {
-            dpi,
-            offset: { x: 0, y: 0 }
-          }
-        ).layer("CHARACTER").locked(false).name(character.name || "Character").plainText(character.name || "Character").metadata({
+      )
+        .layer('CHARACTER')
+        .locked(false)
+        .name(character.name || 'Character')
+        .plainText(character.name || 'Character')
+        .metadata({
           owlcloud: {
             characterId: character.id,
             characterName: character.name,
             diceCloudId: character.diceCloudId,
-            playerId
+            playerId: playerId
           }
-        }).build();
-        console.log("\u{1F3A8} Token built:", token);
-        await OBR.scene.items.addItems([token]);
-        OBR.notification.show(`Added ${character.name} to map`, "SUCCESS");
-        console.log("\u2705 Token created successfully with metadata:", token.metadata);
-      } catch (error) {
-        console.error("\u274C Error creating token:", error);
-        OBR.notification.show(`Failed to create token: ${error.message}`, "ERROR");
-      }
-    };
-  }
-  function populateStatsTab(character) {
-    const statsContent = document.getElementById("stats-content");
-    const hp = character.hitPoints || {};
-    const tempHP = character.temporaryHP || 0;
-    const ac = character.armorClass || 10;
-    const speed = character.speed || 30;
-    const initiative = character.initiative || 0;
-    const proficiencyBonus = character.proficiencyBonus || Math.floor((character.level || 1) / 4) + 2;
-    let html = `
+        })
+        .build();
+
+      console.log('🎨 Token built:', token);
+
+      // Add to scene
+      await OBR.scene.items.addItems([token]);
+
+      // Notify user
+      OBR.notification.show(`Added ${character.name} to map`, 'SUCCESS');
+      console.log('✅ Token created successfully with metadata:', token.metadata);
+    } catch (error) {
+      console.error('❌ Error creating token:', error);
+      OBR.notification.show(`Failed to create token: ${error.message}`, 'ERROR');
+    }
+  };
+}
+
+/**
+ * Populate Stats & Resources tab (combined)
+ */
+function populateStatsTab(character) {
+  const statsContent = document.getElementById('stats-content');
+
+  const hp = character.hitPoints || {};
+  const tempHP = character.temporaryHP || 0;
+  const ac = character.armorClass || 10;
+  const speed = character.speed || 30;
+  const initiative = character.initiative || 0;
+  const proficiencyBonus = character.proficiencyBonus || Math.floor((character.level || 1) / 4) + 2;
+
+  // Build core stats section
+  let html = `
     <div class="stat-grid">
       <div class="stat-box" style="cursor: pointer;" onclick="adjustHP()" title="Click to adjust HP">
         <div class="stat-label">HP</div>
@@ -1908,7 +2231,7 @@ This will disconnect the character from this room. You can sync a different char
         <div class="stat-label">Temp HP</div>
         <div class="stat-value" style="color: #60A5FA;">${tempHP}</div>
       </div>
-      ` : ""}
+      ` : ''}
 
       <div class="stat-box">
         <div class="stat-label">AC</div>
@@ -1923,7 +2246,7 @@ This will disconnect the character from this room. You can sync a different char
 
       <div class="stat-box" style="cursor: pointer;" onclick="rollInitiative(${initiative})" title="Click to roll initiative">
         <div class="stat-label">Initiative</div>
-        <div class="stat-value">${initiative >= 0 ? "+" : ""}${initiative}</div>
+        <div class="stat-value">${initiative >= 0 ? '+' : ''}${initiative}</div>
       </div>
 
       <div class="stat-box">
@@ -1932,21 +2255,25 @@ This will disconnect the character from this room. You can sync a different char
       </div>
     </div>
   `;
-    if (character.hitDice) {
-      const hitDice = character.hitDice;
-      html += `
+
+  // Hit Dice section
+  if (character.hitDice) {
+    const hitDice = character.hitDice;
+    html += `
       <div class="section-header">Hit Dice</div>
       <div class="stat-grid">
         <div class="stat-box">
           <div class="stat-label">Hit Dice</div>
           <div class="stat-value">${hitDice.current || 0}</div>
-          <div class="stat-modifier">/ ${hitDice.max || 0} d${hitDice.type || "8"}</div>
+          <div class="stat-modifier">/ ${hitDice.max || 0} d${hitDice.type || '8'}</div>
         </div>
       </div>
     `;
-    }
-    if (character.deathSaves && (character.deathSaves.successes > 0 || character.deathSaves.failures > 0)) {
-      html += `
+  }
+
+  // Death Saves section (if character is unconscious)
+  if (character.deathSaves && (character.deathSaves.successes > 0 || character.deathSaves.failures > 0)) {
+    html += `
       <div class="section-header">Death Saves</div>
       <div class="stat-grid">
         <div class="stat-box" style="border-color: #10B981;">
@@ -1958,302 +2285,360 @@ This will disconnect the character from this room. You can sync a different char
           <div class="stat-value" style="color: #EF4444;">${character.deathSaves.failures || 0}</div>
         </div>
       </div>
-      <button class="rest-btn" onclick="rollDeathSave()" style="margin-top: 8px;">\u{1F480} Roll Death Save</button>
+      <button class="rest-btn" onclick="rollDeathSave()" style="margin-top: 8px;">💀 Roll Death Save</button>
     `;
-    }
-    const hasSpellSlots = character.spellSlots && Object.keys(character.spellSlots).some(
-      (key) => key.includes("Max") && character.spellSlots[key] > 0
-    );
-    if (hasSpellSlots) {
-      html += '<div class="section-header">Spell Slots</div>';
-      html += '<div class="spell-slots-grid">';
-      for (let level = 1; level <= 9; level++) {
-        const current = character.spellSlots[`level${level}SpellSlots`] || 0;
-        const max = character.spellSlots[`level${level}SpellSlotsMax`] || 0;
-        if (max > 0) {
-          html += `
-          <div class="slot-card ${current === 0 ? "empty" : ""}" style="cursor: pointer;" onclick="adjustSpellSlot(${level})" title="Click to adjust spell slots">
+  }
+
+  // === RESOURCES SECTION ===
+
+  // Spell Slots Section
+  const hasSpellSlots = character.spellSlots && Object.keys(character.spellSlots).some(key =>
+    key.includes('Max') && character.spellSlots[key] > 0
+  );
+
+  if (hasSpellSlots) {
+    html += '<div class="section-header">Spell Slots</div>';
+    html += '<div class="spell-slots-grid">';
+
+    // Regular spell slots (levels 1-9)
+    for (let level = 1; level <= 9; level++) {
+      const current = character.spellSlots[`level${level}SpellSlots`] || 0;
+      const max = character.spellSlots[`level${level}SpellSlotsMax`] || 0;
+
+      if (max > 0) {
+        html += `
+          <div class="slot-card ${current === 0 ? 'empty' : ''}" style="cursor: pointer;" onclick="adjustSpellSlot(${level})" title="Click to adjust spell slots">
             <div class="slot-level">Level ${level}</div>
             <div class="slot-count">${current}/${max}</div>
           </div>
         `;
-        }
       }
-      const pactCurrent = character.spellSlots.pactMagicSlots || 0;
-      const pactMax = character.spellSlots.pactMagicSlotsMax || 0;
-      const pactLevel = character.spellSlots.pactMagicSlotLevel || 1;
-      if (pactMax > 0) {
-        html += `
-        <div class="slot-card pact-magic ${pactCurrent === 0 ? "empty" : ""}" style="cursor: pointer;" onclick="adjustSpellSlot(null, true)" title="Click to adjust pact magic slots">
+    }
+
+    // Pact Magic slots (Warlock)
+    const pactCurrent = character.spellSlots.pactMagicSlots || 0;
+    const pactMax = character.spellSlots.pactMagicSlotsMax || 0;
+    const pactLevel = character.spellSlots.pactMagicSlotLevel || 1;
+
+    if (pactMax > 0) {
+      html += `
+        <div class="slot-card pact-magic ${pactCurrent === 0 ? 'empty' : ''}" style="cursor: pointer;" onclick="adjustSpellSlot(null, true)" title="Click to adjust pact magic slots">
           <div class="slot-level">Pact ${pactLevel}</div>
           <div class="slot-count">${pactCurrent}/${pactMax}</div>
         </div>
       `;
-      }
-      html += "</div>";
     }
-    if (character.resources && character.resources.length > 0) {
-      const filteredResources = character.resources.filter((r) => {
-        if (r.max === 0)
-          return false;
-        const lowerName = r.name.toLowerCase().trim();
-        if (lowerName.includes("lucky point") || lowerName === "lucky")
-          return false;
-        if (lowerName.includes("hit point") || lowerName === "hp")
-          return false;
-        if (lowerName === "spell level")
-          return false;
-        return true;
-      });
-      if (filteredResources.length > 0) {
-        html += '<div class="section-header">Class Resources</div>';
-        html += '<div class="resource-grid">';
-        filteredResources.forEach((resource) => {
-          html += `
+
+    html += '</div>';
+  }
+
+  // Class Resources Section
+  if (character.resources && character.resources.length > 0) {
+    const filteredResources = character.resources.filter(r => {
+      if (r.max === 0) return false;
+      const lowerName = r.name.toLowerCase().trim();
+      if (lowerName.includes('lucky point') || lowerName === 'lucky') return false;
+      if (lowerName.includes('hit point') || lowerName === 'hp') return false;
+      if (lowerName === 'spell level') return false;
+      return true;
+    });
+
+    if (filteredResources.length > 0) {
+      html += '<div class="section-header">Class Resources</div>';
+      html += '<div class="resource-grid">';
+
+      filteredResources.forEach(resource => {
+        html += `
           <div class="resource-card" style="cursor: pointer;" onclick="adjustResource('${resource.name.replace(/'/g, "\\'")}') " title="Click to adjust ${resource.name}">
             <div class="resource-name">${resource.name}</div>
             <div class="resource-value">${resource.current || 0}</div>
             <div class="resource-max">/ ${resource.max || 0}</div>
           </div>
         `;
-        });
-        html += "</div>";
-      }
+      });
+
+      html += '</div>';
     }
-    html += `
+  }
+
+  // Rest Buttons
+  html += `
     <div class="rest-buttons">
       <button class="rest-btn" onclick="takeShortRest()">
-        \u23F8\uFE0F Short Rest
+        ⏸️ Short Rest
       </button>
       <button class="rest-btn" onclick="takeLongRest()">
-        \u{1F6CC} Long Rest
+        🛌 Long Rest
       </button>
     </div>
   `;
-    statsContent.innerHTML = html;
-  }
-  function populateAbilitiesTab(character) {
-    const abilitiesContent = document.getElementById("abilities-content");
-    const abilityNames = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
-    const abilityShortNames = { strength: "STR", dexterity: "DEX", constitution: "CON", intelligence: "INT", wisdom: "WIS", charisma: "CHA" };
-    let html = '<div class="section-header">Ability Scores & Saving Throws</div>';
-    html += '<div class="ability-grid">';
-    abilityNames.forEach((abilityName) => {
-      const score = character.attributes?.[abilityName] || 10;
-      const modifier2 = character.attributeMods?.[abilityName] || Math.floor((score - 10) / 2);
-      const saveMod = character.savingThrows?.[abilityName] || modifier2;
-      const isProficient = saveMod !== modifier2;
-      const abilityLabel = abilityShortNames[abilityName];
-      html += `
-      <div class="ability-box ${isProficient ? "save-proficient" : ""}">
+
+  statsContent.innerHTML = html;
+}
+
+
+/**
+ * Populate Abilities & Saves tab
+ */
+function populateAbilitiesTab(character) {
+  const abilitiesContent = document.getElementById('abilities-content');
+
+  // Ability scores and modifiers
+  const abilityNames = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
+  const abilityShortNames = { strength: 'STR', dexterity: 'DEX', constitution: 'CON', intelligence: 'INT', wisdom: 'WIS', charisma: 'CHA' };
+
+  let html = '<div class="section-header">Ability Scores & Saving Throws</div>';
+  html += '<div class="ability-grid">';
+
+  abilityNames.forEach(abilityName => {
+    const score = character.attributes?.[abilityName] || 10;
+    const modifier = character.attributeMods?.[abilityName] || Math.floor((score - 10) / 2);
+    const saveMod = character.savingThrows?.[abilityName] || modifier;
+    const isProficient = saveMod !== modifier;
+    const abilityLabel = abilityShortNames[abilityName];
+
+    html += `
+      <div class="ability-box ${isProficient ? 'save-proficient' : ''}">
         <div style="padding: 8px; text-align: center;">
           <div class="ability-name">${abilityLabel}</div>
           <div class="ability-score" style="font-size: 18px; font-weight: bold;">${score}</div>
         </div>
         <div style="display: flex; border-top: 1px solid var(--theme-border);">
-          <div style="flex: 1; padding: 6px; cursor: pointer; text-align: center; border-right: 1px solid var(--theme-border);" onclick="event.stopPropagation(); event.preventDefault(); rollAbilityCheck('${abilityLabel}', ${modifier2})" title="Roll ${abilityLabel} check">
+          <div style="flex: 1; padding: 6px; cursor: pointer; text-align: center; border-right: 1px solid var(--theme-border);" onclick="event.stopPropagation(); event.preventDefault(); rollAbilityCheck('${abilityLabel}', ${modifier})" title="Roll ${abilityLabel} check">
             <div style="font-size: 11px; color: var(--theme-primary-light); pointer-events: none;">Check</div>
-            <div style="font-weight: bold; pointer-events: none;">${modifier2 >= 0 ? "+" : ""}${modifier2}</div>
+            <div style="font-weight: bold; pointer-events: none;">${modifier >= 0 ? '+' : ''}${modifier}</div>
           </div>
           <div style="flex: 1; padding: 6px; cursor: pointer; text-align: center;" onclick="event.stopPropagation(); event.preventDefault(); rollSavingThrow('${abilityLabel}', ${saveMod})" title="Roll ${abilityLabel} save">
-            <div style="font-size: 11px; color: ${isProficient ? "#10B981" : "var(--theme-primary-light)"}; pointer-events: none;">Save</div>
-            <div style="font-weight: bold; color: ${isProficient ? "#10B981" : "inherit"}; pointer-events: none;">${saveMod >= 0 ? "+" : ""}${saveMod}</div>
+            <div style="font-size: 11px; color: ${isProficient ? '#10B981' : 'var(--theme-primary-light)'}; pointer-events: none;">Save</div>
+            <div style="font-weight: bold; color: ${isProficient ? '#10B981' : 'inherit'}; pointer-events: none;">${saveMod >= 0 ? '+' : ''}${saveMod}</div>
           </div>
         </div>
       </div>
     `;
-    });
-    html += "</div>";
-    if (character.skills && Object.keys(character.skills).length > 0) {
-      html += '<div class="section-header">Skills</div>';
-      html += '<div class="skill-list">';
-      const skillNames = {
-        acrobatics: "Acrobatics",
-        animalHandling: "Animal Handling",
-        arcana: "Arcana",
-        athletics: "Athletics",
-        deception: "Deception",
-        history: "History",
-        insight: "Insight",
-        intimidation: "Intimidation",
-        investigation: "Investigation",
-        medicine: "Medicine",
-        nature: "Nature",
-        perception: "Perception",
-        performance: "Performance",
-        persuasion: "Persuasion",
-        religion: "Religion",
-        sleightOfHand: "Sleight of Hand",
-        stealth: "Stealth",
-        survival: "Survival"
+  });
+
+  html += '</div>';
+
+  // Skills Section
+  if (character.skills && Object.keys(character.skills).length > 0) {
+    html += '<div class="section-header">Skills</div>';
+    html += '<div class="skill-list">';
+
+    const skillNames = {
+      acrobatics: 'Acrobatics', animalHandling: 'Animal Handling', arcana: 'Arcana',
+      athletics: 'Athletics', deception: 'Deception', history: 'History',
+      insight: 'Insight', intimidation: 'Intimidation', investigation: 'Investigation',
+      medicine: 'Medicine', nature: 'Nature', perception: 'Perception',
+      performance: 'Performance', persuasion: 'Persuasion', religion: 'Religion',
+      sleightOfHand: 'Sleight of Hand', stealth: 'Stealth', survival: 'Survival'
+    };
+
+    Object.entries(character.skills).forEach(([skillKey, bonus]) => {
+      const skillName = skillNames[skillKey] || skillKey;
+
+      // Determine proficiency level by comparing to base ability modifier
+      const skillAbilityMap = {
+        acrobatics: 'dexterity', animalHandling: 'wisdom', arcana: 'intelligence',
+        athletics: 'strength', deception: 'charisma', history: 'intelligence',
+        insight: 'wisdom', intimidation: 'charisma', investigation: 'intelligence',
+        medicine: 'wisdom', nature: 'intelligence', perception: 'wisdom',
+        performance: 'charisma', persuasion: 'charisma', religion: 'intelligence',
+        sleightOfHand: 'dexterity', stealth: 'dexterity', survival: 'wisdom'
       };
-      Object.entries(character.skills).forEach(([skillKey, bonus]) => {
-        const skillName = skillNames[skillKey] || skillKey;
-        const skillAbilityMap = {
-          acrobatics: "dexterity",
-          animalHandling: "wisdom",
-          arcana: "intelligence",
-          athletics: "strength",
-          deception: "charisma",
-          history: "intelligence",
-          insight: "wisdom",
-          intimidation: "charisma",
-          investigation: "intelligence",
-          medicine: "wisdom",
-          nature: "intelligence",
-          perception: "wisdom",
-          performance: "charisma",
-          persuasion: "charisma",
-          religion: "intelligence",
-          sleightOfHand: "dexterity",
-          stealth: "dexterity",
-          survival: "wisdom"
-        };
-        const baseAbility = skillAbilityMap[skillKey] || "strength";
-        const baseMod = character.attributeMods?.[baseAbility] || 0;
-        const profBonus = character.proficiencyBonus || 2;
-        let proficiencyClass = "";
-        if (bonus === baseMod + profBonus) {
-          proficiencyClass = "skill-proficient";
-        } else if (bonus === baseMod + profBonus * 2) {
-          proficiencyClass = "skill-expert";
-        }
-        html += `
+
+      const baseAbility = skillAbilityMap[skillKey] || 'strength';
+      const baseMod = character.attributeMods?.[baseAbility] || 0;
+      const profBonus = character.proficiencyBonus || 2;
+
+      let proficiencyClass = '';
+      if (bonus === baseMod + profBonus) {
+        proficiencyClass = 'skill-proficient';
+      } else if (bonus === baseMod + (profBonus * 2)) {
+        proficiencyClass = 'skill-expert';
+      }
+
+      html += `
         <div class="skill-item ${proficiencyClass}" onclick="rollSkillCheck('${skillName}', ${bonus})" title="Click to roll ${skillName}">
           <span class="skill-name">${skillName}</span>
-          <span class="skill-bonus">${bonus >= 0 ? "+" : ""}${bonus}</span>
+          <span class="skill-bonus">${bonus >= 0 ? '+' : ''}${bonus}</span>
         </div>
       `;
-      });
-      html += "</div>";
-    }
-    abilitiesContent.innerHTML = html;
+    });
+
+    html += '</div>';
   }
-  function populateFeaturesTab(character) {
-    const featuresContent = document.getElementById("features-content");
-    let html = "";
-    if (character.features && character.features.length > 0) {
-      const filteredFeatures = character.features.filter((feature) => {
-        const name = (feature.name || "").toLowerCase();
-        if (name.match(/^spellcasting\s*\[/i) || name === "spellcasting") {
-          return false;
+
+  abilitiesContent.innerHTML = html;
+}
+
+/**
+ * Populate Features & Traits tab
+ */
+function populateFeaturesTab(character) {
+  const featuresContent = document.getElementById('features-content');
+
+  let html = '';
+
+  // Features & Traits Section
+  if (character.features && character.features.length > 0) {
+    // Filter out generic spellcasting features
+    const filteredFeatures = character.features.filter(feature => {
+      const name = (feature.name || '').toLowerCase();
+      // Exclude generic spellcasting features
+      return !name.match(/^spellcasting\s*\[/i) && name !== 'spellcasting';
+    });
+
+    if (filteredFeatures.length > 0) {
+      html += '<div class="feature-list">';
+
+      filteredFeatures.forEach((feature, index) => {
+        const featureId = `feature-${index}`;
+        const uses = feature.uses;
+
+        // Infer resource usage from feature name (for class resources)
+        let resourceName = null;
+        const featureName = (feature.name || '').toLowerCase();
+        if (featureName.includes('channel divinity')) {
+          resourceName = 'Channel Divinity';
+        } else if (featureName.includes('ki point') || featureName.includes('ki ')) {
+          resourceName = 'Ki Points';
+        } else if (featureName.includes('bardic inspiration')) {
+          resourceName = 'Bardic Inspiration';
+        } else if (featureName.includes('superiority')) {
+          resourceName = 'Superiority Dice';
+        } else if (featureName.includes('sorcery point')) {
+          resourceName = 'Sorcery Points';
         }
-        if (name.includes("proficiencies") || name.includes("proficiency")) {
-          return false;
+
+        // Create Use button if feature has uses OR matches a known resource
+        let useButtonHtml = '';
+        if (uses && uses.value !== undefined) {
+          // Feature has its own uses tracking
+          useButtonHtml = `<button class="rest-btn" style="margin-top: 8px; width: 100%;" onclick="event.stopPropagation(); useFeatureWithUses('${(feature.name || 'Feature').replace(/'/g, "\\'")}')">✨ Use (${uses.value}/${uses.max || uses.value})</button>`;
+        } else if (resourceName) {
+          // Feature uses a class resource
+          useButtonHtml = `<button class="rest-btn" style="margin-top: 8px; width: 100%;" onclick="event.stopPropagation(); useFeature('${(feature.name || 'Feature').replace(/'/g, "\\'")}', '${resourceName}')">✨ Use</button>`;
         }
-        return true;
-      });
-      if (filteredFeatures.length > 0) {
-        html += '<div class="feature-list">';
-        filteredFeatures.forEach((feature, index) => {
-          const featureId = `feature-${index}`;
-          const uses = feature.uses;
-          let resourceName = null;
-          const featureName = (feature.name || "").toLowerCase();
-          if (featureName.includes("channel divinity")) {
-            resourceName = "Channel Divinity";
-          } else if (featureName.includes("ki point") || featureName.includes("ki ")) {
-            resourceName = "Ki Points";
-          } else if (featureName.includes("bardic inspiration")) {
-            resourceName = "Bardic Inspiration";
-          } else if (featureName.includes("superiority")) {
-            resourceName = "Superiority Dice";
-          } else if (featureName.includes("sorcery point")) {
-            resourceName = "Sorcery Points";
-          }
-          let useButtonHtml = "";
-          if (uses && uses.value !== void 0) {
-            useButtonHtml = `<button class="rest-btn" style="margin-top: 8px; width: 100%;" onclick="event.stopPropagation(); useFeatureWithUses('${(feature.name || "Feature").replace(/'/g, "\\'")}')">\u2728 Use (${uses.value}/${uses.max || uses.value})</button>`;
-          } else if (resourceName) {
-            useButtonHtml = `<button class="rest-btn" style="margin-top: 8px; width: 100%;" onclick="event.stopPropagation(); useFeature('${(feature.name || "Feature").replace(/'/g, "\\'")}', '${resourceName}')">\u2728 Use</button>`;
-          }
-          let featureText = "";
-          if (feature.summary) {
-            featureText += `<div class="feature-description">${feature.summary}</div>`;
-          }
-          if (feature.description) {
-            featureText += `<div class="feature-description">${feature.description}</div>`;
-          }
-          html += `
+
+        // Combine summary and description
+        let featureText = '';
+        if (feature.summary) {
+          featureText += `<div class="feature-description">${feature.summary}</div>`;
+        }
+        if (feature.description) {
+          featureText += `<div class="feature-description">${feature.description}</div>`;
+        }
+
+        html += `
           <div class="feature-card">
             <div class="feature-header" onclick="toggleFeatureCard('${featureId}')" style="cursor: pointer;">
-              <div class="feature-name">${feature.name || "Unknown Feature"}</div>
-              <span class="expand-icon">\u25BC</span>
+              <div class="feature-name">${feature.name || 'Unknown Feature'}</div>
+              <span class="expand-icon">▼</span>
             </div>
             <div id="${featureId}" class="feature-details">
               ${featureText}
-              ${feature.source ? `<div class="feature-metadata"><div class="feature-meta-item"><span class="feature-meta-label">Source:</span> ${feature.source}</div></div>` : ""}
+              ${feature.source ? `<div class="feature-metadata"><div class="feature-meta-item"><span class="feature-meta-label">Source:</span> ${feature.source}</div></div>` : ''}
               ${useButtonHtml}
             </div>
           </div>
         `;
-        });
-        html += "</div>";
-      } else {
-        html = '<div class="empty-state">No features available</div>';
-      }
+      });
+
+      html += '</div>';
     } else {
       html = '<div class="empty-state">No features available</div>';
     }
-    featuresContent.innerHTML = html;
+  } else {
+    html = '<div class="empty-state">No features available</div>';
   }
-  function populateActionsTab(character) {
-    const actionsContent = document.getElementById("actions-content");
-    let html = "";
-    if (character.actions && character.actions.length > 0) {
-      const deduplicatedActions = deduplicateActions(character.actions);
-      html += '<div class="feature-list">';
-      deduplicatedActions.forEach((action, index) => {
-        const actionId = `action-${index}`;
-        const actionType = action.actionType || "Action";
-        const damage = evaluateDiceCloudFormula(action.damage || "", character);
-        const attackRoll = action.attackRoll || "";
-        const uses = action.uses;
-        console.log(`[OwlCloud] Action "${action.name}" uses:`, uses);
-        let attackBonus = 0;
-        if (attackRoll) {
-          const bonusMatch = attackRoll.match(/[+-](\d+)/);
-          if (bonusMatch) {
-            attackBonus = parseInt(bonusMatch[0]);
-          }
+
+  featuresContent.innerHTML = html;
+}
+
+/**
+ * Populate Actions & Attacks tab
+ */
+function populateActionsTab(character) {
+  const actionsContent = document.getElementById('actions-content');
+
+  let html = '';
+
+  // Actions Section
+  if (character.actions && character.actions.length > 0) {
+    // Deduplicate and filter actions
+    const deduplicatedActions = deduplicateActions(character.actions);
+
+    html += '<div class="feature-list">';
+
+    deduplicatedActions.forEach((action, index) => {
+      const actionId = `action-${index}`;
+      const actionType = action.actionType || 'Action';
+      const damage = action.damage || '';
+      const attackRoll = action.attackRoll || '';
+      const uses = action.uses;
+
+      // Parse attack bonus from attackRoll string (like "+5" or "1d20+5")
+      let attackBonus = 0;
+      if (attackRoll) {
+        const bonusMatch = attackRoll.match(/[+-](\d+)/);
+        if (bonusMatch) {
+          attackBonus = parseInt(bonusMatch[0]);
         }
-        let damageFormula = damage;
-        const hasAttack = attackRoll && attackRoll.trim();
-        const hasDamage = damage && damage.trim();
-        let rollButtonHtml = "";
-        if (hasAttack || hasDamage) {
-          rollButtonHtml = '<div style="display: flex; gap: 8px; margin-top: 8px;">';
-          if (hasAttack) {
-            rollButtonHtml += `<button class="rest-btn" style="flex: 1;" onclick="event.stopPropagation(); rollAttackOnly('${(action.name || "Action").replace(/'/g, "\\'")}', ${attackBonus})">\u{1F3AF} Attack</button>`;
-          }
-          if (hasDamage) {
-            rollButtonHtml += `<button class="rest-btn" style="flex: 1;" onclick="event.stopPropagation(); rollDamageOnly('${(action.name || "Action").replace(/'/g, "\\'")}', '${damageFormula}')">\u{1F4A5} Damage</button>`;
-          }
-          rollButtonHtml += "</div>";
+      }
+
+      // Parse damage formula (like "1d8+3" or "2d6")
+      let damageFormula = damage;
+
+      // Create separate attack and damage buttons
+      const hasAttack = attackRoll && attackRoll.trim();
+      const hasDamage = damage && damage.trim();
+
+      let rollButtonHtml = '';
+      if (hasAttack || hasDamage) {
+        rollButtonHtml = '<div style="display: flex; gap: 8px; margin-top: 8px;">';
+
+        if (hasAttack) {
+          rollButtonHtml += `<button class="rest-btn" style="flex: 1;" onclick="event.stopPropagation(); rollAttackOnly('${(action.name || 'Action').replace(/'/g, "\\'")}', ${attackBonus})">🎯 Attack</button>`;
         }
-        const useButtonHtml = uses && uses.value !== void 0 ? `<button class="rest-btn" style="margin-top: 8px; width: 100%;" onclick="event.stopPropagation(); useAction('${(action.name || "Action").replace(/'/g, "\\'")}')">\u2728 Use</button>` : "";
-        const hasRollAction = hasAttack || hasDamage;
-        const attackTypePrefix = hasRollAction ? "attack" : "utility";
-        const fullActionType = `${attackTypePrefix} | ${actionType.toLowerCase()}`;
-        let actionText = "";
-        if (action.summary) {
-          actionText += `<div class="feature-description">${action.summary}</div>`;
+
+        if (hasDamage) {
+          rollButtonHtml += `<button class="rest-btn" style="flex: 1;" onclick="event.stopPropagation(); rollDamageOnly('${(action.name || 'Action').replace(/'/g, "\\'")}', '${damageFormula}')">💥 Damage</button>`;
         }
-        if (action.description) {
-          actionText += `<div class="feature-description">${action.description}</div>`;
-        }
-        html += `
+
+        rollButtonHtml += '</div>';
+      }
+
+      // Add Use button if action has uses
+      const useButtonHtml = (uses && uses.value !== undefined) ?
+        `<button class="rest-btn" style="margin-top: 8px; width: 100%;" onclick="event.stopPropagation(); useAction('${(action.name || 'Action').replace(/'/g, "\\'")}')">✨ Use</button>` : '';
+
+      const hasRollAction = hasAttack || hasDamage;
+
+      // Determine full action type (e.g., "attack | action" or "utility | bonus action")
+      const attackTypePrefix = hasRollAction ? 'attack' : 'utility';
+      const fullActionType = `${attackTypePrefix} | ${actionType.toLowerCase()}`;
+
+      // Combine summary and description
+      let actionText = '';
+      if (action.summary) {
+        actionText += `<div class="feature-description">${action.summary}</div>`;
+      }
+      if (action.description) {
+        actionText += `<div class="feature-description">${action.description}</div>`;
+      }
+
+      html += `
         <div class="feature-card">
           <div class="feature-header" onclick="toggleFeatureCard('${actionId}')" style="cursor: pointer;">
-            <div class="feature-name">${action.name || "Unknown Action"}</div>
-            <span class="expand-icon">\u25BC</span>
+            <div class="feature-name">${action.name || 'Unknown Action'}</div>
+            <span class="expand-icon">▼</span>
           </div>
           <div id="${actionId}" class="feature-details">
             <div class="feature-metadata">
               <div class="feature-meta-item"><span class="feature-meta-label">Type:</span> ${fullActionType}</div>
-              ${attackRoll ? `<div class="feature-meta-item"><span class="feature-meta-label">Attack:</span> ${attackRoll}</div>` : ""}
-              ${damage ? `<div class="feature-meta-item"><span class="feature-meta-label">Damage:</span> ${damage}</div>` : ""}
-              ${uses && uses.value !== void 0 ? `<div class="feature-meta-item"><span class="feature-meta-label">Uses:</span> ${uses.value}/${uses.max || uses.value}</div>` : ""}
+              ${attackRoll ? `<div class="feature-meta-item"><span class="feature-meta-label">Attack:</span> ${attackRoll}</div>` : ''}
+              ${damage ? `<div class="feature-meta-item"><span class="feature-meta-label">Damage:</span> ${damage}</div>` : ''}
+              ${uses && uses.value !== undefined ? `<div class="feature-meta-item"><span class="feature-meta-label">Uses:</span> ${uses.value}/${uses.max || uses.value}</div>` : ''}
             </div>
             ${actionText}
             ${rollButtonHtml}
@@ -2261,1380 +2646,1524 @@ This will disconnect the character from this room. You can sync a different char
           </div>
         </div>
       `;
-      });
-      html += "</div>";
-    } else {
-      html = '<div class="empty-state">No actions available</div>';
+    });
+
+    html += '</div>';
+  } else {
+    html = '<div class="empty-state">No actions available</div>';
+  }
+
+  actionsContent.innerHTML = html;
+}
+
+/**
+ * Deduplicate actions by normalized name
+ */
+function deduplicateActions(actions) {
+  const normalizeActionName = (name) => {
+    if (!name) return '';
+    const suffixPatterns = [
+      /\s*\(free\)$/i,
+      /\s*\(free action\)$/i,
+      /\s*\(bonus action\)$/i,
+      /\s*\(bonus\)$/i,
+      /\s*\(reaction\)$/i,
+      /\s*\(action\)$/i,
+      /\s*\(no spell slot\)$/i,
+      /\s*\(at will\)$/i
+    ];
+
+    let normalized = name.trim();
+    for (const pattern of suffixPatterns) {
+      normalized = normalized.replace(pattern, '');
     }
-    actionsContent.innerHTML = html;
-  }
-  function deduplicateActions(actions) {
-    const normalizeActionName = (name) => {
-      if (!name)
-        return "";
-      const suffixPatterns = [
-        /\s*\(free\)$/i,
-        /\s*\(free action\)$/i,
-        /\s*\(bonus action\)$/i,
-        /\s*\(bonus\)$/i,
-        /\s*\(reaction\)$/i,
-        /\s*\(action\)$/i,
-        /\s*\(no spell slot\)$/i,
-        /\s*\(at will\)$/i
-      ];
-      let normalized = name.trim();
-      for (const pattern of suffixPatterns) {
-        normalized = normalized.replace(pattern, "");
-      }
-      return normalized.trim();
-    };
-    const deduplicatedActions = [];
-    const actionsByNormalizedName = {};
-    const sortedActions = [...actions].sort((a, b) => {
-      const normA = normalizeActionName(a.name || "");
-      const normB = normalizeActionName(b.name || "");
-      if (normA !== normB)
-        return normA.localeCompare(normB);
-      return (a.name || "").length - (b.name || "").length;
-    });
-    sortedActions.forEach((action) => {
-      const normalizedName = normalizeActionName(action.name || "");
-      if (!normalizedName)
-        return;
-      const actionLower = (action.name || "").toLowerCase();
-      if (actionLower.includes("divine smite") && actionLower !== "divine smite") {
-        return;
-      }
-      if (!actionsByNormalizedName[normalizedName]) {
-        actionsByNormalizedName[normalizedName] = action;
-        deduplicatedActions.push(action);
-      } else {
-        const existing = actionsByNormalizedName[normalizedName];
-        if (action.source && !existing.source?.includes(action.source)) {
-          existing.source = existing.source ? existing.source + "; " + action.source : action.source;
-        }
-        if (action.damage && !existing.damage)
-          existing.damage = action.damage;
-        if (action.attackRoll && !existing.attackRoll)
-          existing.attackRoll = action.attackRoll;
-        if (action.uses && !existing.uses)
-          existing.uses = action.uses;
-      }
-    });
-    return deduplicatedActions;
-  }
-  function populateSpellsTab(character) {
-    const spellsContent = document.getElementById("spells-content");
-    if (!character.spells || character.spells.length === 0) {
-      spellsContent.innerHTML = '<div class="empty-state">No spells available</div>';
+    return normalized.trim();
+  };
+
+  const deduplicatedActions = [];
+  const actionsByNormalizedName = {};
+
+  // Sort actions: prefer shorter names (base versions)
+  const sortedActions = [...actions].sort((a, b) => {
+    const normA = normalizeActionName(a.name || '');
+    const normB = normalizeActionName(b.name || '');
+    if (normA !== normB) return normA.localeCompare(normB);
+    return (a.name || '').length - (b.name || '').length;
+  });
+
+  sortedActions.forEach(action => {
+    const normalizedName = normalizeActionName(action.name || '');
+    if (!normalizedName) return;
+
+    // Filter out duplicate Divine Smite variants
+    const actionLower = (action.name || '').toLowerCase();
+    if (actionLower.includes('divine smite') && actionLower !== 'divine smite') {
       return;
     }
-    const filteredSpells = character.spells.filter((spell) => {
-      const spellName = (spell.name || "").toLowerCase();
-      if (spellName.includes("divine smite") && spellName !== "divine smite") {
-        return false;
+
+    if (!actionsByNormalizedName[normalizedName]) {
+      actionsByNormalizedName[normalizedName] = action;
+      deduplicatedActions.push(action);
+    } else {
+      // Merge duplicate action properties
+      const existing = actionsByNormalizedName[normalizedName];
+      if (action.source && !existing.source?.includes(action.source)) {
+        existing.source = existing.source ? existing.source + '; ' + action.source : action.source;
       }
-      return true;
-    });
-    const spellsByLevel = {};
-    filteredSpells.forEach((spell) => {
+      if (action.damage && !existing.damage) existing.damage = action.damage;
+      if (action.attackRoll && !existing.attackRoll) existing.attackRoll = action.attackRoll;
+      if (action.uses && !existing.uses) existing.uses = action.uses;
+    }
+  });
+
+  return deduplicatedActions;
+}
+
+/**
+ * Populate Spells tab
+ */
+function populateSpellsTab(character) {
+  const spellsContent = document.getElementById('spells-content');
+
+  if (!character.spells || character.spells.length === 0) {
+    spellsContent.innerHTML = '<div class="empty-state">No spells available</div>';
+    return;
+  }
+
+  // Filter out Divine Smite duplicates
+  const filteredSpells = character.spells.filter(spell => {
+    const spellName = (spell.name || '').toLowerCase();
+    if (spellName.includes('divine smite') && spellName !== 'divine smite') {
+      return false;
+    }
+    return true;
+  });
+
+  // Group spells by level
+  const spellsByLevel = {};
+  filteredSpells.forEach(spell => {
+    const spellLevel = parseInt(spell.level) || 0;
+    const levelKey = spellLevel === 0 ? 'Cantrips' : `Level ${spellLevel}`;
+
+    if (!spellsByLevel[levelKey]) {
+      spellsByLevel[levelKey] = [];
+    }
+    spellsByLevel[levelKey].push(spell);
+  });
+
+  // Build HTML
+  let html = '';
+
+  // Order levels properly (Cantrips, then 1-9)
+  const levelOrder = ['Cantrips', 'Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5', 'Level 6', 'Level 7', 'Level 8', 'Level 9'];
+
+  levelOrder.forEach((levelKey, index) => {
+    if (!spellsByLevel[levelKey]) return;
+
+    const spells = spellsByLevel[levelKey];
+    const spellLevelId = 'spell-level-' + index + '-' + Date.now();
+
+    html += `<div class="spell-level-group">`;
+    html += `<div class="spell-level-header collapsible" onclick="toggleCollapsible('${spellLevelId}')" style="cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center;">${levelKey} (${spells.length})<span style="font-size: 12px; transition: transform 0.2s ease;">▼</span></div>`;
+    html += `<div id="${spellLevelId}" class="collapsible-content">`;
+    html += `<div class="spell-list">`;
+
+    spells.forEach((spell, spellIndex) => {
+      const spellCardId = `spell-${index}-${spellIndex}`;
+      const isConcentration = spell.concentration || false;
+      const isRitual = spell.ritual || false;
+      const castingTime = spell.castingTime || '';
+      const range = spell.range || '';
+      const components = spell.components || '';
+      const duration = spell.duration || '';
       const spellLevel = parseInt(spell.level) || 0;
-      const levelKey = spellLevel === 0 ? "Cantrips" : `Level ${spellLevel}`;
-      if (!spellsByLevel[levelKey]) {
-        spellsByLevel[levelKey] = [];
+      const attackRoll = spell.attackRoll || spell.attack || '';
+      const damage = spell.damage || '';
+      const healing = spell.healing || '';
+
+      // Parse attack bonus from attackRoll string
+      let attackBonus = 0;
+      if (attackRoll) {
+        const bonusMatch = attackRoll.match(/[+-](\d+)/);
+        if (bonusMatch) {
+          attackBonus = parseInt(bonusMatch[0]);
+        }
       }
-      spellsByLevel[levelKey].push(spell);
-    });
-    let html = "";
-    const levelOrder = ["Cantrips", "Level 1", "Level 2", "Level 3", "Level 4", "Level 5", "Level 6", "Level 7", "Level 8", "Level 9"];
-    levelOrder.forEach((levelKey, index) => {
-      if (!spellsByLevel[levelKey])
-        return;
-      const spells = spellsByLevel[levelKey];
-      const spellLevelId = "spell-level-" + index + "-" + Date.now();
-      html += `<div class="spell-level-group">`;
-      html += `<div class="spell-level-header collapsible" onclick="toggleCollapsible('${spellLevelId}')" style="cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center;">${levelKey} (${spells.length})<span style="font-size: 12px; transition: transform 0.2s ease;">\u25BC</span></div>`;
-      html += `<div id="${spellLevelId}" class="collapsible-content">`;
-      html += `<div class="spell-list">`;
-      spells.forEach((spell, spellIndex) => {
-        const spellCardId = `spell-${index}-${spellIndex}`;
-        const isConcentration = spell.concentration || false;
-        const isRitual = spell.ritual || false;
-        const castingTime = spell.castingTime || "";
-        const range = spell.range || "";
-        const components = spell.components || "";
-        const duration = spell.duration || "";
-        const spellLevel = parseInt(spell.level) || 0;
-        const attackRoll = spell.attackRoll || spell.attack || "";
-        const damage = evaluateDiceCloudFormula(spell.damage || "", character);
-        const healing = evaluateDiceCloudFormula(spell.healing || "", character);
-        let attackBonus = 0;
-        if (attackRoll) {
-          const bonusMatch = attackRoll.match(/[+-](\d+)/);
-          if (bonusMatch) {
-            attackBonus = parseInt(bonusMatch[0]);
-          }
-        }
-        let spellButtonsHtml = '<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">';
-        if (spellLevel > 0) {
-          spellButtonsHtml += `<button class="rest-btn" style="flex: 1; min-width: 100px;" onclick="event.stopPropagation(); promptCastSpell('${(spell.name || "Unknown Spell").replace(/'/g, "\\'")}', ${spellLevel})">\u2728 Cast</button>`;
+
+      // Create spell buttons - always include Cast, plus Attack/Damage/Healing as needed
+      let spellButtonsHtml = '<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">';
+
+      // Cast button (always present)
+      spellButtonsHtml += `<button class="rest-btn" style="flex: 1; min-width: 100px;" onclick="event.stopPropagation(); castSpell('${(spell.name || 'Unknown Spell').replace(/'/g, "\\'")}', ${spellLevel})">✨ Cast</button>`;
+
+      // Attack button (if spell has attack roll)
+      if (attackRoll && attackRoll.trim()) {
+        spellButtonsHtml += `<button class="rest-btn" style="flex: 1; min-width: 100px;" onclick="event.stopPropagation(); rollAttackOnly('${(spell.name || 'Unknown Spell').replace(/'/g, "\\'")}', ${attackBonus})">🎯 Attack</button>`;
+      }
+
+      // Detect if this is a healing spell by checking name and description
+      const spellNameLower = (spell.name || '').toLowerCase();
+      const spellTextLower = ((spell.summary || '') + ' ' + (spell.description || '')).toLowerCase();
+      const isHealingSpell = spellNameLower.includes('cure') ||
+                            spellNameLower.includes('heal') ||
+                            spellNameLower.includes('restoration') ||
+                            spellNameLower.includes('revivify') ||
+                            spellNameLower.includes('regenerate') ||
+                            spellTextLower.includes('regain') ||
+                            spellTextLower.includes('regains') ||
+                            spellTextLower.includes('restores') ||
+                            (spellTextLower.includes('hit points') && !spellTextLower.includes('damage'));
+
+      // Damage or Healing button (if spell has damage/healing formula)
+      if (damage && damage.trim()) {
+        if (isHealingSpell) {
+          spellButtonsHtml += `<button class="rest-btn" style="flex: 1; min-width: 100px;" onclick="event.stopPropagation(); rollHealing('${(spell.name || 'Unknown Spell').replace(/'/g, "\\'")}', '${damage}')">💚 Healing</button>`;
         } else {
-          spellButtonsHtml += `<button class="rest-btn" style="flex: 1; min-width: 100px;" onclick="event.stopPropagation(); castSpell('${(spell.name || "Unknown Spell").replace(/'/g, "\\'")}', 0)">\u2728 Cast</button>`;
+          spellButtonsHtml += `<button class="rest-btn" style="flex: 1; min-width: 100px;" onclick="event.stopPropagation(); rollDamageOnly('${(spell.name || 'Unknown Spell').replace(/'/g, "\\'")}', '${damage}')">💥 Damage</button>`;
         }
-        if (isRitual) {
-          spellButtonsHtml += `<button class="rest-btn" style="padding: 8px 12px; font-size: 12px;" onclick="event.stopPropagation(); castSpellAsRitual('${(spell.name || "Unknown Spell").replace(/'/g, "\\'")}')">\u{1F4FF} Ritual</button>`;
-        }
-        if (attackRoll && attackRoll.trim()) {
-          spellButtonsHtml += `<button class="rest-btn" style="flex: 1; min-width: 100px;" onclick="event.stopPropagation(); rollAttackOnly('${(spell.name || "Unknown Spell").replace(/'/g, "\\'")}', ${attackBonus})">\u{1F3AF} Attack</button>`;
-        }
-        const spellNameLower = (spell.name || "").toLowerCase();
-        const spellTextLower = ((spell.summary || "") + " " + (spell.description || "")).toLowerCase();
-        const isHealingSpell = spellNameLower.includes("cure") || spellNameLower.includes("heal") || spellNameLower.includes("restoration") || spellNameLower.includes("revivify") || spellNameLower.includes("regenerate") || spellTextLower.includes("regain") || spellTextLower.includes("regains") || spellTextLower.includes("restores") || spellTextLower.includes("hit points") && !spellTextLower.includes("damage");
-        if (damage && damage.trim()) {
-          if (isHealingSpell) {
-            spellButtonsHtml += `<button class="rest-btn" style="flex: 1; min-width: 100px;" onclick="event.stopPropagation(); rollHealing('${(spell.name || "Unknown Spell").replace(/'/g, "\\'")}', '${damage}')">\u{1F49A} Healing</button>`;
-          } else {
-            spellButtonsHtml += `<button class="rest-btn" style="flex: 1; min-width: 100px;" onclick="event.stopPropagation(); rollDamageOnly('${(spell.name || "Unknown Spell").replace(/'/g, "\\'")}', '${damage}')">\u{1F4A5} Damage</button>`;
-          }
-        }
-        if (healing && healing.trim()) {
-          spellButtonsHtml += `<button class="rest-btn" style="flex: 1; min-width: 100px;" onclick="event.stopPropagation(); rollHealing('${(spell.name || "Unknown Spell").replace(/'/g, "\\'")}', '${healing}')">\u{1F49A} Healing</button>`;
-        }
-        spellButtonsHtml += "</div>";
-        let spellText = "";
-        if (spell.summary) {
-          spellText += `<div class="spell-description">${spell.summary}</div>`;
-        }
-        if (spell.description) {
-          spellText += `<div class="spell-description">${spell.description}</div>`;
-        }
-        html += `
-        <div class="spell-card ${isConcentration ? "concentration" : ""} ${isRitual ? "ritual" : ""}">
+      }
+
+      // Healing button (if spell has explicit healing field)
+      if (healing && healing.trim()) {
+        spellButtonsHtml += `<button class="rest-btn" style="flex: 1; min-width: 100px;" onclick="event.stopPropagation(); rollHealing('${(spell.name || 'Unknown Spell').replace(/'/g, "\\'")}', '${healing}')">💚 Healing</button>`;
+      }
+
+      spellButtonsHtml += '</div>';
+
+      // Combine summary and description
+      let spellText = '';
+      if (spell.summary) {
+        spellText += `<div class="spell-description">${spell.summary}</div>`;
+      }
+      if (spell.description) {
+        spellText += `<div class="spell-description">${spell.description}</div>`;
+      }
+
+      html += `
+        <div class="spell-card ${isConcentration ? 'concentration' : ''} ${isRitual ? 'ritual' : ''}">
           <div class="spell-card-header" onclick="toggleFeatureCard('${spellCardId}')" style="cursor: pointer;">
-            <span class="spell-name">${spell.name || "Unknown Spell"}</span>
+            <span class="spell-name">${spell.name || 'Unknown Spell'}</span>
             <div class="spell-badges">
-              ${isConcentration ? `<span class="spell-concentration-badge ${concentratingSpell === spell.name ? "active" : ""}" onclick="event.stopPropagation(); toggleConcentration('${(spell.name || "").replace(/'/g, "\\'")}')">C</span>` : ""}
-              ${isRitual ? '<span class="spell-ritual-badge">R</span>' : ""}
-              <span class="expand-icon">\u25BC</span>
+              ${isConcentration ? '<span class="spell-concentration-badge">C</span>' : ''}
+              ${isRitual ? '<span class="spell-ritual-badge">R</span>' : ''}
+              <span class="expand-icon">▼</span>
             </div>
           </div>
           <div id="${spellCardId}" class="spell-details">
             <div class="feature-metadata">
-              ${castingTime ? `<div class="feature-meta-item"><span class="feature-meta-label">Casting Time:</span> ${castingTime}</div>` : ""}
-              ${range ? `<div class="feature-meta-item"><span class="feature-meta-label">Range:</span> ${range}</div>` : ""}
-              ${components ? `<div class="feature-meta-item"><span class="feature-meta-label">Components:</span> ${components}</div>` : ""}
-              ${duration ? `<div class="feature-meta-item"><span class="feature-meta-label">Duration:</span> ${duration}</div>` : ""}
-              ${isConcentration ? '<div class="feature-meta-item"><span class="feature-meta-label">Concentration:</span> Yes</div>' : ""}
-              ${isRitual ? '<div class="feature-meta-item"><span class="feature-meta-label">Ritual:</span> Yes</div>' : ""}
-              ${attackRoll ? `<div class="feature-meta-item"><span class="feature-meta-label">Attack:</span> ${attackRoll}</div>` : ""}
-              ${damage ? `<div class="feature-meta-item"><span class="feature-meta-label">Damage:</span> ${damage}</div>` : ""}
-              ${healing ? `<div class="feature-meta-item"><span class="feature-meta-label">Healing:</span> ${healing}</div>` : ""}
+              ${castingTime ? `<div class="feature-meta-item"><span class="feature-meta-label">Casting Time:</span> ${castingTime}</div>` : ''}
+              ${range ? `<div class="feature-meta-item"><span class="feature-meta-label">Range:</span> ${range}</div>` : ''}
+              ${components ? `<div class="feature-meta-item"><span class="feature-meta-label">Components:</span> ${components}</div>` : ''}
+              ${duration ? `<div class="feature-meta-item"><span class="feature-meta-label">Duration:</span> ${duration}</div>` : ''}
+              ${isConcentration ? '<div class="feature-meta-item"><span class="feature-meta-label">Concentration:</span> Yes</div>' : ''}
+              ${isRitual ? '<div class="feature-meta-item"><span class="feature-meta-label">Ritual:</span> Yes</div>' : ''}
+              ${attackRoll ? `<div class="feature-meta-item"><span class="feature-meta-label">Attack:</span> ${attackRoll}</div>` : ''}
+              ${damage ? `<div class="feature-meta-item"><span class="feature-meta-label">Damage:</span> ${damage}</div>` : ''}
+              ${healing ? `<div class="feature-meta-item"><span class="feature-meta-label">Healing:</span> ${healing}</div>` : ''}
             </div>
             ${spellText}
             ${spellButtonsHtml}
           </div>
         </div>
       `;
-      });
-      html += `</div></div></div>`;
     });
-    spellsContent.innerHTML = html;
+
+    html += `</div></div></div>`;
+  });
+
+  spellsContent.innerHTML = html;
+}
+
+/**
+ * Populate Inventory tab
+ */
+function populateInventoryTab(character) {
+  const inventoryContent = document.getElementById('inventory-content');
+
+  if (!character.inventory || character.inventory.length === 0) {
+    inventoryContent.innerHTML = '<div class="empty-state">No items in inventory</div>';
+    return;
   }
-  function populateInventoryTab(character) {
-    const inventoryContent = document.getElementById("inventory-content");
-    if (!character.inventory || character.inventory.length === 0) {
-      inventoryContent.innerHTML = '<div class="empty-state">No items in inventory</div>';
-      return;
-    }
-    const coinPatterns = [
-      "platinum piece",
-      "gold piece",
-      "silver piece",
-      "copper piece",
-      "electrum piece",
-      "platinum coin",
-      "gold coin",
-      "silver coin",
-      "copper coin",
-      "electrum coin",
-      "pp",
-      "gp",
-      "sp",
-      "cp",
-      "ep"
-    ];
-    const filteredInventory = character.inventory.filter((item) => {
-      const lowerName = (item.name || "").toLowerCase();
-      const isCoin = coinPatterns.some((pattern) => {
-        if (pattern.length <= 2) {
-          return lowerName === pattern || lowerName === pattern + "s" || lowerName.match(new RegExp(`^\\d+\\s*${pattern}s?$`));
-        }
-        return lowerName.includes(pattern);
-      });
-      return !isCoin;
+
+  // Filter out coins
+  const coinPatterns = ['platinum piece', 'gold piece', 'silver piece', 'copper piece', 'electrum piece',
+                        'platinum coin', 'gold coin', 'silver coin', 'copper coin', 'electrum coin',
+                        'pp', 'gp', 'sp', 'cp', 'ep'];
+
+  const filteredInventory = character.inventory.filter(item => {
+    const lowerName = (item.name || '').toLowerCase();
+    const isCoin = coinPatterns.some(pattern => {
+      if (pattern.length <= 2) {
+        return lowerName === pattern || lowerName === pattern + 's' || lowerName.match(new RegExp(`^\\d+\\s*${pattern}s?$`));
+      }
+      return lowerName.includes(pattern);
     });
-    if (filteredInventory.length === 0) {
-      inventoryContent.innerHTML = '<div class="empty-state">No items in inventory</div>';
-      return;
-    }
-    filteredInventory.sort((a, b) => {
-      if (a.equipped && !b.equipped)
-        return -1;
-      if (!a.equipped && b.equipped)
-        return 1;
-      return (a.name || "").localeCompare(b.name || "");
-    });
-    let html = '<div class="inventory-grid">';
-    filteredInventory.forEach((item) => {
-      const itemClass = item.equipped ? "equipped" : item.attuned ? "attuned" : "";
-      const tags = [];
-      if (item.equipped)
-        tags.push("Equipped");
-      if (item.attuned)
-        tags.push("Attuned");
-      if (item.type)
-        tags.push(item.type);
-      html += `
+    return !isCoin;
+  });
+
+  if (filteredInventory.length === 0) {
+    inventoryContent.innerHTML = '<div class="empty-state">No items in inventory</div>';
+    return;
+  }
+
+  // Sort: equipped first, then alphabetically
+  filteredInventory.sort((a, b) => {
+    if (a.equipped && !b.equipped) return -1;
+    if (!a.equipped && b.equipped) return 1;
+    return (a.name || '').localeCompare(b.name || '');
+  });
+
+  let html = '<div class="inventory-grid">';
+
+  filteredInventory.forEach(item => {
+    const itemClass = item.equipped ? 'equipped' : (item.attuned ? 'attuned' : '');
+    const tags = [];
+
+    if (item.equipped) tags.push('Equipped');
+    if (item.attuned) tags.push('Attuned');
+    if (item.type) tags.push(item.type);
+
+    html += `
       <div class="item-card ${itemClass}">
         <div class="item-info">
           <div class="item-name">
-            ${item.name || "Unknown Item"}
-            ${item.quantity > 1 ? `<span class="item-quantity">\xD7${item.quantity}</span>` : ""}
+            ${item.name || 'Unknown Item'}
+            ${item.quantity > 1 ? `<span class="item-quantity">×${item.quantity}</span>` : ''}
           </div>
-          ${tags.length > 0 ? `<div class="item-tags">${tags.join(" \u2022 ")}</div>` : ""}
+          ${tags.length > 0 ? `<div class="item-tags">${tags.join(' • ')}</div>` : ''}
         </div>
       </div>
     `;
-    });
-    html += "</div>";
-    inventoryContent.innerHTML = html;
-  }
-  function showNoCharacter() {
-    characterSection.style.display = "none";
-    noCharacterSection.style.display = "block";
-    statusText.textContent = "No character selected";
-    const unsyncBtn = document.getElementById("unsync-character-btn");
-    if (unsyncBtn) {
-      unsyncBtn.style.display = "none";
-    }
-    const statsContent = document.getElementById("stats-content");
-    const actionsContent = document.getElementById("actions-content");
-    const spellsContent = document.getElementById("spells-content");
-    const featuresContent = document.getElementById("features-content");
-    const inventoryContent = document.getElementById("inventory-content");
-    if (statsContent)
-      statsContent.innerHTML = "";
-    if (actionsContent)
-      actionsContent.innerHTML = "";
-    if (spellsContent)
-      spellsContent.innerHTML = "";
-    if (featuresContent)
-      featuresContent.innerHTML = "";
-    if (inventoryContent)
-      inventoryContent.innerHTML = "";
-  }
-  if (syncCharacterBtn) {
-    syncCharacterBtn.addEventListener("click", () => {
-      localStorage.removeItem("owlcloud_manual_unsync");
-      const message = {
-        type: "OWLCLOUD_SYNC_CHARACTER",
-        source: "owlbear-extension"
-      };
-      window.parent.postMessage(message, "https://www.owlbear.rodeo");
-      if (isOwlbearReady) {
-        OBR.notification.show("Syncing character from DiceCloud...", "INFO");
-      }
-      statusText.textContent = "Syncing character...";
-      setTimeout(checkForActiveCharacter, 2e3);
-    });
-  }
-  var openExtensionBtn = document.getElementById("openExtensionBtn");
-  if (openExtensionBtn) {
-    openExtensionBtn.addEventListener("click", () => {
-      const message = {
-        type: "OWLCLOUD_OPEN_POPUP",
-        source: "owlbear-extension"
-      };
-      window.parent.postMessage(message, "https://www.owlbear.rodeo");
-      alert("Please click the OwlCloud extension icon in your browser toolbar to select a character.");
-    });
-  }
-  var isChatOpen = false;
-  if (openChatWindowBtn) {
-    openChatWindowBtn.addEventListener("click", async () => {
-      if (!isOwlbearReady) {
-        alert("Owlbear SDK not ready. Please wait a moment and try again.");
-        return;
-      }
-      if (isChatOpen) {
-        await OBR.popover.close("com.owlcloud.chat");
-        isChatOpen = false;
-        openChatWindowBtn.textContent = "\u{1F4AC} Open Chat Window";
-      } else {
-        const chatHeight = 300;
-        await OBR.popover.open({
-          id: "com.owlcloud.chat",
-          url: "/extension/owlbear-extension/chat.html",
-          height: chatHeight,
-          width: 400,
-          anchorOrigin: { horizontal: "LEFT", vertical: "BOTTOM" },
-          transformOrigin: { horizontal: "LEFT", vertical: "BOTTOM" },
-          disableClickAway: true
-        });
-        isChatOpen = true;
-        openChatWindowBtn.textContent = "\u{1F4AC} Close Chat Window";
-      }
-    });
-  }
-  window.addEventListener("message", (event) => {
-    if (event.origin !== "https://www.owlbear.rodeo") {
-      return;
-    }
-    const { type, data } = event.data;
-    switch (type) {
-      case "OWLCLOUD_ACTIVE_CHARACTER_RESPONSE":
-        if (localStorage.getItem("owlcloud_manual_unsync") === "true") {
-          console.log("\u2139\uFE0F Character auto-sync prevented - user manually unsynced. Use Sync button to re-sync.");
-          showNoCharacter();
-          break;
-        }
-        if (data && data.character) {
-          displayCharacter(data.character);
-        } else {
-          showNoCharacter();
-        }
-        break;
-      case "OWLCLOUD_CHARACTER_UPDATED":
-        if (localStorage.getItem("owlcloud_manual_unsync") === "true") {
-          console.log("\u2139\uFE0F Character auto-update prevented - user manually unsynced. Use Sync button to re-sync.");
-          break;
-        }
-        if (data && data.character) {
-          displayCharacter(data.character);
-          if (isOwlbearReady) {
-            OBR.notification.show(`Character updated: ${data.character.name}`, "SUCCESS");
-          }
-        }
-        break;
-      case "OWLCLOUD_SYNC_COMPLETE":
-        if (isOwlbearReady) {
-          OBR.notification.show("Character synced successfully", "SUCCESS");
-        }
-        statusText.textContent = "Connected to Owlbear Rodeo";
-        checkForActiveCharacter();
-        break;
-      case "OWLCLOUD_ERROR":
-        if (isOwlbearReady) {
-          OBR.notification.show(`Error: ${data.message}`, "ERROR");
-        }
-        statusText.textContent = `Error: ${data.message}`;
-        break;
-      default:
-        break;
-    }
   });
-  function postRollToOwlbear(rollData) {
+
+  html += '</div>';
+
+  inventoryContent.innerHTML = html;
+}
+
+/**
+ * Show no character state
+ */
+function showNoCharacter() {
+  characterSection.style.display = 'none';
+  noCharacterSection.style.display = 'block';
+  statusText.textContent = 'No character selected';
+}
+
+// ============== Event Handlers ==============
+
+/**
+ * Sync character from DiceCloud
+ */
+syncCharacterBtn.addEventListener('click', () => {
+  // Send message to browser extension to sync character
+  const message = {
+    type: 'OWLCLOUD_SYNC_CHARACTER',
+    source: 'owlbear-extension'
+  };
+
+  window.parent.postMessage(message, 'https://www.owlbear.rodeo');
+
+  // Show notification in Owlbear
+  if (isOwlbearReady) {
+    OBR.notification.show('Syncing character from DiceCloud...', 'INFO');
+  }
+
+  // Update status
+  statusText.textContent = 'Syncing character...';
+
+  // Refresh character data after a delay
+  setTimeout(checkForActiveCharacter, 2000);
+});
+
+/**
+ * Open browser extension popup
+ */
+openExtensionBtn.addEventListener('click', () => {
+  // Send message to browser extension to open popup
+  const message = {
+    type: 'OWLCLOUD_OPEN_POPUP',
+    source: 'owlbear-extension'
+  };
+
+  window.parent.postMessage(message, 'https://www.owlbear.rodeo');
+
+  alert('Please click the OwlCloud extension icon in your browser toolbar to select a character.');
+});
+
+/**
+ * Toggle chat window
+ */
+let isChatOpen = false;
+
+openChatWindowBtn.addEventListener('click', async () => {
+  if (!isOwlbearReady) {
+    alert('Owlbear SDK not ready. Please wait a moment and try again.');
+    return;
+  }
+
+  if (isChatOpen) {
+    // Close the chat window
+    await OBR.popover.close('com.owlcloud.chat');
+    isChatOpen = false;
+    openChatWindowBtn.textContent = '💬 Open Chat Window';
+  } else {
+    // Set chat height to match sheet height (half viewport minus action bar)
+    // TODO: Make this dynamic based on actual viewport height
+    // Currently using fixed 460px as workaround since window.innerHeight doesn't work in popovers
+    const chatHeight = 460;
+
+    // Open chat as a persistent popover at bottom-left
+    await OBR.popover.open({
+      id: 'com.owlcloud.chat',
+      url: '/extension/owlbear-extension/chat.html',
+      height: chatHeight,
+      width: 400,
+      anchorOrigin: { horizontal: 'LEFT', vertical: 'BOTTOM' },
+      transformOrigin: { horizontal: 'LEFT', vertical: 'BOTTOM' },
+      disableClickAway: true
+    });
+    isChatOpen = true;
+    openChatWindowBtn.textContent = '💬 Close Chat Window';
+  }
+});
+
+/**
+ * Link Owlbear player to browser extension characters
+ */
+linkExtensionBtn.addEventListener('click', async () => {
+  try {
     if (!isOwlbearReady) {
-      console.warn("Owlbear not ready, cannot post roll");
+      alert('Owlbear SDK not ready. Please wait a moment and try again.');
       return;
     }
-    const rollResult = rollData.result || "?";
-    const rollName = rollData.name || "Roll";
-    const characterName = rollData.characterName || "Unknown";
-    OBR.notification.show(
-      `${characterName} rolled ${rollName}: ${rollResult}`,
-      "INFO"
+
+    // Get Owlbear player ID
+    const playerId = await OBR.player.getId();
+    console.log('🔗 Linking player ID:', playerId);
+
+    // Prompt user for their DiceCloud user ID
+    const dicecloudUserId = prompt(
+      'Enter your DiceCloud User ID:\n\n' +
+      'You can find this in the OwlCloud extension popup after syncing a character.\n' +
+      'It looks like: aBcDeFgHiJkLmNoP1'
     );
-    console.log("\u{1F3B2} Roll posted to Owlbear:", rollData);
-  }
-  window.addEventListener("message", (event) => {
-    if (event.origin !== "https://www.owlbear.rodeo") {
-      return;
+
+    if (!dicecloudUserId || dicecloudUserId.trim() === '') {
+      return; // User cancelled
     }
-    if (event.data.type === "OWLCLOUD_POST_ROLL") {
-      postRollToOwlbear(event.data.data);
-    }
-  });
-  async function sendToChatWindow(type, data) {
-    if (!isOwlbearReady || !currentCharacter)
-      return;
-    try {
-      const message = {
-        type,
-        data,
-        character: {
-          name: currentCharacter.name,
-          id: currentCharacter.id
-        },
-        timestamp: Date.now()
-      };
-    } catch (error) {
-      console.error("Error sending to chat:", error);
-    }
-  }
-  async function addChatMessage(text, type = "system", author = null, details = null) {
-    if (!isOwlbearReady)
-      return;
-    try {
-      const playerId = await OBR.player.getId();
-      const metadata = await OBR.room.getMetadata();
-      const messages = metadata["com.owlcloud.chat/messages"] || [];
-      const plainText = text.replace(/<[^>]*>/g, "");
-      const truncatedText = plainText.length > 500 ? plainText.substring(0, 497) + "..." : plainText;
-      let truncatedDetails = null;
-      if (details) {
-        const plainDetails = details.replace(/<[^>]*>/g, "");
-        truncatedDetails = plainDetails.length > 300 ? plainDetails.substring(0, 297) + "..." : plainDetails;
+
+    // Show loading state
+    linkExtensionBtn.textContent = '⏳ Linking...';
+    linkExtensionBtn.disabled = true;
+
+    // Call Supabase edge function to link
+    const response = await fetch(
+      `${SUPABASE_URL}/functions/v1/link-owlbear-player`,
+      {
+        method: 'POST',
+        headers: SUPABASE_HEADERS,
+        body: JSON.stringify({
+          owlbearPlayerId: playerId,
+          dicecloudUserId: dicecloudUserId.trim()
+        })
       }
-      const newMessage = {
-        id: Date.now() + Math.random(),
-        text: truncatedText,
-        type,
-        author: author || (currentCharacter ? currentCharacter.name : "Character"),
-        playerId,
-        timestamp: Date.now(),
-        details: truncatedDetails
-        // Optional expandable details (truncated)
-      };
-      const thirtyMinutesAgo = Date.now() - 30 * 60 * 1e3;
-      const recentMessages = messages.filter((msg) => msg.timestamp > thirtyMinutesAgo);
-      const updatedMessages = [...recentMessages, newMessage].slice(-10);
-      await OBR.room.setMetadata({
-        "com.owlcloud.chat/messages": updatedMessages
+    );
+
+    const result = await response.json();
+
+    if (response.ok && result.success) {
+      alert(`✅ Successfully linked! ${result.linkedCharacters} character(s) are now connected to Owlbear.`);
+
+      // Refresh character data
+      checkForActiveCharacter();
+    } else {
+      alert(`❌ Linking failed: ${result.error || 'Unknown error'}`);
+    }
+  } catch (error) {
+    console.error('Error linking to extension:', error);
+    alert(`❌ Error: ${error.message}`);
+  } finally {
+    // Restore button state
+    linkExtensionBtn.textContent = '🔗 Link to Browser Extension';
+    linkExtensionBtn.disabled = false;
+  }
+});
+
+// ============== Message Listener ==============
+
+/**
+ * Listen for messages from the browser extension content script
+ */
+window.addEventListener('message', (event) => {
+  // Verify origin for security
+  if (event.origin !== 'https://www.owlbear.rodeo') {
+    return;
+  }
+
+  const { type, data } = event.data;
+
+  switch (type) {
+    case 'OWLCLOUD_ACTIVE_CHARACTER_RESPONSE':
+      if (data && data.character) {
+        displayCharacter(data.character);
+        updateAuthUI(); // Update auth UI to show unsync button
+      } else {
+        showNoCharacter();
+      }
+      break;
+
+    case 'OWLCLOUD_CHARACTER_UPDATED':
+      if (data && data.character) {
+        displayCharacter(data.character);
+        updateAuthUI(); // Update auth UI to show unsync button
+        if (isOwlbearReady) {
+          OBR.notification.show(`Character updated: ${data.character.name}`, 'SUCCESS');
+        }
+      }
+      break;
+
+    case 'OWLCLOUD_SYNC_COMPLETE':
+      if (isOwlbearReady) {
+        OBR.notification.show('Character synced successfully', 'SUCCESS');
+      }
+      statusText.textContent = 'Connected to Owlbear Rodeo';
+      checkForActiveCharacter();
+      break;
+
+    case 'OWLCLOUD_ERROR':
+      if (isOwlbearReady) {
+        OBR.notification.show(`Error: ${data.message}`, 'ERROR');
+      }
+      statusText.textContent = `Error: ${data.message}`;
+      break;
+
+    default:
+      // Ignore unknown message types
+      break;
+  }
+});
+
+// ============== Dice Rolling Integration ==============
+
+/**
+ * Post a dice roll to Owlbear chat
+ * This will be called when the browser extension sends roll data
+ */
+function postRollToOwlbear(rollData) {
+  if (!isOwlbearReady) {
+    console.warn('Owlbear not ready, cannot post roll');
+    return;
+  }
+
+  // Use Owlbear notification system to display roll
+  // TODO: In the future, this could create scene items or use a custom roll display
+  const rollResult = rollData.result || '?';
+  const rollName = rollData.name || 'Roll';
+  const characterName = rollData.characterName || 'Unknown';
+
+  OBR.notification.show(
+    `${characterName} rolled ${rollName}: ${rollResult}`,
+    'INFO'
+  );
+
+  console.log('🎲 Roll posted to Owlbear:', rollData);
+}
+
+// Listen for roll messages from browser extension
+window.addEventListener('message', (event) => {
+  if (event.origin !== 'https://www.owlbear.rodeo') {
+    return;
+  }
+
+  if (event.data.type === 'OWLCLOUD_POST_ROLL') {
+    postRollToOwlbear(event.data.data);
+  }
+});
+
+// ============== Chat Integration ==============
+
+/**
+ * Send message to chat window via OBR metadata
+ */
+async function sendToChatWindow(type, data) {
+  if (!isOwlbearReady || !currentCharacter) return;
+
+  try {
+    const message = {
+      type: type,
+      data: data,
+      character: {
+        name: currentCharacter.name,
+        id: currentCharacter.id
+      },
+      timestamp: Date.now()
+    };
+
+    // Note: Removed latest-message metadata to save space (16KB limit)
+    // The chat window reads from the messages array instead
+  } catch (error) {
+    console.error('Error sending to chat:', error);
+  }
+}
+
+/**
+ * Add a message to the shared chat history
+ * This adds messages to the persistent chat that all players can see
+ * @param {string} text - Message text
+ * @param {string} type - Message type: 'system', 'roll', 'action', 'spell', 'combat', 'user'
+ * @param {string} author - Message author (optional)
+ */
+async function addChatMessage(text, type = 'system', author = null, details = null) {
+  if (!isOwlbearReady) return;
+
+  try {
+    const playerId = await OBR.player.getId();
+    const metadata = await OBR.room.getMetadata();
+    const messages = metadata['com.owlcloud.chat/messages'] || [];
+
+    // Strip HTML tags and truncate to reduce metadata size
+    const plainText = text.replace(/<[^>]*>/g, '');
+    const truncatedText = plainText.length > 500 ? plainText.substring(0, 497) + '...' : plainText;
+
+    // Truncate details as well if present
+    let truncatedDetails = null;
+    if (details) {
+      const plainDetails = details.replace(/<[^>]*>/g, '');
+      truncatedDetails = plainDetails.length > 300 ? plainDetails.substring(0, 297) + '...' : plainDetails;
+    }
+
+    const newMessage = {
+      id: Date.now() + Math.random(),
+      text: truncatedText,
+      type: type,
+      author: author || (currentCharacter ? currentCharacter.name : 'Character'),
+      playerId: playerId,
+      timestamp: Date.now(),
+      details: truncatedDetails // Optional expandable details (truncated)
+    };
+
+    // Auto-cleanup: Remove messages older than 30 minutes
+    const thirtyMinutesAgo = Date.now() - (30 * 60 * 1000);
+    const recentMessages = messages.filter(msg => msg.timestamp > thirtyMinutesAgo);
+
+    // Keep last 10 messages (reduced from 20 to save space)
+    const updatedMessages = [...recentMessages, newMessage].slice(-10);
+
+    await OBR.room.setMetadata({
+      'com.owlcloud.chat/messages': updatedMessages
+    });
+
+    console.log('📨 Chat message added:', text);
+  } catch (error) {
+    console.error('Error adding chat message:', error);
+  }
+}
+
+// ============== Dice Rolling System ==============
+
+/**
+ * Roll dice and return result
+ * @param {string} formula - Dice formula like "1d20+5" or "2d6"
+ * @returns {object} - {total, rolls, formula}
+ */
+/**
+ * Set roll mode (advantage, normal, disadvantage)
+ */
+window.setRollMode = async function(mode) {
+  rollMode = mode;
+
+  // Update button active states
+  document.querySelectorAll('.roll-mode-btn').forEach(btn => btn.classList.remove('active'));
+  if (mode === 'advantage') {
+    document.getElementById('roll-advantage-btn')?.classList.add('active');
+  } else if (mode === 'disadvantage') {
+    document.getElementById('roll-disadvantage-btn')?.classList.add('active');
+  } else {
+    document.getElementById('roll-normal-btn')?.classList.add('active');
+  }
+
+  // Store roll mode in player metadata so chat window can access it
+  if (isOwlbearReady) {
+    try {
+      await OBR.player.setMetadata({
+        'owlcloud.rollMode': mode
       });
-      console.log("\u{1F4E8} Chat message added:", text);
     } catch (error) {
-      console.error("Error adding chat message:", error);
+      console.error('Failed to set roll mode metadata:', error);
     }
   }
-  window.setRollMode = async function(mode) {
-    rollMode = mode;
-    document.querySelectorAll(".roll-mode-btn").forEach((btn) => btn.classList.remove("active"));
-    if (mode === "advantage") {
-      document.getElementById("roll-advantage-btn")?.classList.add("active");
-    } else if (mode === "disadvantage") {
-      document.getElementById("roll-disadvantage-btn")?.classList.add("active");
-    } else {
-      document.getElementById("roll-normal-btn")?.classList.add("active");
-    }
-    if (isOwlbearReady) {
-      try {
-        await OBR.player.setMetadata({
-          "owlcloud.rollMode": mode
-        });
-      } catch (error) {
-        console.error("Failed to set roll mode metadata:", error);
-      }
-    }
+};
+
+/**
+ * Roll a d20 with advantage/disadvantage based on current roll mode
+ * Uses Dice+ if available, falls back to local rolling
+ */
+async function rollD20(name, modifier = 0) {
+  // Prepare dice notation for Dice+
+  let diceNotation;
+  if (rollMode === 'advantage') {
+    diceNotation = '2d20kh1'; // Keep highest
+  } else if (rollMode === 'disadvantage') {
+    diceNotation = '2d20kl1'; // Keep lowest
+  } else {
+    diceNotation = '1d20';
+  }
+
+  // Add modifier to notation
+  if (modifier !== 0) {
+    diceNotation += (modifier >= 0 ? '+' : '') + modifier;
+  }
+
+  const rollContext = {
+    name,
+    modifier,
+    type: 'd20',
+    mode: rollMode
   };
-  async function rollD20(name, modifier2 = 0) {
-    let diceNotation;
-    if (rollMode === "advantage") {
-      diceNotation = "2d20kh1";
-    } else if (rollMode === "disadvantage") {
-      diceNotation = "2d20kl1";
-    } else {
-      diceNotation = "1d20";
-    }
-    if (modifier2 !== 0) {
-      diceNotation += (modifier2 >= 0 ? "+" : "") + modifier2;
-    }
-    const rollContext = {
-      name,
-      modifier: modifier2,
-      type: "d20",
-      mode: rollMode
-    };
-    const rollId = await sendToDicePlus(diceNotation, rollContext);
-    if (rollId) {
-      return { pending: true, rollId };
-    }
-    return rollD20Local();
+
+  // Try Dice+ first
+  const rollId = await sendToDicePlus(diceNotation, rollContext);
+  if (rollId) {
+    // Dice+ will handle the result via the listener
+    return { pending: true, rollId };
   }
-  function rollD20Local() {
-    if (rollMode === "advantage") {
-      const roll1 = Math.floor(Math.random() * 20) + 1;
-      const roll2 = Math.floor(Math.random() * 20) + 1;
-      const total = Math.max(roll1, roll2);
-      return { total, rolls: [roll1, roll2], modifier: 0, formula: "2d20 (advantage)", count: 2, sides: 20, mode: "advantage" };
-    } else if (rollMode === "disadvantage") {
-      const roll1 = Math.floor(Math.random() * 20) + 1;
-      const roll2 = Math.floor(Math.random() * 20) + 1;
-      const total = Math.min(roll1, roll2);
-      return { total, rolls: [roll1, roll2], modifier: 0, formula: "2d20 (disadvantage)", count: 2, sides: 20, mode: "disadvantage" };
-    } else {
-      const roll = Math.floor(Math.random() * 20) + 1;
-      return { total: roll, rolls: [roll], modifier: 0, formula: "1d20", count: 1, sides: 20, mode: "normal" };
-    }
+
+  // Fall back to local roll
+  return rollD20Local();
+}
+
+/**
+ * Local d20 roll (fallback when Dice+ unavailable)
+ */
+function rollD20Local() {
+  if (rollMode === 'advantage') {
+    const roll1 = Math.floor(Math.random() * 20) + 1;
+    const roll2 = Math.floor(Math.random() * 20) + 1;
+    const total = Math.max(roll1, roll2);
+    return {total, rolls: [roll1, roll2], modifier: 0, formula: '2d20 (advantage)', count: 2, sides: 20, mode: 'advantage'};
+  } else if (rollMode === 'disadvantage') {
+    const roll1 = Math.floor(Math.random() * 20) + 1;
+    const roll2 = Math.floor(Math.random() * 20) + 1;
+    const total = Math.min(roll1, roll2);
+    return {total, rolls: [roll1, roll2], modifier: 0, formula: '2d20 (disadvantage)', count: 2, sides: 20, mode: 'disadvantage'};
+  } else {
+    const roll = Math.floor(Math.random() * 20) + 1;
+    return {total: roll, rolls: [roll], modifier: 0, formula: '1d20', count: 1, sides: 20, mode: 'normal'};
   }
-  async function rollDice(formula2, name, modifier2 = 0) {
-    const rollContext = {
-      name,
-      modifier: modifier2,
-      formula: formula2,
-      type: "custom"
-    };
-    const rollId = await sendToDicePlus(formula2, rollContext);
-    if (rollId) {
-      return { pending: true, rollId };
-    }
-    return rollDiceLocal(formula2);
+}
+
+/**
+ * Roll dice using formula (tries Dice+ first, falls back to local)
+ */
+async function rollDice(formula, name, modifier = 0) {
+  const rollContext = {
+    name,
+    modifier,
+    formula,
+    type: 'custom'
+  };
+
+  // Try Dice+ first
+  const rollId = await sendToDicePlus(formula, rollContext);
+  if (rollId) {
+    return { pending: true, rollId };
   }
-  function rollDiceLocal(formula2) {
-    const match = formula2.match(/(\d+)?d(\d+)([+-]\d+)?/i);
-    if (!match) {
-      console.error("Invalid dice formula:", formula2);
-      return { total: 0, rolls: [], formula: formula2 };
-    }
-    const count2 = parseInt(match[1] || "1");
-    const sides2 = parseInt(match[2]);
-    const modifier2 = parseInt(match[3] || "0");
-    const rolls = [];
-    let total = modifier2;
-    for (let i = 0; i < count2; i++) {
-      const roll = Math.floor(Math.random() * sides2) + 1;
-      rolls.push(roll);
-      total += roll;
-    }
-    return { total, rolls, modifier: modifier2, formula: formula2, count: count2, sides: sides2 };
+
+  // Fall back to local
+  return rollDiceLocal(formula);
+}
+
+/**
+ * Local dice roll (fallback when Dice+ unavailable)
+ */
+function rollDiceLocal(formula) {
+  // Parse formula like "2d6+3" or "1d20"
+  const match = formula.match(/(\d+)?d(\d+)([+-]\d+)?/i);
+  if (!match) {
+    console.error('Invalid dice formula:', formula);
+    return {total: 0, rolls: [], formula};
   }
-  async function showRollResult(name, result) {
-    let detailsHtml = "";
-    const finalTotal = result._overrideFinal !== void 0 ? result._overrideFinal : result.modifier !== void 0 ? result.total + result.modifier : result.total;
-    console.log("\u{1F50D} showRollResult debug:", {
-      name,
-      resultTotal: result.total,
-      resultModifier: result.modifier,
-      overrideFinal: result._overrideFinal,
-      calculatedFinalTotal: finalTotal
-    });
-    if (result.mode === "advantage" && result.rolls.length === 2) {
-      detailsHtml = `<strong>Advantage:</strong> Rolled 2d20, taking higher<br>
+
+  const count = parseInt(match[1] || '1');
+  const sides = parseInt(match[2]);
+  const modifier = parseInt(match[3] || '0');
+
+  const rolls = [];
+  let total = modifier;
+
+  for (let i = 0; i < count; i++) {
+    const roll = Math.floor(Math.random() * sides) + 1;
+    rolls.push(roll);
+    total += roll;
+  }
+
+  return {total, rolls, modifier, formula, count, sides};
+}
+
+/**
+ * Show roll result notification and send to chat
+ */
+async function showRollResult(name, result) {
+  let detailsHtml = '';
+  // Use override value from Dice+ if available, otherwise calculate normally
+  const finalTotal = result._overrideFinal !== undefined ? result._overrideFinal : (result.modifier !== undefined ? result.total + result.modifier : result.total);
+  
+  console.log('🔍 showRollResult debug:', {
+    name,
+    resultTotal: result.total,
+    resultModifier: result.modifier,
+    overrideFinal: result._overrideFinal,
+    calculatedFinalTotal: finalTotal
+  });
+
+  // Build detailed breakdown for expandable section
+  if (result.mode === 'advantage' && result.rolls.length === 2) {
+    detailsHtml = `<strong>Advantage:</strong> Rolled 2d20, taking higher<br>
                    Roll 1: ${result.rolls[0]}<br>
                    Roll 2: ${result.rolls[1]}<br>
                    <strong>Selected:</strong> ${result.total}`;
-      if (result.modifier !== 0) {
-        detailsHtml += `<br><strong>Modifier:</strong> ${result.modifier >= 0 ? "+" : ""}${result.modifier}`;
-      }
-      detailsHtml += `<br><strong>Formula:</strong> ${result.total}`;
-      if (result.modifier !== 0) {
-        detailsHtml += ` ${result.modifier >= 0 ? "+" : ""}${result.modifier}`;
-      }
-      detailsHtml += ` = ${finalTotal}`;
-    } else if (result.mode === "disadvantage" && result.rolls.length === 2) {
-      detailsHtml = `<strong>Disadvantage:</strong> Rolled 2d20, taking lower<br>
+    if (result.modifier !== 0) {
+      detailsHtml += `<br><strong>Modifier:</strong> ${result.modifier >= 0 ? '+' : ''}${result.modifier}`;
+    }
+    detailsHtml += `<br><strong>Formula:</strong> ${result.total}`;
+    if (result.modifier !== 0) {
+      detailsHtml += ` ${result.modifier >= 0 ? '+' : ''}${result.modifier}`;
+    }
+    detailsHtml += ` = ${finalTotal}`;
+  } else if (result.mode === 'disadvantage' && result.rolls.length === 2) {
+    detailsHtml = `<strong>Disadvantage:</strong> Rolled 2d20, taking lower<br>
                    Roll 1: ${result.rolls[0]}<br>
                    Roll 2: ${result.rolls[1]}<br>
                    <strong>Selected:</strong> ${result.total}`;
-      if (result.modifier !== 0) {
-        detailsHtml += `<br><strong>Modifier:</strong> ${result.modifier >= 0 ? "+" : ""}${result.modifier}`;
-      }
-      detailsHtml += `<br><strong>Formula:</strong> ${result.total}`;
-      if (result.modifier !== 0) {
-        detailsHtml += ` ${result.modifier >= 0 ? "+" : ""}${result.modifier}`;
-      }
-      detailsHtml += ` = ${finalTotal}`;
-    } else {
-      detailsHtml = `<strong>Roll:</strong> 1d20 = ${result.rolls[0]}`;
-      if (result.modifier !== 0) {
-        detailsHtml += `<br><strong>Modifier:</strong> ${result.modifier >= 0 ? "+" : ""}${result.modifier}`;
-      }
-      detailsHtml += `<br><strong>Formula:</strong> ${result.rolls[0]}`;
-      if (result.modifier !== 0) {
-        detailsHtml += ` ${result.modifier >= 0 ? "+" : ""}${result.modifier}`;
-      }
-      detailsHtml += ` = ${finalTotal}`;
+    if (result.modifier !== 0) {
+      detailsHtml += `<br><strong>Modifier:</strong> ${result.modifier >= 0 ? '+' : ''}${result.modifier}`;
     }
-    const modText = result.modifier !== 0 && !name.includes(`(${result.modifier >= 0 ? "+" : ""}${result.modifier})`) ? ` (${result.modifier >= 0 ? "+" : ""}${result.modifier})` : "";
-    const message = `${name}${modText}: <strong>${finalTotal}</strong>`;
-    if (isOwlbearReady) {
-      OBR.notification.show(`${currentCharacter?.name || "Character"}: ${name} = ${finalTotal}`, "INFO");
+    detailsHtml += `<br><strong>Formula:</strong> ${result.total}`;
+    if (result.modifier !== 0) {
+      detailsHtml += ` ${result.modifier >= 0 ? '+' : ''}${result.modifier}`;
     }
-    console.log("\u{1F3B2}", message);
-    await addChatMessage(message, "roll", currentCharacter?.name, detailsHtml);
+    detailsHtml += ` = ${finalTotal}`;
+  } else {
+    // Normal roll details
+    detailsHtml = `<strong>Roll:</strong> 1d20 = ${result.rolls[0]}`;
+    if (result.modifier !== 0) {
+      detailsHtml += `<br><strong>Modifier:</strong> ${result.modifier >= 0 ? '+' : ''}${result.modifier}`;
+    }
+    detailsHtml += `<br><strong>Formula:</strong> ${result.rolls[0]}`;
+    if (result.modifier !== 0) {
+      detailsHtml += ` ${result.modifier >= 0 ? '+' : ''}${result.modifier}`;
+    }
+    detailsHtml += ` = ${finalTotal}`;
   }
-  window.rollAbilityCheck = async function(abilityName, modifier2) {
-    console.log("\u{1F3B2} rollAbilityCheck called:", abilityName, modifier2);
-    const name = `${abilityName} Check (${modifier2 >= 0 ? "+" : ""}${modifier2})`;
-    const result = await rollD20(name, modifier2);
-    if (result.pending)
-      return;
-    const total = result.total + modifier2;
-    await showRollResult(name, { ...result, total, modifier: modifier2 });
-  };
-  window.rollSavingThrow = async function(abilityName, modifier2) {
-    console.log("\u{1F3B2} rollSavingThrow called:", abilityName, modifier2);
-    const name = `${abilityName} Save (${modifier2 >= 0 ? "+" : ""}${modifier2})`;
-    const result = await rollD20(name, modifier2);
-    if (result.pending)
-      return;
-    const total = result.total + modifier2;
-    await showRollResult(name, { ...result, total, modifier: modifier2 });
-  };
-  window.rollSkillCheck = async function(skillName, bonus) {
-    const name = `${skillName} (${bonus >= 0 ? "+" : ""}${bonus})`;
-    const result = await rollD20(name, bonus);
-    if (result.pending)
-      return;
-    const total = result.total + bonus;
-    await showRollResult(name, { ...result, total, modifier: bonus });
-  };
-  window.rollInitiative = async function(initiativeBonus) {
-    const name = `Initiative (${initiativeBonus >= 0 ? "+" : ""}${initiativeBonus})`;
-    const result = await rollD20(name, initiativeBonus);
-    if (result.pending)
-      return;
-    const total = result.total + initiativeBonus;
-    await showRollResult(name, { ...result, total, modifier: initiativeBonus });
-  };
-  window.rollDeathSave = async function() {
-    if (!currentCharacter)
-      return;
-    const result = await rollDice("1d20", "Death Save", 0);
-    if (result.pending) {
-      const rollContext = pendingRolls.get(result.rollId);
-      if (rollContext) {
-        rollContext.isDeathSave = true;
-      }
-      return;
-    }
-    const roll = result.total;
-    let message = "";
-    let messageType = "combat";
-    if (roll === 20) {
-      message = `\u{1F480} Death Save: <strong>20 (Natural 20!)</strong> - Regain 1 HP!`;
-      if (!currentCharacter.hitPoints) {
-        currentCharacter.hitPoints = { current: 0, max: 0 };
-      }
-      currentCharacter.hitPoints.current = 1;
-      populateStatsTab(currentCharacter);
-    } else if (roll === 1) {
-      message = `\u{1F480} Death Save: <strong>1 (Natural 1!)</strong> - Two failures!`;
-    } else if (roll >= 10) {
-      message = `\u{1F480} Death Save: <strong>${roll}</strong> - Success`;
-    } else {
-      message = `\u{1F480} Death Save: <strong>${roll}</strong> - Failure`;
-    }
-    if (isOwlbearReady) {
-      OBR.notification.show(`${currentCharacter.name}: Death Save = ${roll}`, roll >= 10 ? "SUCCESS" : "ERROR");
-    }
-    console.log("\u{1F480}", message);
-    await addChatMessage(message, messageType, currentCharacter.name);
-  };
-  window.rollAttackOnly = async function(actionName, attackBonus) {
-    const bonusText = attackBonus ? ` (+${attackBonus})` : "";
-    const name = `${actionName} Attack${bonusText}`;
-    const attackRoll = await rollD20(name, attackBonus || 0);
-    if (attackRoll.pending)
-      return;
-    const attackTotal = attackRoll.total + (attackBonus || 0);
-    const message = `${actionName} Attack${bonusText}: <strong>${attackTotal}</strong>`;
-    let detailsHtml = "";
-    if (attackRoll.mode === "advantage" && attackRoll.rolls.length === 2) {
-      detailsHtml = `<strong>Advantage:</strong> Rolled 2d20, taking higher<br>
-                   Roll 1: ${attackRoll.rolls[0]}<br>
-                   Roll 2: ${attackRoll.rolls[1]}<br>
-                   <strong>Selected:</strong> ${attackRoll.total}`;
-    } else if (attackRoll.mode === "disadvantage" && attackRoll.rolls.length === 2) {
-      detailsHtml = `<strong>Disadvantage:</strong> Rolled 2d20, taking lower<br>
-                   Roll 1: ${attackRoll.rolls[0]}<br>
-                   Roll 2: ${attackRoll.rolls[1]}<br>
-                   <strong>Selected:</strong> ${attackRoll.total}`;
-    } else {
-      detailsHtml = `<strong>Attack Roll:</strong> 1d20 = ${attackRoll.rolls[0]}`;
-    }
-    if (attackBonus) {
-      detailsHtml += `<br><strong>Attack Bonus:</strong> +${attackBonus}`;
-    }
-    detailsHtml += `<br><strong>Formula:</strong> ${attackRoll.total}`;
-    if (attackBonus) {
-      detailsHtml += ` + ${attackBonus}`;
-    }
-    detailsHtml += ` = ${attackTotal}`;
-    if (isOwlbearReady) {
-      OBR.notification.show(`${currentCharacter?.name || "Character"}: ${actionName} Attack = ${attackTotal}`, "INFO");
-    }
-    console.log("\u2694\uFE0F", message);
-    await addChatMessage(message, "action", currentCharacter?.name, detailsHtml);
-  };
-  window.rollDamageOnly = async function(actionName, damageFormula) {
-    if (!damageFormula || !damageFormula.trim())
-      return;
-    const name = `${actionName} Damage`;
-    const damageRoll = await rollDice(damageFormula, name, 0);
-    if (damageRoll.pending) {
-      const rollContext = pendingRolls.get(damageRoll.rollId);
-      if (rollContext) {
-        rollContext.isDamageRoll = true;
-        rollContext.actionName = actionName;
-        rollContext.damageFormula = damageFormula;
-      }
-      return;
-    }
-    const message = `${actionName} Damage: <strong>${damageRoll.total}</strong>`;
-    let detailsHtml = `<strong>Formula:</strong> ${damageFormula}<br>
-                     <strong>Rolls:</strong> ${damageRoll.rolls.join(", ")}`;
-    if (damageRoll.modifier) {
-      detailsHtml += `<br>Modifier: ${damageRoll.modifier >= 0 ? "+" : ""}${damageRoll.modifier}`;
-    }
-    detailsHtml += `<br>Calculation: ${damageRoll.rolls.join(" + ")}`;
-    if (damageRoll.modifier) {
-      detailsHtml += ` ${damageRoll.modifier >= 0 ? "+" : ""}${damageRoll.modifier}`;
-    }
-    detailsHtml += ` = ${damageRoll.total}`;
-    if (isOwlbearReady) {
-      OBR.notification.show(`${currentCharacter?.name || "Character"}: ${actionName} Damage = ${damageRoll.total}`, "INFO");
-    }
-    console.log("\u2694\uFE0F", message);
-    await addChatMessage(message, "damage", currentCharacter?.name, detailsHtml);
-  };
-  window.rollHealing = async function(spellName, healingFormula) {
-    if (!healingFormula || !healingFormula.trim())
-      return;
-    const healingRoll = rollDice(healingFormula);
-    const message = `${spellName} Healing: <strong>${healingRoll.total}</strong>`;
-    let detailsHtml = `<strong>Formula:</strong> ${healingFormula}<br>
-                     <strong>Rolls:</strong> ${healingRoll.rolls.join(", ")}`;
-    if (healingRoll.modifier) {
-      detailsHtml += `<br>Modifier: ${healingRoll.modifier >= 0 ? "+" : ""}${healingRoll.modifier}`;
-    }
-    detailsHtml += `<br>Calculation: ${healingRoll.rolls.join(" + ")}`;
-    if (healingRoll.modifier) {
-      detailsHtml += ` ${healingRoll.modifier >= 0 ? "+" : ""}${healingRoll.modifier}`;
-    }
-    detailsHtml += ` = ${healingRoll.total}`;
-    if (isOwlbearReady) {
-      OBR.notification.show(`${currentCharacter?.name || "Character"}: ${spellName} Healing = ${healingRoll.total}`, "INFO");
-    }
-    console.log("\u{1F49A}", message);
-    await addChatMessage(message, "healing", currentCharacter?.name, detailsHtml);
-  };
-  window.rollAttack = async function(actionName, attackBonus, damageFormula) {
-    await rollAttackOnly(actionName, attackBonus);
-    if (damageFormula && damageFormula.trim()) {
-      await rollDamageOnly(actionName, damageFormula);
-    }
-  };
-  window.promptCastSpell = async function(spellName, baseLevel) {
-    if (!currentCharacter || !currentCharacter.spellSlots)
-      return;
-    const availableSlots = [];
-    for (let level = baseLevel; level <= 9; level++) {
-      const slotKey = `level${level}SpellSlots`;
-      const current = currentCharacter.spellSlots[slotKey] || 0;
-      if (current > 0) {
-        availableSlots.push({
-          level,
-          remaining: current
-        });
-      }
-    }
-    if (availableSlots.length === 0) {
-      if (isOwlbearReady) {
-        OBR.notification.show(`No spell slots available to cast ${spellName}!`, "ERROR");
-      }
-      return;
-    }
-    if (availableSlots.length === 1) {
-      await castSpell(spellName, availableSlots[0].level);
-      return;
-    }
-    showSpellLevelModal(spellName, availableSlots);
-  };
-  function showSpellLevelModal(spellName, availableSlots) {
-    const modal = document.getElementById("spell-level-modal");
-    const modalSpellName = document.getElementById("modal-spell-name");
-    const optionsContainer = document.getElementById("spell-level-options");
-    modalSpellName.textContent = `Cast ${spellName}`;
-    optionsContainer.innerHTML = "";
-    availableSlots.forEach((slot) => {
-      const option = document.createElement("div");
-      option.className = "spell-level-option";
-      option.onclick = async () => {
-        closeSpellLevelModal();
-        await castSpell(spellName, slot.level);
-      };
-      option.innerHTML = `
-      <span class="spell-level-label">Level ${slot.level}</span>
-      <span class="spell-level-slots">${slot.remaining} slot${slot.remaining !== 1 ? "s" : ""} remaining</span>
-    `;
-      optionsContainer.appendChild(option);
-    });
-    modal.style.display = "flex";
+
+  // Create concise message showing just the result
+  // Don't double-add modifier if it's already in the name
+  const modText = result.modifier !== 0 && !name.includes(`(${result.modifier >= 0 ? '+' : ''}${result.modifier})`) 
+    ? ` (${result.modifier >= 0 ? '+' : ''}${result.modifier})` 
+    : '';
+  const message = `${name}${modText}: <strong>${finalTotal}</strong>`;
+
+  if (isOwlbearReady) {
+    OBR.notification.show(`${currentCharacter?.name || 'Character'}: ${name} = ${finalTotal}`, 'INFO');
   }
-  window.closeSpellLevelModal = function() {
-    const modal = document.getElementById("spell-level-modal");
-    modal.style.display = "none";
-  };
-  window.castSpell = async function(spellName, level) {
-    if (!currentCharacter)
-      return;
-    const spell = currentCharacter.spells?.find((s) => s.name === spellName);
-    const spellBaseLevel = spell ? parseInt(spell.level) || 0 : level;
-    const isUpcast = level > spellBaseLevel;
-    let slotKey = null;
-    if (level > 0) {
-      if (!currentCharacter.spellSlots) {
-        console.warn("No spell slots available on character");
-        return;
-      }
-      slotKey = `level${level}SpellSlots`;
-      const current = currentCharacter.spellSlots[slotKey] || 0;
-      if (current === 0) {
-        if (isOwlbearReady) {
-          OBR.notification.show(`No Level ${level} spell slots remaining!`, "ERROR");
-        }
-        return;
-      }
-      currentCharacter.spellSlots[slotKey] = current - 1;
-      populateStatsTab(currentCharacter);
+  console.log('🎲', message);
+
+  // Send to persistent chat with expandable details
+  await addChatMessage(message, 'roll', currentCharacter?.name, detailsHtml);
+}
+
+/**
+ * Roll ability check
+ */
+window.rollAbilityCheck = async function(abilityName, modifier) {
+  console.log('🎲 rollAbilityCheck called:', abilityName, modifier);
+  const name = `${abilityName} Check (${modifier >= 0 ? '+' : ''}${modifier})`;
+  const result = await rollD20(name, modifier);
+
+  // If using Dice+, result will be handled by listener
+  if (result.pending) return;
+
+  // Otherwise show local result
+  const total = result.total + modifier;
+  await showRollResult(name, {...result, total, modifier});
+};
+
+/**
+ * Roll saving throw
+ */
+window.rollSavingThrow = async function(abilityName, modifier) {
+  console.log('🎲 rollSavingThrow called:', abilityName, modifier);
+  const name = `${abilityName} Save (${modifier >= 0 ? '+' : ''}${modifier})`;
+  const result = await rollD20(name, modifier);
+
+  if (result.pending) return;
+
+  const total = result.total + modifier;
+  await showRollResult(name, {...result, total, modifier});
+};
+
+/**
+ * Roll skill check
+ */
+window.rollSkillCheck = async function(skillName, bonus) {
+  const name = `${skillName} (${bonus >= 0 ? '+' : ''}${bonus})`;
+  const result = await rollD20(name, bonus);
+
+  if (result.pending) return;
+
+  const total = result.total + bonus;
+  await showRollResult(name, {...result, total, modifier: bonus});
+};
+
+/**
+ * Roll initiative
+ */
+window.rollInitiative = async function(initiativeBonus) {
+  const name = `Initiative (${initiativeBonus >= 0 ? '+' : ''}${initiativeBonus})`;
+  const result = await rollD20(name, initiativeBonus);
+
+  if (result.pending) return;
+
+  const total = result.total + initiativeBonus;
+  await showRollResult(name, {...result, total, modifier: initiativeBonus});
+};
+
+/**
+ * Roll death save
+ */
+window.rollDeathSave = async function() {
+  if (!currentCharacter) return;
+
+  const result = await rollDice('1d20', 'Death Save', 0);
+
+  // If using Dice+, we need to handle it differently
+  if (result.pending) {
+    // Store the context for the death save handler
+    const rollContext = pendingRolls.get(result.rollId);
+    if (rollContext) {
+      rollContext.isDeathSave = true;
     }
-    const levelText = level === 0 ? "Cantrip" : `Level ${level} Spell`;
-    const message = `\u2728 Casts <strong>${spellName}</strong> (${levelText})`;
-    let details = `<strong>${spellName}</strong><br><strong>Level:</strong> ${levelText}`;
-    if (isUpcast && spellBaseLevel > 0) {
-      details += ` (Upcast from Level ${spellBaseLevel})`;
-    }
-    if (spell) {
-      if (spell.castingTime)
-        details += `<br><strong>Casting Time:</strong> ${spell.castingTime}`;
-      if (spell.range)
-        details += `<br><strong>Range:</strong> ${spell.range}`;
-      if (spell.components)
-        details += `<br><strong>Components:</strong> ${spell.components}`;
-      if (spell.duration)
-        details += `<br><strong>Duration:</strong> ${spell.duration}`;
-      if (spell.concentration)
-        details += `<br><strong>Concentration:</strong> Yes`;
-      if (spell.ritual)
-        details += `<br><strong>Ritual:</strong> Yes`;
-      if (spell.attackRoll)
-        details += `<br><strong>Attack:</strong> ${spell.attackRoll}`;
-      if (spell.damage)
-        details += `<br><strong>Damage:</strong> ${spell.damage}`;
-      if (spell.healing)
-        details += `<br><strong>Healing:</strong> ${spell.healing}`;
-      if (spell.summary)
-        details += `<br><br>${spell.summary}`;
-      if (spell.description)
-        details += `<br><br>${spell.description}`;
-    }
-    if (level > 0 && slotKey) {
-      const remaining = currentCharacter.spellSlots[slotKey] || 0;
-      details += `<br><br><strong>Spell Slot Used:</strong> Level ${level}<br><strong>Remaining Slots:</strong> ${remaining}`;
-    }
-    if (spell && spell.concentration) {
-      const characterId = currentCharacter._id || currentCharacter.id || currentCharacter.name;
-      const previousSpell = concentratingSpell;
-      concentratingSpell = spellName;
-      concentrationByCharacter.set(characterId, spellName);
-      if (previousSpell && previousSpell !== spellName) {
-        console.log(`[OwlCloud] Concentration switched from ${previousSpell} to ${spellName}`);
-        if (isOwlbearReady) {
-          OBR.notification.show(`Concentration switched from ${previousSpell} to ${spellName}`, "WARNING");
-        }
-      } else {
-        console.log(`[OwlCloud] Now concentrating on ${spellName}`);
-      }
-      populateSpellsTab(currentCharacter);
-    }
-    if (isOwlbearReady) {
-      OBR.notification.show(`${currentCharacter?.name || "Character"} casts ${spellName}`, "INFO");
-    }
-    console.log("\u2728", message);
-    await addChatMessage(message, "spell", currentCharacter?.name, details);
-  };
-  window.castSpellAsRitual = async function(spellName) {
-    if (!currentCharacter)
-      return;
-    const spell = currentCharacter.spells?.find((s) => s.name === spellName);
-    const message = `\u{1F4FF} Casts <strong>${spellName}</strong> as a ritual`;
-    let details = `<strong>${spellName}</strong><br><strong>Cast as Ritual</strong> (no spell slot consumed)`;
-    if (spell) {
-      const spellLevel = parseInt(spell.level) || 0;
-      const levelText = spellLevel === 0 ? "Cantrip" : `Level ${spellLevel} Spell`;
-      details += `<br><strong>Level:</strong> ${levelText}`;
-      if (spell.castingTime) {
-        details += `<br><strong>Casting Time:</strong> ${spell.castingTime} + 10 minutes (ritual)`;
-      }
-      if (spell.range)
-        details += `<br><strong>Range:</strong> ${spell.range}`;
-      if (spell.components)
-        details += `<br><strong>Components:</strong> ${spell.components}`;
-      if (spell.duration)
-        details += `<br><strong>Duration:</strong> ${spell.duration}`;
-      if (spell.concentration)
-        details += `<br><strong>Concentration:</strong> Yes`;
-      if (spell.attackRoll)
-        details += `<br><strong>Attack:</strong> ${spell.attackRoll}`;
-      if (spell.damage)
-        details += `<br><strong>Damage:</strong> ${spell.damage}`;
-      if (spell.healing)
-        details += `<br><strong>Healing:</strong> ${spell.healing}`;
-      if (spell.summary)
-        details += `<br><br>${spell.summary}`;
-      if (spell.description)
-        details += `<br><br>${spell.description}`;
-    }
-    if (spell && spell.concentration) {
-      const characterId = currentCharacter._id || currentCharacter.id || currentCharacter.name;
-      const previousSpell = concentratingSpell;
-      concentratingSpell = spellName;
-      concentrationByCharacter.set(characterId, spellName);
-      if (previousSpell && previousSpell !== spellName) {
-        console.log(`[OwlCloud] Concentration switched from ${previousSpell} to ${spellName}`);
-        if (isOwlbearReady) {
-          OBR.notification.show(`Concentration switched from ${previousSpell} to ${spellName}`, "WARNING");
-        }
-      } else {
-        console.log(`[OwlCloud] Now concentrating on ${spellName}`);
-      }
-      populateSpellsTab(currentCharacter);
-    }
-    if (isOwlbearReady) {
-      OBR.notification.show(`${currentCharacter?.name || "Character"} casts ${spellName} as a ritual`, "INFO");
-    }
-    console.log("\u{1F4FF}", message);
-    await addChatMessage(message, "spell", currentCharacter?.name, details);
-  };
-  window.toggleConcentration = function(spellName) {
-    if (!currentCharacter)
-      return;
-    if (concentratingSpell === spellName) {
-      concentratingSpell = null;
-      console.log(`[OwlCloud] Stopped concentrating on ${spellName}`);
-      if (isOwlbearReady) {
-        OBR.notification.show(`Concentration on ${spellName} ended`, "INFO");
-      }
-    } else {
-      const previousSpell = concentratingSpell;
-      concentratingSpell = spellName;
-      console.log(`[OwlCloud] Now concentrating on ${spellName}`);
-      if (isOwlbearReady) {
-        if (previousSpell) {
-          OBR.notification.show(`Concentration switched from ${previousSpell} to ${spellName}`, "WARNING");
-        } else {
-          OBR.notification.show(`Concentrating on ${spellName}`, "INFO");
-        }
-      }
-    }
-    populateSpellsTab(currentCharacter);
-  };
-  window.adjustHP = function() {
-    if (!currentCharacter)
-      return;
-    openHPModal();
-  };
-  function openHPModal() {
-    const modal = document.getElementById("hp-modal");
-    const input = document.getElementById("hp-input");
-    if (!modal || !input)
-      return;
-    input.value = "";
-    modal.style.display = "flex";
-    setTimeout(() => input.focus(), 100);
+    return;
   }
-  window.closeHPModal = function() {
-    const modal = document.getElementById("hp-modal");
-    const input = document.getElementById("hp-input");
-    if (!modal)
-      return;
-    modal.style.display = "none";
-    if (input)
-      input.value = "";
-  };
-  window.applyHP = async function(type) {
-    if (!currentCharacter)
-      return;
-    const input = document.getElementById("hp-input");
-    const amount = parseInt(input.value);
-    if (!input || isNaN(amount) || amount <= 0) {
-      if (isOwlbearReady) {
-        OBR.notification.show("Please enter a valid positive number", "ERROR");
-      }
-      return;
-    }
-    console.log(`\u{1FA7A} applyHP called: type=${type}, amount=${amount}`);
-    console.log("  Current HP object:", currentCharacter.hitPoints);
-    const currentHP = currentCharacter.hitPoints?.current || 0;
-    const maxHP = currentCharacter.hitPoints?.max || 0;
-    const currentTempHP = currentCharacter.temporaryHP || 0;
+
+  const roll = result.total;
+
+  let message = '';
+  let messageType = 'combat';
+
+  if (roll === 20) {
+    message = `💀 Death Save: <strong>20 (Natural 20!)</strong> - Regain 1 HP!`;
+    // Automatically heal 1 HP on nat 20
     if (!currentCharacter.hitPoints) {
       currentCharacter.hitPoints = { current: 0, max: 0 };
     }
-    let message = "";
-    let messageType = "";
-    let newHP = currentHP;
-    let newTempHP = currentTempHP;
-    if (type === "damage") {
-      let remainingDamage = amount;
-      if (currentTempHP > 0) {
-        if (currentTempHP >= remainingDamage) {
-          newTempHP = currentTempHP - remainingDamage;
-          remainingDamage = 0;
-          message = `${currentCharacter.name} takes ${amount} damage (absorbed by temp HP)`;
-        } else {
-          remainingDamage -= currentTempHP;
-          newTempHP = 0;
-          newHP = Math.max(0, currentHP - remainingDamage);
-          message = `${currentCharacter.name} takes ${amount} damage (temp HP depleted, ${remainingDamage} to HP) (${newHP}/${maxHP})`;
-        }
-      } else {
-        newHP = Math.max(0, currentHP - amount);
-        message = `${currentCharacter.name} takes ${amount} damage (${newHP}/${maxHP})`;
-      }
-      messageType = "damage";
-    } else if (type === "healing") {
-      newHP = Math.min(maxHP, currentHP + amount);
-      const actualHealing = newHP - currentHP;
-      message = `${currentCharacter.name} heals ${actualHealing} HP (${newHP}/${maxHP})`;
-      messageType = "healing";
-    } else if (type === "temp") {
-      if (amount > currentTempHP) {
-        newTempHP = amount;
-        message = `${currentCharacter.name} gains ${amount} temporary HP`;
-      } else {
-        message = `${currentCharacter.name} keeps ${currentTempHP} temporary HP (higher than ${amount})`;
-      }
-      messageType = "info";
-    }
-    currentCharacter.hitPoints.current = newHP;
-    currentCharacter.temporaryHP = newTempHP;
-    console.log(`  New HP: ${newHP}/${maxHP}, Temp HP: ${newTempHP}`);
-    if (isOwlbearReady) {
-      const notificationType = type === "healing" ? "SUCCESS" : type === "damage" ? "WARNING" : "INFO";
-      OBR.notification.show(message, notificationType);
-    }
-    console.log("  Sending message to chat:", message);
-    await addChatMessage(message, messageType, currentCharacter.name);
-    console.log("  Re-rendering stats tab");
+    currentCharacter.hitPoints.current = 1;
     populateStatsTab(currentCharacter);
-    closeHPModal();
-  };
-  function initializeHPModal() {
-    const modal = document.getElementById("hp-modal");
-    const input = document.getElementById("hp-input");
-    if (!modal || !input)
-      return;
-    input.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") {
-        applyHP("damage");
-      }
-    });
-    modal.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") {
-        closeHPModal();
-      }
-    });
-    modal.addEventListener("click", (e) => {
-      if (e.target === modal) {
-        closeHPModal();
-      }
-    });
-  }
-  window.adjustSpellSlot = function(level, isPactMagic = false) {
-    if (!currentCharacter || !currentCharacter.spellSlots)
-      return;
-    const slotKey = isPactMagic ? "pactMagicSlots" : `level${level}SpellSlots`;
-    const maxKey = isPactMagic ? "pactMagicSlotsMax" : `level${level}SpellSlotsMax`;
-    const current = currentCharacter.spellSlots[slotKey] || 0;
-    const max = currentCharacter.spellSlots[maxKey] || 0;
-    const slotName = isPactMagic ? `Pact Magic` : `Level ${level} Spell Slot`;
-    const adjustment = prompt(`${slotName}: ${current}/${max}
-
-Enter adjustment (negative to use, positive to restore):`);
-    if (adjustment === null)
-      return;
-    const amount = parseInt(adjustment);
-    if (isNaN(amount))
-      return;
-    const newCount = Math.max(0, Math.min(max, current + amount));
-    currentCharacter.spellSlots[slotKey] = newCount;
-    populateStatsTab(currentCharacter);
-    if (isOwlbearReady) {
-      const message = amount > 0 ? `Restored ${amount} ${slotName}` : `Used ${Math.abs(amount)} ${slotName}`;
-      OBR.notification.show(message, "INFO");
-    }
-  };
-  window.adjustResource = function(resourceName) {
-    if (!currentCharacter || !currentCharacter.resources)
-      return;
-    const resource = currentCharacter.resources.find((r) => r.name === resourceName);
-    if (!resource)
-      return;
-    const current = resource.current || 0;
-    const max = resource.max || 0;
-    const adjustment = prompt(`${resourceName}: ${current}/${max}
-
-Enter adjustment (negative to use, positive to restore):`);
-    if (adjustment === null)
-      return;
-    const amount = parseInt(adjustment);
-    if (isNaN(amount))
-      return;
-    const newCount = Math.max(0, Math.min(max, current + amount));
-    resource.current = newCount;
-    populateStatsTab(currentCharacter);
-    if (isOwlbearReady) {
-      const message = amount > 0 ? `Restored ${amount} ${resourceName}` : `Used ${Math.abs(amount)} ${resourceName}`;
-      OBR.notification.show(message, "INFO");
-    }
-  };
-  window.useFeature = async function(featureName, resourceName = null) {
-    if (!currentCharacter)
-      return;
-    if (resourceName && currentCharacter.resources) {
-      const resource = currentCharacter.resources.find((r) => r.name === resourceName);
-      if (resource && resource.current > 0) {
-        resource.current -= 1;
-        populateStatsTab(currentCharacter);
-      } else if (resource && resource.current === 0) {
-        if (isOwlbearReady) {
-          OBR.notification.show(`No ${resourceName} remaining!`, "ERROR");
-        }
-        return;
-      }
-    }
-    const feature = currentCharacter.features?.find((f) => f.name === featureName);
-    const message = `\u2728 Uses <strong>${featureName}</strong>${resourceName ? ` (${resourceName})` : ""}`;
-    let details = `<strong>${featureName}</strong>`;
-    if (feature) {
-      if (resourceName) {
-        const resource = currentCharacter.resources?.find((r) => r.name === resourceName);
-        if (resource) {
-          details += `<br><strong>Resource:</strong> ${resourceName} (${resource.current}/${resource.max} remaining)`;
-        }
-      }
-      if (feature.summary)
-        details += `<br><br>${feature.summary}`;
-      if (feature.description)
-        details += `<br><br>${feature.description}`;
-      if (feature.reset)
-        details += `<br><br><strong>Resets:</strong> ${feature.reset}`;
-    }
-    await addChatMessage(message, "action", currentCharacter.name, details);
-    if (isOwlbearReady) {
-      OBR.notification.show(`${currentCharacter.name} uses ${featureName}`, "INFO");
-    }
-  };
-  window.useFeatureWithUses = async function(featureName) {
-    if (!currentCharacter || !currentCharacter.features)
-      return;
-    const feature = currentCharacter.features.find((f) => f.name === featureName);
-    if (!feature) {
-      console.warn(`Feature "${featureName}" not found`);
-      return;
-    }
-    if (!feature.uses || feature.uses.value === void 0) {
-      console.warn(`Feature "${featureName}" has no uses tracking`);
-      return;
-    }
-    if (feature.uses.value <= 0) {
-      if (isOwlbearReady) {
-        OBR.notification.show(`No uses of ${featureName} remaining!`, "ERROR");
-      }
-      return;
-    }
-    feature.uses.value -= 1;
-    populateFeaturesTab(currentCharacter);
-    const message = `\u2728 Uses <strong>${featureName}</strong> (${feature.uses.value}/${feature.uses.max || feature.uses.value + 1} remaining)`;
-    let details = `<strong>${featureName}</strong>`;
-    if (feature.uses) {
-      details += `<br><strong>Uses Remaining:</strong> ${feature.uses.value}/${feature.uses.max || feature.uses.value + 1}`;
-      if (feature.reset)
-        details += `<br><strong>Resets:</strong> ${feature.reset}`;
-    }
-    if (feature.summary)
-      details += `<br><br>${feature.summary}`;
-    if (feature.description)
-      details += `<br><br>${feature.description}`;
-    await addChatMessage(message, "action", currentCharacter.name, details);
-    if (isOwlbearReady) {
-      OBR.notification.show(`${currentCharacter.name} uses ${featureName}`, "INFO");
-    }
-  };
-  window.useAction = async function(actionName) {
-    if (!currentCharacter || !currentCharacter.actions)
-      return;
-    const action = currentCharacter.actions.find((a) => a.name === actionName);
-    if (!action) {
-      console.warn(`Action "${actionName}" not found`);
-      return;
-    }
-    if (!action.uses || action.uses.value === void 0) {
-      console.warn(`Action "${actionName}" has no uses tracking`);
-      return;
-    }
-    if (action.uses.value <= 0) {
-      if (isOwlbearReady) {
-        OBR.notification.show(`No uses of ${actionName} remaining!`, "ERROR");
-      }
-      return;
-    }
-    action.uses.value -= 1;
-    populateActionsTab(currentCharacter);
-    const message = `\u2728 Uses <strong>${actionName}</strong> (${action.uses.value}/${action.uses.max || action.uses.value + 1} remaining)`;
-    let details = `<strong>${actionName}</strong><br><strong>Type:</strong> ${action.actionType || "Action"}`;
-    if (action.uses) {
-      details += `<br><strong>Uses Remaining:</strong> ${action.uses.value}/${action.uses.max || action.uses.value + 1}`;
-      if (action.reset)
-        details += `<br><strong>Resets:</strong> ${action.reset}`;
-    }
-    if (action.attackRoll)
-      details += `<br><strong>Attack:</strong> ${action.attackRoll}`;
-    if (action.damage)
-      details += `<br><strong>Damage:</strong> ${action.damage}`;
-    if (action.damageType)
-      details += ` (${action.damageType})`;
-    if (action.summary)
-      details += `<br><br>${action.summary}`;
-    if (action.description)
-      details += `<br><br>${action.description}`;
-    await addChatMessage(message, "action", currentCharacter.name, details);
-    if (isOwlbearReady) {
-      OBR.notification.show(`${currentCharacter.name} uses ${actionName}`, "INFO");
-    }
-  };
-  window.takeShortRest = async function() {
-    if (!currentCharacter)
-      return;
-    const confirm2 = window.confirm(
-      "Take a Short Rest?\n\n\u2022 Spend Hit Dice to recover HP\n\u2022 Recover some class resources\n\u2022 Takes 1 hour"
-    );
-    if (!confirm2)
-      return;
-    const hitDice = currentCharacter.hitDice;
-    if (hitDice && hitDice.current > 0) {
-      const spend = window.prompt(`You have ${hitDice.current}/${hitDice.max} Hit Dice (d${hitDice.type})
-
-How many do you want to spend?`);
-      if (spend) {
-        const count2 = Math.min(parseInt(spend) || 0, hitDice.current);
-        if (count2 > 0) {
-          let totalHealing = 0;
-          for (let i = 0; i < count2; i++) {
-            const roll = Math.floor(Math.random() * hitDice.type) + 1;
-            const conMod = currentCharacter.attributeMods?.constitution || 0;
-            totalHealing += roll + conMod;
-          }
-          const currentHP = currentCharacter.hitPoints?.current || 0;
-          const maxHP = currentCharacter.hitPoints?.max || 0;
-          const newHP = Math.min(maxHP, currentHP + totalHealing);
-          currentCharacter.hitPoints.current = newHP;
-          currentCharacter.hitDice.current -= count2;
-          if (isOwlbearReady) {
-            OBR.notification.show(`Short Rest: Spent ${count2} Hit Dice, recovered ${totalHealing} HP`, "SUCCESS");
-          }
-        }
-      }
-    }
-    populateStatsTab(currentCharacter);
-  };
-  window.takeLongRest = async function() {
-    if (!currentCharacter)
-      return;
-    const confirm2 = window.confirm(
-      "Take a Long Rest?\n\n\u2022 Recover all HP\n\u2022 Recover all spell slots\n\u2022 Recover half of total Hit Dice\n\u2022 Recover all resources\n\u2022 Takes 8 hours"
-    );
-    if (!confirm2)
-      return;
-    const maxHP = currentCharacter.hitPoints?.max || 0;
-    currentCharacter.hitPoints.current = maxHP;
-    if (currentCharacter.spellSlots) {
-      for (let level = 1; level <= 9; level++) {
-        const maxKey = `level${level}SpellSlotsMax`;
-        const currentKey = `level${level}SpellSlots`;
-        if (currentCharacter.spellSlots[maxKey]) {
-          currentCharacter.spellSlots[currentKey] = currentCharacter.spellSlots[maxKey];
-        }
-      }
-      if (currentCharacter.spellSlots.pactMagicSlotsMax) {
-        currentCharacter.spellSlots.pactMagicSlots = currentCharacter.spellSlots.pactMagicSlotsMax;
-      }
-    }
-    if (currentCharacter.hitDice) {
-      const recovered = Math.max(1, Math.floor(currentCharacter.hitDice.max / 2));
-      currentCharacter.hitDice.current = Math.min(
-        currentCharacter.hitDice.max,
-        currentCharacter.hitDice.current + recovered
-      );
-    }
-    if (currentCharacter.resources) {
-      currentCharacter.resources.forEach((resource) => {
-        resource.current = resource.max;
-      });
-    }
-    if (isOwlbearReady) {
-      OBR.notification.show(`Long Rest: ${currentCharacter.name} is fully rested!`, "SUCCESS");
-    }
-    populateStatsTab(currentCharacter);
-  };
-  window.toggleCollapsible = function(elementId) {
-    const element = document.getElementById(elementId);
-    const header = element.previousElementSibling;
-    if (element && header) {
-      element.classList.toggle("collapsed");
-      header.classList.toggle("collapsed");
-      const arrow = header.querySelector('span[style*="transition"]');
-      if (arrow) {
-        const isCollapsed = element.classList.contains("collapsed");
-        arrow.style.transform = isCollapsed ? "rotate(-90deg)" : "rotate(0deg)";
-      }
-    }
-  };
-  window.toggleFeatureCard = function(cardId) {
-    const card = document.getElementById(cardId);
-    if (!card)
-      return;
-    const parentCard = card.parentElement;
-    if (parentCard) {
-      parentCard.classList.toggle("expanded");
-    }
-  };
-  console.log("\u{1F3B2} OwlCloud Owlbear extension popover loaded");
-  console.log("\u{1F4C4} Document ready state:", document.readyState);
-  if (statusText) {
-    statusText.textContent = "Initializing...";
-  }
-  console.log("\u{1F527} Starting theme initialization check...");
-  if (document.readyState === "loading") {
-    console.log("\u23F3 DOM still loading, waiting for DOMContentLoaded...");
-    document.addEventListener("DOMContentLoaded", () => {
-      console.log("\u2705 DOMContentLoaded fired");
-      console.log("\u{1F3A8} Calling ThemeManager.init()...");
-      ThemeManager.init();
-      console.log("\u{1F3A8} Calling initializeThemeSelector()...");
-      initializeThemeSelector();
-    });
+  } else if (roll === 1) {
+    message = `💀 Death Save: <strong>1 (Natural 1!)</strong> - Two failures!`;
+  } else if (roll >= 10) {
+    message = `💀 Death Save: <strong>${roll}</strong> - Success`;
   } else {
-    console.log("\u2705 DOM already ready, initializing themes now...");
-    console.log("\u{1F3A8} Calling ThemeManager.init()...");
-    ThemeManager.init();
-    console.log("\u{1F3A8} Calling initializeThemeSelector()...");
-    initializeThemeSelector();
+    message = `💀 Death Save: <strong>${roll}</strong> - Failure`;
   }
-  setTimeout(() => {
-    if (!isOwlbearReady) {
-      if (statusText) {
-        statusText.textContent = "Waiting for Owlbear SDK...";
+
+  if (isOwlbearReady) {
+    OBR.notification.show(`${currentCharacter.name}: Death Save = ${roll}`, roll >= 10 ? 'SUCCESS' : 'ERROR');
+  }
+  console.log('💀', message);
+
+  // Send to persistent chat
+  await addChatMessage(message, messageType, currentCharacter.name);
+};
+
+/**
+ * Roll attack only (no damage)
+ */
+window.rollAttackOnly = async function(actionName, attackBonus) {
+  const bonusText = attackBonus ? ` (+${attackBonus})` : '';
+  const name = `${actionName} Attack${bonusText}`;
+  const attackRoll = await rollD20(name, attackBonus || 0);
+
+  // If using Dice+, result will be handled by listener
+  if (attackRoll.pending) return;
+
+  const attackTotal = attackRoll.total + (attackBonus || 0);
+
+  // Create concise message
+  const message = `${actionName} Attack${bonusText}: <strong>${attackTotal}</strong>`;
+
+  // Build details for expandable view
+  let detailsHtml = '';
+  if (attackRoll.mode === 'advantage' && attackRoll.rolls.length === 2) {
+    detailsHtml = `<strong>Advantage:</strong> Rolled 2d20, taking higher<br>
+                   Roll 1: ${attackRoll.rolls[0]}<br>
+                   Roll 2: ${attackRoll.rolls[1]}<br>
+                   <strong>Selected:</strong> ${attackRoll.total}`;
+  } else if (attackRoll.mode === 'disadvantage' && attackRoll.rolls.length === 2) {
+    detailsHtml = `<strong>Disadvantage:</strong> Rolled 2d20, taking lower<br>
+                   Roll 1: ${attackRoll.rolls[0]}<br>
+                   Roll 2: ${attackRoll.rolls[1]}<br>
+                   <strong>Selected:</strong> ${attackRoll.total}`;
+  } else {
+    detailsHtml = `<strong>Attack Roll:</strong> 1d20 = ${attackRoll.rolls[0]}`;
+  }
+  if (attackBonus) {
+    detailsHtml += `<br><strong>Attack Bonus:</strong> +${attackBonus}`;
+  }
+  detailsHtml += `<br><strong>Formula:</strong> ${attackRoll.total}`;
+  if (attackBonus) {
+    detailsHtml += ` + ${attackBonus}`;
+  }
+  detailsHtml += ` = ${attackTotal}`;
+
+  if (isOwlbearReady) {
+    OBR.notification.show(`${currentCharacter?.name || 'Character'}: ${actionName} Attack = ${attackTotal}`, 'INFO');
+  }
+  console.log('⚔️', message);
+
+  // Send to persistent chat with details
+  await addChatMessage(message, 'action', currentCharacter?.name, detailsHtml);
+};
+
+/**
+ * Roll damage only (no attack)
+ */
+window.rollDamageOnly = async function(actionName, damageFormula) {
+  if (!damageFormula || !damageFormula.trim()) return;
+
+  const name = `${actionName} Damage`;
+  const damageRoll = await rollDice(damageFormula, name, 0);
+
+  // If using Dice+, store additional context for damage display
+  if (damageRoll.pending) {
+    const rollContext = pendingRolls.get(damageRoll.rollId);
+    if (rollContext) {
+      rollContext.isDamageRoll = true;
+      rollContext.actionName = actionName;
+      rollContext.damageFormula = damageFormula;
+    }
+    return;
+  }
+
+  // Create concise message
+  const message = `${actionName} Damage: <strong>${damageRoll.total}</strong>`;
+
+  // Build details for expandable view
+  let detailsHtml = `<strong>Formula:</strong> ${damageFormula}<br>
+                     <strong>Rolls:</strong> ${damageRoll.rolls.join(', ')}`;
+  if (damageRoll.modifier) {
+    detailsHtml += `<br>Modifier: ${damageRoll.modifier >= 0 ? '+' : ''}${damageRoll.modifier}`;
+  }
+  detailsHtml += `<br>Calculation: ${damageRoll.rolls.join(' + ')}`;
+  if (damageRoll.modifier) {
+    detailsHtml += ` ${damageRoll.modifier >= 0 ? '+' : ''}${damageRoll.modifier}`;
+  }
+  detailsHtml += ` = ${damageRoll.total}`;
+
+  if (isOwlbearReady) {
+    OBR.notification.show(`${currentCharacter?.name || 'Character'}: ${actionName} Damage = ${damageRoll.total}`, 'INFO');
+  }
+  console.log('⚔️', message);
+
+  // Send to persistent chat with details
+  await addChatMessage(message, 'damage', currentCharacter?.name, detailsHtml);
+};
+
+/**
+ * Roll healing
+ */
+window.rollHealing = async function(spellName, healingFormula) {
+  if (!healingFormula || !healingFormula.trim()) return;
+
+  const healingRoll = rollDice(healingFormula);
+
+  // Create concise message
+  const message = `${spellName} Healing: <strong>${healingRoll.total}</strong>`;
+
+  // Build details for expandable view
+  let detailsHtml = `<strong>Formula:</strong> ${healingFormula}<br>
+                     <strong>Rolls:</strong> ${healingRoll.rolls.join(', ')}`;
+  if (healingRoll.modifier) {
+    detailsHtml += `<br>Modifier: ${healingRoll.modifier >= 0 ? '+' : ''}${healingRoll.modifier}`;
+  }
+  detailsHtml += `<br>Calculation: ${healingRoll.rolls.join(' + ')}`;
+  if (healingRoll.modifier) {
+    detailsHtml += ` ${healingRoll.modifier >= 0 ? '+' : ''}${healingRoll.modifier}`;
+  }
+  detailsHtml += ` = ${healingRoll.total}`;
+
+  if (isOwlbearReady) {
+    OBR.notification.show(`${currentCharacter?.name || 'Character'}: ${spellName} Healing = ${healingRoll.total}`, 'INFO');
+  }
+  console.log('💚', message);
+
+  // Send to persistent chat with details (using 'healing' type for green color)
+  await addChatMessage(message, 'healing', currentCharacter?.name, detailsHtml);
+};
+
+/**
+ * Roll attack (kept for backwards compatibility, calls both)
+ */
+window.rollAttack = async function(actionName, attackBonus, damageFormula) {
+  await rollAttackOnly(actionName, attackBonus);
+  if (damageFormula && damageFormula.trim()) {
+    await rollDamageOnly(actionName, damageFormula);
+  }
+};
+
+// ============== Spell Casting ==============
+
+/**
+ * Cast a spell
+ */
+window.castSpell = async function(spellName, level) {
+  if (!currentCharacter) return;
+
+  // Cantrips don't use spell slots
+  if (level > 0) {
+    if (!currentCharacter.spellSlots) {
+      console.warn('No spell slots available on character');
+      return;
+    }
+
+    const slotKey = `level${level}SpellSlots`;
+    const current = currentCharacter.spellSlots[slotKey] || 0;
+
+    if (current === 0) {
+      if (isOwlbearReady) {
+        OBR.notification.show(`No Level ${level} spell slots remaining!`, 'ERROR');
+      }
+      return;
+    }
+
+    // Decrement spell slot
+    currentCharacter.spellSlots[slotKey] = current - 1;
+    populateStatsTab(currentCharacter);
+  }
+
+  const levelText = level === 0 ? 'Cantrip' : `Level ${level} Spell`;
+  const message = `✨ Casts <strong>${spellName}</strong> (${levelText})`;
+
+  // Create expandable details
+  let details = `<strong>${spellName}</strong><br>${levelText}`;
+  if (level > 0 && slotKey) {
+    const remaining = currentCharacter.spellSlots[slotKey] || 0;
+    details += `<br>Spell Slot Used: Level ${level}<br>Remaining Slots: ${remaining}`;
+  }
+
+  if (isOwlbearReady) {
+    OBR.notification.show(`${currentCharacter?.name || 'Character'} casts ${spellName}`, 'INFO');
+  }
+  console.log('✨', message);
+
+  // Send to persistent chat with details
+  await addChatMessage(message, 'spell', currentCharacter?.name, details);
+};
+
+// ============== HP & Resource Management ==============
+
+/**
+ * Adjust HP
+ */
+window.adjustHP = async function() {
+  if (!currentCharacter) return;
+
+  console.log('🩺 adjustHP called, current character:', currentCharacter.name);
+  console.log('  Current HP object:', currentCharacter.hitPoints);
+
+  const currentHP = currentCharacter.hitPoints?.current || 0;
+  const maxHP = currentCharacter.hitPoints?.max || 0;
+
+  const adjustment = prompt(`Current HP: ${currentHP}/${maxHP}\n\nEnter HP adjustment (negative for damage, positive for healing):`);
+  if (adjustment === null) return;
+
+  const amount = parseInt(adjustment);
+  if (isNaN(amount)) return;
+
+  const newHP = Math.max(0, Math.min(maxHP, currentHP + amount));
+
+  console.log(`  Adjustment: ${amount}, New HP: ${newHP}/${maxHP}`);
+
+  // Ensure hitPoints object exists
+  if (!currentCharacter.hitPoints) {
+    currentCharacter.hitPoints = { current: 0, max: 0 };
+  }
+
+  // Update character data
+  currentCharacter.hitPoints.current = newHP;
+  console.log('  Updated currentCharacter.hitPoints:', currentCharacter.hitPoints);
+
+  // Show notification
+  const message = amount > 0
+    ? `${currentCharacter.name} heals ${amount} HP (${newHP}/${maxHP})`
+    : `${currentCharacter.name} takes ${Math.abs(amount)} damage (${newHP}/${maxHP})`;
+
+  if (isOwlbearReady) {
+    OBR.notification.show(message, amount > 0 ? 'SUCCESS' : 'WARNING');
+  }
+
+  // Send message to chat (use different type for healing vs damage)
+  const messageType = amount > 0 ? 'healing' : 'damage';
+  console.log('  Sending message to chat:', message);
+  await addChatMessage(message, messageType, currentCharacter.name);
+
+  // Re-render stats tab
+  console.log('  Re-rendering stats tab with currentCharacter:', currentCharacter.hitPoints);
+  populateStatsTab(currentCharacter);
+
+  // Note: HP changes are kept local during gameplay. They persist in the extension state
+  // until the user syncs the character or switches characters. This avoids constantly
+  // hitting Supabase for every stat change during play.
+};
+
+/**
+ * Adjust spell slot count
+ */
+window.adjustSpellSlot = function(level, isPactMagic = false) {
+  if (!currentCharacter || !currentCharacter.spellSlots) return;
+
+  const slotKey = isPactMagic ? 'pactMagicSlots' : `level${level}SpellSlots`;
+  const maxKey = isPactMagic ? 'pactMagicSlotsMax' : `level${level}SpellSlotsMax`;
+  const current = currentCharacter.spellSlots[slotKey] || 0;
+  const max = currentCharacter.spellSlots[maxKey] || 0;
+
+  const slotName = isPactMagic ? `Pact Magic` : `Level ${level} Spell Slot`;
+  const adjustment = prompt(`${slotName}: ${current}/${max}\n\nEnter adjustment (negative to use, positive to restore):`);
+  if (adjustment === null) return;
+
+  const amount = parseInt(adjustment);
+  if (isNaN(amount)) return;
+
+  const newCount = Math.max(0, Math.min(max, current + amount));
+  currentCharacter.spellSlots[slotKey] = newCount;
+
+  // Re-render stats tab
+  populateStatsTab(currentCharacter);
+
+  if (isOwlbearReady) {
+    const message = amount > 0 ? `Restored ${amount} ${slotName}` : `Used ${Math.abs(amount)} ${slotName}`;
+    OBR.notification.show(message, 'INFO');
+  }
+};
+
+/**
+ * Adjust class resource (like Channel Divinity, Ki Points, etc.)
+ */
+window.adjustResource = function(resourceName) {
+  if (!currentCharacter || !currentCharacter.resources) return;
+
+  const resource = currentCharacter.resources.find(r => r.name === resourceName);
+  if (!resource) return;
+
+  const current = resource.current || 0;
+  const max = resource.max || 0;
+
+  const adjustment = prompt(`${resourceName}: ${current}/${max}\n\nEnter adjustment (negative to use, positive to restore):`);
+  if (adjustment === null) return;
+
+  const amount = parseInt(adjustment);
+  if (isNaN(amount)) return;
+
+  const newCount = Math.max(0, Math.min(max, current + amount));
+  resource.current = newCount;
+
+  // Re-render stats tab
+  populateStatsTab(currentCharacter);
+
+  if (isOwlbearReady) {
+    const message = amount > 0 ? `Restored ${amount} ${resourceName}` : `Used ${Math.abs(amount)} ${resourceName}`;
+    OBR.notification.show(message, 'INFO');
+  }
+};
+
+/**
+ * Use a feature or action (decrements uses or associated resource and announces in chat)
+ */
+window.useFeature = async function(featureName, resourceName = null) {
+  if (!currentCharacter) return;
+
+  // If it has an associated resource, decrement it
+  if (resourceName && currentCharacter.resources) {
+    const resource = currentCharacter.resources.find(r => r.name === resourceName);
+    if (resource && resource.current > 0) {
+      resource.current -= 1;
+      populateStatsTab(currentCharacter);
+    } else if (resource && resource.current === 0) {
+      if (isOwlbearReady) {
+        OBR.notification.show(`No ${resourceName} remaining!`, 'ERROR');
+      }
+      return;
+    }
+  }
+
+  // Announce in chat
+  const message = `✨ Uses <strong>${featureName}</strong>${resourceName ? ` (${resourceName})` : ''}`;
+  await addChatMessage(message, 'action', currentCharacter.name);
+
+  if (isOwlbearReady) {
+    OBR.notification.show(`${currentCharacter.name} uses ${featureName}`, 'INFO');
+  }
+};
+
+/**
+ * Use a feature that has its own uses tracking
+ */
+window.useFeatureWithUses = async function(featureName) {
+  if (!currentCharacter || !currentCharacter.features) return;
+
+  // Find the feature by name
+  const feature = currentCharacter.features.find(f => f.name === featureName);
+  if (!feature) {
+    console.warn(`Feature "${featureName}" not found`);
+    return;
+  }
+
+  // Check if feature has uses
+  if (!feature.uses || feature.uses.value === undefined) {
+    console.warn(`Feature "${featureName}" has no uses tracking`);
+    return;
+  }
+
+  // Check if uses remaining
+  if (feature.uses.value <= 0) {
+    if (isOwlbearReady) {
+      OBR.notification.show(`No uses of ${featureName} remaining!`, 'ERROR');
+    }
+    return;
+  }
+
+  // Decrement uses
+  feature.uses.value -= 1;
+
+  // Refresh the features tab to show updated uses
+  populateFeaturesTab(currentCharacter);
+
+  // Announce in chat
+  const message = `✨ Uses <strong>${featureName}</strong> (${feature.uses.value}/${feature.uses.max || feature.uses.value + 1} remaining)`;
+  await addChatMessage(message, 'action', currentCharacter.name);
+
+  if (isOwlbearReady) {
+    OBR.notification.show(`${currentCharacter.name} uses ${featureName}`, 'INFO');
+  }
+};
+
+/**
+ * Use an action that has limited uses
+ */
+window.useAction = async function(actionName) {
+  if (!currentCharacter || !currentCharacter.actions) return;
+
+  // Find the action by name
+  const action = currentCharacter.actions.find(a => a.name === actionName);
+  if (!action) {
+    console.warn(`Action "${actionName}" not found`);
+    return;
+  }
+
+  // Check if action has uses
+  if (!action.uses || action.uses.value === undefined) {
+    console.warn(`Action "${actionName}" has no uses tracking`);
+    return;
+  }
+
+  // Check if uses remaining
+  if (action.uses.value <= 0) {
+    if (isOwlbearReady) {
+      OBR.notification.show(`No uses of ${actionName} remaining!`, 'ERROR');
+    }
+    return;
+  }
+
+  // Decrement uses
+  action.uses.value -= 1;
+
+  // Refresh the actions tab to show updated uses
+  populateActionsTab(currentCharacter);
+
+  // Announce in chat
+  const message = `✨ Uses <strong>${actionName}</strong> (${action.uses.value}/${action.uses.max || action.uses.value + 1} remaining)`;
+  await addChatMessage(message, 'action', currentCharacter.name);
+
+  if (isOwlbearReady) {
+    OBR.notification.show(`${currentCharacter.name} uses ${actionName}`, 'INFO');
+  }
+};
+
+// ============== Rest System ==============
+
+/**
+ * Take a short rest
+ */
+window.takeShortRest = async function() {
+  if (!currentCharacter) return;
+
+  const confirm = window.confirm(
+    'Take a Short Rest?\n\n' +
+    '• Spend Hit Dice to recover HP\n' +
+    '• Recover some class resources\n' +
+    '• Takes 1 hour'
+  );
+
+  if (!confirm) return;
+
+  // Allow spending hit dice
+  const hitDice = currentCharacter.hitDice;
+  if (hitDice && hitDice.current > 0) {
+    const spend = window.prompt(`You have ${hitDice.current}/${hitDice.max} Hit Dice (d${hitDice.type})\n\nHow many do you want to spend?`);
+    if (spend) {
+      const count = Math.min(parseInt(spend) || 0, hitDice.current);
+      if (count > 0) {
+        let totalHealing = 0;
+        for (let i = 0; i < count; i++) {
+          const roll = Math.floor(Math.random() * (hitDice.type)) + 1;
+          const conMod = currentCharacter.attributeMods?.constitution || 0;
+          totalHealing += roll + conMod;
+        }
+
+        const currentHP = currentCharacter.hitPoints?.current || 0;
+        const maxHP = currentCharacter.hitPoints?.max || 0;
+        const newHP = Math.min(maxHP, currentHP + totalHealing);
+
+        currentCharacter.hitPoints.current = newHP;
+        currentCharacter.hitDice.current -= count;
+
+        if (isOwlbearReady) {
+          OBR.notification.show(`Short Rest: Spent ${count} Hit Dice, recovered ${totalHealing} HP`, 'SUCCESS');
+        }
       }
     }
-  }, 1e3);
-  var noticeDismissed = localStorage.getItem("owlcloud-notice-dismissed");
-  var extensionNotice = document.getElementById("extension-notice");
-  var dismissButton = document.getElementById("dismiss-notice");
-  if (!noticeDismissed && extensionNotice) {
-    extensionNotice.style.display = "block";
   }
-  if (dismissButton) {
-    dismissButton.addEventListener("click", () => {
-      if (extensionNotice) {
-        extensionNotice.style.display = "none";
+
+  // Refresh tabs
+  populateStatsTab(currentCharacter);
+
+  // TODO: Recover short rest resources
+  // TODO: Save to Supabase
+};
+
+/**
+ * Take a long rest
+ */
+window.takeLongRest = async function() {
+  if (!currentCharacter) return;
+
+  const confirm = window.confirm(
+    'Take a Long Rest?\n\n' +
+    '• Recover all HP\n' +
+    '• Recover all spell slots\n' +
+    '• Recover half of total Hit Dice\n' +
+    '• Recover all resources\n' +
+    '• Takes 8 hours'
+  );
+
+  if (!confirm) return;
+
+  // Recover HP to max
+  const maxHP = currentCharacter.hitPoints?.max || 0;
+  currentCharacter.hitPoints.current = maxHP;
+
+  // Recover spell slots
+  if (currentCharacter.spellSlots) {
+    for (let level = 1; level <= 9; level++) {
+      const maxKey = `level${level}SpellSlotsMax`;
+      const currentKey = `level${level}SpellSlots`;
+      if (currentCharacter.spellSlots[maxKey]) {
+        currentCharacter.spellSlots[currentKey] = currentCharacter.spellSlots[maxKey];
       }
-      localStorage.setItem("owlcloud-notice-dismissed", "true");
-      console.log("\u{1F4E6} Extension notice dismissed permanently");
+    }
+    // Pact magic
+    if (currentCharacter.spellSlots.pactMagicSlotsMax) {
+      currentCharacter.spellSlots.pactMagicSlots = currentCharacter.spellSlots.pactMagicSlotsMax;
+    }
+  }
+
+  // Recover hit dice (half of total)
+  if (currentCharacter.hitDice) {
+    const recovered = Math.max(1, Math.floor(currentCharacter.hitDice.max / 2));
+    currentCharacter.hitDice.current = Math.min(
+      currentCharacter.hitDice.max,
+      currentCharacter.hitDice.current + recovered
+    );
+  }
+
+  // Recover resources
+  if (currentCharacter.resources) {
+    currentCharacter.resources.forEach(resource => {
+      resource.current = resource.max;
     });
   }
-  console.log("\u{1F3B2} OwlCloud popover initialized");
-})();
-//# sourceMappingURL=popover.js.map
+
+  if (isOwlbearReady) {
+    OBR.notification.show(`Long Rest: ${currentCharacter.name} is fully rested!`, 'SUCCESS');
+  }
+
+  // Refresh tabs
+  populateStatsTab(currentCharacter);
+
+  // TODO: Save to Supabase
+};
+
+// ============== Collapsible Sections ==============
+
+/**
+ * Toggle a collapsible section
+ */
+window.toggleCollapsible = function(elementId) {
+  const element = document.getElementById(elementId);
+  const header = element.previousElementSibling;
+
+  if (element && header) {
+    element.classList.toggle('collapsed');
+    header.classList.toggle('collapsed');
+
+    // Handle arrow rotation for spell level headers
+    const arrow = header.querySelector('span[style*="transition"]');
+    if (arrow) {
+      const isCollapsed = element.classList.contains('collapsed');
+      arrow.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+    }
+  }
+};
+
+/**
+ * Toggle expansion of a feature/action/spell card
+ */
+window.toggleFeatureCard = function(cardId) {
+  const card = document.getElementById(cardId);
+  if (!card) return;
+
+  // Find the parent card element
+  const parentCard = card.parentElement;
+  if (parentCard) {
+    parentCard.classList.toggle('expanded');
+  }
+};
+
+// ============== Initialization ==============
+
+console.log('🎲 OwlCloud Owlbear extension popover loaded');
+statusText.textContent = 'Initializing...';
+
+// Wait for DOM to be ready before initializing themes
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    // Initialize theme manager
+    ThemeManager.init();
+    initializeThemeSelector();
+  });
+} else {
+  // DOM is already ready
+  // Initialize theme manager
+  ThemeManager.init();
+  initializeThemeSelector();
+}
+
+// Initial check for character (will happen after OBR.onReady)
+setTimeout(() => {
+  if (!isOwlbearReady) {
+    statusText.textContent = 'Waiting for Owlbear SDK...';
+  }
+}, 1000);
+
+console.log('🎲 OwlCloud popover initialized');

@@ -14,11 +14,6 @@
       padding: 0;
     }
 
-    html, body {
-      height: 100%;
-      overflow: hidden;
-    }
-
     :root {
       --theme-primary: #8B5CF6;
       --theme-primary-light: #A78BFA;
@@ -45,10 +40,8 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       background: var(--theme-bg-primary);
       color: var(--theme-text-primary);
-      padding: 8px;
-      display: flex;
-      flex-direction: column;
-      height: 100%;
+      padding: 12px;
+      min-height: 320px;
     }
 
     .container {
@@ -59,10 +52,6 @@
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
       backdrop-filter: blur(10px);
       border: 1px solid var(--theme-border);
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-      overflow: hidden;
     }
 
     h1 {
@@ -93,14 +82,13 @@
     }
 
     .character-portrait {
-      width: 64px;
-      height: 64px;
+      width: 80px;
+      height: 80px;
       border-radius: 50%;
       border: 3px solid var(--theme-primary);
       object-fit: cover;
       box-shadow: 0 4px 12px var(--theme-shadow);
       flex-shrink: 0;
-      margin-right: 20px;
     }
 
     .roll-mode-btn {
@@ -198,35 +186,6 @@
       margin-bottom: 4px;
     }
 
-    .character-info-container {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-
-    #settings-portrait {
-      width: 80px;
-      height: 80px;
-      border-radius: 50%;
-      border: 3px solid var(--theme-primary);
-      object-fit: cover;
-      box-shadow: 0 4px 12px var(--theme-shadow);
-      flex-shrink: 0;
-    }
-
-    /* Larger portrait on wider screens */
-    @media (min-width: 400px) {
-      .character-info-container {
-        flex-direction: column;
-        text-align: center;
-      }
-
-      #settings-portrait {
-        width: 120px;
-        height: 120px;
-      }
-    }
-
     .character-list-item {
       background: var(--theme-bg-card);
       border: 2px solid var(--theme-border);
@@ -279,11 +238,6 @@
     /* Tabs Styling */
     .tabs-container {
       margin-top: 20px;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-      flex: 1;
-      overflow: hidden;
     }
 
     .tabs-nav {
@@ -377,11 +331,8 @@
     .tab-content {
       display: none;
       animation: fadeIn 0.2s ease;
-      flex: 1;
-      min-height: 0;
+      max-height: 500px;
       overflow-y: auto;
-      overflow-x: hidden;
-      padding: 0 4px;
       -webkit-overflow-scrolling: touch;
       scrollbar-width: thin;
       scrollbar-color: var(--theme-border) transparent;
@@ -660,7 +611,6 @@
       display: grid;
       gap: 8px;
       margin-top: 12px;
-      padding-right: 4px;
     }
 
     .feature-card {
@@ -670,9 +620,6 @@
       padding: 12px;
       transition: all 0.2s ease;
       cursor: pointer;
-      overflow: hidden;
-      word-wrap: break-word;
-      overflow-wrap: break-word;
     }
 
     .feature-card:hover {
@@ -722,24 +669,8 @@
     }
 
     .feature-card.expanded .feature-details {
-      max-height: 300px;
-      overflow-y: auto;
+      max-height: 1000px;
       margin-top: 8px;
-      scrollbar-width: thin;
-      scrollbar-color: var(--theme-border) transparent;
-    }
-
-    .feature-card.expanded .feature-details::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    .feature-card.expanded .feature-details::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    .feature-card.expanded .feature-details::-webkit-scrollbar-thumb {
-      background: var(--theme-border);
-      border-radius: 3px;
     }
 
     .feature-description {
@@ -747,9 +678,6 @@
       font-size: 12px;
       line-height: 1.4;
       margin-top: 8px;
-      word-wrap: break-word;
-      overflow-wrap: break-word;
-      max-width: 100%;
     }
 
     .feature-metadata {
@@ -936,29 +864,12 @@
     }
 
     .spell-concentration-badge {
-      background: rgba(107, 114, 128, 0.2);
-      color: #9CA3AF;
+      background: rgba(245, 158, 11, 0.2);
+      color: #FCD34D;
       font-size: 10px;
       padding: 2px 6px;
       border-radius: 4px;
       font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .spell-concentration-badge:hover {
-      background: rgba(107, 114, 128, 0.3);
-      transform: scale(1.1);
-    }
-
-    .spell-concentration-badge.active {
-      background: rgba(245, 158, 11, 0.4);
-      color: #FDE047;
-      box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
-    }
-
-    .spell-concentration-badge.active:hover {
-      background: rgba(245, 158, 11, 0.5);
     }
 
     .spell-ritual-badge {
@@ -995,19 +906,11 @@
       margin-top: 8px;
     }
 
-    /* Larger portrait on wider screens */
-    @media (min-width: 400px) {
-      .character-portrait {
-        width: 96px;
-        height: 96px;
-      }
-    }
-
     /* Responsive adjustments for small screens */
-    @media (max-width: 399px) {
+    @media (max-width: 400px) {
       .character-portrait {
-        width: 52px;
-        height: 52px;
+        width: 60px;
+        height: 60px;
         border-width: 2px;
       }
 
@@ -1025,122 +928,6 @@
       }
     }
 
-    /* Modal Styles */
-    .modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.7);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-      animation: fadeIn 0.2s ease;
-    }
-
-    .modal-dialog {
-      background: var(--theme-bg-secondary);
-      border: 1px solid var(--theme-border);
-      border-radius: 12px;
-      padding: 20px;
-      max-width: 320px;
-      width: 90%;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
-      animation: slideUp 0.3s ease;
-    }
-
-    @keyframes slideUp {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 16px;
-    }
-
-    .modal-header h3 {
-      background: var(--theme-gradient);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      font-size: 18px;
-      margin: 0;
-    }
-
-    .modal-close-btn {
-      background: none;
-      border: none;
-      color: var(--theme-text-primary);
-      font-size: 28px;
-      cursor: pointer;
-      line-height: 1;
-      padding: 0;
-      width: 28px;
-      height: 28px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s ease;
-    }
-
-    .modal-close-btn:hover {
-      color: var(--theme-primary);
-      transform: scale(1.2);
-    }
-
-    .modal-body {
-      color: var(--theme-text-primary);
-    }
-
-    .spell-level-options {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .spell-level-option {
-      background: var(--theme-bg-card);
-      border: 2px solid var(--theme-border);
-      border-radius: 8px;
-      padding: 12px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .spell-level-option:hover {
-      background: var(--theme-bg-hover);
-      border-color: var(--theme-primary);
-      transform: translateX(4px);
-    }
-
-    .spell-level-option:active {
-      transform: scale(0.98);
-    }
-
-    .spell-level-label {
-      font-weight: 600;
-      color: var(--theme-primary-light);
-    }
-
-    .spell-level-slots {
-      color: var(--theme-text-muted);
-      font-size: 12px;
-    }
-
   </style>
 </head>
 <body>
@@ -1148,20 +935,6 @@
     <div id="branding-header">
       <h1>🎲 OwlCloud</h1>
       <p class="subtitle">DiceCloud → Owlbear Rodeo</p>
-    </div>
-
-    <!-- Browser Extension Notice -->
-    <div id="extension-notice" style="padding: 12px; background: rgba(139, 92, 246, 0.15); border-radius: 8px; border: 1px solid rgba(139, 92, 246, 0.3); margin-bottom: 16px; position: relative; display: none;">
-      <button id="dismiss-notice" style="position: absolute; top: 8px; right: 8px; background: none; border: none; color: #c0c0c0; cursor: pointer; font-size: 18px; line-height: 1; padding: 4px 8px; border-radius: 4px; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff';" onmouseout="this.style.background='none'; this.style.color='#c0c0c0';">✕</button>
-      <div style="font-weight: 600; color: var(--theme-primary-light); font-size: 13px; margin-bottom: 6px; padding-right: 24px;">
-        📦 Browser Extension Required
-      </div>
-      <div style="color: #c0c0c0; font-size: 12px; line-height: 1.4; margin-bottom: 8px;">
-        OwlCloud is not standalone. Install the CarmaClouds browser extension to sync your DiceCloud characters.
-      </div>
-      <a href="https://github.com/CarmaNayeli/carmaclouds/releases/latest" target="_blank" style="color: var(--theme-primary-lighter); font-size: 12px; text-decoration: underline;">
-        Download CarmaClouds Extension →
-      </a>
     </div>
 
     <div id="character-header" style="display: none;">
@@ -1196,36 +969,23 @@
 
       <!-- Settings Tab -->
       <div class="tab-content active" id="tab-settings">
-        <!-- 1. Active Character Card -->
+        <!-- Character Sync (Auth Section) -->
+        <div style="padding: 16px; background: var(--theme-bg-accent); border-radius: 8px; border: 1px solid var(--theme-border); margin-bottom: 16px;">
+          <div style="color: var(--theme-primary-light); font-weight: 600; margin-bottom: 12px; font-size: 14px;">
+            🔐 Character Sync
+          </div>
+          <div id="auth-section">
+            <!-- Auth UI will be populated here by updateAuthUI() -->
+          </div>
+        </div>
+
+        <!-- Character Cards -->
         <div id="character-section" style="display: none;">
-          <div class="character-info" id="character-info" style="margin-bottom: 16px;">
+          <div class="character-info" id="character-info">
             <!-- Character info will be populated here -->
           </div>
-        </div>
 
-        <!-- No Characters Message -->
-        <div id="no-character-section" style="display: none;">
-          <div style="padding: 16px; background: rgba(59, 130, 246, 0.1); border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.3); margin-bottom: 16px;">
-            <div style="font-weight: 600; color: var(--theme-primary-light); font-size: 14px; margin-bottom: 8px;">
-              🎭 No Characters Found
-            </div>
-            <div style="color: #c0c0c0; font-size: 13px; line-height: 1.4; margin-bottom: 12px;">
-              Sign in below to access your characters from any device, or install the browser extension to sync a character.
-            </div>
-            <a href="https://carmaclouds.vercel.app" target="_blank" style="color: var(--theme-primary-light); font-size: 12px; text-decoration: underline;">
-              Install OwlCloud Browser Extension →
-            </a>
-          </div>
-        </div>
-
-        <!-- 2. Chat Button -->
-        <button class="button button-secondary" id="open-chat-window-btn" style="margin-bottom: 16px;">
-          💬 Open Chat Window
-        </button>
-
-        <!-- 3. Character Switcher -->
-        <div id="character-list-section" style="display: none;">
-          <div style="padding: 16px; background: var(--theme-bg-accent); border-radius: 8px; border: 1px solid var(--theme-border); margin-bottom: 16px;">
+          <div id="character-list-section" style="margin-top: 20px; display: none;">
             <div style="color: var(--theme-primary-light); font-weight: 600; margin-bottom: 12px; font-size: 14px;">
               Switch Character
             </div>
@@ -1233,35 +993,29 @@
               <!-- Character list will be populated here -->
             </div>
           </div>
+
+          <button class="button button-secondary" id="sync-character-btn">
+            🔄 Sync from DiceCloud
+          </button>
         </div>
 
-        <!-- 3.5. Fetch Character Button (visible when signed in) -->
-        <button class="button" id="fetch-character-standalone-btn" onclick="handleFetchCharacter()" style="margin-bottom: 16px; display: none;">
-          🔄 Fetch Character
-        </button>
+        <div id="no-character-section" style="display: none;">
+          <div class="error">
+            No active character selected. Please sync a character from the OwlCloud browser extension.
+          </div>
 
-        <!-- 4. Sign In (Collapsible) -->
-        <div style="margin-bottom: 16px; padding: 16px; background: var(--theme-bg-accent); border-radius: 8px; border: 1px solid var(--theme-border);">
-          <div class="section-header collapsible" id="auth-section-header" style="cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s ease; margin: 0;">
-            <div style="color: var(--theme-primary-light); font-weight: 600; font-size: 14px;">
-              🔐 Character Sync
-            </div>
-            <span style="color: var(--theme-primary-light); font-size: 12px; transition: transform 0.2s ease;">▼</span>
-          </div>
-          <div id="auth-section-content" class="collapsible-content" style="margin-top: 12px;">
-            <div id="auth-section">
-              <!-- Auth UI will be populated here by updateAuthUI() -->
-            </div>
-          </div>
+          <button class="button" id="link-extension-btn">
+            🔗 Link to Browser Extension
+          </button>
+
+          <button class="button button-secondary" id="open-extension-btn" style="margin-top: 8px;">
+            📱 Open Extension Popup
+          </button>
         </div>
 
-        <!-- 5. Unsync Button -->
-        <button class="button" id="unsync-character-btn" onclick="handleUnsyncCharacter()" style="margin-bottom: 8px; background: rgba(251, 146, 60, 0.2); border: 1px solid #FB923C; color: #FB923C; display: none;">
-          🔓 Unsync from Owlbear
-        </button>
-
-        <button class="button button-secondary" id="sync-character-btn" style="margin-bottom: 16px; display: none;">
-          🔄 Sync from DiceCloud
+        <!-- Chat button -->
+        <button class="button button-secondary" id="open-chat-window-btn" style="margin-top: 12px;">
+          💬 Open Chat Window
         </button>
 
         <!-- Theme selector -->
@@ -1337,44 +1091,6 @@
     </div>
   </div>
 
-  <!-- Spell Level Selection Modal -->
-  <div id="spell-level-modal" class="modal-overlay" style="display: none;">
-    <div class="modal-dialog">
-      <div class="modal-header">
-        <h3 id="modal-spell-name">Cast Spell</h3>
-        <button class="modal-close-btn" onclick="closeSpellLevelModal()">×</button>
-      </div>
-      <div class="modal-body">
-        <p style="margin-bottom: 12px; color: var(--theme-text-secondary);">Choose a spell slot level:</p>
-        <div id="spell-level-options" class="spell-level-options"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- HP Management Modal -->
-  <div id="hp-modal" class="modal-overlay" style="display: none;">
-    <div class="modal-dialog">
-      <div class="modal-header">
-        <h3>Manage HP</h3>
-        <button class="modal-close-btn" onclick="closeHPModal()">×</button>
-      </div>
-      <div class="modal-body">
-        <input type="number" id="hp-input" placeholder="Enter amount" min="0" style="width: 100%; padding: 12px; border: 1px solid var(--theme-border); border-radius: 8px; background: var(--theme-bg-card); color: var(--theme-text-primary); font-size: 16px; margin-bottom: 12px;">
-        <div class="spell-level-options">
-          <div class="spell-level-option" onclick="applyHP('damage')" style="border-left: 3px solid #EF4444;">
-            <span class="spell-level-label" style="color: #EF4444;">💥 Take Damage</span>
-          </div>
-          <div class="spell-level-option" onclick="applyHP('healing')" style="border-left: 3px solid #10B981;">
-            <span class="spell-level-label" style="color: #10B981;">❤️ Heal</span>
-          </div>
-          <div class="spell-level-option" onclick="applyHP('temp')" style="border-left: 3px solid #3B82F6;">
-            <span class="spell-level-label" style="color: #3B82F6;">🛡️ Temp HP</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- Load Owlbear SDK and Supabase Auth -->
   <script type="module">
     import OBR, { buildImage } from 'https://esm.sh/@owlbear-rodeo/sdk@3.1.0';
@@ -1384,17 +1100,10 @@
     window.buildImage = buildImage;
     window.createSupabaseClient = createClient;
 
-    // Load dicecloud-extraction.js first
-    const extractionScript = document.createElement('script');
-    extractionScript.src = './dicecloud-extraction.js';
-    document.body.appendChild(extractionScript);
-
-    // Load popover.js after extraction script and SDKs are ready
-    extractionScript.onload = () => {
-      const script = document.createElement('script');
-      script.src = './popover.js';
-      document.body.appendChild(script);
-    };
+    // Load popover.js after SDKs are ready
+    const script = document.createElement('script');
+    script.src = './popover.js';
+    document.body.appendChild(script);
   </script>
 </body>
 </html>

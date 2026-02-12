@@ -51,20 +51,19 @@
     .chat-container {
       display: flex;
       flex-direction: column;
-      height: 300px;
-      max-height: 300px;
+      height: 280px;
+      max-height: 280px;
       background: var(--theme-bg-secondary);
       backdrop-filter: blur(10px);
     }
 
     .chat-header {
-      padding: 4px 6px;
+      padding: 12px 16px;
       background: var(--theme-bg-accent);
       border-bottom: 1px solid var(--theme-border);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      flex-shrink: 0;
     }
 
     .chat-header-left {
@@ -111,16 +110,14 @@
     }
 
     .chat-messages {
-      flex: 1 1 auto;
+      flex: 1;
       overflow-y: auto;
-      padding: 6px;
+      padding: 20px;
       display: flex;
       flex-direction: column;
-      justify-content: flex-start;
-      gap: 4px;
+      gap: 12px;
       scrollbar-width: thin;
       scrollbar-color: var(--theme-border) transparent;
-      min-height: 0;
     }
 
     .chat-messages::-webkit-scrollbar {
@@ -137,8 +134,8 @@
     }
 
     .chat-message {
-      padding: 6px 8px;
-      border-radius: 6px;
+      padding: 12px 14px;
+      border-radius: 8px;
       border-left: 3px solid;
       animation: messageSlideIn 0.3s ease;
     }
@@ -198,7 +195,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
     }
 
     .chat-message-author {
@@ -220,14 +217,13 @@
     }
 
     .chat-input-container {
-      padding: 4px 6px;
+      padding: 16px 20px;
       background: var(--theme-bg-accent);
       border-top: 1px solid var(--theme-border);
       display: flex;
-      gap: 4px;
+      gap: 10px;
       align-items: center;
       position: relative;
-      flex-shrink: 0;
     }
 
     .roll-mode-indicator {
@@ -318,47 +314,6 @@
       font-size: 14px;
     }
   </style>
-
-  <!-- Load theme immediately to prevent flash -->
-  <script>
-    (function() {
-      try {
-        const savedTheme = localStorage.getItem('owlcloud-theme') || 'purple';
-
-        const themes = {
-          purple: { primary: '#8B5CF6', light: '#A78BFA', lighter: '#C4B5FD', bg: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)' },
-          blue: { primary: '#3B82F6', light: '#60A5FA', lighter: '#93C5FD', bg: 'linear-gradient(135deg, #1e293b 0%, #1e3a5f 50%, #1e40af 100%)' },
-          green: { primary: '#10B981', light: '#34D399', lighter: '#6EE7B7', bg: 'linear-gradient(135deg, #1a2e1e 0%, #1e3a2e 50%, #166534 100%)' },
-          red: { primary: '#EF4444', light: '#F87171', lighter: '#FCA5A5', bg: 'linear-gradient(135deg, #2e1a1a 0%, #3a1e1e 50%, #7f1d1d 100%)' },
-          orange: { primary: '#F97316', light: '#FB923C', lighter: '#FDBA74', bg: 'linear-gradient(135deg, #2e1f1a 0%, #3a2a1e 50%, #9a3412 100%)' },
-          yellow: { primary: '#EAB308', light: '#FACC15', lighter: '#FDE047', bg: 'linear-gradient(135deg, #2e2a1a 0%, #3a351e 50%, #854d0e 100%)' },
-          pink: { primary: '#EC4899', light: '#F472B6', lighter: '#F9A8D4', bg: 'linear-gradient(135deg, #2e1a2e 0%, #3a1e3a 50%, #831843 100%)' },
-          teal: { primary: '#14B8A6', light: '#2DD4BF', lighter: '#5EEAD4', bg: 'linear-gradient(135deg, #1a2e2e 0%, #1e3a3a 50%, #115e59 100%)' },
-          indigo: { primary: '#6366F1', light: '#818CF8', lighter: '#A5B4FC', bg: 'linear-gradient(135deg, #1e1a2e 0%, #2a1e3a 50%, #4338ca 100%)' },
-          grey: { primary: '#6B7280', light: '#9CA3AF', lighter: '#D1D5DB', bg: 'linear-gradient(135deg, #1f2937 0%, #374151 50%, #4b5563 100%)' },
-          amber: { primary: '#F59E0B', light: '#FBBF24', lighter: '#FCD34D', bg: 'linear-gradient(135deg, #2e261a 0%, #3a311e 50%, #92400e 100%)' }
-        };
-
-        const theme = themes[savedTheme] || themes.purple;
-
-        const root = document.documentElement;
-        root.style.setProperty('--theme-primary', theme.primary);
-        root.style.setProperty('--theme-primary-light', theme.light);
-        root.style.setProperty('--theme-primary-lighter', theme.lighter);
-        root.style.setProperty('--theme-gradient', `linear-gradient(135deg, ${theme.primary} 0%, ${theme.light} 100%)`);
-        root.style.setProperty('--theme-background', `${theme.primary}1A`);
-        root.style.setProperty('--theme-border', `${theme.primary}4D`);
-        root.style.setProperty('--theme-shadow', `${theme.primary}66`);
-        root.style.setProperty('--theme-bg-primary', theme.bg);
-        root.style.setProperty('--theme-bg-secondary', `${theme.primary}14`);
-        root.style.setProperty('--theme-bg-accent', `${theme.primary}26`);
-        root.style.setProperty('--theme-bg-card', `${theme.primary}1A`);
-        root.style.setProperty('--theme-bg-hover', `${theme.primary}33`);
-      } catch (e) {
-        console.error('Failed to load theme:', e);
-      }
-    })();
-  </script>
 </head>
 <body>
   <div class="chat-container">
