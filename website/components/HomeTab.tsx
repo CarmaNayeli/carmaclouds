@@ -149,7 +149,7 @@ export default function HomeTab({ setActiveTab }: HomeTabProps) {
         >
           <h3 className="text-xl font-semibold text-orange-400 mb-3">FoundCloud</h3>
           <p className="text-gray-400">
-            Coming soon! DiceCloud → Foundry VTT integration.
+            In development! Core functionality complete, public release coming soon.
           </p>
         </button>
 
