@@ -380,19 +380,28 @@ export function parseRawCharacterData(rawData, characterId) {
     }
   }
 
-  // Spell slots
+  // Spell slots — primary: properties with attributeType === 'spellSlot'
   const spellSlots = {};
-  for (let i = 1; i <= 9; i++) {
-    const maxSlots = getVar(`level${i}SpellSlots`) || 0;
-    const usedSlots = getVar(`level${i}SpellSlotsUsed`) || 0;
-    if (maxSlots > 0) {
-      spellSlots[i] = {
-        max: maxSlots,
-        used: usedSlots,
-        available: maxSlots - usedSlots
-      };
+  const spellSlotProps = properties.filter(p => p.type === 'attribute' && p.attributeType === 'spellSlot');
+  console.log('🔮 spellSlot properties:', spellSlotProps);
+  for (const prop of spellSlotProps) {
+    const level = prop.level || parseInt((prop.variableName || '').replace(/\D/g, ''), 10);
+    if (level >= 1 && level <= 9) {
+      const max = prop.total ?? prop.value ?? 0;
+      const used = (prop.total ?? 0) - (prop.value ?? prop.total ?? 0);
+      spellSlots[level] = { max, used, available: prop.value ?? max };
     }
   }
+  // Fallback: variable name patterns
+  for (let i = 1; i <= 9; i++) {
+    if (spellSlots[i]) continue;
+    const maxSlots = getVar(`level${i}SpellSlots`) || getVar(`spellSlot${i}`) || 0;
+    const usedSlots = getVar(`level${i}SpellSlotsUsed`) || 0;
+    if (maxSlots > 0) {
+      spellSlots[i] = { max: maxSlots, used: usedSlots, available: maxSlots - usedSlots };
+    }
+  }
+  console.log('🔮 Final spellSlots:', spellSlots);
 
   // Return formatted character data
   return {
