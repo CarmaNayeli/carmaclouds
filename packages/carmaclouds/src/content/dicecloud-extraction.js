@@ -1284,21 +1284,33 @@ export function parseForRollCloud(rawData) {
       };
     });
 
-  // Parse spell slots from variables
-  // DiceCloud uses: slotLevel1, slotLevel2, etc.
+  // Parse spell slots — try properties first (attributeType === 'spellSlot'), then variable name fallbacks
   const spellSlots = {};
-  console.log('🔮 Parsing spell slots from variables...');
-  console.log('🔮 Available variables:', Object.keys(variables).filter(k => k.toLowerCase().includes('slot')));
-  for (let level = 1; level <= 9; level++) {
-    const slotVar = variables[`slotLevel${level}`];
-    if (slotVar) {
-      const current = slotVar.value || 0;
-      const max = slotVar.total || slotVar.max || slotVar.value || 0;
-      console.log(`🔮 Level ${level} spell slots:`, { current, max, slotVar });
+  console.log('🔮 Parsing spell slots...');
+  console.log('🔮 Available slot variables:', Object.keys(variables).filter(k => k.toLowerCase().includes('slot')));
+
+  // Primary: properties with attributeType === 'spellSlot'
+  const spellSlotProps = properties.filter(p => p.type === 'attribute' && p.attributeType === 'spellSlot');
+  console.log('🔮 spellSlot properties:', spellSlotProps);
+  for (const prop of spellSlotProps) {
+    const level = prop.level || parseInt((prop.variableName || '').replace(/\D/g, ''), 10);
+    if (level >= 1 && level <= 9) {
       spellSlots[`level${level}`] = {
-        current: current,
-        max: max
+        current: prop.value ?? prop.total ?? 0,
+        max: prop.total ?? prop.value ?? 0
       };
+    }
+  }
+
+  // Fallback: try variable names slotLevel1 / spellSlot1
+  for (let level = 1; level <= 9; level++) {
+    if (spellSlots[`level${level}`]) continue;
+    const slotVar = variables[`slotLevel${level}`] || variables[`spellSlot${level}`];
+    if (slotVar) {
+      const current = slotVar.value ?? 0;
+      const max = slotVar.total ?? slotVar.max ?? slotVar.value ?? 0;
+      console.log(`🔮 Level ${level} spell slots (variable fallback):`, { current, max, slotVar });
+      spellSlots[`level${level}`] = { current, max };
     }
   }
   console.log('🔮 Final spell slots:', spellSlots);
