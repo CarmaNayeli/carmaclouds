@@ -12508,18 +12508,28 @@ ${suffix}`;
       };
     });
     const spellSlots = {};
-    console.log("\u{1F52E} Parsing spell slots from variables...");
-    console.log("\u{1F52E} Available variables:", Object.keys(variables2).filter((k) => k.toLowerCase().includes("slot")));
-    for (let level2 = 1; level2 <= 9; level2++) {
-      const slotVar = variables2[`slotLevel${level2}`];
-      if (slotVar) {
-        const current = slotVar.value || 0;
-        const max = slotVar.total || slotVar.max || slotVar.value || 0;
-        console.log(`\u{1F52E} Level ${level2} spell slots:`, { current, max, slotVar });
+    console.log("\u{1F52E} Parsing spell slots...");
+    console.log("\u{1F52E} Available slot variables:", Object.keys(variables2).filter((k) => k.toLowerCase().includes("slot")));
+    const spellSlotProps = properties.filter((p) => p.type === "attribute" && p.attributeType === "spellSlot");
+    console.log("\u{1F52E} spellSlot properties:", spellSlotProps);
+    for (const prop of spellSlotProps) {
+      const level2 = prop.level || parseInt((prop.variableName || "").replace(/\D/g, ""), 10);
+      if (level2 >= 1 && level2 <= 9) {
         spellSlots[`level${level2}`] = {
-          current,
-          max
+          current: prop.value ?? prop.total ?? 0,
+          max: prop.total ?? prop.value ?? 0
         };
+      }
+    }
+    for (let level2 = 1; level2 <= 9; level2++) {
+      if (spellSlots[`level${level2}`])
+        continue;
+      const slotVar = variables2[`slotLevel${level2}`] || variables2[`spellSlot${level2}`];
+      if (slotVar) {
+        const current = slotVar.value ?? 0;
+        const max = slotVar.total ?? slotVar.max ?? slotVar.value ?? 0;
+        console.log(`\u{1F52E} Level ${level2} spell slots (variable fallback):`, { current, max, slotVar });
+        spellSlots[`level${level2}`] = { current, max };
       }
     }
     console.log("\u{1F52E} Final spell slots:", spellSlots);
