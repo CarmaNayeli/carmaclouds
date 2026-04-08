@@ -2212,14 +2212,18 @@ function displayCharacter(character) {
 
   currentCharacter = character;
 
-  // Save to localStorage so chat window can access it
+  // Save to localStorage so chat window can access it (include stats for !roll variable substitution)
   try {
     localStorage.setItem('owlcloud-active-character', JSON.stringify({
       id: character.id || character.dicecloud_character_id,
       name: character.name || character.character_name || character.creature?.name,
       race: character.race,
       class: character.class,
-      level: character.level
+      level: character.level,
+      proficiencyBonus: character.proficiencyBonus || 2,
+      attributeMods: character.attributeMods || {},
+      savingThrows: character.savingThrows || {},
+      skills: character.skills || {}
     }));
     console.log('✅ Saved active character to localStorage for chat window');
   } catch (e) {

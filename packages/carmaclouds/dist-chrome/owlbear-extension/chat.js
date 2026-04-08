@@ -585,6 +585,164 @@ async function addChatMessageToMetadata(text, type = 'system', author = null) {
   }
 }
 
+// ============== Dice Rolling ==============
+
+const OWLCLOUD_EXTENSION_ID = 'com.owlcloud.extension';
+
+/**
+ * Build a stat lookup map from the stored character data.
+ * Supports: {STR}, {DEX}, {CON}, {INT}, {WIS}, {CHA}, {PROF},
+ *           {STR_SAVE} etc., and full skill names like {PERCEPTION}.
+ */
+function buildStatLookup(char) {
+  if (!char) return {};
+  const mods = char.attributeMods || {};
+  const saves = char.savingThrows || {};
+  const skills = char.skills || {};
+  const prof = char.proficiencyBonus || 2;
+
+  // Abbreviation → full name map
+  const abilityMap = {
+    STR: 'strength', DEX: 'dexterity', CON: 'constitution',
+    INT: 'intelligence', WIS: 'wisdom', CHA: 'charisma'
+  };
+
+  const lookup = { PROF: prof, PROFICIENCY: prof };
+
+  // Ability mod abbreviations and full names
+  for (const [abbr, full] of Object.entries(abilityMap)) {
+    const val = mods[full] ?? 0;
+    lookup[abbr] = val;
+    lookup[full.toUpperCase()] = val;
+  }
+
+  // Saving throws: {STR_SAVE}, {STRENGTH_SAVE}
+  for (const [abbr, full] of Object.entries(abilityMap)) {
+    const val = saves[full] ?? mods[full] ?? 0;
+    lookup[`${abbr}_SAVE`] = val;
+    lookup[`${full.toUpperCase()}_SAVE`] = val;
+  }
+
+  // Skills (camelCase keys from owlcloud_parsed_data)
+  for (const [key, val] of Object.entries(skills)) {
+    if (typeof val === 'number') {
+      lookup[key.toUpperCase()] = val;
+    } else if (val && typeof val.modifier === 'number') {
+      lookup[key.toUpperCase()] = val.modifier;
+    }
+  }
+
+  return lookup;
+}
+
+/**
+ * Substitute {VAR} tokens in a formula string.
+ * Returns the substituted formula, or null if an unknown variable is used.
+ */
+function substituteVars(formula, lookup) {
+  let resolved = formula;
+  const unknowns = [];
+
+  resolved = resolved.replace(/\{([^}]+)\}/g, (_, name) => {
+    const key = name.trim().toUpperCase();
+    if (key in lookup) {
+      const val = lookup[key];
+      // Render negative modifiers with parentheses so they parse cleanly
+      return val < 0 ? `(${val})` : String(val);
+    }
+    unknowns.push(name);
+    return `{${name}}`;
+  });
+
+  return { resolved, unknowns };
+}
+
+/**
+ * Parse and roll a dice formula like "2d6 + 1d8 + 3 - 1"
+ * @param {string} formula - Already-substituted dice formula string
+ * @returns {{ result: number, breakdown: string }|null}
+ */
+function rollDiceFormula(formula) {
+  // Strip outer parens wrapping negative numbers, normalize spaces
+  const normalized = formula.replace(/\s+/g, '').replace(/\((-?\d+)\)/g, '$1').toLowerCase();
+
+  const re = /([+-]?)(\d*d\d+|\d+)/gi;
+  const tokens = [];
+  let match;
+  while ((match = re.exec(normalized)) !== null) {
+    const sign = match[1] === '-' ? -1 : 1;
+    tokens.push({ sign, part: match[2] });
+  }
+
+  if (tokens.length === 0) return null;
+
+  let total = 0;
+  const parts = [];
+
+  for (const { sign, part } of tokens) {
+    if (part.includes('d')) {
+      const [countStr, sidesStr] = part.split('d');
+      const count = parseInt(countStr) || 1;
+      const sides = parseInt(sidesStr);
+      if (isNaN(sides) || sides < 1 || count < 1 || count > 100) return null;
+
+      const rolls = [];
+      for (let i = 0; i < count; i++) rolls.push(Math.floor(Math.random() * sides) + 1);
+      const subtotal = rolls.reduce((a, b) => a + b, 0) * sign;
+      total += subtotal;
+
+      const rollStr = rolls.length === 1 ? `[${rolls[0]}]` : `[${rolls.join('+')}]`;
+      parts.push({ label: `${count}d${sides}`, rollStr, value: subtotal, sign });
+    } else {
+      const mod = parseInt(part) * sign;
+      if (isNaN(mod)) return null;
+      total += mod;
+      parts.push({ label: String(Math.abs(mod)), rollStr: null, value: mod, sign });
+    }
+  }
+
+  // Build breakdown: "2d6: [3+5] + 3 - 1d4: [2]"
+  let breakdown = '';
+  parts.forEach((p, i) => {
+    const isFirst = i === 0;
+    const neg = p.value < 0;
+    const sep = isFirst ? '' : (neg ? ' - ' : ' + ');
+    if (p.rollStr) {
+      breakdown += `${sep}${p.label}: ${p.rollStr}`;
+    } else {
+      breakdown += `${sep}${p.label}`;
+    }
+  });
+
+  return { result: total, breakdown };
+}
+
+/**
+ * Fire-and-forget: send formula to Dice+ for 3D animation.
+ * We don't wait for the result — we already computed it locally.
+ */
+async function sendToDicePlus(diceNotation) {
+  try {
+    const rollId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const playerId = await OBR.player.getId();
+    const playerName = await OBR.player.getName();
+
+    await OBR.broadcast.sendMessage('dice-plus/roll-request', {
+      rollId,
+      playerId,
+      playerName,
+      rollTarget: 'everyone',
+      diceNotation,
+      showResults: false,
+      timestamp: Date.now(),
+      source: OWLCLOUD_EXTENSION_ID
+    }, { destination: 'ALL' });
+  } catch (e) {
+    // Dice+ not installed or error — silent fallback, result already shown in chat
+    console.warn('Dice+ broadcast failed (not installed?):', e.message);
+  }
+}
+
 /**
  * Send a user message
  */
@@ -592,11 +750,41 @@ async function sendChatMessage() {
   const text = chatInput.value.trim();
   if (!text) return;
 
-  // Add user message to shared chat
   const characterName = currentCharacter?.name || 'You';
-  await addChatMessageToMetadata(text, 'user', characterName);
 
-  // Clear input
+  // Handle !roll / !r command
+  const rollMatch = text.match(/^!r(?:oll)?\s+(.+)/i);
+  if (rollMatch) {
+    chatInput.value = '';
+    const rawFormula = rollMatch[1].trim();
+
+    // Substitute {VAR} tokens with character stats
+    const lookup = buildStatLookup(currentCharacter);
+    const { resolved, unknowns } = substituteVars(rawFormula, lookup);
+
+    if (unknowns.length > 0) {
+      displayChatMessage(`❌ Unknown variable(s): ${unknowns.map(u => `{${u}}`).join(', ')}`, 'system');
+      return;
+    }
+
+    const rolled = rollDiceFormula(resolved);
+    if (!rolled) {
+      displayChatMessage(`❌ Invalid dice formula: <em>${rawFormula}</em>`, 'system');
+      return;
+    }
+
+    // Display formula as typed (with var names), show resolved breakdown and total
+    const displayFormula = rawFormula !== resolved ? `${rawFormula} → ${resolved}` : rawFormula;
+    const msg = `🎲 <strong>${displayFormula}</strong>: ${rolled.breakdown} = <strong>${rolled.result}</strong>`;
+    await addChatMessageToMetadata(msg, 'roll', characterName);
+
+    // Trigger Dice+ 3D animation (fire and forget)
+    sendToDicePlus(resolved);
+    return;
+  }
+
+  // Add regular user message to shared chat
+  await addChatMessageToMetadata(text, 'user', characterName);
   chatInput.value = '';
 }
 
