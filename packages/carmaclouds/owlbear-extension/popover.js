@@ -2262,35 +2262,10 @@ async function createCircularImage(imageUrl, size) {
 function setupPortraitDrag(portraitElement, character, portraitUrl) {
   if (!isOwlbearReady) return;
 
-  // Enable HTML5 drag-and-drop for GMs to drag onto map
-  portraitElement.draggable = true;
-  portraitElement.style.cursor = 'grab';
-  portraitElement.title = 'Drag to map (GM) or click to add token';
+  // Click to add a properly-sized token (1 grid square = 5ft×5ft)
+  portraitElement.style.cursor = 'pointer';
+  portraitElement.title = 'Click to add token to map (1 grid square)';
 
-  // Handle drag start
-  portraitElement.addEventListener('dragstart', (e) => {
-    portraitElement.style.cursor = 'grabbing';
-    e.dataTransfer.effectAllowed = 'copy';
-
-    // Set multiple data formats for compatibility
-    e.dataTransfer.setData('text/uri-list', portraitUrl);
-    e.dataTransfer.setData('text/plain', portraitUrl);
-    e.dataTransfer.setData('text/html', `<img src="${portraitUrl}" alt="${character.name}">`);
-    e.dataTransfer.setData('DownloadURL', `image/png:${character.name}.png:${portraitUrl}`);
-
-    // Set drag image
-    const img = new Image();
-    img.src = portraitUrl;
-    e.dataTransfer.setDragImage(portraitElement, 50, 50);
-
-    console.log('🎨 Dragging portrait for', character.name, '- URL:', portraitUrl);
-  });
-
-  portraitElement.addEventListener('dragend', () => {
-    portraitElement.style.cursor = 'grab';
-  });
-
-  // Also support click for programmatic creation (fallback for players)
   portraitElement.onclick = async (e) => {
     // Prevent drag from also triggering click
     if (e.detail === 0) return;
@@ -2311,17 +2286,20 @@ function setupPortraitDrag(portraitElement, character, portraitUrl) {
       // Get current player ID to set ownership
       const playerId = await OBR.player.getId();
 
-      // Build token using buildImage with circular image
+      // Build token using buildImage with circular image.
+      // Image was created at dpi*2 pixels for quality; grid.dpi must also be dpi*2
+      // so OBR renders it as exactly 1 grid square (5ft × 5ft).
+      const imgSize = dpi * 2;
       const token = buildImage(
         {
-          height: dpi,
-          width: dpi,
+          height: imgSize,
+          width: imgSize,
           url: circularImageUrl,
           mime: 'image/png'
         },
         {
-          dpi: dpi,
-          offset: { x: 0, y: 0 }
+          dpi: imgSize,
+          offset: { x: imgSize / 2, y: imgSize / 2 }
         }
       )
         .layer('CHARACTER')
