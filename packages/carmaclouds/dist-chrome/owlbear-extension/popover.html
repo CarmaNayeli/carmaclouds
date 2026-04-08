@@ -1051,6 +1051,57 @@
           💬 Open Chat Window
         </button>
 
+        <!-- Chat rolling help -->
+        <div style="margin-top: 10px; background: var(--theme-bg-accent); border-radius: 8px; border: 1px solid var(--theme-border);">
+          <div id="chat-help-header" onclick="var c=document.getElementById('chat-help-content'),open=c.style.display!=='none';c.style.display=open?'none':'block';this.querySelector('.chat-help-arrow').style.transform=open?'rotate(-90deg)':'rotate(0deg)';" style="cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px;">
+            <div style="color: var(--theme-primary-light); font-weight: 600; font-size: 13px;">🎲 Chat Dice Rolling</div>
+            <span class="chat-help-arrow" style="color: var(--theme-primary-light); font-size: 11px; transition: transform 0.2s ease; display: inline-block; transform: rotate(-90deg);">▼</span>
+          </div>
+          <div id="chat-help-content" style="display: none; padding: 0 14px 12px; font-size: 12px; color: var(--theme-text-secondary); line-height: 1.6;">
+            <p style="margin: 0 0 8px; color: var(--theme-primary-lighter); font-weight: 600;">Commands</p>
+            <p style="margin: 0 0 4px;"><code style="background: var(--theme-bg-card); padding: 1px 5px; border-radius: 3px; font-size: 11px;">!roll</code> or <code style="background: var(--theme-bg-card); padding: 1px 5px; border-radius: 3px; font-size: 11px;">!r</code> — roll a dice formula</p>
+
+            <p style="margin: 10px 0 6px; color: var(--theme-primary-lighter); font-weight: 600;">Dice Syntax</p>
+            <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+              <tr><td style="padding: 2px 6px 2px 0; white-space: nowrap;"><code style="background: var(--theme-bg-card); padding: 1px 4px; border-radius: 3px;">!r 1d20</code></td><td style="color: var(--theme-text-muted);">Single die</td></tr>
+              <tr><td style="padding: 2px 6px 2px 0; white-space: nowrap;"><code style="background: var(--theme-bg-card); padding: 1px 4px; border-radius: 3px;">!r 2d6+3</code></td><td style="color: var(--theme-text-muted);">Dice + flat modifier</td></tr>
+              <tr><td style="padding: 2px 6px 2px 0; white-space: nowrap;"><code style="background: var(--theme-bg-card); padding: 1px 4px; border-radius: 3px;">!r 1d8+1d6-1</code></td><td style="color: var(--theme-text-muted);">Multiple dice groups</td></tr>
+              <tr><td style="padding: 2px 6px 2px 0; white-space: nowrap;"><code style="background: var(--theme-bg-card); padding: 1px 4px; border-radius: 3px;">!r d20</code></td><td style="color: var(--theme-text-muted);">Omit count for ×1</td></tr>
+            </table>
+
+            <p style="margin: 10px 0 6px; color: var(--theme-primary-lighter); font-weight: 600;">Stat Variables <span style="font-weight: normal; color: var(--theme-text-muted);">(use {curly braces})</span></p>
+            <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+              <tr>
+                <td style="padding: 2px 4px 2px 0;"><code style="background: var(--theme-bg-card); padding: 1px 4px; border-radius: 3px;">{STR}</code></td>
+                <td style="padding: 2px 4px 2px 0;"><code style="background: var(--theme-bg-card); padding: 1px 4px; border-radius: 3px;">{DEX}</code></td>
+                <td style="padding: 2px 4px 2px 0;"><code style="background: var(--theme-bg-card); padding: 1px 4px; border-radius: 3px;">{CON}</code></td>
+              </tr>
+              <tr>
+                <td style="padding: 2px 4px 2px 0;"><code style="background: var(--theme-bg-card); padding: 1px 4px; border-radius: 3px;">{INT}</code></td>
+                <td style="padding: 2px 4px 2px 0;"><code style="background: var(--theme-bg-card); padding: 1px 4px; border-radius: 3px;">{WIS}</code></td>
+                <td style="padding: 2px 4px 2px 0;"><code style="background: var(--theme-bg-card); padding: 1px 4px; border-radius: 3px;">{CHA}</code></td>
+              </tr>
+              <tr><td colspan="3" style="padding: 4px 0 2px; color: var(--theme-text-muted);">Ability modifiers (e.g. WIS 19 → +4)</td></tr>
+            </table>
+            <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 4px;">
+              <tr><td style="padding: 2px 6px 2px 0; white-space: nowrap;"><code style="background: var(--theme-bg-card); padding: 1px 4px; border-radius: 3px;">{WIS_SAVE}</code></td><td style="color: var(--theme-text-muted);">Saving throw total (includes prof)</td></tr>
+              <tr><td style="padding: 2px 6px 2px 0; white-space: nowrap;"><code style="background: var(--theme-bg-card); padding: 1px 4px; border-radius: 3px;">{PROF}</code></td><td style="color: var(--theme-text-muted);">Proficiency bonus</td></tr>
+              <tr><td style="padding: 2px 6px 2px 0; white-space: nowrap;"><code style="background: var(--theme-bg-card); padding: 1px 4px; border-radius: 3px;">{PERCEPTION}</code></td><td style="color: var(--theme-text-muted);">Skill totals by full name</td></tr>
+            </table>
+
+            <p style="margin: 10px 0 6px; color: var(--theme-primary-lighter); font-weight: 600;">Examples</p>
+            <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+              <tr><td style="padding: 2px 6px 2px 0; white-space: nowrap;"><code style="background: var(--theme-bg-card); padding: 1px 4px; border-radius: 3px;">!r 1d20+{WIS}</code></td><td style="color: var(--theme-text-muted);">Wisdom check</td></tr>
+              <tr><td style="padding: 2px 6px 2px 0; white-space: nowrap;"><code style="background: var(--theme-bg-card); padding: 1px 4px; border-radius: 3px;">!r 1d20+{WIS_SAVE}</code></td><td style="color: var(--theme-text-muted);">Wisdom saving throw</td></tr>
+              <tr><td style="padding: 2px 6px 2px 0; white-space: nowrap;"><code style="background: var(--theme-bg-card); padding: 1px 4px; border-radius: 3px;">!r 1d20+{PERCEPTION}</code></td><td style="color: var(--theme-text-muted);">Perception check</td></tr>
+              <tr><td style="padding: 2px 6px 2px 0; white-space: nowrap;"><code style="background: var(--theme-bg-card); padding: 1px 4px; border-radius: 3px;">!r 2d6+{STR}</code></td><td style="color: var(--theme-text-muted);">Greatsword damage</td></tr>
+            </table>
+
+            <p style="margin: 10px 0 4px; color: var(--theme-text-muted); font-size: 11px;">⚠️ Variables resolve from your active character's stats. Resync from DiceCloud if values look wrong.</p>
+            <p style="margin: 0; color: var(--theme-text-muted); font-size: 11px;">🎲 If Dice+ is installed, the 3D die and chat result are always the same roll.</p>
+          </div>
+        </div>
+
         <!-- Theme selector -->
         <div style="margin-top: 16px; padding: 16px; background: var(--theme-bg-accent); border-radius: 8px; border: 1px solid var(--theme-border);">
           <div class="section-header collapsible" id="theme-section-header" style="cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s ease;">
