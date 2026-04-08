@@ -1920,7 +1920,7 @@ window.switchToCharacter = async function(characterId) {
 
     if (response.ok && result.success) {
       // Reload full character data after switching
-      await checkForCharacter();
+      await checkForActiveCharacter();
       if (isOwlbearReady) {
         OBR.notification.show(`Switched to ${charName}`, 'SUCCESS');
       }
