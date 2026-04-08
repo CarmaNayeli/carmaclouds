@@ -2017,17 +2017,56 @@ function displayCharacterList() {
  * Switch to a different character
  */
 window.switchToCharacter = async function(characterId) {
-  try {
-    const character = allCharacters.find(c => (c.dicecloud_character_id || c.id) === characterId);
-    if (!character) {
-      console.error('Character not found:', characterId);
-      return;
-    }
+  const character = allCharacters.find(c => (c.dicecloud_character_id || c.id) === characterId);
+  if (!character) {
+    console.error('Character not found:', characterId);
+    return;
+  }
 
-    const charName = character.character_name || character.name;
+  const charName = character.character_name || character.name;
+
+  // --- Immediate feedback: update list UI and show skeleton stats ---
+  // Mark clicked item as loading in the list
+  document.querySelectorAll('.character-list-item').forEach(el => {
+    el.classList.remove('active');
+    el.style.opacity = '1';
+  });
+  const clickedItem = [...document.querySelectorAll('.character-list-item')]
+    .find(el => el.querySelector('.character-list-item-name')?.textContent === charName);
+  if (clickedItem) {
+    clickedItem.classList.add('active');
+    clickedItem.style.opacity = '0.6';
+    clickedItem.querySelector('.character-list-item-details').textContent = 'Loading...';
+  }
+
+  // Show partial character info immediately from list data (name/level/race/class)
+  const partialChar = {
+    id: characterId,
+    dicecloud_character_id: characterId,
+    name: charName,
+    race: character.race || '',
+    class: character.class || '',
+    level: character.level || '?',
+    hitPoints: { current: 0, max: 0 },
+    armorClass: 10,
+    speed: 30,
+    initiative: 0,
+    proficiencyBonus: 2,
+    attributes: {},
+    attributeMods: {},
+    savingThrows: {},
+    skills: {},
+    spells: [],
+    actions: [],
+    features: [],
+    resources: [],
+  };
+  displayCharacter(partialChar);
+
+  try {
     const playerId = await OBR.player.getId();
 
-    // Prefer characterName+supabaseUserId path when authenticated (cleaner, no field mapping issues)
+    // Prefer characterName+supabaseUserId path when authenticated
     const requestBody = currentUser
       ? { supabaseUserId: currentUser.id, characterName: charName }
       : { owlbearPlayerId: playerId, character };
@@ -2044,8 +2083,41 @@ window.switchToCharacter = async function(characterId) {
     const result = await response.json();
 
     if (response.ok && result.success) {
-      // Reload full character data after switching
-      await checkForActiveCharacter();
+      // Use the character data from the POST response directly (saves a second round trip)
+      if (result.character) {
+        const db = result.character;
+        let characterData;
+        if (db.owlcloud_parsed_data && db.owlcloud_parsed_data.name) {
+          characterData = { ...db.owlcloud_parsed_data, id: db.dicecloud_character_id, dicecloud_character_id: db.dicecloud_character_id };
+        } else if (db.foundcloud_parsed_data && db.foundcloud_parsed_data.name) {
+          const fp = db.foundcloud_parsed_data;
+          const attrs = fp.attributes || {};
+          const abilityNames = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
+          const attributeMods = {};
+          abilityNames.forEach(a => { attributeMods[a] = Math.floor(((attrs[a] || 10) - 10) / 2); });
+          const savingThrows = {};
+          abilityNames.forEach(a => { savingThrows[a] = fp.saves?.[`${a}Save`] ?? attributeMods[a]; });
+          characterData = {
+            id: db.dicecloud_character_id, dicecloud_character_id: db.dicecloud_character_id,
+            name: fp.name || db.character_name, race: fp.race || db.race, class: fp.class || db.class, level: fp.level || db.level,
+            hitPoints: fp.hit_points || { current: 0, max: 0 }, temporaryHP: fp.temporary_hp || 0,
+            armorClass: fp.armor_class || 10, speed: fp.speed || 30, initiative: fp.initiative || 0,
+            proficiencyBonus: fp.proficiency_bonus || 2, attributes: attrs, attributeMods, savingThrows,
+            skills: fp.skills || {}, spells: fp.spells || [], spellSlots: fp.spell_slots || {},
+            actions: fp.actions || [], features: fp.features || [], resources: fp.resources || [],
+            inventory: fp.inventory || [], picture: fp.raw_dicecloud_data?.picture || null,
+          };
+        } else {
+          characterData = parseRawDiceCloudData(db);
+        }
+        // Update cache and display
+        const cacheKey = `owlcloud_char_${currentUser?.id || (await OBR.player.getId())}`;
+        localStorage.setItem(cacheKey, JSON.stringify(characterData));
+        displayCharacter(characterData);
+        await fetchAllCharacters(); // Refresh list (background, non-blocking)
+      } else {
+        await checkForActiveCharacter();
+      }
       if (isOwlbearReady) {
         OBR.notification.show(`Switched to ${charName}`, 'SUCCESS');
       }
@@ -2054,12 +2126,15 @@ window.switchToCharacter = async function(characterId) {
       if (isOwlbearReady) {
         OBR.notification.show('Failed to switch character', 'ERROR');
       }
+      // Restore list
+      displayCharacterList();
     }
   } catch (error) {
     console.error('Error switching character:', error);
     if (isOwlbearReady) {
       OBR.notification.show('Error switching character', 'ERROR');
     }
+    displayCharacterList();
   }
 };
 
