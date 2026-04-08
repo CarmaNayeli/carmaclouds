@@ -1665,6 +1665,23 @@ window.handleUnsyncCharacter = async function() {
 // ============== Character Management ==============
 
 /**
+ * Extract features array from raw_dicecloud_data for display in Features tab.
+ */
+function extractFeaturesFromRaw(rawDiceCloudData) {
+  const properties = rawDiceCloudData?.properties || [];
+  return properties
+    .filter(p => p && p.type === 'feature' && p.name)
+    .map(p => ({
+      name: p.name,
+      description: p.description || '',
+      source: Array.isArray(p.tags) ? p.tags.join(', ') : '',
+      uses: (p.uses && (p.uses.max ?? 0) > 0)
+        ? { current: p.uses.value ?? p.uses.currentValue ?? 0, max: p.uses.max ?? 0 }
+        : undefined,
+    }));
+}
+
+/**
  * Parse a raw DiceCloud {creature, variables, properties} object into the
  * OwlCloud display format expected by populate*Tab functions.
  * Used as fallback when owlcloud_parsed_data / foundcloud_parsed_data are unavailable.
@@ -1705,16 +1722,15 @@ function parseRawDiceCloudData(db) {
     max: hp.total ?? hp.max ?? 0,
   };
 
-  // Extract spells, actions, features from properties
-  const spells = [], actions = [], features = [], resources = [], inventory = [];
+  // Extract spells, actions from properties; features via helper
+  const spells = [], actions = [], resources = [], inventory = [];
+  const features = extractFeaturesFromRaw(raw);
   properties.forEach(p => {
     if (!p || !p.name) return;
     if (p.type === 'spell') {
       spells.push({ name: p.name, level: p.level ?? 0, description: p.description || '' });
     } else if (p.type === 'action') {
       actions.push({ name: p.name, description: p.description || '', actionType: p.actionType || 'Action' });
-    } else if (p.type === 'feature') {
-      features.push({ name: p.name, description: p.description || '' });
     } else if (p.type === 'item' && p.quantity > 0) {
       inventory.push({ name: p.name, quantity: p.quantity || 1, description: p.description || '' });
     }
@@ -1902,7 +1918,7 @@ async function checkForActiveCharacter() {
           spells: fp.spells || [],
           spellSlots: fp.spell_slots || {},
           actions: fp.actions || [],
-          features: fp.features || [],
+          features: fp.features?.length ? fp.features : extractFeaturesFromRaw(db.raw_dicecloud_data),
           resources: fp.resources || [],
           inventory: fp.inventory || [],
           picture: fp.raw_dicecloud_data?.picture || null,

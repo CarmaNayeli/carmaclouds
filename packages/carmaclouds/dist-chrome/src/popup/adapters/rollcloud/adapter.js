@@ -1047,6 +1047,12 @@
       };
     });
     console.log(`\u26A1 Parsed ${triggers.length} triggers:`, triggers.map((t) => t.name));
+    const features = properties.filter((p) => p && p.type === "feature" && p.name && isValidProperty(p)).map((f) => ({
+      name: f.name,
+      description: f.description || "",
+      source: Array.isArray(f.tags) ? f.tags.join(", ") : "",
+      uses: f.uses && (f.uses.max ?? 0) > 0 ? { current: f.uses.value ?? f.uses.currentValue ?? 0, max: f.uses.max ?? 0 } : void 0
+    }));
     const companions = extractCompanions(properties);
     return {
       name: characterName,
@@ -1073,6 +1079,7 @@
       inventory: deduplicateByName(inventory),
       spells: deduplicateByName(spells),
       actions: deduplicateByName(actions),
+      features: deduplicateByName(features),
       triggers: deduplicateByName(triggers),
       companions
     };
