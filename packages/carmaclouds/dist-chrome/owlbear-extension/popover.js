@@ -1677,7 +1677,8 @@ function extractFeaturesFromRaw(rawDiceCloudData) {
     return '';
   }
   return properties
-    .filter(p => p && p.type === 'feature' && p.name)
+    .filter(p => p && p.type === 'feature' && p.name &&
+      !p.inactive && !p.disabled && !p.removed && !p.soft_removed)
     .map(p => ({
       name: p.name,
       description: dcText(p.description),
