@@ -762,7 +762,14 @@ async function rollViaDicePlus(diceNotation, localFallback) {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
-        resolveOuter({ totalValue: result.totalValue, breakdown: result.rollSummary || String(result.totalValue) });
+
+        // rollSummary format from Dice+: "1d20: [16] 16 = 16" or "[7] 7 + 8 = 15"
+        // Strip trailing " = N" (we add our own bold total) and any leading "formula: " prefix
+        let breakdown = result.rollSummary || String(result.totalValue);
+        breakdown = breakdown.replace(/\s*=\s*[\d]+\s*$/, '').trim(); // strip trailing = N
+        breakdown = breakdown.replace(/^\w[\w\s]*:\s*/, '');           // strip "1d20: " prefix
+
+        resolveOuter({ totalValue: result.totalValue, breakdown });
       }
     });
 
