@@ -1528,6 +1528,7 @@ window.handleFetchCharacter = async function() {
 
   try {
     await checkForActiveCharacter();
+    await fetchAllCharacters();
 
     // Success
     statusDiv.style.color = '#10B981';
@@ -1931,8 +1932,8 @@ function displayCharacter(character) {
   // Save to localStorage so chat window can access it
   try {
     localStorage.setItem('owlcloud-active-character', JSON.stringify({
-      id: character.id,
-      name: character.name,
+      id: character.id || character.dicecloud_character_id,
+      name: character.name || character.character_name || character.creature?.name,
       race: character.race,
       class: character.class,
       level: character.level

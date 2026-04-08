@@ -1528,6 +1528,7 @@ window.handleFetchCharacter = async function() {
 
   try {
     await checkForActiveCharacter();
+    await fetchAllCharacters();
 
     // Success
     statusDiv.style.color = '#10B981';
@@ -1746,25 +1747,26 @@ async function checkForActiveCharacter() {
       console.log('  - Has raw_dicecloud_data:', !!data.character.raw_dicecloud_data);
       console.log('  - Has character_name:', !!data.character.character_name);
 
-      // Use raw_dicecloud_data if available (has proper field names)
-      let characterData = data.character.raw_dicecloud_data || data.character;
+      // Build character data, ensuring root-level display fields are always present
+      const db = data.character;
+      let characterData = db.raw_dicecloud_data || db;
 
-      // If no raw_dicecloud_data, transform database fields to expected format
-      if (!data.character.raw_dicecloud_data && data.character.character_name) {
-        console.log('🔄 Transforming database fields to UI format');
+      // raw_dicecloud_data is the raw DiceCloud API format {creature, variables, properties}
+      // — it has no root-level name/class/level, so merge those in from the DB row
+      if (characterData.creature || !characterData.name) {
         characterData = {
           ...characterData,
-          id: characterData.dicecloud_character_id,
-          name: characterData.character_name,
-          class: characterData.class,
-          race: characterData.race,
-          level: characterData.level,
-          hitPoints: {
-            current: characterData.hp_current || 0,
-            max: characterData.hp_max || 0
+          id: db.dicecloud_character_id,
+          name: (characterData.creature?.name) || db.character_name,
+          class: db.class || characterData.class,
+          race: db.race || characterData.race,
+          level: db.level || characterData.level,
+          hitPoints: characterData.hitPoints || {
+            current: db.hp_current || 0,
+            max: db.hp_max || 0
           },
-          armorClass: characterData.armor_class,
-          proficiencyBonus: characterData.proficiency_bonus
+          armorClass: characterData.armorClass || db.armor_class,
+          proficiencyBonus: characterData.proficiencyBonus || db.proficiency_bonus
         };
       }
 
@@ -1782,15 +1784,11 @@ async function checkForActiveCharacter() {
       // Update auth UI to show unsync button if user is signed in
       updateAuthUI();
     } else {
-      // Clear cache if no character found
       console.log('⚠️ No character found in response - showing no character message');
-      console.log('  data.success:', data.success);
-      console.log('  data.character:', data.character);
-      console.log('  data.error:', data.error);
-      console.log('  data.message:', data.message);
       localStorage.removeItem(cacheKey);
       localStorage.removeItem(versionKey);
       showNoCharacter();
+      await fetchAllCharacters(); // Populate the character list so user can select one
     }
   } catch (error) {
     console.error('❌ Error checking for active character:', error);
@@ -1810,10 +1808,14 @@ async function fetchAllCharacters() {
   try {
     const playerId = await OBR.player.getId();
 
-    // Call unified characters edge function to get all characters
-    // Note: Getting all characters by owlbear_player_id may require backend enhancement
+    // Use supabase_user_id when authenticated (covers browser-extension-synced characters),
+    // fall back to owlbear_player_id for unauthenticated sessions
+    const queryParam = currentUser
+      ? `supabase_user_id=${encodeURIComponent(currentUser.id)}`
+      : `owlbear_player_id=${encodeURIComponent(playerId)}`;
+
     const response = await fetch(
-      `${SUPABASE_URL}/functions/v1/characters?owlbear_player_id=${encodeURIComponent(playerId)}&fields=list`,
+      `${SUPABASE_URL}/functions/v1/characters?${queryParam}&fields=list`,
       { headers: SUPABASE_HEADERS }
     );
 
@@ -1840,21 +1842,22 @@ function displayCharacterList() {
   const characterListSection = document.getElementById('character-list-section');
   const characterList = document.getElementById('character-list');
 
-  if (!allCharacters || allCharacters.length <= 1) {
-    // Hide character list if there's only one or no characters
+  if (!allCharacters || allCharacters.length === 0) {
     characterListSection.style.display = 'none';
     return;
   }
 
-  // Show character list
   characterListSection.style.display = 'block';
 
   let html = '';
   allCharacters.forEach((character) => {
-    const isActive = currentCharacter && character.id === currentCharacter.id;
+    const charId = character.dicecloud_character_id || character.id;
+    const charName = character.character_name || character.name || 'Unknown Character';
+    const currentId = currentCharacter && (currentCharacter.dicecloud_character_id || currentCharacter.id);
+    const isActive = character.is_active || (currentId && charId === currentId);
     html += `
-      <div class="character-list-item ${isActive ? 'active' : ''}" onclick="switchToCharacter('${character.id}')">
-        <div class="character-list-item-name">${character.name || 'Unknown Character'}</div>
+      <div class="character-list-item ${isActive ? 'active' : ''}" onclick="switchToCharacter('${charId}')">
+        <div class="character-list-item-name">${charName}</div>
         <div class="character-list-item-details">
           Level ${character.level || '?'} ${character.race || ''} ${character.class || ''}
           ${isActive ? '• Active' : ''}
@@ -1871,24 +1874,19 @@ function displayCharacterList() {
  */
 window.switchToCharacter = async function(characterId) {
   try {
-    // Find the character in the list
-    const character = allCharacters.find(c => c.id === characterId);
+    const character = allCharacters.find(c => (c.dicecloud_character_id || c.id) === characterId);
     if (!character) {
       console.error('Character not found:', characterId);
       return;
     }
 
-    // Update active character using unified characters edge function
+    const charName = character.character_name || character.name;
     const playerId = await OBR.player.getId();
-    const requestBody = {
-      owlbearPlayerId: playerId,
-      character: character
-    };
 
-    // Include supabase_user_id if authenticated for cross-device sync
-    if (currentUser) {
-      requestBody.supabaseUserId = currentUser.id;
-    }
+    // Prefer characterName+supabaseUserId path when authenticated (cleaner, no field mapping issues)
+    const requestBody = currentUser
+      ? { supabaseUserId: currentUser.id, characterName: charName }
+      : { owlbearPlayerId: playerId, character };
 
     const response = await fetch(
       `${SUPABASE_URL}/functions/v1/characters`,
@@ -1902,13 +1900,10 @@ window.switchToCharacter = async function(characterId) {
     const result = await response.json();
 
     if (response.ok && result.success) {
-      // Display the new character
-      displayCharacter(character);
-      displayCharacterList(); // Refresh the list to update active state
-      updateAuthUI(); // Update auth UI to show unsync button
-
+      // Reload full character data after switching
+      await checkForActiveCharacter();
       if (isOwlbearReady) {
-        OBR.notification.show(`Switched to ${character.name}`, 'SUCCESS');
+        OBR.notification.show(`Switched to ${charName}`, 'SUCCESS');
       }
     } else {
       console.error('Failed to switch character:', result.error);
@@ -1937,8 +1932,8 @@ function displayCharacter(character) {
   // Save to localStorage so chat window can access it
   try {
     localStorage.setItem('owlcloud-active-character', JSON.stringify({
-      id: character.id,
-      name: character.name,
+      id: character.id || character.dicecloud_character_id,
+      name: character.name || character.character_name || character.creature?.name,
       race: character.race,
       class: character.class,
       level: character.level
