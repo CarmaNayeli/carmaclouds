@@ -1428,7 +1428,7 @@ function buildActionsDisplay(container, actions) {
     if (hasDetails) {
       const detailsBtn = document.createElement('button');
       detailsBtn.className = 'details-btn';
-      detailsBtn.textContent = '📋 Details';
+      detailsBtn.innerHTML = '▼ Details';
       detailsBtn.style.cssText = `
         background: #34495e;
         color: white;
@@ -1445,7 +1445,7 @@ function buildActionsDisplay(container, actions) {
         const descDiv = actionCard.querySelector('.action-details');
         if (descDiv) {
           descDiv.style.display = descDiv.style.display === 'none' ? 'block' : 'none';
-          detailsBtn.textContent = descDiv.style.display === 'none' ? '📋 Details' : '📋 Hide';
+          detailsBtn.innerHTML = descDiv.style.display === 'none' ? '▼ Details' : '▲ Hide';
         }
       });
       buttonsDiv.appendChild(detailsBtn);

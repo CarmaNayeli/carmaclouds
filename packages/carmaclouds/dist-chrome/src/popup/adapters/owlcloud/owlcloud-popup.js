@@ -6842,7 +6842,7 @@
         if (hasDetails) {
           const detailsBtn = document.createElement("button");
           detailsBtn.className = "details-btn";
-          detailsBtn.textContent = "\u{1F4CB} Details";
+          detailsBtn.innerHTML = "\u25BC Details";
           detailsBtn.style.cssText = `
         background: #34495e;
         color: white;
@@ -6859,7 +6859,7 @@
             const descDiv = actionCard.querySelector(".action-details");
             if (descDiv) {
               descDiv.style.display = descDiv.style.display === "none" ? "block" : "none";
-              detailsBtn.textContent = descDiv.style.display === "none" ? "\u{1F4CB} Details" : "\u{1F4CB} Hide";
+              detailsBtn.innerHTML = descDiv.style.display === "none" ? "\u25BC Details" : "\u25B2 Hide";
             }
           });
           buttonsDiv.appendChild(detailsBtn);
