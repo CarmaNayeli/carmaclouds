@@ -89,12 +89,14 @@
       const slotVar = `level${level}SpellSlots`;
       const slotMaxVar = `level${level}SpellSlotsMax`;
 
-      const maxSlots = characterData.spellSlots[slotMaxVar] || 0;
+      // Support both flat keys (level1SpellSlotsMax) and nested format ({ level1: { current, max } })
+      const nestedSlot = characterData.spellSlots[`level${level}`];
+      const maxSlots = characterData.spellSlots[slotMaxVar] || nestedSlot?.max || 0;
 
       // Only show if character has regular slots at this level
       if (maxSlots > 0) {
         hasAnySlots = true;
-        const currentSlots = characterData.spellSlots[slotVar] || 0;
+        const currentSlots = characterData.spellSlots[slotVar] ?? nestedSlot?.current ?? maxSlots;
 
         // Track totals
         totalCurrentSlots += currentSlots;
