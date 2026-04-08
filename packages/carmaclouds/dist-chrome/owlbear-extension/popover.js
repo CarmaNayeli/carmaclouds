@@ -1665,6 +1665,99 @@ window.handleUnsyncCharacter = async function() {
 // ============== Character Management ==============
 
 /**
+ * Parse a raw DiceCloud {creature, variables, properties} object into the
+ * OwlCloud display format expected by populate*Tab functions.
+ * Used as fallback when owlcloud_parsed_data / foundcloud_parsed_data are unavailable.
+ */
+function parseRawDiceCloudData(db) {
+  const raw = db.raw_dicecloud_data || {};
+  const creature = raw.creature || {};
+  const variables = raw.variables || {};
+  const properties = raw.properties || [];
+
+  // Helper: get a numeric value from a DiceCloud variable object
+  function getVar(name) {
+    const v = variables[name];
+    if (!v) return 0;
+    return v.total ?? v.value ?? v.currentValue ?? 0;
+  }
+
+  const abilityNames = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
+
+  const attributes = {};
+  abilityNames.forEach(a => { attributes[a] = getVar(a) || 10; });
+
+  const attributeMods = {};
+  abilityNames.forEach(a => { attributeMods[a] = Math.floor((attributes[a] - 10) / 2); });
+
+  const savingThrows = {};
+  abilityNames.forEach(a => { savingThrows[a] = getVar(`${a}Save`) || attributeMods[a]; });
+
+  const SKILL_NAMES = ['acrobatics','animalHandling','arcana','athletics','deception',
+    'history','insight','intimidation','investigation','medicine','nature','perception',
+    'performance','persuasion','religion','sleightOfHand','stealth','survival'];
+  const skills = {};
+  SKILL_NAMES.forEach(s => { const v = getVar(s); if (v) skills[s] = v; });
+
+  const hp = variables.hitPoints || {};
+  const hitPoints = {
+    current: hp.currentValue ?? hp.value ?? 0,
+    max: hp.total ?? hp.max ?? 0,
+  };
+
+  // Extract spells, actions, features from properties
+  const spells = [], actions = [], features = [], resources = [], inventory = [];
+  properties.forEach(p => {
+    if (!p || !p.name) return;
+    if (p.type === 'spell') {
+      spells.push({ name: p.name, level: p.level ?? 0, description: p.description || '' });
+    } else if (p.type === 'action') {
+      actions.push({ name: p.name, description: p.description || '', actionType: p.actionType || 'Action' });
+    } else if (p.type === 'feature') {
+      features.push({ name: p.name, description: p.description || '' });
+    } else if (p.type === 'item' && p.quantity > 0) {
+      inventory.push({ name: p.name, quantity: p.quantity || 1, description: p.description || '' });
+    }
+  });
+
+  const level = db.level || creature.level || getVar('level') || 1;
+  const classLower = (db.class || '').toLowerCase();
+  const hitDieMap = { barbarian: 12, fighter: 10, paladin: 10, ranger: 10,
+    bard: 8, cleric: 8, druid: 8, monk: 8, rogue: 8, warlock: 8, sorcerer: 6, wizard: 6 };
+  let hitDieType = 8;
+  for (const [cls, die] of Object.entries(hitDieMap)) {
+    if (classLower.includes(cls)) { hitDieType = die; break; }
+  }
+
+  return {
+    id: db.dicecloud_character_id,
+    dicecloud_character_id: db.dicecloud_character_id,
+    name: creature.name || db.character_name,
+    race: db.race,
+    class: db.class,
+    level,
+    hitPoints,
+    temporaryHP: getVar('temporaryHitPoints'),
+    armorClass: getVar('armorClass') || 10,
+    speed: getVar('speed') || 30,
+    initiative: getVar('initiative') || 0,
+    proficiencyBonus: getVar('proficiencyBonus') || 2,
+    hitDice: { current: level, max: level, type: `d${hitDieType}` },
+    attributes,
+    attributeMods,
+    savingThrows,
+    skills,
+    spells,
+    spellSlots: {},
+    actions,
+    features,
+    resources,
+    inventory,
+    picture: creature.picture || creature.avatarPicture || null,
+  };
+}
+
+/**
  * Check if there's an active character from Supabase using Owlbear player ID
  */
 async function checkForActiveCharacter() {
@@ -1816,21 +1909,9 @@ async function checkForActiveCharacter() {
         };
         console.log('⚠️ owlcloud_parsed_data missing, fell back to foundcloud_parsed_data mapping');
       } else {
-        // Last resort: use raw data with minimal field merges
-        const raw = db.raw_dicecloud_data || db;
-        characterData = {
-          ...raw,
-          id: db.dicecloud_character_id,
-          dicecloud_character_id: db.dicecloud_character_id,
-          name: raw.creature?.name || db.character_name,
-          class: db.class || raw.class,
-          race: db.race || raw.race,
-          level: db.level || raw.level,
-          hitPoints: raw.hitPoints || { current: 0, max: 0 },
-          armorClass: raw.armorClass || 10,
-          proficiencyBonus: raw.proficiencyBonus || 2,
-        };
-        console.log('⚠️ No parsed data available, using raw fallback');
+        // Last resort: parse raw_dicecloud_data inline
+        characterData = parseRawDiceCloudData(db);
+        console.log('⚠️ No parsed data available, parsed raw_dicecloud_data inline');
       }
 
       console.log('✅ Final character data for display:', characterData);

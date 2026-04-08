@@ -14,7 +14,7 @@ const corsHeaders = {
 // Optimized field selections (reduces egress!)
 const FIELDS = {
   essential: 'dicecloud_character_id,character_name,class,level,race,discord_user_id,user_id_dicecloud,supabase_user_id,is_active',
-  full: 'dicecloud_character_id,character_name,class,level,race,discord_user_id,user_id_dicecloud,owlbear_player_id,supabase_user_id,is_active,updated_at,raw_dicecloud_data',
+  full: 'dicecloud_character_id,character_name,class,level,race,discord_user_id,user_id_dicecloud,owlbear_player_id,supabase_user_id,is_active,updated_at,raw_dicecloud_data,foundcloud_parsed_data,owlcloud_parsed_data',
   list: 'dicecloud_character_id,character_name,class,level,race,is_active,discord_user_id,user_id_dicecloud,supabase_user_id'
 }
 
