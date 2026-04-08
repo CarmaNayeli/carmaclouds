@@ -859,7 +859,7 @@
         isLifesteal
       };
     });
-    const actions = properties.filter((p) => p.type === "action" && p.name && isValidProperty(p)).map((action) => {
+    const actions = properties.filter((p) => (p.type === "action" || p.type === "attack") && p.name && isValidProperty(p)).map((action) => {
       const actionChildren = properties.filter((p) => {
         if (p.type !== "roll" && p.type !== "damage" && p.type !== "attack")
           return false;
@@ -874,6 +874,8 @@
       let attackRoll = "";
       if (action.attackRoll) {
         attackRoll = typeof action.attackRoll === "string" ? action.attackRoll : String(action.attackRoll.value || action.attackRoll.calculation || "");
+      } else if (action.type === "attack" && action.roll) {
+        attackRoll = typeof action.roll === "string" ? action.roll : String(action.roll.calculation || action.roll.value || "");
       } else {
         const attackChild = actionChildren.find((c) => c.type === "attack" || c.type === "roll" && c.name && c.name.toLowerCase().includes("attack"));
         if (attackChild && attackChild.roll) {

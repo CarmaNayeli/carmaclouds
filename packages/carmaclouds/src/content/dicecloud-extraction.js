@@ -1116,8 +1116,9 @@ export function parseForRollCloud(rawData) {
     });
 
   // Parse actions from properties (exclude inactive/disabled)
+  // Includes both type='action' and type='attack' (used by familiars, creature attacks, etc.)
   const actions = properties
-    .filter(p => p.type === 'action' && p.name && isValidProperty(p))
+    .filter(p => (p.type === 'action' || p.type === 'attack') && p.name && isValidProperty(p))
     .map(action => {
       // Find child properties (attack rolls, damage) for this action
       const actionChildren = properties.filter(p => {
@@ -1132,9 +1133,13 @@ export function parseForRollCloud(rawData) {
       });
 
       // Extract attack roll from action or children
+      // type='action' uses attackRoll field; type='attack' uses roll field directly
       let attackRoll = '';
       if (action.attackRoll) {
         attackRoll = typeof action.attackRoll === 'string' ? action.attackRoll : String(action.attackRoll.value || action.attackRoll.calculation || '');
+      } else if (action.type === 'attack' && action.roll) {
+        // DiceCloud 'attack' properties store the attack roll in the 'roll' field
+        attackRoll = typeof action.roll === 'string' ? action.roll : String(action.roll.calculation || action.roll.value || '');
       } else {
         // Check children for attack roll
         const attackChild = actionChildren.find(c => c.type === 'attack' || (c.type === 'roll' && c.name && c.name.toLowerCase().includes('attack')));
