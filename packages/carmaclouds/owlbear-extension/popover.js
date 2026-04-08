@@ -1677,8 +1677,8 @@ async function checkForActiveCharacter() {
     let cacheKey;
 
     if (currentUser) {
-      // User is authenticated - query by supabase_user_id
-      queryParam = `supabase_user_id=${encodeURIComponent(currentUser.id)}&active_only=true`;
+      // Fetch all characters (list fields only) — pick active one, fall back to first, then load full data
+      queryParam = `supabase_user_id=${encodeURIComponent(currentUser.id)}&fields=list`;
       cacheKey = `owlcloud_char_${currentUser.id}`;
       console.log('🎭 Checking for character with user ID:', currentUser.id);
     } else {
@@ -1738,17 +1738,32 @@ async function checkForActiveCharacter() {
     const etag = response.headers.get('etag');
 
     console.log('📦 Response data:', data);
-    console.log('📦 data.success:', data.success);
-    console.log('📦 data.character:', data.character);
-    console.log('📦 Condition check:', data.success && data.character ? 'TRUE - will display' : 'FALSE - will show no character');
 
-    if (data.success && data.character) {
-      console.log('📦 Character data received:', data.character);
-      console.log('  - Has raw_dicecloud_data:', !!data.character.raw_dicecloud_data);
-      console.log('  - Has character_name:', !!data.character.character_name);
+    // Handle both single character and characters array responses
+    const dbChar = data.character ||
+      (data.characters && (data.characters.find(c => c.is_active) || data.characters[0]));
+
+    if (data.success && dbChar) {
+      // If we got list-format data (no raw_dicecloud_data), fetch full data by character_id
+      let fullDbChar = dbChar;
+      if (!dbChar.raw_dicecloud_data && dbChar.dicecloud_character_id) {
+        console.log('📦 Fetching full character data for:', dbChar.dicecloud_character_id);
+        try {
+          const fullResp = await fetch(
+            `${SUPABASE_URL}/functions/v1/characters?character_id=${encodeURIComponent(dbChar.dicecloud_character_id)}&fields=full`,
+            { headers: SUPABASE_HEADERS }
+          );
+          const fullData = await fullResp.json();
+          if (fullData.success && fullData.character) fullDbChar = fullData.character;
+        } catch (e) {
+          console.warn('Failed to fetch full character data:', e);
+        }
+      }
+
+      console.log('📦 Character data received:', fullDbChar);
 
       // Build character data, ensuring root-level display fields are always present
-      const db = data.character;
+      const db = fullDbChar;
       let characterData = db.raw_dicecloud_data || db;
 
       // raw_dicecloud_data is the raw DiceCloud API format {creature, variables, properties}
