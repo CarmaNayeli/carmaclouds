@@ -1667,14 +1667,53 @@ window.handleUnsyncCharacter = async function() {
 /**
  * Extract features array from raw_dicecloud_data for display in Features tab.
  */
+/**
+ * Clean DiceCloud description text for display:
+ * - Unwrap rich text objects { text: '...' }
+ * - Resolve {{variable}} references against provided variables map
+ * - Strip unresolvable {#formula} expressions
+ * - Convert **bold** and *italic* markdown to HTML
+ * - Remove ___ placeholder blanks
+ */
+function formatDCText(field, variables) {
+  if (!field) return '';
+  let text = typeof field === 'string' ? field : (field.text || '');
+  if (!text) return '';
+
+  // Resolve {{variableName}} against variables if available
+  if (variables) {
+    text = text.replace(/\{\{(\w+)\}\}/g, (_, name) => {
+      const v = variables[name] || variables[name.toLowerCase()];
+      if (!v) return `[${name}]`;
+      return v.total ?? v.value ?? v.currentValue ?? `[${name}]`;
+    });
+  } else {
+    // No variables — just label them
+    text = text.replace(/\{\{(\w+)\}\}/g, (_, name) => `[${name}]`);
+  }
+
+  // Strip {#expression} formula references (can't evaluate without context)
+  text = text.replace(/\{#[^}]*\}/g, '…');
+
+  // Remove ___ placeholder blanks
+  text = text.replace(/_{3,}/g, '');
+
+  // Convert **bold** and ***bold-italic*** markdown to HTML
+  text = text.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+  text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+  // Trim extra whitespace
+  text = text.replace(/\s{2,}/g, ' ').trim();
+
+  return text;
+}
+
 function extractFeaturesFromRaw(rawDiceCloudData) {
   const properties = rawDiceCloudData?.properties || [];
-  // DiceCloud v2 stores descriptions as rich text objects { text: '...' } or plain strings
+  const variables = rawDiceCloudData?.variables || null;
   function dcText(field) {
-    if (!field) return '';
-    if (typeof field === 'string') return field;
-    if (typeof field === 'object' && field.text) return field.text;
-    return '';
+    return formatDCText(field, variables);
   }
   return properties
     .filter(p => p && p.type === 'feature' && p.name &&
@@ -2747,13 +2786,13 @@ function populateFeaturesTab(character) {
           useButtonHtml = `<button class="rest-btn" style="margin-top: 8px; width: 100%;" onclick="event.stopPropagation(); useFeature('${(feature.name || 'Feature').replace(/'/g, "\\'")}', '${resourceName}')">✨ Use</button>`;
         }
 
-        // Combine summary and description
+        // Combine summary and description (already cleaned by formatDCText at extraction time)
         let featureText = '';
         if (feature.summary) {
-          featureText += `<div class="feature-description">${feature.summary}</div>`;
+          featureText += `<div class="feature-description">${formatDCText(feature.summary)}</div>`;
         }
         if (feature.description) {
-          featureText += `<div class="feature-description">${feature.description}</div>`;
+          featureText += `<div class="feature-description">${formatDCText(feature.description)}</div>`;
         }
 
         html += `
