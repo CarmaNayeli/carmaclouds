@@ -1746,25 +1746,26 @@ async function checkForActiveCharacter() {
       console.log('  - Has raw_dicecloud_data:', !!data.character.raw_dicecloud_data);
       console.log('  - Has character_name:', !!data.character.character_name);
 
-      // Use raw_dicecloud_data if available (has proper field names)
-      let characterData = data.character.raw_dicecloud_data || data.character;
+      // Build character data, ensuring root-level display fields are always present
+      const db = data.character;
+      let characterData = db.raw_dicecloud_data || db;
 
-      // If no raw_dicecloud_data, transform database fields to expected format
-      if (!data.character.raw_dicecloud_data && data.character.character_name) {
-        console.log('🔄 Transforming database fields to UI format');
+      // raw_dicecloud_data is the raw DiceCloud API format {creature, variables, properties}
+      // — it has no root-level name/class/level, so merge those in from the DB row
+      if (characterData.creature || !characterData.name) {
         characterData = {
           ...characterData,
-          id: characterData.dicecloud_character_id,
-          name: characterData.character_name,
-          class: characterData.class,
-          race: characterData.race,
-          level: characterData.level,
-          hitPoints: {
-            current: characterData.hp_current || 0,
-            max: characterData.hp_max || 0
+          id: db.dicecloud_character_id,
+          name: (characterData.creature?.name) || db.character_name,
+          class: db.class || characterData.class,
+          race: db.race || characterData.race,
+          level: db.level || characterData.level,
+          hitPoints: characterData.hitPoints || {
+            current: db.hp_current || 0,
+            max: db.hp_max || 0
           },
-          armorClass: characterData.armor_class,
-          proficiencyBonus: characterData.proficiency_bonus
+          armorClass: characterData.armorClass || db.armor_class,
+          proficiencyBonus: characterData.proficiencyBonus || db.proficiency_bonus
         };
       }
 
