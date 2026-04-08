@@ -1584,12 +1584,81 @@ function parseCompanionStatBlock(name, description) {
 }
 
 /**
- * Parse raw DiceCloud data into Owlbear Rodeo-specific format
- * Called by OwlCloud adapter when tab is loaded
+ * Parse raw DiceCloud data into OwlCloud (Owlbear Rodeo extension) format.
+ * This is the format expected by popover.js's populate*Tab functions.
  */
-export function parseForOwlCloud(rawData) {
-  // For now, use same format as Roll20
-  return parseForRollCloud(rawData);
+export function parseForOwlCloud(rawData, characterId = null) {
+  console.log('🦉 Parsing character for OwlCloud...');
+
+  const base = parseForRollCloud(rawData, characterId);
+  const { creature, properties = [], variables = {} } = rawData || {};
+
+  const abilityNames = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
+
+  // Remap saves: { strengthSave: n } → savingThrows: { strength: n }
+  const savingThrows = {};
+  abilityNames.forEach(a => {
+    savingThrows[a] = base.saves?.[`${a}Save`] ?? base.attributeMods?.[a] ?? 0;
+  });
+
+  // Extract features from properties (parseForRollCloud doesn't include them)
+  const features = (properties || [])
+    .filter(p => p && p.type === 'feature' && p.name)
+    .map(p => ({
+      name: p.name,
+      description: p.description || '',
+      source: Array.isArray(p.tags) ? p.tags.join(', ') : '',
+      uses: (p.uses && (p.uses.max ?? 0) > 0)
+        ? { current: p.uses.value ?? p.uses.currentValue ?? 0, max: p.uses.max ?? 0 }
+        : undefined,
+    }));
+
+  // Hit dice — derive type from class
+  const classLower = (base.class || '').toLowerCase();
+  const hitDieMap = {
+    'barbarian': 12, 'fighter': 10, 'paladin': 10, 'ranger': 10,
+    'bard': 8, 'cleric': 8, 'druid': 8, 'monk': 8, 'rogue': 8, 'warlock': 8,
+    'sorcerer': 6, 'wizard': 6
+  };
+  let hitDieType = 8;
+  for (const [cls, die] of Object.entries(hitDieMap)) {
+    if (classLower.includes(cls)) { hitDieType = die; break; }
+  }
+  const hitDiceUsed = variables?.hitDiceUsed?.value ?? variables?.hitDiceUsed?.total ?? 0;
+  const hitDice = {
+    current: Math.max(0, (base.level || 1) - hitDiceUsed),
+    max: base.level || 1,
+    type: `d${hitDieType}`,
+  };
+
+  // Portrait from creature
+  const picture = creature?.picture || creature?.avatarPicture || null;
+
+  return {
+    id: characterId || base.id,
+    name: base.name,
+    race: base.race,
+    class: base.class,
+    level: base.level,
+    hitPoints: base.hitPoints,
+    temporaryHP: base.temporaryHP || 0,
+    armorClass: base.armorClass,
+    speed: base.speed,
+    initiative: base.initiative,
+    proficiencyBonus: base.proficiencyBonus,
+    hitDice,
+    attributes: base.attributes,
+    attributeMods: base.attributeMods,
+    savingThrows,
+    skills: base.skills,
+    spells: base.spells || [],
+    spellSlots: base.spellSlots || {},
+    actions: base.actions || [],
+    features,
+    resources: base.resources || [],
+    inventory: base.inventory || [],
+    picture,
+  };
 }
 
 /**

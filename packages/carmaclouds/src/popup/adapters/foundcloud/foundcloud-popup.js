@@ -5,7 +5,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@carmaclouds/core/supabase/config.js';
-import { parseForFoundCloud } from '../../../content/dicecloud-extraction.js';
+import { parseForFoundCloud, parseForOwlCloud } from '../../../content/dicecloud-extraction.js';
 
 // Detect browser API (Firefox uses 'browser', Chrome uses 'chrome')
 const browserAPI = (typeof browser !== 'undefined' && browser.runtime) ? browser : chrome;
@@ -211,8 +211,9 @@ async function syncCharacterToSupabase(char) {
   const authResult = await browserAPI.storage.local.get(['diceCloudUserId']);
   const dicecloudUserId = authResult.diceCloudUserId || null;
 
-  // Parse character data using imported parseForFoundCloud
+  // Parse character data for each platform
   const parsedData = parseForFoundCloud(char.raw, char.id);
+  const owlcloudData = parseForOwlCloud(char.raw, char.id);
 
   // Build character data with basic fields and parsed data in single JSON column
   const characterData = {
@@ -222,6 +223,7 @@ async function syncCharacterToSupabase(char) {
     race: parsedData?.race || char.race || 'Unknown',
     class: parsedData?.class || char.class || 'Unknown',
     foundcloud_parsed_data: parsedData || {},
+    owlcloud_parsed_data: owlcloudData || {},
     raw_dicecloud_data: char.raw || {},
     platform: ['foundcloud'],
     supabase_user_id: session.user.id,

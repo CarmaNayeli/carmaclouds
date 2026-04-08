@@ -12747,8 +12747,75 @@ ${suffix}`;
     }
     return null;
   }
-  function parseForOwlCloud(rawData) {
-    return parseForRollCloud(rawData);
+  function parseForOwlCloud(rawData, characterId = null) {
+    console.log("\u{1F989} Parsing character for OwlCloud...");
+    const base = parseForRollCloud(rawData, characterId);
+    const { creature, properties = [], variables: variables2 = {} } = rawData || {};
+    const abilityNames = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
+    const savingThrows = {};
+    abilityNames.forEach((a) => {
+      savingThrows[a] = base.saves?.[`${a}Save`] ?? base.attributeMods?.[a] ?? 0;
+    });
+    const features = (properties || []).filter((p) => p && p.type === "feature" && p.name).map((p) => ({
+      name: p.name,
+      description: p.description || "",
+      source: Array.isArray(p.tags) ? p.tags.join(", ") : "",
+      uses: p.uses && (p.uses.max ?? 0) > 0 ? { current: p.uses.value ?? p.uses.currentValue ?? 0, max: p.uses.max ?? 0 } : void 0
+    }));
+    const classLower = (base.class || "").toLowerCase();
+    const hitDieMap = {
+      "barbarian": 12,
+      "fighter": 10,
+      "paladin": 10,
+      "ranger": 10,
+      "bard": 8,
+      "cleric": 8,
+      "druid": 8,
+      "monk": 8,
+      "rogue": 8,
+      "warlock": 8,
+      "sorcerer": 6,
+      "wizard": 6
+    };
+    let hitDieType = 8;
+    for (const [cls, die] of Object.entries(hitDieMap)) {
+      if (classLower.includes(cls)) {
+        hitDieType = die;
+        break;
+      }
+    }
+    const hitDiceUsed = variables2?.hitDiceUsed?.value ?? variables2?.hitDiceUsed?.total ?? 0;
+    const hitDice = {
+      current: Math.max(0, (base.level || 1) - hitDiceUsed),
+      max: base.level || 1,
+      type: `d${hitDieType}`
+    };
+    const picture = creature?.picture || creature?.avatarPicture || null;
+    return {
+      id: characterId || base.id,
+      name: base.name,
+      race: base.race,
+      class: base.class,
+      level: base.level,
+      hitPoints: base.hitPoints,
+      temporaryHP: base.temporaryHP || 0,
+      armorClass: base.armorClass,
+      speed: base.speed,
+      initiative: base.initiative,
+      proficiencyBonus: base.proficiencyBonus,
+      hitDice,
+      attributes: base.attributes,
+      attributeMods: base.attributeMods,
+      savingThrows,
+      skills: base.skills,
+      spells: base.spells || [],
+      spellSlots: base.spellSlots || {},
+      actions: base.actions || [],
+      features,
+      resources: base.resources || [],
+      inventory: base.inventory || [],
+      picture
+    };
   }
   function parseForFoundCloud(rawData, characterId = null) {
     console.log("\u{1F3B2} Parsing character for Foundry VTT...");
@@ -12970,6 +13037,7 @@ ${suffix}`;
     const authResult = await browserAPI.storage.local.get(["diceCloudUserId"]);
     const dicecloudUserId = authResult.diceCloudUserId || null;
     const parsedData = parseForFoundCloud(char.raw, char.id);
+    const owlcloudData = parseForOwlCloud(char.raw, char.id);
     const characterData = {
       dicecloud_character_id: char.id,
       character_name: char.name,
@@ -12977,6 +13045,7 @@ ${suffix}`;
       race: parsedData?.race || char.race || "Unknown",
       class: parsedData?.class || char.class || "Unknown",
       foundcloud_parsed_data: parsedData || {},
+      owlcloud_parsed_data: owlcloudData || {},
       raw_dicecloud_data: char.raw || {},
       platform: ["foundcloud"],
       supabase_user_id: session.user.id,

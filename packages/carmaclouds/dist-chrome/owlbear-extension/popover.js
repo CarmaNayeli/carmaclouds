@@ -1677,8 +1677,8 @@ async function checkForActiveCharacter() {
     let cacheKey;
 
     if (currentUser) {
-      // User is authenticated - query by supabase_user_id
-      queryParam = `supabase_user_id=${encodeURIComponent(currentUser.id)}&active_only=true`;
+      // Fetch all characters (list fields only) — pick active one, fall back to first, then load full data
+      queryParam = `supabase_user_id=${encodeURIComponent(currentUser.id)}&fields=list`;
       cacheKey = `owlcloud_char_${currentUser.id}`;
       console.log('🎭 Checking for character with user ID:', currentUser.id);
     } else {
@@ -1738,36 +1738,99 @@ async function checkForActiveCharacter() {
     const etag = response.headers.get('etag');
 
     console.log('📦 Response data:', data);
-    console.log('📦 data.success:', data.success);
-    console.log('📦 data.character:', data.character);
-    console.log('📦 Condition check:', data.success && data.character ? 'TRUE - will display' : 'FALSE - will show no character');
 
-    if (data.success && data.character) {
-      console.log('📦 Character data received:', data.character);
-      console.log('  - Has raw_dicecloud_data:', !!data.character.raw_dicecloud_data);
-      console.log('  - Has character_name:', !!data.character.character_name);
+    // Handle both single character and characters array responses
+    const dbChar = data.character ||
+      (data.characters && (data.characters.find(c => c.is_active) || data.characters[0]));
 
-      // Build character data, ensuring root-level display fields are always present
-      const db = data.character;
-      let characterData = db.raw_dicecloud_data || db;
+    if (data.success && dbChar) {
+      // If we got list-format data (no raw_dicecloud_data), fetch full data by character_id
+      let fullDbChar = dbChar;
+      if (!dbChar.raw_dicecloud_data && dbChar.dicecloud_character_id) {
+        console.log('📦 Fetching full character data for:', dbChar.dicecloud_character_id);
+        try {
+          const fullResp = await fetch(
+            `${SUPABASE_URL}/functions/v1/characters?character_id=${encodeURIComponent(dbChar.dicecloud_character_id)}&fields=full`,
+            { headers: SUPABASE_HEADERS }
+          );
+          const fullData = await fullResp.json();
+          if (fullData.success && fullData.character) fullDbChar = fullData.character;
+        } catch (e) {
+          console.warn('Failed to fetch full character data:', e);
+        }
+      }
 
-      // raw_dicecloud_data is the raw DiceCloud API format {creature, variables, properties}
-      // — it has no root-level name/class/level, so merge those in from the DB row
-      if (characterData.creature || !characterData.name) {
+      console.log('📦 Character data received:', fullDbChar);
+
+      // Build character data — prefer owlcloud_parsed_data (pre-parsed for this extension),
+      // fall back to mapping foundcloud_parsed_data, then raw.
+      const db = fullDbChar;
+      let characterData;
+
+      if (db.owlcloud_parsed_data && db.owlcloud_parsed_data.name) {
+        // Best case: owlcloud_parsed_data already in the exact format we need
         characterData = {
-          ...characterData,
+          ...db.owlcloud_parsed_data,
           id: db.dicecloud_character_id,
-          name: (characterData.creature?.name) || db.character_name,
-          class: db.class || characterData.class,
-          race: db.race || characterData.race,
-          level: db.level || characterData.level,
-          hitPoints: characterData.hitPoints || {
-            current: db.hp_current || 0,
-            max: db.hp_max || 0
-          },
-          armorClass: characterData.armorClass || db.armor_class,
-          proficiencyBonus: characterData.proficiencyBonus || db.proficiency_bonus
+          dicecloud_character_id: db.dicecloud_character_id,
+          // Ensure name/race/class from DB row in case parsed data is stale
+          name: db.owlcloud_parsed_data.name || db.character_name,
+          race: db.owlcloud_parsed_data.race || db.race,
+          class: db.owlcloud_parsed_data.class || db.class,
+          level: db.owlcloud_parsed_data.level || db.level,
         };
+        console.log('✅ Using owlcloud_parsed_data for display');
+      } else if (db.foundcloud_parsed_data && db.foundcloud_parsed_data.name) {
+        // Fallback: map foundcloud_parsed_data (Foundry format) to OwlCloud display format
+        const fp = db.foundcloud_parsed_data;
+        const attrs = fp.attributes || {};
+        const abilityNames = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
+        const attributeMods = {};
+        abilityNames.forEach(a => { attributeMods[a] = Math.floor(((attrs[a] || 10) - 10) / 2); });
+        const savingThrows = {};
+        abilityNames.forEach(a => { savingThrows[a] = fp.saves?.[`${a}Save`] ?? attributeMods[a]; });
+        characterData = {
+          id: db.dicecloud_character_id,
+          dicecloud_character_id: db.dicecloud_character_id,
+          name: fp.name || db.character_name,
+          race: fp.race || db.race,
+          class: fp.class || db.class,
+          level: fp.level || db.level,
+          hitPoints: fp.hit_points || { current: 0, max: 0 },
+          temporaryHP: fp.temporary_hp || 0,
+          armorClass: fp.armor_class || 10,
+          speed: fp.speed || 30,
+          initiative: fp.initiative || 0,
+          proficiencyBonus: fp.proficiency_bonus || 2,
+          attributes: attrs,
+          attributeMods,
+          savingThrows,
+          skills: fp.skills || {},
+          spells: fp.spells || [],
+          spellSlots: fp.spell_slots || {},
+          actions: fp.actions || [],
+          features: fp.features || [],
+          resources: fp.resources || [],
+          inventory: fp.inventory || [],
+          picture: fp.raw_dicecloud_data?.picture || null,
+        };
+        console.log('⚠️ owlcloud_parsed_data missing, fell back to foundcloud_parsed_data mapping');
+      } else {
+        // Last resort: use raw data with minimal field merges
+        const raw = db.raw_dicecloud_data || db;
+        characterData = {
+          ...raw,
+          id: db.dicecloud_character_id,
+          dicecloud_character_id: db.dicecloud_character_id,
+          name: raw.creature?.name || db.character_name,
+          class: db.class || raw.class,
+          race: db.race || raw.race,
+          level: db.level || raw.level,
+          hitPoints: raw.hitPoints || { current: 0, max: 0 },
+          armorClass: raw.armorClass || 10,
+          proficiencyBonus: raw.proficiencyBonus || 2,
+        };
+        console.log('⚠️ No parsed data available, using raw fallback');
       }
 
       console.log('✅ Final character data for display:', characterData);
