@@ -1810,10 +1810,14 @@ async function fetchAllCharacters() {
   try {
     const playerId = await OBR.player.getId();
 
-    // Call unified characters edge function to get all characters
-    // Note: Getting all characters by owlbear_player_id may require backend enhancement
+    // Use supabase_user_id when authenticated (covers browser-extension-synced characters),
+    // fall back to owlbear_player_id for unauthenticated sessions
+    const queryParam = currentUser
+      ? `supabase_user_id=${encodeURIComponent(currentUser.id)}`
+      : `owlbear_player_id=${encodeURIComponent(playerId)}`;
+
     const response = await fetch(
-      `${SUPABASE_URL}/functions/v1/characters?owlbear_player_id=${encodeURIComponent(playerId)}&fields=list`,
+      `${SUPABASE_URL}/functions/v1/characters?${queryParam}&fields=list`,
       { headers: SUPABASE_HEADERS }
     );
 
