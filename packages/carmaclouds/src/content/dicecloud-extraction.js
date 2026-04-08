@@ -1614,10 +1614,10 @@ export function parseForOwlCloud(rawData, characterId = null) {
 
   const abilityNames = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
 
-  // Remap saves: { strengthSave: n } → savingThrows: { strength: n }
+  // Remap saves: parseForRollCloud returns saves keyed by ability name (e.g. saves.wisdom)
   const savingThrows = {};
   abilityNames.forEach(a => {
-    savingThrows[a] = base.saves?.[`${a}Save`] ?? base.attributeMods?.[a] ?? 0;
+    savingThrows[a] = base.saves?.[a] ?? base.attributeMods?.[a] ?? 0;
   });
 
   // Extract features from properties (parseForRollCloud doesn't include them)
