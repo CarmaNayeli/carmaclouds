@@ -1049,7 +1049,8 @@
     console.log(`\u26A1 Parsed ${triggers.length} triggers:`, triggers.map((t) => t.name));
     const features = properties.filter((p) => p && p.type === "feature" && p.name && isValidProperty(p)).map((f) => ({
       name: f.name,
-      description: f.description || "",
+      description: extractText(f.description),
+      summary: extractText(f.summary),
       source: Array.isArray(f.tags) ? f.tags.join(", ") : "",
       uses: f.uses && (f.uses.max ?? 0) > 0 ? { current: f.uses.value ?? f.uses.currentValue ?? 0, max: f.uses.max ?? 0 } : void 0
     }));

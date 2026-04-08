@@ -1669,11 +1669,19 @@ window.handleUnsyncCharacter = async function() {
  */
 function extractFeaturesFromRaw(rawDiceCloudData) {
   const properties = rawDiceCloudData?.properties || [];
+  // DiceCloud v2 stores descriptions as rich text objects { text: '...' } or plain strings
+  function dcText(field) {
+    if (!field) return '';
+    if (typeof field === 'string') return field;
+    if (typeof field === 'object' && field.text) return field.text;
+    return '';
+  }
   return properties
     .filter(p => p && p.type === 'feature' && p.name)
     .map(p => ({
       name: p.name,
-      description: p.description || '',
+      description: dcText(p.description),
+      summary: dcText(p.summary),
       source: Array.isArray(p.tags) ? p.tags.join(', ') : '',
       uses: (p.uses && (p.uses.max ?? 0) > 0)
         ? { current: p.uses.value ?? p.uses.currentValue ?? 0, max: p.uses.max ?? 0 }
