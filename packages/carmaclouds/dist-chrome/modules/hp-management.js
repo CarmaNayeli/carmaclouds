@@ -583,11 +583,18 @@
     // Restore all spell slots
     if (characterData.spellSlots) {
       // Restore regular spell slots (levels 1-9)
+      // Supports flat keys (level1SpellSlotsMax) and nested format ({ level1: { current, max } })
       for (let level = 1; level <= 9; level++) {
         const slotVar = `level${level}SpellSlots`;
         const slotMaxVar = `level${level}SpellSlotsMax`;
+        const nested = characterData.spellSlots[`level${level}`];
 
-        if (characterData.spellSlots[slotMaxVar] !== undefined) {
+        if (nested && nested.max !== undefined) {
+          // Nested format: { level1: { current, max } }
+          nested.current = nested.max;
+          debug.log(`✅ Restored level ${level} spell slots (nested)`);
+        } else if (characterData.spellSlots[slotMaxVar] !== undefined) {
+          // Flat format: level1SpellSlots / level1SpellSlotsMax
           characterData.spellSlots[slotVar] = characterData.spellSlots[slotMaxVar];
           debug.log(`✅ Restored level ${level} spell slots`);
         }
