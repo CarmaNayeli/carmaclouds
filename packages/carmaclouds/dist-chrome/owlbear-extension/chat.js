@@ -278,6 +278,9 @@ OBR.onReady(async () => {
   setupThemeListener();
   applyThemeFromSheet();
 
+  // Set up Dice+ result listener for !roll commands
+  setupChatDicePlusListener();
+
   // Get player ID
   currentPlayerId = await OBR.player.getId();
 
@@ -717,30 +720,77 @@ function rollDiceFormula(formula) {
   return { result: total, breakdown };
 }
 
-/**
- * Fire-and-forget: send formula to Dice+ for 3D animation.
- * We don't wait for the result — we already computed it locally.
- */
-async function sendToDicePlus(diceNotation) {
-  try {
-    const rollId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const playerId = await OBR.player.getId();
-    const playerName = await OBR.player.getName();
+// Pending !roll requests waiting on Dice+ result: rollId → { resolve, reject }
+const chatPendingRolls = new Map();
 
-    await OBR.broadcast.sendMessage('dice-plus/roll-request', {
-      rollId,
-      playerId,
-      playerName,
-      rollTarget: 'everyone',
-      diceNotation,
-      showResults: false,
-      timestamp: Date.now(),
-      source: OWLCLOUD_EXTENSION_ID
-    }, { destination: 'ALL' });
-  } catch (e) {
-    // Dice+ not installed or error — silent fallback, result already shown in chat
-    console.warn('Dice+ broadcast failed (not installed?):', e.message);
-  }
+/**
+ * Set up listener for Dice+ roll results (called once after OBR is ready).
+ */
+function setupChatDicePlusListener() {
+  OBR.broadcast.onMessage('dice-plus/roll-result', (event) => {
+    const result = event.data?.result || event.data;
+    if (!result || result.rollId === undefined) return;
+
+    const pending = chatPendingRolls.get(result.rollId);
+    if (!pending) return;
+
+    chatPendingRolls.delete(result.rollId);
+    pending.resolve({ totalValue: result.totalValue, rollSummary: result.rollSummary });
+  });
+}
+
+/**
+ * Send to Dice+ and wait for its result (up to 5s), then fall back to local roll.
+ * Returns { totalValue, breakdown } where breakdown comes from Dice+ or local.
+ */
+async function rollViaDicePlus(diceNotation, localFallback) {
+  return new Promise(async (resolveOuter) => {
+    let settled = false;
+
+    // Timeout: fall back to local result if Dice+ doesn't respond
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      chatPendingRolls.delete(rollId);
+      resolveOuter(localFallback);
+    }, 5000);
+
+    const rollId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    chatPendingRolls.set(rollId, {
+      resolve: (result) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolveOuter({ totalValue: result.totalValue, breakdown: result.rollSummary || String(result.totalValue) });
+      }
+    });
+
+    try {
+      const playerId = await OBR.player.getId();
+      const playerName = await OBR.player.getName();
+
+      await OBR.broadcast.sendMessage('dice-plus/roll-request', {
+        rollId,
+        playerId,
+        playerName,
+        rollTarget: 'everyone',
+        diceNotation,
+        showResults: false,
+        timestamp: Date.now(),
+        source: OWLCLOUD_EXTENSION_ID
+      }, { destination: 'ALL' });
+    } catch (e) {
+      // Dice+ not installed — fall back immediately
+      console.warn('Dice+ not available:', e.message);
+      if (!settled) {
+        settled = true;
+        clearTimeout(timer);
+        chatPendingRolls.delete(rollId);
+        resolveOuter(localFallback);
+      }
+    }
+  });
 }
 
 /**
@@ -767,19 +817,22 @@ async function sendChatMessage() {
       return;
     }
 
-    const rolled = rollDiceFormula(resolved);
-    if (!rolled) {
+    const local = rollDiceFormula(resolved);
+    if (!local) {
       displayChatMessage(`❌ Invalid dice formula: <em>${rawFormula}</em>`, 'system');
       return;
     }
 
-    // Display formula as typed (with var names), show resolved breakdown and total
     const displayFormula = rawFormula !== resolved ? `${rawFormula} → ${resolved}` : rawFormula;
-    const msg = `🎲 <strong>${displayFormula}</strong>: ${rolled.breakdown} = <strong>${rolled.result}</strong>`;
-    await addChatMessageToMetadata(msg, 'roll', characterName);
 
-    // Trigger Dice+ 3D animation (fire and forget)
-    sendToDicePlus(resolved);
+    // Roll via Dice+ (waits for 3D result), falls back to local if unavailable
+    const { totalValue, breakdown } = await rollViaDicePlus(resolved, {
+      totalValue: local.result,
+      breakdown: local.breakdown
+    });
+
+    const msg = `🎲 <strong>${displayFormula}</strong>: ${breakdown} = <strong>${totalValue}</strong>`;
+    await addChatMessageToMetadata(msg, 'roll', characterName);
     return;
   }
 
