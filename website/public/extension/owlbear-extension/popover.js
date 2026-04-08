@@ -1807,6 +1807,7 @@ async function checkForActiveCharacter() {
       localStorage.removeItem(cacheKey);
       localStorage.removeItem(versionKey);
       showNoCharacter();
+      await fetchAllCharacters(); // Still populate the character list so user can select one
     }
   } catch (error) {
     console.error('❌ Error checking for active character:', error);
@@ -1860,21 +1861,22 @@ function displayCharacterList() {
   const characterListSection = document.getElementById('character-list-section');
   const characterList = document.getElementById('character-list');
 
-  if (!allCharacters || allCharacters.length <= 1) {
-    // Hide character list if there's only one or no characters
+  if (!allCharacters || allCharacters.length === 0) {
     characterListSection.style.display = 'none';
     return;
   }
 
-  // Show character list
   characterListSection.style.display = 'block';
 
   let html = '';
   allCharacters.forEach((character) => {
-    const isActive = currentCharacter && character.id === currentCharacter.id;
+    const charId = character.dicecloud_character_id || character.id;
+    const charName = character.character_name || character.name || 'Unknown Character';
+    const currentId = currentCharacter && (currentCharacter.dicecloud_character_id || currentCharacter.id);
+    const isActive = character.is_active || (currentId && charId === currentId);
     html += `
-      <div class="character-list-item ${isActive ? 'active' : ''}" onclick="switchToCharacter('${character.id}')">
-        <div class="character-list-item-name">${character.name || 'Unknown Character'}</div>
+      <div class="character-list-item ${isActive ? 'active' : ''}" onclick="switchToCharacter('${charId}')">
+        <div class="character-list-item-name">${charName}</div>
         <div class="character-list-item-details">
           Level ${character.level || '?'} ${character.race || ''} ${character.class || ''}
           ${isActive ? '• Active' : ''}
@@ -1891,24 +1893,19 @@ function displayCharacterList() {
  */
 window.switchToCharacter = async function(characterId) {
   try {
-    // Find the character in the list
-    const character = allCharacters.find(c => c.id === characterId);
+    const character = allCharacters.find(c => (c.dicecloud_character_id || c.id) === characterId);
     if (!character) {
       console.error('Character not found:', characterId);
       return;
     }
 
-    // Update active character using unified characters edge function
+    const charName = character.character_name || character.name;
     const playerId = await OBR.player.getId();
-    const requestBody = {
-      owlbearPlayerId: playerId,
-      character: character
-    };
 
-    // Include supabase_user_id if authenticated for cross-device sync
-    if (currentUser) {
-      requestBody.supabaseUserId = currentUser.id;
-    }
+    // Prefer characterName+supabaseUserId path when authenticated (cleaner, no field mapping issues)
+    const requestBody = currentUser
+      ? { supabaseUserId: currentUser.id, characterName: charName }
+      : { owlbearPlayerId: playerId, character };
 
     const response = await fetch(
       `${SUPABASE_URL}/functions/v1/characters`,
@@ -1922,13 +1919,10 @@ window.switchToCharacter = async function(characterId) {
     const result = await response.json();
 
     if (response.ok && result.success) {
-      // Display the new character
-      displayCharacter(character);
-      displayCharacterList(); // Refresh the list to update active state
-      updateAuthUI(); // Update auth UI to show unsync button
-
+      // Reload full character data after switching
+      await checkForCharacter();
       if (isOwlbearReady) {
-        OBR.notification.show(`Switched to ${character.name}`, 'SUCCESS');
+        OBR.notification.show(`Switched to ${charName}`, 'SUCCESS');
       }
     } else {
       console.error('Failed to switch character:', result.error);
