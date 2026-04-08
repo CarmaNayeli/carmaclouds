@@ -1782,32 +1782,11 @@ async function checkForActiveCharacter() {
       // Update auth UI to show unsync button if user is signed in
       updateAuthUI();
     } else {
-      // No active character — try again without active_only to pick up any character
-      if (currentUser && queryParam.includes('active_only=true')) {
-        console.log('⚠️ No active character, retrying without active_only filter...');
-        const fallbackUrl = `${SUPABASE_URL}/functions/v1/characters?supabase_user_id=${encodeURIComponent(currentUser.id)}&fields=full`;
-        try {
-          const fallbackResp = await fetch(fallbackUrl, { headers: SUPABASE_HEADERS });
-          const fallbackData = await fallbackResp.json();
-          if (fallbackData.success && fallbackData.characters && fallbackData.characters.length > 0) {
-            // Use the first character
-            const char = fallbackData.characters[0];
-            const characterData = char.raw_dicecloud_data || char;
-            localStorage.setItem(cacheKey, JSON.stringify(characterData));
-            displayCharacter(characterData);
-            await fetchAllCharacters();
-            updateAuthUI();
-            return;
-          }
-        } catch (e) {
-          console.warn('Fallback character fetch failed:', e);
-        }
-      }
       console.log('⚠️ No character found in response - showing no character message');
       localStorage.removeItem(cacheKey);
       localStorage.removeItem(versionKey);
       showNoCharacter();
-      await fetchAllCharacters(); // Still populate the character list so user can select one
+      await fetchAllCharacters(); // Populate the character list so user can select one
     }
   } catch (error) {
     console.error('❌ Error checking for active character:', error);

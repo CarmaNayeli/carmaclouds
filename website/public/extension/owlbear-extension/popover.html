@@ -7,6 +7,39 @@
   <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
   <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon16.png">
+  <script>
+    // Apply saved theme before first paint to prevent flash
+    (function() {
+      const themes = {
+        purple:  { primary:'#8B5CF6', primaryLight:'#A78BFA', primaryLighter:'#C4B5FD', gradient:'linear-gradient(135deg,#8B5CF6 0%,#A78BFA 100%)', background:'rgba(139,92,246,0.1)', border:'rgba(139,92,246,0.3)', shadow:'rgba(139,92,246,0.4)', bgPrimary:'linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%)', bgSecondary:'rgba(26,26,46,0.8)', bgAccent:'rgba(139,92,246,0.15)', bgCard:'rgba(139,92,246,0.1)', bgHover:'rgba(139,92,246,0.2)' },
+        blue:    { primary:'#3B82F6', primaryLight:'#60A5FA', primaryLighter:'#93C5FD', gradient:'linear-gradient(135deg,#3B82F6 0%,#60A5FA 100%)', background:'rgba(59,130,246,0.1)', border:'rgba(59,130,246,0.3)', shadow:'rgba(59,130,246,0.4)', bgPrimary:'linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#0c4a6e 100%)', bgSecondary:'rgba(15,23,42,0.8)', bgAccent:'rgba(59,130,246,0.15)', bgCard:'rgba(59,130,246,0.1)', bgHover:'rgba(59,130,246,0.2)' },
+        green:   { primary:'#10B981', primaryLight:'#34D399', primaryLighter:'#6EE7B7', gradient:'linear-gradient(135deg,#10B981 0%,#34D399 100%)', background:'rgba(16,185,129,0.1)', border:'rgba(16,185,129,0.3)', shadow:'rgba(16,185,129,0.4)', bgPrimary:'linear-gradient(135deg,#0f1f1a 0%,#1a2e25 50%,#0d3321 100%)', bgSecondary:'rgba(15,31,26,0.8)', bgAccent:'rgba(16,185,129,0.15)', bgCard:'rgba(16,185,129,0.1)', bgHover:'rgba(16,185,129,0.2)' },
+        red:     { primary:'#EF4444', primaryLight:'#F87171', primaryLighter:'#FCA5A5', gradient:'linear-gradient(135deg,#EF4444 0%,#F87171 100%)', background:'rgba(239,68,68,0.1)', border:'rgba(239,68,68,0.3)', shadow:'rgba(239,68,68,0.4)', bgPrimary:'linear-gradient(135deg,#1f0f0f 0%,#2e1a1a 50%,#450a0a 100%)', bgSecondary:'rgba(31,15,15,0.8)', bgAccent:'rgba(239,68,68,0.15)', bgCard:'rgba(239,68,68,0.1)', bgHover:'rgba(239,68,68,0.2)' },
+        orange:  { primary:'#F97316', primaryLight:'#FB923C', primaryLighter:'#FDBA74', gradient:'linear-gradient(135deg,#F97316 0%,#FB923C 100%)', background:'rgba(249,115,22,0.1)', border:'rgba(249,115,22,0.3)', shadow:'rgba(249,115,22,0.4)', bgPrimary:'linear-gradient(135deg,#1f1209 0%,#2e1c0e 50%,#431407 100%)', bgSecondary:'rgba(31,18,9,0.8)', bgAccent:'rgba(249,115,22,0.15)', bgCard:'rgba(249,115,22,0.1)', bgHover:'rgba(249,115,22,0.2)' },
+        gold:    { primary:'#EAB308', primaryLight:'#FACC15', primaryLighter:'#FDE047', gradient:'linear-gradient(135deg,#EAB308 0%,#FACC15 100%)', background:'rgba(234,179,8,0.1)', border:'rgba(234,179,8,0.3)', shadow:'rgba(234,179,8,0.4)', bgPrimary:'linear-gradient(135deg,#1a1500 0%,#2a2200 50%,#3d3000 100%)', bgSecondary:'rgba(26,21,0,0.8)', bgAccent:'rgba(234,179,8,0.15)', bgCard:'rgba(234,179,8,0.1)', bgHover:'rgba(234,179,8,0.2)' },
+        pink:    { primary:'#EC4899', primaryLight:'#F472B6', primaryLighter:'#F9A8D4', gradient:'linear-gradient(135deg,#EC4899 0%,#F472B6 100%)', background:'rgba(236,72,153,0.1)', border:'rgba(236,72,153,0.3)', shadow:'rgba(236,72,153,0.4)', bgPrimary:'linear-gradient(135deg,#1f0f18 0%,#2e1a24 50%,#4a0d2e 100%)', bgSecondary:'rgba(31,15,24,0.8)', bgAccent:'rgba(236,72,153,0.15)', bgCard:'rgba(236,72,153,0.1)', bgHover:'rgba(236,72,153,0.2)' },
+        brown:   { primary:'#92400E', primaryLight:'#B45309', primaryLighter:'#D97706', gradient:'linear-gradient(135deg,#92400E 0%,#B45309 100%)', background:'rgba(146,64,14,0.1)', border:'rgba(146,64,14,0.3)', shadow:'rgba(146,64,14,0.4)', bgPrimary:'linear-gradient(135deg,#1a0f05 0%,#2e1a08 50%,#3d2007 100%)', bgSecondary:'rgba(26,15,5,0.8)', bgAccent:'rgba(146,64,14,0.15)', bgCard:'rgba(146,64,14,0.1)', bgHover:'rgba(146,64,14,0.2)' },
+        gray:    { primary:'#6B7280', primaryLight:'#9CA3AF', primaryLighter:'#D1D5DB', gradient:'linear-gradient(135deg,#6B7280 0%,#9CA3AF 100%)', background:'rgba(107,114,128,0.1)', border:'rgba(107,114,128,0.3)', shadow:'rgba(107,114,128,0.4)', bgPrimary:'linear-gradient(135deg,#111827 0%,#1f2937 50%,#111827 100%)', bgSecondary:'rgba(17,24,39,0.8)', bgAccent:'rgba(107,114,128,0.15)', bgCard:'rgba(107,114,128,0.1)', bgHover:'rgba(107,114,128,0.2)' },
+        black:   { primary:'#1F2937', primaryLight:'#374151', primaryLighter:'#4B5563', gradient:'linear-gradient(135deg,#1F2937 0%,#374151 100%)', background:'rgba(31,41,55,0.1)', border:'rgba(31,41,55,0.3)', shadow:'rgba(31,41,55,0.4)', bgPrimary:'linear-gradient(135deg,#000000 0%,#0a0a0a 50%,#111111 100%)', bgSecondary:'rgba(0,0,0,0.8)', bgAccent:'rgba(31,41,55,0.15)', bgCard:'rgba(31,41,55,0.1)', bgHover:'rgba(31,41,55,0.2)' },
+        white:   { primary:'#F9FAFB', primaryLight:'#F3F4F6', primaryLighter:'#E5E7EB', gradient:'linear-gradient(135deg,#F9FAFB 0%,#F3F4F6 100%)', background:'rgba(249,250,251,0.1)', border:'rgba(249,250,251,0.3)', shadow:'rgba(249,250,251,0.4)', bgPrimary:'linear-gradient(135deg,#f9fafb 0%,#f3f4f6 50%,#e5e7eb 100%)', bgSecondary:'rgba(249,250,251,0.8)', bgAccent:'rgba(249,250,251,0.15)', bgCard:'rgba(249,250,251,0.1)', bgHover:'rgba(249,250,251,0.2)' }
+      };
+      var key = localStorage.getItem('owlcloud-theme');
+      var t = themes[key] || themes.purple;
+      var r = document.documentElement;
+      r.style.setProperty('--theme-primary', t.primary);
+      r.style.setProperty('--theme-primary-light', t.primaryLight);
+      r.style.setProperty('--theme-primary-lighter', t.primaryLighter);
+      r.style.setProperty('--theme-gradient', t.gradient);
+      r.style.setProperty('--theme-background', t.background);
+      r.style.setProperty('--theme-border', t.border);
+      r.style.setProperty('--theme-shadow', t.shadow);
+      r.style.setProperty('--theme-bg-primary', t.bgPrimary);
+      r.style.setProperty('--theme-bg-secondary', t.bgSecondary);
+      r.style.setProperty('--theme-bg-accent', t.bgAccent);
+      r.style.setProperty('--theme-bg-card', t.bgCard);
+      r.style.setProperty('--theme-bg-hover', t.bgHover);
+    })();
+  </script>
   <style>
     * {
       box-sizing: border-box;
