@@ -165,6 +165,36 @@ if (fs.existsSync(foundryModuleSource)) {
   console.log('⚠️  Foundry module not found at foundry-module/');
 }
 
+// Create Chrome and Firefox extension zips for Vercel download
+console.log('\n📦 Creating extension zips for Vercel deployment...');
+const { execSync: execSyncForZips } = await import('child_process');
+const extensionPublicDir = path.join('..', '..', 'website', 'public');
+const chromeZipPath = path.join(extensionPublicDir, 'carmaclouds-chrome.zip');
+const firefoxZipPath = path.join(extensionPublicDir, 'carmaclouds-firefox.zip');
+
+if (fs.existsSync(chromeZipPath)) fs.rmSync(chromeZipPath);
+if (fs.existsSync(firefoxZipPath)) fs.rmSync(firefoxZipPath);
+
+try {
+  execSyncForZips(`7z a -tzip carmaclouds-chrome.zip ${path.resolve('dist-chrome')}/*`, {
+    cwd: extensionPublicDir,
+    stdio: 'inherit'
+  });
+  console.log('✅ Created website/public/carmaclouds-chrome.zip');
+} catch (error) {
+  console.error('⚠️  Failed to create Chrome zip:', error.message);
+}
+
+try {
+  execSyncForZips(`7z a -tzip carmaclouds-firefox.zip ${path.resolve('dist')}/*`, {
+    cwd: extensionPublicDir,
+    stdio: 'inherit'
+  });
+  console.log('✅ Created website/public/carmaclouds-firefox.zip');
+} catch (error) {
+  console.error('⚠️  Failed to create Firefox zip:', error.message);
+}
+
 // Sync Owlbear extension to website directory
 console.log('\n📋 Syncing Owlbear extension to website...');
 const owlbearExtensionSource = path.join('.', 'dist-chrome', 'owlbear-extension');

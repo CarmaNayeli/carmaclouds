@@ -23,17 +23,15 @@ export default function HomeTab({ setActiveTab }: HomeTabProps) {
           </p>
           <div className="flex gap-4">
             <a
-              href="https://github.com/CarmaNayeli/carmaclouds/releases/latest/download/carmaclouds-chrome.zip"
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/carmaclouds-chrome.zip"
+              download
               className="inline-block bg-[#16a75a] hover:bg-[#1bc76a] text-white font-medium px-6 py-3 rounded-lg transition-colors"
             >
               Download for Chrome/Edge
             </a>
             <a
-              href="https://github.com/CarmaNayeli/carmaclouds/releases/latest/download/carmaclouds-firefox.zip"
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/carmaclouds-firefox.zip"
+              download
               className="inline-block bg-[#16a75a] hover:bg-[#1bc76a] text-white font-medium px-6 py-3 rounded-lg transition-colors"
             >
               Download for Firefox
