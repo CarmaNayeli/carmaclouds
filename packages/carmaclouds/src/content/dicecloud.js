@@ -327,25 +327,20 @@ async function extractCharacterData() {
       throw new Error('Not on a character page. Navigate to a character sheet first.');
     }
 
-    // Get API token from extension storage
     const tokenResult = await browserAPI.storage.local.get(['dicecloud_auth_token']);
     const token = tokenResult.dicecloud_auth_token;
-    
-    if (!token) {
-      throw new Error('Not logged in to DiceCloud. Please login via the extension popup.');
-    }
 
     console.log('CarmaClouds: Fetching character data from API...');
-    
-    // Fetch character data from DiceCloud API
+
     const API_BASE = `${window.location.origin}/api`;
     const timestamp = Date.now();
     const apiUrl = `${API_BASE}/creature/${characterId}?_t=${timestamp}`;
-    
-    const response = await fetch(apiUrl, {
+
+    // Try cookie-based auth first (works for any subdomain the user is logged into).
+    // Same-origin fetches automatically include session cookies.
+    let response = await fetch(apiUrl, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache',
@@ -354,11 +349,27 @@ async function extractCharacterData() {
       cache: 'no-store'
     });
 
+    // If cookie auth failed and we have a stored token, retry with Bearer auth.
+    if (!response.ok && token) {
+      console.log('CarmaClouds: Cookie auth failed, retrying with stored token...');
+      response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        },
+        cache: 'no-store'
+      });
+    }
+
     console.log('CarmaClouds: API Response status:', response.status);
 
     if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error('API token expired. Please login again via the extension popup.');
+      if (response.status === 401 || response.status === 403) {
+        throw new Error('Not logged in to DiceCloud. Please make sure you are logged in on this page.');
       }
       const errorText = await response.text();
       console.error('CarmaClouds: API Error Response:', errorText);
