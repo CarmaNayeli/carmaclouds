@@ -1239,7 +1239,7 @@
     const abilityNames = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
     const savingThrows = {};
     abilityNames.forEach((a) => {
-      savingThrows[a] = base.saves?.[`${a}Save`] ?? base.attributeMods?.[a] ?? 0;
+      savingThrows[a] = base.saves?.[a] ?? base.attributeMods?.[a] ?? 0;
     });
     const features = (properties || []).filter((p) => p && p.type === "feature" && p.name).map((p) => ({
       name: p.name,

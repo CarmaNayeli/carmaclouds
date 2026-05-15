@@ -338,7 +338,7 @@ async function extractCharacterData() {
     console.log('CarmaClouds: Fetching character data from API...');
     
     // Fetch character data from DiceCloud API
-    const API_BASE = 'https://dicecloud.com/api';
+    const API_BASE = `${window.location.origin}/api`;
     const timestamp = Date.now();
     const apiUrl = `${API_BASE}/creature/${characterId}?_t=${timestamp}`;
     

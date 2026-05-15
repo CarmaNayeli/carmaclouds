@@ -1239,7 +1239,7 @@
     const abilityNames = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"];
     const savingThrows = {};
     abilityNames.forEach((a) => {
-      savingThrows[a] = base.saves?.[`${a}Save`] ?? base.attributeMods?.[a] ?? 0;
+      savingThrows[a] = base.saves?.[a] ?? base.attributeMods?.[a] ?? 0;
     });
     const features = (properties || []).filter((p) => p && p.type === "feature" && p.name).map((p) => ({
       name: p.name,
@@ -1653,7 +1653,7 @@
         throw new Error("Not logged in to DiceCloud. Please login via the extension popup.");
       }
       console.log("CarmaClouds: Fetching character data from API...");
-      const API_BASE = "https://dicecloud.com/api";
+      const API_BASE = `${window.location.origin}/api`;
       const timestamp = Date.now();
       const apiUrl = `${API_BASE}/creature/${characterId}?_t=${timestamp}`;
       const response = await fetch(apiUrl, {
