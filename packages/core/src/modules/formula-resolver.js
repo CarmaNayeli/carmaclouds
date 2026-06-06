@@ -123,11 +123,23 @@
           spellcastingAbility = 'charisma';
         }
 
-        // Return the modifier for the spellcasting ability
-        if (spellcastingAbility && characterData.attributeMods && characterData.attributeMods[spellcastingAbility] !== undefined) {
-          const modifier = characterData.attributeMods[spellcastingAbility];
-          debug.log(`✅ Resolved ${cleanPath} to ${spellcastingAbility} modifier: ${modifier}`);
-          return modifier;
+        if (spellcastingAbility) {
+          // Prefer a precomputed modifier when present.
+          if (characterData.attributeMods && characterData.attributeMods[spellcastingAbility] !== undefined) {
+            const modifier = characterData.attributeMods[spellcastingAbility];
+            debug.log(`✅ Resolved ${cleanPath} to ${spellcastingAbility} modifier: ${modifier}`);
+            return modifier;
+          }
+          // Fall back to computing it from the ability score. attributeMods isn't
+          // always populated on the data feeding the sheet (e.g. cloud-loaded
+          // characters), but the raw score is — so #spellList.abilityMod / .dc
+          // still resolve instead of showing raw template text.
+          const score = characterData.attributes && characterData.attributes[spellcastingAbility];
+          if (typeof score === 'number') {
+            const modifier = Math.floor((score - 10) / 2);
+            debug.log(`✅ Computed ${cleanPath} from ${spellcastingAbility} score ${score}: ${modifier}`);
+            return modifier;
+          }
         }
       }
 

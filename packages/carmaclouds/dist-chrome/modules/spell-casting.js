@@ -435,12 +435,27 @@
    * @param {number|null} castLevel - Level the spell is being cast at
    */
   function announceSpellDescription(spell, castLevel = null) {
+    // Resolve DiceCloud inline calculations ({#spellList.dc}, {max(slotLevel,1)},
+    // etc.) before sending so the Roll20 chat card shows real numbers, not raw
+    // template text. The sheet display resolves separately; this is the chat path.
+    const rv = (t) => (t && typeof resolveVariablesInFormula === 'function')
+      ? resolveVariablesInFormula(String(t))
+      : t;
+    const resolvedSpell = {
+      ...spell,
+      summary: rv(spell.summary),
+      description: rv(spell.description),
+      range: rv(spell.range),
+      duration: rv(spell.duration),
+      castingTime: rv(spell.castingTime),
+    };
+
     const messageData = {
       action: 'announceSpell',
       spellName: spell.name,
       characterName: characterData.name,
       color: characterData.notificationColor,
-      spellData: spell,
+      spellData: resolvedSpell,
       castLevel: castLevel
     };
 
