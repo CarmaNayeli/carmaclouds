@@ -13,7 +13,9 @@
     "https://app.roll20.net/*",
     "https://roll20.net/*",
     "https://*.owlbear.rodeo/*",
-    "https://owlbear.rodeo/*"
+    "https://owlbear.rodeo/*",
+    "https://coyotesandcandles.com/*",
+    "https://*.coyotesandcandles.com/*"
   ],
   "optional_permissions": [
     "webNavigation"
@@ -52,6 +54,16 @@
       ],
       "js": [
         "src/content/owlbear.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://coyotesandcandles.com/*",
+        "https://*.coyotesandcandles.com/*"
+      ],
+      "js": [
+        "src/content/coyotecandles.js"
       ],
       "run_at": "document_idle"
     }

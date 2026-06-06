@@ -24,6 +24,7 @@ await buildExtension({
     'src/content/roll20': './src/content/roll20.js',
     'src/content/character-sheet-overlay': './src/content/character-sheet-overlay.js',
     'src/content/owlbear': './src/content/owlbear.js',
+    'src/content/coyotecandles': './src/content/coyotecandles.js',
     // Shared modules (for dynamic imports)
     'src/content/dicecloud-extraction': './src/content/dicecloud-extraction.js',
     // Adapters (lazy loaded, but need to be bundled)
@@ -33,6 +34,7 @@ await buildExtension({
     'src/popup/adapters/owlcloud/owlcloud-popup': './src/popup/adapters/owlcloud/owlcloud-popup.js',
     'src/popup/adapters/foundcloud/adapter': './src/popup/adapters/foundcloud/adapter.js',
     'src/popup/adapters/foundcloud/foundcloud-popup': './src/popup/adapters/foundcloud/foundcloud-popup.js',
+    'src/popup/adapters/coyotecloud/adapter': './src/popup/adapters/coyotecloud/adapter.js',
   },
   copyFiles: [
     'manifest_firefox.json',
@@ -84,6 +86,7 @@ await buildExtension({
     'src/content/roll20': './src/content/roll20.js',
     'src/content/character-sheet-overlay': './src/content/character-sheet-overlay.js',
     'src/content/owlbear': './src/content/owlbear.js',
+    'src/content/coyotecandles': './src/content/coyotecandles.js',
     // Shared modules (for dynamic imports)
     'src/content/dicecloud-extraction': './src/content/dicecloud-extraction.js',
     // Adapters (lazy loaded, but need to be bundled)
@@ -93,6 +96,7 @@ await buildExtension({
     'src/popup/adapters/owlcloud/owlcloud-popup': './src/popup/adapters/owlcloud/owlcloud-popup.js',
     'src/popup/adapters/foundcloud/adapter': './src/popup/adapters/foundcloud/adapter.js',
     'src/popup/adapters/foundcloud/foundcloud-popup': './src/popup/adapters/foundcloud/foundcloud-popup.js',
+    'src/popup/adapters/coyotecloud/adapter': './src/popup/adapters/coyotecloud/adapter.js',
   },
   copyFiles: [
     'manifest.json',

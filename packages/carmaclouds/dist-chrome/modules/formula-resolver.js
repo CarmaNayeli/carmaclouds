@@ -382,41 +382,40 @@
     resolvedFormula = resolvedFormula.replace(/\*\*/g, ''); // Remove bold markers
 
     // Parse inline calculations in curly braces {expression}
-    // DiceCloud uses {varName} or {varName + 2} syntax in text
+    // DiceCloud wraps every embedded calculation in { ... }, e.g.
+    //   {#spellList.dc}, {#spellList.abilityMod}, {max(slotLevel, 1)},
+    //   {120 * (1 + spellSniper)}
+    // Resolve references/variables inside, then evaluate. A leading # is stripped
+    // from references; ceil/floor/round are mapped to Math.* for the evaluator;
+    // any identifier we can't resolve (e.g. a feat the character lacks, like
+    // spellSniper, or the not-yet-chosen slotLevel) defaults to 0 so the math
+    // still evaluates instead of leaving raw text on screen.
+    const MATH_FUNC_MAP = { ceil: 'Math.ceil', floor: 'Math.floor', round: 'Math.round' };
     const inlineCalcPattern = /\{([^}]+)\}/g;
     resolvedFormula = resolvedFormula.replace(inlineCalcPattern, (fullMatch, expression) => {
       try {
-        // First try to resolve variables in the expression
-        let resolvedExpr = expression;
-
-        // Replace variable names with their values
-        const varPattern = /[a-zA-Z_][a-zA-Z0-9_.]*/g;
-        resolvedExpr = resolvedExpr.replace(varPattern, (varName) => {
-          const value = getVariableValue(varName);
-          return value !== null ? value : varName;
+        const expr = expression.replace(/#?[a-zA-Z_][a-zA-Z0-9_.]*/g, (token, offset, str) => {
+          const name = token.replace(/^#/, '');
+          const isCall = /^\s*\(/.test(str.slice(offset + token.length));
+          if (isCall) {
+            if (MATH_FUNC_MAP[name]) return MATH_FUNC_MAP[name];      // ceil → Math.ceil
+            if (name === 'max' || name === 'min' || name.startsWith('Math.')) return name;
+            return name; // unknown function — leave for the evaluator to reject
+          }
+          const value = getVariableValue(name);
+          return (value !== null && typeof value === 'number') ? String(value) : '0';
         });
 
-        // Try to evaluate as math expression using safeMathEval
-        // Only if it contains operators or is a number
-        if (/[\d+\-*\/()]/.test(resolvedExpr)) {
-          try {
-            // Use safeMathEval for CSP-compliant evaluation
-            const result = safeMathEval(resolvedExpr);
-            debug.log(`✅ Evaluated inline calculation: {${expression}} = ${result}`);
-            return result;
-          } catch (e) {
-            debug.log(`⚠️ Failed to evaluate inline calculation: {${expression}}`, e);
-          }
-        }
-
-        // If it's just a variable lookup that was resolved, return it
-        if (resolvedExpr !== expression && !/[a-zA-Z_]/.test(resolvedExpr)) {
-          return resolvedExpr;
+        // safeMathEval throws on anything it can't tokenize, so the try/catch is
+        // the guard — a successful finite result means the expression resolved.
+        const result = safeMathEval(expr);
+        if (typeof result === 'number' && isFinite(result)) {
+          debug.log(`✅ Evaluated inline calculation: {${expression}} = ${result}`);
+          return String(result);
         }
       } catch (e) {
-        debug.log(`⚠️ Error processing inline calculation: {${expression}}`, e);
+        debug.log(`⚠️ Failed to evaluate inline calculation: {${expression}}`, e);
       }
-
       // Return original if we couldn't resolve
       return fullMatch;
     });

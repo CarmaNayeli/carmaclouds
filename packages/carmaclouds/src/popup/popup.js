@@ -10,7 +10,8 @@ const browserAPI = (typeof browser !== 'undefined' && browser.runtime) ? browser
 const loadedAdapters = {
   rollcloud: null,
   owlcloud: null,
-  foundcloud: null
+  foundcloud: null,
+  coyotecloud: null
 };
 
 // Get saved settings
@@ -18,7 +19,7 @@ async function getSettings() {
   const result = await browserAPI.storage.local.get('carmaclouds_settings') || {};
   return result.carmaclouds_settings || {
     lastActiveTab: 'rollcloud',
-    enabledVTTs: ['rollcloud', 'owlcloud', 'foundcloud']
+    enabledVTTs: ['rollcloud', 'owlcloud', 'foundcloud', 'coyotecloud']
   };
 }
 
@@ -32,7 +33,8 @@ function showLoginRequired(contentEl, tabName) {
   const tabNames = {
     rollcloud: 'RollCloud',
     owlcloud: 'OwlCloud',
-    foundcloud: 'FoundCloud'
+    foundcloud: 'FoundCloud',
+    coyotecloud: 'CoyoteCloud'
   };
 
   contentEl.innerHTML = `

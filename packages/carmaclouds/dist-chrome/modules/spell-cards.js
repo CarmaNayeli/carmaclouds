@@ -71,21 +71,29 @@
       debug.log(`📝 Spell "${spell.name}" has attack/damage:`, { attackRoll: spell.attackRoll, damage: spell.damage, damageType: spell.damageType });
     }
 
+    // Resolve DiceCloud inline calculations ({#spellList.dc}, {max(slotLevel,1)},
+    // {120 * (1 + spellSniper)}, etc.) in any displayed text so players see real
+    // numbers instead of raw template syntax. Falls back to the raw text if the
+    // resolver isn't loaded.
+    const rv = (text) => (text && typeof resolveVariablesInFormula === 'function')
+      ? resolveVariablesInFormula(String(text))
+      : text;
+
     // Build full description from summary and description fields
     let fullDescription = '';
     if (spell.summary && spell.description) {
-      fullDescription = `${spell.summary}<br><br>${spell.description}`;
+      fullDescription = `${rv(spell.summary)}<br><br>${rv(spell.description)}`;
     } else if (spell.summary) {
-      fullDescription = spell.summary;
+      fullDescription = rv(spell.summary);
     } else if (spell.description) {
-      fullDescription = spell.description;
+      fullDescription = rv(spell.description);
     }
 
     desc.innerHTML = `
-      ${spell.castingTime ? `<div><strong>Casting Time:</strong> ${spell.castingTime}</div>` : ''}
-      ${spell.range ? `<div><strong>Range:</strong> ${spell.range}</div>` : ''}
-      ${spell.components ? `<div><strong>Components:</strong> ${spell.components}</div>` : ''}
-      ${spell.duration ? `<div><strong>Duration:</strong> ${spell.duration}</div>` : ''}
+      ${spell.castingTime ? `<div><strong>Casting Time:</strong> ${rv(spell.castingTime)}</div>` : ''}
+      ${spell.range ? `<div><strong>Range:</strong> ${rv(spell.range)}</div>` : ''}
+      ${spell.components ? `<div><strong>Components:</strong> ${rv(spell.components)}</div>` : ''}
+      ${spell.duration ? `<div><strong>Duration:</strong> ${rv(spell.duration)}</div>` : ''}
       ${spell.school ? `<div><strong>School:</strong> ${spell.school}</div>` : ''}
       ${spell.source ? `<div><strong>Source:</strong> ${spell.source}</div>` : ''}
       ${fullDescription ? `<div style="margin-top: 10px;"><strong>Summary:</strong> ${fullDescription}</div>` : ''}

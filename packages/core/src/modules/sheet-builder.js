@@ -67,6 +67,28 @@
     if (data.spell_slots && !data.spellSlots) {
       data.spellSlots = data.spell_slots;
     }
+    // Normalize nested spell-slot format ({ level1: { current, max } }) into the
+    // flat keys (level1SpellSlots / level1SpellSlotsMax) that the cast, upcast,
+    // and Divine Smite modals read. Some parsers emit nested, others flat; the
+    // slot *display* tolerates both, but those modals read flat only — so with
+    // nested data the slots render yet never decrement on cast and Divine Smite
+    // lists no levels. Flat is authoritative (casting decrements the flat key),
+    // so we only fill flat keys that are missing and never clobber them.
+    if (data.spellSlots) {
+      for (let level = 1; level <= 9; level++) {
+        const nested = data.spellSlots[`level${level}`];
+        if (nested && typeof nested === 'object') {
+          const curKey = `level${level}SpellSlots`;
+          const maxKey = `level${level}SpellSlotsMax`;
+          if (data.spellSlots[maxKey] === undefined && nested.max !== undefined) {
+            data.spellSlots[maxKey] = nested.max;
+          }
+          if (data.spellSlots[curKey] === undefined && nested.current !== undefined) {
+            data.spellSlots[curKey] = nested.current;
+          }
+        }
+      }
+    }
     if (data.attribute_mods && !data.attributeMods) {
       data.attributeMods = data.attribute_mods;
     }
