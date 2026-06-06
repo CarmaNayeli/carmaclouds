@@ -36,11 +36,11 @@ export default function CoyoteCloudTab() {
           >
             Coyotes &amp; Candles
           </a>{' '}
-          is a handcrafted-candle shop and tabletop &amp; tarot service that also runs its own
-          browser-based virtual tabletop. Every game room (&ldquo;meet&rdquo;) has live video and voice,
-          a battle map with tokens, fog of war and an initiative tracker, a shared dice roller, and
-          built-in character sheets &mdash; including full D&amp;D 5e. No installs, no separate app: you
-          just open a link and play in the browser.
+          is an online tarot and tabletop-gaming service that runs its own browser-based virtual
+          tabletop (handcrafted candles are on the way). Every game room (&ldquo;meet&rdquo;) has live
+          video and voice, a battle map with tokens, fog of war and an initiative tracker, a shared
+          dice roller, and built-in character sheets &mdash; including full D&amp;D 5e. No installs, no
+          separate app: you just open a link and play in the browser.
         </p>
         <p className="text-gray-300 leading-relaxed mt-3">
           <strong className="text-white">CoyoteCloud</strong> connects that VTT to DiceCloud. Sync a
@@ -88,8 +88,7 @@ export default function CoyoteCloudTab() {
       <section className="bg-black border border-[#ffdd77] rounded-lg p-6 text-center">
         <h3 className="text-2xl font-semibold mb-3 text-[#ffdd77]">Play on Coyotes &amp; Candles</h3>
         <p className="text-gray-400 mb-5">
-          A browser-based VTT with video, maps, dice and 5e sheets &mdash; plus a candle shop and tarot
-          readings on the side.
+          A browser-based VTT with video, maps, dice and 5e sheets &mdash; plus online tarot readings.
         </p>
         <a
           href="https://coyotesandcandles.com"
