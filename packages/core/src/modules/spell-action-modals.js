@@ -40,7 +40,14 @@
     return 'wisdom';
   }
   function spellMod() { return abilityMod(spellcastingAbility()); }
+  function spellSaveDC() { return 8 + profBonus() + spellMod(); }
+  function spellAttackBonus() { return profBonus() + spellMod(); }
   const fmtMod = (m) => (m >= 0 ? `+${m}` : `${m}`);
+  // "DC 15 DEX save (half)" style text for save-based spells.
+  function saveText(def) {
+    if (!def.save) return '';
+    return ` — DC ${spellSaveDC()} ${def.save} save${def.half ? ' (half)' : ''}`;
+  }
 
   // Available regular spell slots (flat keys), level >= minLevel, with max > 0.
   function availableSlots(minLevel) {
@@ -127,13 +134,17 @@
          <select data-cc-slot style="width:100%;padding:8px;border:2px solid var(--accent-info);border-radius:6px;background:rgba(0,0,0,0.2);color:inherit;margin-bottom:14px;">
            ${slots.map(s => `<option value="${s.level}" ${s.current <= 0 ? 'disabled' : ''}>Level ${s.level} (${s.current}/${s.max})</option>`).join('')}
          </select>` : '';
-    const save = def.save ? ` <span style="opacity:0.8;">(${def.save} save${def.half ? ', half on success' : ''})</span>` : '';
+    const atk = spellAttackBonus();
+    const atkLine = def.attack
+      ? `<div style="font-size:1.05em;margin-bottom:8px;">Spell attack: <strong>${fmtMod(atk)}</strong> to hit${def.rays ? ' (per ray)' : ''}</div>`
+      : '';
     const body = `${metaLine(def)}
       <p style="font-size:0.9em;line-height:1.4;margin:0 0 14px;">${def.effect || ''}</p>
       ${slotSel}
-      <div style="font-size:1.1em;margin-bottom:14px;">Damage: <strong data-cc-dmg></strong> ${def.type || ''}${save}</div>
+      ${atkLine}
+      <div style="font-size:1.1em;margin-bottom:14px;">Damage: <strong data-cc-dmg></strong> ${def.type || ''}<span style="opacity:0.85;">${saveText(def)}</span></div>
       <div style="display:flex;gap:10px;justify-content:center;">
-        <button data-cc-cast style="${BTN}background:var(--accent-warning);color:#fff;">🎲 Roll Damage</button>
+        <button data-cc-cast style="${BTN}background:var(--accent-warning);color:#fff;">🎲 ${def.attack ? 'Roll Attack + Damage' : 'Roll Damage'}</button>
         ${cancelBtn}
       </div>`;
     const m = openModal(def.icon || '✨', name, body);
@@ -164,8 +175,11 @@
       }
       const { dice, count } = curDice();
       const upcast = lvl > def.level ? ` (upcast L${lvl})` : '';
-      announce(name, `${count > 1 ? count + ' × ' : ''}${dice} ${def.type || ''} damage${def.save ? ` — ${def.save} save` : ''}${upcast}`);
-      const total = count > 1 ? `${count}×(${dice})` : dice;
+      announce(name, `${def.attack ? `${fmtMod(atk)} to hit${count > 1 ? ` ×${count}` : ''} · ` : ''}${count > 1 ? count + ' × ' : ''}${dice} ${def.type || ''} damage${saveText(def)}${upcast}`);
+      // Roll the spell attack(s) first, then the damage.
+      if (def.attack) {
+        for (let i = 0; i < count; i++) doRoll(`${name} attack${count > 1 ? ' ' + (i + 1) : ''}`, `1d20${fmtMod(atk)}`);
+      }
       doRoll(`${name} damage`, count > 1 ? Array(count).fill(`(${dice})`).join('+') : dice);
       if (def.conc && typeof setConcentration === 'function') setConcentration(name);
       m.close();
@@ -181,9 +195,12 @@
          <select data-cc-slot style="width:100%;padding:8px;border:2px solid var(--accent-info);border-radius:6px;background:rgba(0,0,0,0.2);color:inherit;margin-bottom:14px;">
            ${slots.map(s => `<option value="${s.level}" ${s.current <= 0 ? 'disabled' : ''}>Level ${s.level} (${s.current}/${s.max})</option>`).join('')}
          </select>` : '';
+    const atk = spellAttackBonus();
+    const atkLine = def.attack ? `<div style="font-size:1.0em;margin-bottom:8px;">Spell attack: <strong>${fmtMod(atk)}</strong> to hit</div>` : '';
     const body = `${metaLine(def)}
       <p style="font-size:0.9em;line-height:1.4;margin:0 0 14px;">${def.effect || ''}</p>
       ${slotSel}
+      ${atkLine}
       <p style="font-size:0.85em;opacity:0.85;margin:0 0 8px;">${def.prompt || 'Choose:'}</p>
       <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:14px;">
         ${def.choices.map((c, i) => `<button data-cc-choice="${i}" style="${BTN}background:${c.color || 'var(--accent-info)'};color:#fff;">${c.label}</button>`).join('')}
@@ -202,7 +219,8 @@
         }
         if (def.dice) {
           const dice = resolveMod(scaleDice(def.dice, def.perLevel, def.level, lvl));
-          announce(name, `${c.label}: ${dice} ${c.type || def.type || ''} damage${lvl > def.level ? ` (upcast L${lvl})` : ''}`);
+          announce(name, `${c.label}: ${def.attack ? `${fmtMod(atk)} to hit · ` : ''}${dice} ${c.type || def.type || ''} damage${saveText(def)}${lvl > def.level ? ` (upcast L${lvl})` : ''}`);
+          if (def.attack) doRoll(`${name} attack`, `1d20${fmtMod(atk)}`);
           doRoll(`${name} (${c.label})`, dice);
         } else {
           announce(name, `${c.label}${c.effect ? ': ' + c.effect : ''}`);
@@ -334,10 +352,10 @@
       dice: '1d8', type: 'thunder (if it moves)', note: 'cantrip' },
     'Chaos Bolt': { kind: 'damage', icon: '🎲', level: 1, school: 'Evocation',
       effect: 'Ranged spell attack; 2d8 + 1d6 damage. The d6 determines the type (1 acid,2 cold,3 fire,4 force,5 lightning,6 poison,7 psychic,8 thunder). On doubles it can leap to another target. +1d6 per slot level above 1.',
-      dice: '2d8+1d6', type: '(roll d8 for type)', perLevel: '1d6' },
+      dice: '2d8+1d6', type: '(roll d8 for type)', perLevel: '1d6', attack: true },
     'Chromatic Orb': { kind: 'choice', icon: '🔴', level: 1, school: 'Evocation',
       effect: 'Ranged spell attack, 3d8 of a chosen type (+1d8 per slot level above 1).',
-      dice: '3d8', perLevel: '1d8', prompt: 'Damage type:',
+      dice: '3d8', perLevel: '1d8', attack: true, prompt: 'Damage type:',
       choices: [{ label: 'Acid', type: 'acid' }, { label: 'Cold', type: 'cold' }, { label: 'Fire', type: 'fire' }, { label: 'Lightning', type: 'lightning' }, { label: 'Poison', type: 'poison' }, { label: 'Thunder', type: 'thunder' }] },
     'Clone': { icon: '🧬', level: 8, school: 'Necromancy',
       effect: 'Grow an inert duplicate of a creature as a safeguard against death (120 days to mature).' },
@@ -467,7 +485,7 @@
       effect: 'Ward a creature: anyone targeting it with an attack/harmful spell must make a Wis save or choose a new target.' },
     'Scorching Ray': { kind: 'damage', icon: '☄️', level: 2, school: 'Evocation',
       effect: 'Three rays, each a ranged spell attack for 2d6 fire. +1 ray per slot level above 2.',
-      dice: '2d6', type: 'fire', rays: 3, perLevelRays: 1 },
+      dice: '2d6', type: 'fire', rays: 3, perLevelRays: 1, attack: true },
     'Scrying': { icon: '🔮', level: 5, school: 'Divination', conc: true, duration: '10 minutes',
       effect: 'Spy on a creature (Wis save) via an invisible sensor; penalty depends on your knowledge/connection.' },
     'Sending': { icon: '📨', level: 3, school: 'Evocation',
@@ -493,7 +511,7 @@
       dice: '3d8', type: 'radiant/necrotic', perLevel: '1d8', save: 'WIS', half: true },
     'Spiritual Weapon': { kind: 'damage', icon: '🗡️', level: 2, school: 'Evocation', duration: '1 minute',
       effect: 'A floating spectral weapon (bonus action to move + attack): melee spell attack for 1d8 + spellcasting mod force. +1d8 per two slot levels above 2.',
-      dice: '1d8+MOD', type: 'force', perLevel: '1d8' },
+      dice: '1d8+MOD', type: 'force', perLevel: '1d8', attack: true },
     'Symbol': { icon: '🔣', level: 7, school: 'Abjuration',
       effect: 'Inscribe a harmful glyph (Death, Discord, Fear, Hopelessness, Insanity, Pain, Sleep, or Stunning) triggered by conditions you set.' },
     'Teleport': { icon: '✨', level: 7, school: 'Conjuration',
@@ -504,7 +522,7 @@
       effect: 'Return a creature dead ≤200 years to life with full HP, curing all conditions; can even recreate a destroyed body.' },
     'Vampiric Touch': { kind: 'damage', icon: '🩸', level: 3, school: 'Necromancy', conc: true, duration: '1 minute',
       effect: 'Melee spell attack: 3d6 necrotic and you regain half that. Recast as an action each turn. +1d6 per slot level above 3.',
-      dice: '3d6', type: 'necrotic', perLevel: '1d6' },
+      dice: '3d6', type: 'necrotic', perLevel: '1d6', attack: true },
     'Wall of Fire': { kind: 'damage', icon: '🔥', level: 4, school: 'Evocation', conc: true, duration: '1 minute',
       effect: 'A wall of fire (one side chosen). 5d8 fire (Dex save half) to creatures within 10 ft of the hot side and on entry/start of turn. +1d8 per slot level above 4.',
       dice: '5d8', type: 'fire', perLevel: '1d8', save: 'DEX', half: true },
@@ -514,6 +532,24 @@
       effect: 'Instantly teleport you and up to 5 willing creatures to a sanctuary you designated.' },
     'Zone of Truth': { kind: 'buff', icon: '⚖️', level: 2, school: 'Enchantment', duration: '10 minutes',
       effect: 'A 15-ft radius where creatures (Cha save) can’t speak deliberate lies; you know who saved.' },
+    'Conjure Animals': { kind: 'buff', icon: '🐺', level: 3, school: 'Conjuration', conc: true, duration: '1 hour',
+      effect: 'Summon fey spirits as beasts: one CR 2, two CR 1, four CR 1/2, or eight CR 1/4 (double at 5th, triple at 7th, quadruple at 9th).' },
+    'Conjure Elemental': { kind: 'buff', icon: '🜂', level: 5, school: 'Conjuration', conc: true, duration: '1 hour',
+      effect: 'Summon an elemental of CR ≤ the slot level used. It obeys you while you concentrate; otherwise it may turn hostile.' },
+    'Conjure Fey': { kind: 'buff', icon: '🧚', level: 6, school: 'Conjuration', conc: true, duration: '1 hour',
+      effect: 'Summon a fey creature of CR ≤ the slot level used.' },
+    'Conjure Celestial': { kind: 'buff', icon: '😇', level: 7, school: 'Conjuration', conc: true, duration: '1 hour',
+      effect: 'Summon a celestial of CR 4 (CR 5 if cast with a 9th-level slot).' },
+    'Shapechange': { icon: '🔄', level: 9, school: 'Transmutation', conc: true, duration: '1 hour',
+      effect: 'Transform into a creature with a CR ≤ your level (must have a CR). You keep your alignment, Int, Wis, Cha, and class features.' },
+    'True Polymorph': { kind: 'buff', icon: '🐲', level: 9, school: 'Transmutation', conc: true, duration: '1 hour',
+      effect: 'Transform a creature into another creature, a creature into an object, or vice versa (Wis save). After concentrating the full hour it becomes permanent.' },
+    'Planar Binding': { kind: 'buff', icon: '⛓️', level: 5, school: 'Abjuration', duration: '24 hours',
+      effect: 'Bind a celestial, elemental, fey, or fiend to your service (Cha save). Longer duration with higher-level slots (up to a year at 8th).' },
+    'Divine Intervention': { icon: '🙏', level: null, school: 'Cleric feature',
+      effect: 'Call on your deity to intervene. Roll d100; if you roll ≤ your cleric level, it works. On success, you can’t use it again for 7 days; otherwise, again after a long rest.', castLabel: '🙏 Call on your deity' },
+    'Harness Divine Power': { icon: '✨', level: null, school: 'Channel Divinity',
+      effect: 'Expend a use of Channel Divinity to regain one expended spell slot (level up to half your proficiency bonus, rounded up).' },
   };
 
   // ── route every dangling spell modal name to the dispatcher ──────────────
@@ -536,7 +572,8 @@
     'showSimulacrumModal','showSpeakWithAnimalsModal','showSpeakWithDeadModal','showSpeakWithPlantsModal','showSpikeGrowthModal',
     'showSpiritGuardiansModal','showSpiritualWeaponModal','showSymbolModal','showTeleportModal','showTimeStopModal',
     'showTrueResurrectionModal','showVampiricTouchModal','showWallOfFireModal','showWishModal','showWordOfRecallModal',
-    'showZoneOfTruthModal',
+    'showZoneOfTruthModal','showConjureModal','showShapechangeModal','showTruePolymorphModal','showPlanarBindingModal',
+    'showDivineInterventionModal','showHarnessDivinePowerModal',
   ].forEach((name) => { globalThis[name] = showSpellActionModal; });
 
   globalThis.showSpellActionModal = showSpellActionModal;
