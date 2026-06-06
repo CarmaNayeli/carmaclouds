@@ -74,8 +74,8 @@ export default function Home() {
             <Image
               src="/logo.png"
               alt="CarmaClouds Logo"
-              width={120}
-              height={120}
+              width={180}
+              height={180}
               className="rounded-lg"
             />
           </div>
