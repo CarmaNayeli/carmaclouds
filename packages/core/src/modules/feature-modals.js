@@ -736,6 +736,177 @@
     amountInput.select();
   }
 
+  // ===== STARRY FORM (Stars Druid) =====
+
+  function getWisModForStarryForm() {
+    if (characterData.attributeMods && typeof characterData.attributeMods.wisdom === 'number') {
+      return characterData.attributeMods.wisdom;
+    }
+    const score = characterData.attributes && characterData.attributes.wisdom;
+    if (typeof score === 'number') return Math.floor((score - 10) / 2);
+    return 0;
+  }
+
+  // Find a tracked "Wild Shape" resource (used to power Starry Form), if present.
+  function getWildShapeResource() {
+    if (!characterData || !Array.isArray(characterData.resources)) return null;
+    return characterData.resources.find(r => r && r.name && /wild\s*shape/i.test(r.name)) || null;
+  }
+
+  /**
+   * Starry Form (Circle of Stars Druid): choose a constellation. Spends one Wild
+   * Shape use, announces the constellation and its effect, and records the active
+   * constellation. The per-constellation mechanics are announced as their rules
+   * text because the dice roll on Roll20, not in the extension.
+   */
+  function showStarryFormModal(action) {
+    if (typeof characterData === 'undefined' || !characterData) return;
+
+    const wis = getWisModForStarryForm();
+    const fmtMod = (m) => (m >= 0 ? `+${m}` : `${m}`);
+    const wsRes = getWildShapeResource();
+
+    const constellations = [
+      { key: 'Archer', icon: '🏹', color: 'var(--accent-info)',
+        effect: `As a bonus action now and on later turns, make a ranged spell attack (120 ft) for 1d8 ${fmtMod(wis)} radiant. (Use the Archer Attack action.)` },
+      { key: 'Chalice', icon: '🍷', color: 'var(--accent-success)',
+        effect: `Whenever you cast a spell using a spell slot to restore hit points, you or a creature within 30 ft regains 1d8 ${fmtMod(wis)} hit points.` },
+      { key: 'Dragon', icon: '🐉', color: 'var(--accent-warning)',
+        effect: `When you make an Intelligence or Wisdom check, or a Constitution save to maintain concentration, treat a d20 roll of 9 or lower as 10.` },
+    ];
+
+    const { modal, modalContent } = createThemedModal();
+    modalContent.innerHTML = `
+      <h2 style="margin:0 0 8px;font-size:1.5em;">✨ Starry Form</h2>
+      <p style="margin:0 0 4px;font-size:0.95em;">Assume a Starry Form (expends one Wild Shape). Choose a constellation:</p>
+      <p style="margin:0 0 16px;font-size:0.85em;opacity:0.8;">${wsRes ? `Wild Shape: ${wsRes.current}/${wsRes.max}` : 'Lasts 10 minutes'}</p>
+      <div style="display:flex;flex-direction:column;gap:10px;text-align:left;">
+        ${constellations.map((c, i) => `
+          <button class="starry-choice" data-index="${i}" style="display:block;width:100%;padding:12px 14px;border:none;border-radius:8px;background:${c.color};color:#fff;cursor:pointer;text-align:left;">
+            <div style="font-weight:bold;font-size:1.05em;">${c.icon} ${c.key}</div>
+            <div style="font-size:0.82em;opacity:0.95;margin-top:4px;line-height:1.35;">${c.effect}</div>
+          </button>`).join('')}
+      </div>
+      <div style="margin-top:18px;">
+        <button id="cancelStarryForm" style="padding:10px 22px;font-size:1em;font-weight:bold;background:var(--accent-danger);color:#fff;border:none;border-radius:6px;cursor:pointer;">Cancel</button>
+      </div>
+    `;
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+
+    const close = () => {
+      if (modal.parentNode) document.body.removeChild(modal);
+      document.removeEventListener('keydown', onEsc);
+    };
+    const onEsc = (e) => { if (e.key === 'Escape') close(); };
+    document.addEventListener('keydown', onEsc);
+    document.getElementById('cancelStarryForm').addEventListener('click', close);
+
+    modalContent.querySelectorAll('.starry-choice').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const c = constellations[parseInt(btn.dataset.index, 10)];
+
+        // Spend one Wild Shape use, if tracked.
+        if (wsRes) {
+          if (wsRes.current <= 0) {
+            if (typeof showNotification !== 'undefined') showNotification('❌ No Wild Shape uses remaining!', 'error');
+            return;
+          }
+          wsRes.current -= 1;
+          if (characterData.otherVariables && wsRes.varName) {
+            characterData.otherVariables[wsRes.varName] = wsRes.current;
+          }
+        }
+        if (typeof saveCharacterData !== 'undefined') saveCharacterData();
+
+        // Record the active constellation (used for display / reminders).
+        characterData.starryFormConstellation = c.key;
+
+        // Announce to chat + notify.
+        if (typeof announceAction !== 'undefined') {
+          announceAction({ name: `Starry Form: ${c.key}`, description: c.effect });
+        }
+        if (typeof showNotification !== 'undefined') {
+          showNotification(`✨ Starry Form: ${c.key}${wsRes ? ` (Wild Shape ${wsRes.current}/${wsRes.max})` : ''}`);
+        }
+
+        close();
+        if (typeof buildSheet !== 'undefined') buildSheet(characterData);
+      });
+    });
+  }
+
+  // ===== WILD SHAPE (Druid) =====
+
+  /**
+   * Wild Shape: spend a use to transform into a beast. Beast stat blocks are
+   * open-ended, so this records the chosen beast by name, announces the
+   * transformation + duration, and decrements the Wild Shape use.
+   */
+  function showWildShapeModal(action) {
+    if (typeof characterData === 'undefined' || !characterData) return;
+
+    const wsRes = getWildShapeResource();
+    const level = Number(characterData.level) || 1;
+    const durationHours = Math.max(1, Math.floor(level / 2)); // half druid level, min 1
+
+    const { modal, modalContent } = createThemedModal();
+    modalContent.innerHTML = `
+      <h2 style="margin:0 0 8px;font-size:1.5em;">🐾 Wild Shape</h2>
+      <p style="margin:0 0 12px;font-size:0.95em;">
+        Transform into a beast for up to ${durationHours} hour${durationHours === 1 ? '' : 's'}${wsRes ? ` (Wild Shape: ${wsRes.current}/${wsRes.max})` : ''}.
+      </p>
+      <div style="margin:0 0 16px;text-align:left;">
+        <label style="display:block;font-size:0.85em;margin-bottom:6px;opacity:0.85;">Beast form (name)</label>
+        <input type="text" id="wildShapeBeast" placeholder="e.g. Dire Wolf, Giant Eagle…"
+          style="width:100%;padding:10px;font-size:1em;border:2px solid var(--accent-info);border-radius:6px;background:rgba(0,0,0,0.2);color:inherit;">
+      </div>
+      <div style="display:flex;gap:10px;justify-content:center;">
+        <button id="confirmWildShape" style="padding:12px 24px;font-size:1em;font-weight:bold;background:var(--accent-success);color:#fff;border:none;border-radius:6px;cursor:pointer;">Transform</button>
+        <button id="cancelWildShape" style="padding:12px 24px;font-size:1em;font-weight:bold;background:var(--accent-danger);color:#fff;border:none;border-radius:6px;cursor:pointer;">Cancel</button>
+      </div>
+    `;
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+
+    const input = document.getElementById('wildShapeBeast');
+    const close = () => {
+      if (modal.parentNode) document.body.removeChild(modal);
+      document.removeEventListener('keydown', onEsc);
+    };
+    const onEsc = (e) => { if (e.key === 'Escape') close(); };
+    document.addEventListener('keydown', onEsc);
+    document.getElementById('cancelWildShape').addEventListener('click', close);
+
+    document.getElementById('confirmWildShape').addEventListener('click', () => {
+      const beast = (input.value || '').trim() || 'a beast';
+
+      if (wsRes) {
+        if (wsRes.current <= 0) {
+          if (typeof showNotification !== 'undefined') showNotification('❌ No Wild Shape uses remaining!', 'error');
+          return;
+        }
+        wsRes.current -= 1;
+        if (characterData.otherVariables && wsRes.varName) {
+          characterData.otherVariables[wsRes.varName] = wsRes.current;
+        }
+      }
+      if (typeof saveCharacterData !== 'undefined') saveCharacterData();
+
+      if (typeof announceAction !== 'undefined') {
+        announceAction({ name: 'Wild Shape', description: `Transforms into ${beast} for up to ${durationHours} hour${durationHours === 1 ? '' : 's'}.` });
+      }
+      if (typeof showNotification !== 'undefined') {
+        showNotification(`🐾 Wild Shape: ${beast}${wsRes ? ` (${wsRes.current}/${wsRes.max})` : ''}`);
+      }
+
+      close();
+      if (typeof buildSheet !== 'undefined') buildSheet(characterData);
+    });
+
+    input.focus();
+  }
+
   // ===== LUCKY FEAT MODAL =====
 
   /**
@@ -1035,12 +1206,59 @@
   globalThis.showUseInspirationModal = showUseInspirationModal;
   globalThis.showDivineSmiteModal = showDivineSmiteModal;
   globalThis.showLayOnHandsModal = showLayOnHandsModal;
+  globalThis.showStarryFormModal = showStarryFormModal;
   globalThis.showDivineSparkModal = showDivineSparkModal;
   globalThis.showLuckyModal = showLuckyModal;
   globalThis.rollLuckyDie = rollLuckyDie;
   globalThis.getLuckyResource = getLuckyResource;
   globalThis.useLuckyPoint = useLuckyPoint;
   globalThis.getLayOnHandsResource = getLayOnHandsResource;
+  globalThis.showWildShapeModal = showWildShapeModal;
   globalThis.createThemedModal = createThemedModal;
+
+  // ===== Safe fallbacks for not-yet-implemented feature/spell modals =====
+  // action-display.js routes ~95 spells/features to dedicated show*Modal()
+  // handlers, but only a handful are implemented. Calling an undefined one threw
+  // a ReferenceError, so clicking those actions did nothing. Define a generic
+  // fallback (announce the action) for every modal name that isn't already a
+  // real implementation, so nothing crashes and the action still posts to chat.
+  function genericFeatureModalFallback(action) {
+    try {
+      if (typeof announceAction === 'function') {
+        announceAction(action || {});
+      } else if (typeof showNotification === 'function') {
+        showNotification(`${(action && action.name) || 'Action'} used`);
+      }
+    } catch (e) {
+      (window.debug || console).warn('Feature modal fallback failed:', e);
+    }
+  }
+
+  [
+    'showAbsorbElementsModal','showAidModal','showAnimateObjectsModal','showArmorOfAgathysModal',
+    'showAstralProjectionModal','showAuguryModal','showBaneModal','showBigbysHandModal','showBlessModal',
+    'showBoomingBladeModal','showChaosBoltModal','showChromaticOrbModal','showCloneModal','showCloudOfDaggersModal',
+    'showCommuneModal','showConjureModal','showContactOtherPlaneModal','showContingencyModal','showCounterspellModal',
+    'showDelayedBlastFireballModal','showDetectMagicModal','showDispelEvilAndGoodModal','showDispelMagicModal',
+    'showDivinationModal','showDivineInterventionModal','showDragonsBreathModal','showDreamModal',
+    'showElementalWeaponModal','showEtherealnessModal','showFeatherFallModal','showFindThePathModal',
+    'showFireShieldModal','showFlamingSphereModal','showForcecageModal','showFreedomOfMovementModal','showGateModal',
+    'showGeasModal','showGlyphOfWardingModal','showGreaterRestorationModal','showGreenFlameBladeModal','showGuidanceModal',
+    'showHarnessDivinePowerModal','showHasteModal','showHealingSpiritModal','showHellishRebukeModal','showHexModal',
+    'showHuntersMarkModal','showIdentifyModal','showImprisonmentModal','showLegendLoreModal','showLifeTransferenceModal',
+    'showMagicCircleModal','showMagicJarModal','showMagicMissileModal','showMazeModal','showMeldIntoStoneModal',
+    'showMirageArcaneModal','showMoonbeamModal','showNondetectionModal','showPlanarBindingModal','showPolymorphModal',
+    'showProgrammedIllusionModal','showProtectionFromEnergyModal','showProtectionFromEvilAndGoodModal','showRaiseDeadModal',
+    'showRemoveCurseModal','showResistanceModal','showResurrectionModal','showRevivifyModal','showSanctuaryModal',
+    'showScorchingRayModal','showScryingModal','showSendingModal','showSequesterModal','showShapechangeModal',
+    'showShieldModal','showSilenceModal','showSimulacrumModal','showSpeakWithAnimalsModal','showSpeakWithDeadModal',
+    'showSpeakWithPlantsModal','showSpikeGrowthModal','showSpiritGuardiansModal','showSpiritualWeaponModal','showSymbolModal',
+    'showTeleportModal','showTimeStopModal','showTruePolymorphModal','showTrueResurrectionModal','showVampiricTouchModal',
+    'showWallOfFireModal','showWishModal','showWordOfRecallModal','showZoneOfTruthModal',
+  ].forEach((name) => {
+    if (typeof globalThis[name] !== 'function') {
+      globalThis[name] = genericFeatureModalFallback;
+    }
+  });
 
 })();

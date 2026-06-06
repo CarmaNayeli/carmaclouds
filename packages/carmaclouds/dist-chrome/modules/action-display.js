@@ -693,6 +693,14 @@ function buildActionsDisplay(container, actions) {
           return;
         }
 
+        // Special handling for Starry Form (Stars Druid)
+        if (action.name && /starry form/i.test(action.name)) {
+          if (typeof showStarryFormModal === 'function') {
+            showStarryFormModal(action);
+            return;
+          }
+        }
+
         // Special handling for Wild Shape
         if (action.name === 'Wild Shape' || action.name === 'Combat Wild Shape') {
           // Show the Wild Shape choice modal

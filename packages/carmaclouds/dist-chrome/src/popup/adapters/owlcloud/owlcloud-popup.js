@@ -6413,6 +6413,12 @@
               showDivineInterventionModal(action);
               return;
             }
+            if (action.name && /starry form/i.test(action.name)) {
+              if (typeof showStarryFormModal === "function") {
+                showStarryFormModal(action);
+                return;
+              }
+            }
             if (action.name === "Wild Shape" || action.name === "Combat Wild Shape") {
               showWildShapeModal(action);
               return;
