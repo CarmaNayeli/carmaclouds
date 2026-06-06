@@ -1615,9 +1615,33 @@
     console.log("CarmaClouds: Button verification:", addedButton ? "SUCCESS" : "FAILED");
     console.log("CarmaClouds: Sync button added to DiceCloud");
   }
+  function isExtensionContextValid() {
+    try {
+      return !!(browserAPI && browserAPI.runtime && browserAPI.runtime.id);
+    } catch (_) {
+      return false;
+    }
+  }
+  function showRefreshNeeded(button) {
+    if (!button)
+      return;
+    button.disabled = false;
+    button.title = "CarmaClouds was updated \u2014 reload this page, then sync again.";
+    button.style.background = "linear-gradient(135deg, #d97706 0%, #b45309 100%)";
+    button.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span>\u{1F504} Reload to sync</span>
+    </div>
+  `;
+    button.onclick = () => window.location.reload();
+  }
   async function handleSyncToCarmaClouds() {
     const button = document.querySelector("#carmaclouds-sync-btn");
     const originalContent = button.innerHTML;
+    if (!isExtensionContextValid()) {
+      showRefreshNeeded(button);
+      return;
+    }
     try {
       button.innerHTML = `
       <div style="display: flex; align-items: center; gap: 8px;">
@@ -1668,6 +1692,10 @@
       }
     } catch (error) {
       console.error("CarmaClouds: Sync error:", error);
+      if (!isExtensionContextValid() || /context invalidated|Receiving end does not exist/i.test(error.message || "")) {
+        showRefreshNeeded(button);
+        return;
+      }
       button.innerHTML = `
       <div style="display: flex; align-items: center; gap: 8px;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

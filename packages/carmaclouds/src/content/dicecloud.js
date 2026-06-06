@@ -203,10 +203,44 @@ function addSyncButtonToDiceCloud() {
 }
 
 // Handle sync to CarmaClouds
+// True only while this content script is still bound to a live extension. After
+// the extension is reloaded/updated, an already-injected content script is
+// orphaned and any chrome.* call throws "Extension context invalidated" — the
+// only recovery is to reload the page so a fresh content script is injected.
+function isExtensionContextValid() {
+  try {
+    return !!(browserAPI && browserAPI.runtime && browserAPI.runtime.id);
+  } catch (_) {
+    return false;
+  }
+}
+
+// Turn the sync button into a one-click "reload the page" prompt.
+function showRefreshNeeded(button) {
+  if (!button) return;
+  button.disabled = false;
+  button.title = 'CarmaClouds was updated — reload this page, then sync again.';
+  button.style.background = 'linear-gradient(135deg, #d97706 0%, #b45309 100%)';
+  button.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span>🔄 Reload to sync</span>
+    </div>
+  `;
+  button.onclick = () => window.location.reload();
+}
+
 async function handleSyncToCarmaClouds() {
   const button = document.querySelector('#carmaclouds-sync-btn');
   const originalContent = button.innerHTML;
-  
+
+  // If the extension was reloaded/updated while this page stayed open, this
+  // content script is orphaned — surface a clear "reload" prompt instead of a
+  // cryptic "Extension context invalidated" failure.
+  if (!isExtensionContextValid()) {
+    showRefreshNeeded(button);
+    return;
+  }
+
   try {
     // Show loading state
     button.innerHTML = `
@@ -271,7 +305,14 @@ async function handleSyncToCarmaClouds() {
 
   } catch (error) {
     console.error('CarmaClouds: Sync error:', error);
-    
+
+    // The extension was reloaded mid-session — guide the user to refresh rather
+    // than showing a generic failure they can't act on.
+    if (!isExtensionContextValid() || /context invalidated|Receiving end does not exist/i.test(error.message || '')) {
+      showRefreshNeeded(button);
+      return;
+    }
+
     // Show error state
     button.innerHTML = `
       <div style="display: flex; align-items: center; gap: 8px;">
