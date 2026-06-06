@@ -7,8 +7,9 @@ import PipTab from '@/components/PipTab'
 import RollCloudTab from '@/components/RollCloudTab'
 import OwlCloudTab from '@/components/OwlCloudTab'
 import FoundCloudTab from '@/components/FoundCloudTab'
+import CoyoteCloudTab from '@/components/CoyoteCloudTab'
 
-type Tab = 'home' | 'rollcloud' | 'owlcloud' | 'foundcloud' | 'pip'
+type Tab = 'home' | 'rollcloud' | 'owlcloud' | 'foundcloud' | 'coyotecloud' | 'pip'
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>('home')
@@ -31,7 +32,7 @@ export default function Home() {
             CarmaClouds
           </h1>
           <p className="text-gray-400 text-lg">
-            Tabletop Gaming Tools for DiceCloud, Roll20, Owlbear Rodeo & Foundry VTT
+            Tabletop Gaming Tools for DiceCloud, Roll20, Owlbear Rodeo, Foundry VTT & Coyotes & Candles
           </p>
         </header>
 
@@ -78,6 +79,16 @@ export default function Home() {
             FoundCloud
           </button>
           <button
+            onClick={() => setActiveTab('coyotecloud')}
+            className={`px-6 py-3 font-medium transition-colors ${
+              activeTab === 'coyotecloud'
+                ? 'border-b-2 border-[#ffdd77] text-[#ffdd77]'
+                : 'text-gray-500 hover:text-gray-300'
+            }`}
+          >
+            CoyoteCloud
+          </button>
+          <button
             onClick={() => setActiveTab('pip')}
             className={`ml-auto px-6 py-3 font-medium transition-colors ${
               activeTab === 'pip'
@@ -96,6 +107,7 @@ export default function Home() {
           {activeTab === 'rollcloud' && <RollCloudTab />}
           {activeTab === 'owlcloud' && <OwlCloudTab />}
           {activeTab === 'foundcloud' && <FoundCloudTab />}
+          {activeTab === 'coyotecloud' && <CoyoteCloudTab />}
         </div>
 
         {/* Footer */}

@@ -1,5 +1,5 @@
 type HomeTabProps = {
-  setActiveTab: (tab: 'home' | 'pip' | 'rollcloud' | 'owlcloud' | 'foundcloud') => void
+  setActiveTab: (tab: 'home' | 'pip' | 'rollcloud' | 'owlcloud' | 'foundcloud' | 'coyotecloud') => void
 }
 
 export default function HomeTab({ setActiveTab }: HomeTabProps) {
@@ -120,7 +120,7 @@ export default function HomeTab({ setActiveTab }: HomeTabProps) {
         </div>
       </section>
 
-      <section className="grid md:grid-cols-4 gap-6">
+      <section className="grid md:grid-cols-5 gap-6">
         <button
           onClick={() => setActiveTab('rollcloud')}
           className="bg-black border border-gray-800 rounded-lg p-6 hover:border-[#e91e8c] transition-colors text-left cursor-pointer"
@@ -148,6 +148,16 @@ export default function HomeTab({ setActiveTab }: HomeTabProps) {
           <h3 className="text-xl font-semibold text-orange-400 mb-3">FoundCloud</h3>
           <p className="text-gray-400">
             In development! Core functionality complete, public release coming soon.
+          </p>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('coyotecloud')}
+          className="bg-black border border-gray-800 rounded-lg p-6 hover:border-[#ffdd77] transition-colors text-left cursor-pointer"
+        >
+          <h3 className="text-xl font-semibold text-[#ffdd77] mb-3">CoyoteCloud</h3>
+          <p className="text-gray-400">
+            DiceCloud → the Coyotes &amp; Candles built-in VTT, imported into its 5e sheet.
           </p>
         </button>
 
