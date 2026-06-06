@@ -47,6 +47,11 @@ export default function CoyoteCloudTab() {
           character once and it drops straight into the room&apos;s 5e sheet &mdash; abilities, saves,
           skills, HP, AC, attacks, spells, slots and currency &mdash; ready to roll.
         </p>
+        <p className="text-gray-300 leading-relaxed mt-3">
+          <strong className="text-white">Note:</strong> the VTT isn&apos;t open to the public &mdash;
+          it&apos;s for players in a Coyotes &amp; Candles game. You&apos;ll use CoyoteCloud once
+          you&apos;re booked into one of their tabletop sessions, not as a standalone tool.
+        </p>
       </section>
 
       {/* How to use */}
@@ -86,9 +91,10 @@ export default function CoyoteCloudTab() {
 
       {/* CTA */}
       <section className="bg-black border border-[#ffdd77] rounded-lg p-6 text-center">
-        <h3 className="text-2xl font-semibold mb-3 text-[#ffdd77]">Play on Coyotes &amp; Candles</h3>
+        <h3 className="text-2xl font-semibold mb-3 text-[#ffdd77]">Join a Coyotes &amp; Candles game</h3>
         <p className="text-gray-400 mb-5">
-          A browser-based VTT with video, maps, dice and 5e sheets &mdash; plus online tarot readings.
+          The VTT runs inside Coyotes &amp; Candles&apos; tabletop sessions &mdash; book or join a game
+          to play, then bring your DiceCloud character in with CoyoteCloud. Tarot readings available too.
         </p>
         <a
           href="https://coyotesandcandles.com"
