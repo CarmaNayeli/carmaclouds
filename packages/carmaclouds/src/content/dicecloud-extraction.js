@@ -268,6 +268,97 @@ function evaluateDamageFormula(formula, variables = {}) {
 }
 
 /**
+ * Evaluate a flat arithmetic string (digits and + - * / only, with precedence).
+ * Returns null when it isn't pure arithmetic. No eval() — CSP-safe.
+ */
+function evalArith(expr) {
+  if (typeof expr !== 'string' || !/^[\d+\-*/.\s]+$/.test(expr)) return null;
+  const tokens = expr.replace(/\s+/g, '').match(/\d+\.?\d*|[+\-*/]/g);
+  if (!tokens || tokens.length === 0) return null;
+  const terms = [parseFloat(tokens[0])];
+  if (isNaN(terms[0])) return null;
+  for (let i = 1; i < tokens.length; i += 2) {
+    const op = tokens[i];
+    const n = parseFloat(tokens[i + 1]);
+    if (isNaN(n)) return null;
+    if (op === '*') terms[terms.length - 1] *= n;
+    else if (op === '/') terms[terms.length - 1] /= n;
+    else if (op === '+') terms.push(n);
+    else if (op === '-') terms.push(-n);
+    else return null;
+  }
+  const sum = terms.reduce((a, b) => a + b, 0);
+  return isFinite(sum) ? sum : null;
+}
+
+/**
+ * Build a map of DiceCloud roll variableName -> its calculation string.
+ * DiceCloud spell damage often references a sibling `roll` property by name
+ * (e.g. a damage of "thunderwaveDamage" where a roll property named
+ * "Thunderwave Damage" has variableName "thunderwaveDamage" and the real
+ * formula "[2,3,...][slotLevel]d8"). The variable itself is empty, so the
+ * formula has to be pulled from the roll property.
+ */
+function buildRollVarMap(properties) {
+  const map = {};
+  for (const p of (properties || [])) {
+    // Note: spell damage rolls are normally `inactive`/`deactivatedByAncestor`
+    // (they only contribute when the spell is cast), so we must NOT skip those —
+    // we just need their formula for reference resolution.
+    if (!p) continue;
+    if (p.type === 'roll' && p.variableName && p.roll) {
+      const calc = typeof p.roll === 'string'
+        ? p.roll
+        : (p.roll.calculation || (p.roll.value != null ? String(p.roll.value) : ''));
+      if (calc) map[p.variableName] = calc;
+    }
+  }
+  return map;
+}
+
+/**
+ * Resolve DiceCloud spell-scaling syntax in a damage/roll formula into plain
+ * dice, at the given (base) slot level:
+ *  - `slotLevel`            -> the numeric slot level
+ *  - roll-variable refs     -> the referenced roll's formula (recursively)
+ *  - `[a,b,c,...][n]`       -> the nth element (DiceCloud arrays are 1-based)
+ *  - `(1+3)` / `(slotLevel)`-> evaluated arithmetic, so `(slotLevel+3)d6` -> `4d6`
+ * Anything it can't resolve is left untouched. Run before evaluateDamageFormula.
+ */
+function resolveDiceCloudScaling(formula, rollVarMap, slotLevel, depth = 0) {
+  if (!formula || typeof formula !== 'string' || depth > 6) return formula;
+  let out = formula;
+
+  // slotLevel -> number
+  out = out.replace(/\bslotLevel\b/g, String(slotLevel));
+
+  // Substitute roll-variable references with their (recursively resolved) formula
+  out = out.replace(/\b[a-zA-Z_][a-zA-Z0-9_]*\b/g, (name) => {
+    if (name === 'd' || name === 'D') return name;
+    if (rollVarMap && Object.prototype.hasOwnProperty.call(rollVarMap, name)) {
+      const sub = resolveDiceCloudScaling(rollVarMap[name], rollVarMap, slotLevel, depth + 1);
+      return /[+\-]/.test(sub) ? `(${sub})` : sub;
+    }
+    return name;
+  });
+
+  // 1-based array index: [a,b,c,...][n] -> the nth element
+  out = out.replace(/\[\s*([^\[\]]+?)\s*\]\s*\[\s*(\d+)\s*\]/g, (m, list, idx) => {
+    const arr = list.split(',').map(s => s.trim());
+    const i = parseInt(idx, 10) - 1;
+    return (i >= 0 && i < arr.length) ? arr[i] : m;
+  });
+
+  // Evaluate pure-arithmetic parenthesized groups: (1+3) -> 4, (1) -> 1
+  out = out.replace(/\(\s*([0-9+\-*/.\s]+?)\s*\)/g, (m, expr) => {
+    const v = evalArith(expr);
+    return (v !== null) ? String(v) : m;
+  });
+
+  return out;
+}
+
+/**
  * Determines hit die type from character class (D&D 5e)
  */
 function getHitDieTypeFromClass(levels) {
@@ -691,6 +782,10 @@ export function parseForRollCloud(rawData) {
 
   const { creature, variables, properties } = rawData;
 
+  // Map of roll variableName -> formula, so damage that references a roll by name
+  // (e.g. "thunderwaveDamage") can be resolved into real dice at parse time.
+  const rollVarMap = buildRollVarMap(properties);
+
   // Extract character name early to ensure proper scope
   const characterName = creature.name || '';
 
@@ -998,7 +1093,7 @@ export function parseForRollCloud(rawData) {
 
       // Evaluate variables in attack roll formula
       if (attackRoll && attackRoll !== 'use_spell_attack_bonus') {
-        attackRoll = evaluateDamageFormula(attackRoll, variables);
+        attackRoll = evaluateDamageFormula(resolveDiceCloudScaling(attackRoll, rollVarMap, spell.level || 1), variables);
       }
 
       // Extract damage rolls from children
@@ -1032,7 +1127,7 @@ export function parseForRollCloud(rawData) {
 
         if (formula) {
           // Evaluate variables in damage formula
-          const evaluatedFormula = evaluateDamageFormula(formula, variables);
+          const evaluatedFormula = evaluateDamageFormula(resolveDiceCloudScaling(formula, rollVarMap, spell.level || 1), variables);
           damageRolls.push({
             formula: evaluatedFormula,
             type: damageChild.damageType || '',
@@ -1154,7 +1249,7 @@ export function parseForRollCloud(rawData) {
 
       // Evaluate variables in attack roll formula
       if (attackRoll) {
-        attackRoll = evaluateDamageFormula(attackRoll, variables);
+        attackRoll = evaluateDamageFormula(resolveDiceCloudScaling(attackRoll, rollVarMap, 1), variables);
       }
 
       // Extract damage from action or children
@@ -1200,7 +1295,7 @@ export function parseForRollCloud(rawData) {
 
       // Evaluate variables in damage formula
       if (damage) {
-        damage = evaluateDamageFormula(damage, variables);
+        damage = evaluateDamageFormula(resolveDiceCloudScaling(damage, rollVarMap, 1), variables);
       }
 
       // Check if this is a finesse weapon and add appropriate ability modifier to damage

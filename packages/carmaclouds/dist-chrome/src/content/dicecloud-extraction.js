@@ -182,6 +182,72 @@
     result = result.replace(/\)\s*d\s*s/gi, "d10").replace(/\(\s*\)/g, "").replace(/\+\s*\+/g, "+").replace(/\s+/g, " ").trim();
     return result;
   }
+  function evalArith(expr) {
+    if (typeof expr !== "string" || !/^[\d+\-*/.\s]+$/.test(expr))
+      return null;
+    const tokens = expr.replace(/\s+/g, "").match(/\d+\.?\d*|[+\-*/]/g);
+    if (!tokens || tokens.length === 0)
+      return null;
+    const terms = [parseFloat(tokens[0])];
+    if (isNaN(terms[0]))
+      return null;
+    for (let i = 1; i < tokens.length; i += 2) {
+      const op = tokens[i];
+      const n = parseFloat(tokens[i + 1]);
+      if (isNaN(n))
+        return null;
+      if (op === "*")
+        terms[terms.length - 1] *= n;
+      else if (op === "/")
+        terms[terms.length - 1] /= n;
+      else if (op === "+")
+        terms.push(n);
+      else if (op === "-")
+        terms.push(-n);
+      else
+        return null;
+    }
+    const sum = terms.reduce((a, b) => a + b, 0);
+    return isFinite(sum) ? sum : null;
+  }
+  function buildRollVarMap(properties) {
+    const map = {};
+    for (const p of properties || []) {
+      if (!p)
+        continue;
+      if (p.type === "roll" && p.variableName && p.roll) {
+        const calc = typeof p.roll === "string" ? p.roll : p.roll.calculation || (p.roll.value != null ? String(p.roll.value) : "");
+        if (calc)
+          map[p.variableName] = calc;
+      }
+    }
+    return map;
+  }
+  function resolveDiceCloudScaling(formula2, rollVarMap, slotLevel, depth = 0) {
+    if (!formula2 || typeof formula2 !== "string" || depth > 6)
+      return formula2;
+    let out = formula2;
+    out = out.replace(/\bslotLevel\b/g, String(slotLevel));
+    out = out.replace(/\b[a-zA-Z_][a-zA-Z0-9_]*\b/g, (name) => {
+      if (name === "d" || name === "D")
+        return name;
+      if (rollVarMap && Object.prototype.hasOwnProperty.call(rollVarMap, name)) {
+        const sub = resolveDiceCloudScaling(rollVarMap[name], rollVarMap, slotLevel, depth + 1);
+        return /[+\-]/.test(sub) ? `(${sub})` : sub;
+      }
+      return name;
+    });
+    out = out.replace(/\[\s*([^\[\]]+?)\s*\]\s*\[\s*(\d+)\s*\]/g, (m, list, idx) => {
+      const arr = list.split(",").map((s) => s.trim());
+      const i = parseInt(idx, 10) - 1;
+      return i >= 0 && i < arr.length ? arr[i] : m;
+    });
+    out = out.replace(/\(\s*([0-9+\-*/.\s]+?)\s*\)/g, (m, expr) => {
+      const v = evalArith(expr);
+      return v !== null ? String(v) : m;
+    });
+    return out;
+  }
   function getHitDieTypeFromClass(levels) {
     const hitDiceMap = {
       "barbarian": "d12",
@@ -524,6 +590,7 @@
       throw new Error("Invalid raw data format");
     }
     const { creature, variables: variables2, properties } = rawData;
+    const rollVarMap = buildRollVarMap(properties);
     const characterName = creature.name || "";
     let race = "Unknown";
     let characterClass = "";
@@ -777,7 +844,7 @@
         }
       }
       if (attackRoll && attackRoll !== "use_spell_attack_bonus") {
-        attackRoll = evaluateDamageFormula(attackRoll, variables2);
+        attackRoll = evaluateDamageFormula(resolveDiceCloudScaling(attackRoll, rollVarMap, spell.level || 1), variables2);
       }
       const damageRolls = [];
       spellChildren.filter((c) => c.type === "damage" || c.type === "roll" && c.name && (c.name.toLowerCase().includes("damage") || c.name.toLowerCase().includes("heal"))).forEach((damageChild) => {
@@ -802,7 +869,7 @@
           }
         }
         if (formula2) {
-          const evaluatedFormula = evaluateDamageFormula(formula2, variables2);
+          const evaluatedFormula = evaluateDamageFormula(resolveDiceCloudScaling(formula2, rollVarMap, spell.level || 1), variables2);
           damageRolls.push({
             formula: evaluatedFormula,
             type: damageChild.damageType || "",
@@ -887,7 +954,7 @@
         }
       }
       if (attackRoll) {
-        attackRoll = evaluateDamageFormula(attackRoll, variables2);
+        attackRoll = evaluateDamageFormula(resolveDiceCloudScaling(attackRoll, rollVarMap, 1), variables2);
       }
       let damage = "";
       let damageType = "";
@@ -921,7 +988,7 @@
         }
       }
       if (damage) {
-        damage = evaluateDamageFormula(damage, variables2);
+        damage = evaluateDamageFormula(resolveDiceCloudScaling(damage, rollVarMap, 1), variables2);
       }
       if (damage && attackRoll) {
         const tags2 = action.tags || [];
