@@ -13074,7 +13074,15 @@ ${suffix}`;
     };
     if (sessionUserId)
       row.supabase_user_id = sessionUserId;
-    const { error } = await supabase.from("clouds_characters").upsert(row, { onConflict: "dicecloud_character_id" });
+    const { data: existing, error: checkError } = await supabase.from("clouds_characters").select("id").eq("dicecloud_character_id", char.id).limit(1);
+    if (checkError)
+      throw new Error(checkError.message);
+    let error;
+    if (existing && existing.length > 0) {
+      ({ error } = await supabase.from("clouds_characters").update(row).eq("dicecloud_character_id", char.id));
+    } else {
+      ({ error } = await supabase.from("clouds_characters").insert(row));
+    }
     if (error)
       throw new Error(error.message);
   }

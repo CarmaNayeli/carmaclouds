@@ -3,6 +3,8 @@
  * Handles cross-platform character sync and messaging
  */
 
+import { parseForFoundCloud, parseForOwlCloud } from './content/dicecloud-extraction.js';
+
 // Detect browser API (Firefox uses 'browser', Chrome uses 'chrome')
 const browserAPI = (typeof browser !== 'undefined' && browser.runtime) ? browser : chrome;
 
@@ -620,14 +622,28 @@ async function handleSyncToCarmaClouds(characterData) {
       // Get auth info to include user_id_dicecloud and username
       const authResult = await browserAPI.storage.local.get(['diceCloudUserId', 'username']);
 
-      // Prepare character data for Supabase - only raw data at sync time
-      // VTT-specific parsed data (roll20_data, owlbear_data, foundry_data) is added when pushing to VTT
+      // Parse the current character so the cloud row carries up-to-date,
+      // VTT-ready data (foundcloud_parsed_data is what FoundCloud and CoyoteCloud
+      // import). Without this the DB only had raw data plus whatever parsed data
+      // an earlier manual sync left behind, so imports could be stale (e.g. a
+      // level-6 character importing as level 5). Parsing is best-effort.
+      let parsed = null, owlParsed = null;
+      try { parsed = parseForFoundCloud(characterData.raw, characterData.id); }
+      catch (e) { console.warn('⚠️ parseForFoundCloud failed (non-fatal):', e); }
+      try { owlParsed = parseForOwlCloud(characterData.raw, characterData.id); }
+      catch (e) { console.warn('⚠️ parseForOwlCloud failed (non-fatal):', e); }
+
       const payload = {
         user_id_dicecloud: authResult.diceCloudUserId || null,
         dicecloud_character_id: characterData.id,
         character_name: characterData.name || 'Unknown',
-        raw_dicecloud_data: characterData.raw || characterData, // Store the DiceCloud API structure { creature, variables, properties }
-        platform: ['dicecloud', 'foundcloud', 'rollcloud', 'owlcloud'], // Mark as available on all platforms
+        level: parsed?.level ?? null,
+        race: parsed?.race ?? null,
+        class: parsed?.class ?? null,
+        raw_dicecloud_data: characterData.raw || characterData, // DiceCloud API structure { creature, variables, properties }
+        foundcloud_parsed_data: parsed || {},
+        owlcloud_parsed_data: owlParsed || {},
+        platform: ['dicecloud', 'foundcloud', 'rollcloud', 'owlcloud', 'coyotecloud'],
         supabase_user_id: null, // Auth-based sync happens through FoundCloud tab
         updated_at: new Date().toISOString()
       };
