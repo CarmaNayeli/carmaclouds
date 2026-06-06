@@ -42,13 +42,12 @@
       return formula;
     }
 
-    // Don't resolve slotLevel - it should be replaced with actual slot level when casting
-    // This allows upcast damage to work correctly
-    if (/\bslotLevel\b/i.test(formula)) {
-      debug.log('⏭️ Formula contains slotLevel - skipping resolution to preserve for upcast');
-      return formula;
-    }
-
+    // NOTE: we intentionally do NOT bail when the text contains slotLevel.
+    // Bare slotLevel in a damage formula (e.g. "2d8 + slotLevel") is preserved
+    // because no pattern below resolves it — the cast modal substitutes the
+    // chosen level. But slotLevel inside a { ... } inline calc in description
+    // text is resolved to the base level (1) so summaries don't show raw
+    // template syntax.
     let resolvedFormula = formula;
     let variablesResolved = [];
 
@@ -203,6 +202,45 @@
 
       return null;
     };
+
+    // Resolve DiceCloud inline calculations wrapped in { ... } FIRST — before the
+    // bracket/parenthesis patterns below, which would otherwise mangle arrays
+    // inside them. DiceCloud uses { ... } for any calc embedded in description
+    // text, e.g. {#spellList.dc}, {#spellList.abilityMod}, {max(slotLevel, 1)},
+    // {[2,3,...][slotLevel]d8}. Identifiers resolve to their value (unknown -> 0);
+    // slotLevel -> base level (1); ceil/floor/round -> Math.*; DiceCloud arrays
+    // are 1-based.
+    const MATH_FUNC_MAP = { ceil: 'Math.ceil', floor: 'Math.floor', round: 'Math.round' };
+    resolvedFormula = resolvedFormula.replace(/\{([^}]+)\}/g, (fullMatch, expression) => {
+      try {
+        let expr = expression.replace(/#?[a-zA-Z_][a-zA-Z0-9_.]*/g, (token, offset, str) => {
+          const name = token.replace(/^#/, '');
+          const isCall = /^\s*\(/.test(str.slice(offset + token.length));
+          if (isCall) {
+            if (MATH_FUNC_MAP[name]) return MATH_FUNC_MAP[name];
+            if (name === 'max' || name === 'min' || name.startsWith('Math.')) return name;
+            return name;
+          }
+          if (name === 'slotLevel') return '1'; // base slot level for display
+          const value = getVariableValue(name);
+          return (value !== null && typeof value === 'number') ? String(value) : '0';
+        });
+        // DiceCloud arrays are 1-based: [a,b,c,...][n] -> the nth element.
+        expr = expr.replace(/\[\s*([^\[\]]+?)\s*\]\s*\[\s*(\d+)\s*\]/g, (m, list, idx) => {
+          const arr = list.split(',').map(s => s.trim());
+          const i = parseInt(idx, 10) - 1;
+          return (i >= 0 && i < arr.length) ? arr[i] : m;
+        });
+        const result = safeMathEval(expr);
+        if (typeof result === 'number' && isFinite(result)) {
+          debug.log(`✅ Evaluated inline calculation: {${expression}} = ${result}`);
+          return String(result);
+        }
+      } catch (e) {
+        debug.log(`⚠️ Failed to evaluate inline calculation: {${expression}}`, e);
+      }
+      return fullMatch;
+    });
 
     // Pattern 1a: Find DiceCloud references in parentheses like (#spellList.abilityMod)
     const diceCloudRefPattern = /\((#[a-zA-Z_][a-zA-Z0-9_.]*)\)/g;
@@ -392,45 +430,6 @@
 
     // Strip remaining markdown formatting
     resolvedFormula = resolvedFormula.replace(/\*\*/g, ''); // Remove bold markers
-
-    // Parse inline calculations in curly braces {expression}
-    // DiceCloud wraps every embedded calculation in { ... }, e.g.
-    //   {#spellList.dc}, {#spellList.abilityMod}, {max(slotLevel, 1)},
-    //   {120 * (1 + spellSniper)}
-    // Resolve references/variables inside, then evaluate. A leading # is stripped
-    // from references; ceil/floor/round are mapped to Math.* for the evaluator;
-    // any identifier we can't resolve (e.g. a feat the character lacks, like
-    // spellSniper, or the not-yet-chosen slotLevel) defaults to 0 so the math
-    // still evaluates instead of leaving raw text on screen.
-    const MATH_FUNC_MAP = { ceil: 'Math.ceil', floor: 'Math.floor', round: 'Math.round' };
-    const inlineCalcPattern = /\{([^}]+)\}/g;
-    resolvedFormula = resolvedFormula.replace(inlineCalcPattern, (fullMatch, expression) => {
-      try {
-        const expr = expression.replace(/#?[a-zA-Z_][a-zA-Z0-9_.]*/g, (token, offset, str) => {
-          const name = token.replace(/^#/, '');
-          const isCall = /^\s*\(/.test(str.slice(offset + token.length));
-          if (isCall) {
-            if (MATH_FUNC_MAP[name]) return MATH_FUNC_MAP[name];      // ceil → Math.ceil
-            if (name === 'max' || name === 'min' || name.startsWith('Math.')) return name;
-            return name; // unknown function — leave for the evaluator to reject
-          }
-          const value = getVariableValue(name);
-          return (value !== null && typeof value === 'number') ? String(value) : '0';
-        });
-
-        // safeMathEval throws on anything it can't tokenize, so the try/catch is
-        // the guard — a successful finite result means the expression resolved.
-        const result = safeMathEval(expr);
-        if (typeof result === 'number' && isFinite(result)) {
-          debug.log(`✅ Evaluated inline calculation: {${expression}} = ${result}`);
-          return String(result);
-        }
-      } catch (e) {
-        debug.log(`⚠️ Failed to evaluate inline calculation: {${expression}}`, e);
-      }
-      // Return original if we couldn't resolve
-      return fullMatch;
-    });
 
     return resolvedFormula;
   }

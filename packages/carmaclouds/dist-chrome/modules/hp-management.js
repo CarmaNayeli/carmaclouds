@@ -589,14 +589,21 @@
         const slotMaxVar = `level${level}SpellSlotsMax`;
         const nested = characterData.spellSlots[`level${level}`];
 
+        // Restore BOTH formats independently. After buildSheet normalizes nested
+        // -> flat, the data carries both at once; the display and casting read the
+        // flat key, so an `else if` here (restoring only nested) left the flat key
+        // stale and slots appeared un-restored after a long rest.
         if (nested && nested.max !== undefined) {
-          // Nested format: { level1: { current, max } }
           nested.current = nested.max;
-          debug.log(`✅ Restored level ${level} spell slots (nested)`);
-        } else if (characterData.spellSlots[slotMaxVar] !== undefined) {
-          // Flat format: level1SpellSlots / level1SpellSlotsMax
+        }
+        if (characterData.spellSlots[slotMaxVar] !== undefined) {
           characterData.spellSlots[slotVar] = characterData.spellSlots[slotMaxVar];
           debug.log(`✅ Restored level ${level} spell slots`);
+        } else if (nested && nested.max !== undefined) {
+          // No flat max key yet — derive flat from nested so the display updates.
+          characterData.spellSlots[slotVar] = nested.max;
+          characterData.spellSlots[slotMaxVar] = nested.max;
+          debug.log(`✅ Restored level ${level} spell slots (from nested)`);
         }
       }
 
