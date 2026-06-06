@@ -538,9 +538,9 @@
                     debug.log('⚠️ Name:', originalRollData.name);
                   }
 
-                  // Send to popup for racial trait checking
-                  browserAPI.runtime.sendMessage({
-                    action: 'rollResult',
+                  // Forward to the character pop-out window(s) for trait checking
+                  // (Bardic Inspiration, racial traits, etc.).
+                  forwardRollResultToPopups({
                     rollResult: rollResult.total.toString(),
                     baseRoll: rollResult.baseRoll.toString(),
                     rollType: originalRollData.formula,
@@ -670,16 +670,15 @@
           debug.log('🍀 Natural 1 detected in Roll20 inline roll!');
           debug.log('🍀 Roll data:', rollData);
           
-          // Send message to popup for Halfling Luck
-          browserAPI.runtime.sendMessage({
-            action: 'rollResult',
+          // Forward to the character pop-out window(s) for Halfling Luck etc.
+          forwardRollResultToPopups({
             rollResult: rollData.total.toString(),
             baseRoll: rollData.baseRoll.toString(),
             rollType: rollData.formula,
             rollName: rollData.name,
             checkRacialTraits: true
           });
-          
+
           debug.log('🧬 Sent natural 1 result to popup for Halfling Luck');
         }
       } catch (error) {
@@ -1450,35 +1449,13 @@
     } else if (request.action === 'forwardToPopup') {
       // Forward roll result to popup for racial traits checking
       debug.log('🧬 Forwarding roll result to popup:', request);
-      debug.log('🧬 Available popups:', Object.keys(characterPopups));
-      
-      // Send to all registered popup windows
-      Object.keys(characterPopups).forEach(characterName => {
-        const popup = characterPopups[characterName];
-        try {
-          if (popup && !popup.closed) {
-            debug.log(`🧬 Sending to popup for ${characterName}:`, popup);
-            popup.postMessage({
-              action: 'rollResult',
-              rollResult: request.rollResult,
-              baseRoll: request.baseRoll,
-              rollType: request.rollType,
-              rollName: request.rollName,
-              checkRacialTraits: request.checkRacialTraits
-            }, '*');
-            
-            debug.log(`📤 Sent rollResult to popup for ${characterName}`);
-          } else {
-            // Clean up closed popups
-            delete characterPopups[characterName];
-            debug.log(`🗑️ Removed closed popup for ${characterName}`);
-          }
-        } catch (error) {
-          debug.warn(`⚠️ Error sending rollResult to popup "${characterName}":`, error);
-          delete characterPopups[characterName];
-        }
+      forwardRollResultToPopups({
+        rollResult: request.rollResult,
+        baseRoll: request.baseRoll,
+        rollType: request.rollType,
+        rollName: request.rollName,
+        checkRacialTraits: request.checkRacialTraits
       });
-
       sendResponse({ success: true });
     } else if (request.action === 'setAutoBackwardsSync') {
       // Handle auto backwards sync toggle from popup
@@ -1917,6 +1894,29 @@
   let silentRollsEnabled = false; // Separate toggle for silent rolls
   let gmPanel = null;
   const characterPopups = {}; // Track popup windows by character name
+
+  // Forward a roll result to every open character pop-out window so their trait
+  // checks (Bardic Inspiration, Halfling Luck, racial traits, etc.) can react.
+  // The chat-roll observer detects the d20 result and calls this directly — the
+  // pop-out is a separate window only reachable via postMessage, and nothing
+  // consumes the old runtime 'rollResult' message, so without this the trait
+  // popups never appear. Also shared by the forwardToPopup message handler.
+  function forwardRollResultToPopups(payload) {
+    Object.keys(characterPopups).forEach(characterName => {
+      const popup = characterPopups[characterName];
+      try {
+        if (popup && !popup.closed) {
+          popup.postMessage({ action: 'rollResult', ...payload }, '*');
+          debug.log(`📤 Forwarded rollResult to popup for ${characterName}`);
+        } else {
+          delete characterPopups[characterName];
+        }
+      } catch (error) {
+        debug.warn(`⚠️ Error forwarding rollResult to popup "${characterName}":`, error);
+        delete characterPopups[characterName];
+      }
+    });
+  }
   let combatStarted = false; // Track if combat has been initiated
   let initiativeTracker = {
     combatants: [],

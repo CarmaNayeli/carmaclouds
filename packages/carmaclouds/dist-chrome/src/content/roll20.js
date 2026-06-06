@@ -362,8 +362,7 @@
                       debug.log("\u26A0\uFE0F Formula:", originalRollData.formula);
                       debug.log("\u26A0\uFE0F Name:", originalRollData.name);
                     }
-                    browserAPI.runtime.sendMessage({
-                      action: "rollResult",
+                    forwardRollResultToPopups({
                       rollResult: rollResult.total.toString(),
                       baseRoll: rollResult.baseRoll.toString(),
                       rollType: originalRollData.formula,
@@ -447,8 +446,7 @@
           if (rollData && rollData.baseRoll === 1 && rollData.name.includes(characterName)) {
             debug.log("\u{1F340} Natural 1 detected in Roll20 inline roll!");
             debug.log("\u{1F340} Roll data:", rollData);
-            browserAPI.runtime.sendMessage({
-              action: "rollResult",
+            forwardRollResultToPopups({
               rollResult: rollData.total.toString(),
               baseRoll: rollData.baseRoll.toString(),
               rollType: rollData.formula,
@@ -1042,29 +1040,12 @@
           }
         } else if (request.action === "forwardToPopup") {
           debug.log("\u{1F9EC} Forwarding roll result to popup:", request);
-          debug.log("\u{1F9EC} Available popups:", Object.keys(characterPopups));
-          Object.keys(characterPopups).forEach((characterName) => {
-            const popup = characterPopups[characterName];
-            try {
-              if (popup && !popup.closed) {
-                debug.log(`\u{1F9EC} Sending to popup for ${characterName}:`, popup);
-                popup.postMessage({
-                  action: "rollResult",
-                  rollResult: request.rollResult,
-                  baseRoll: request.baseRoll,
-                  rollType: request.rollType,
-                  rollName: request.rollName,
-                  checkRacialTraits: request.checkRacialTraits
-                }, "*");
-                debug.log(`\u{1F4E4} Sent rollResult to popup for ${characterName}`);
-              } else {
-                delete characterPopups[characterName];
-                debug.log(`\u{1F5D1}\uFE0F Removed closed popup for ${characterName}`);
-              }
-            } catch (error) {
-              debug.warn(`\u26A0\uFE0F Error sending rollResult to popup "${characterName}":`, error);
-              delete characterPopups[characterName];
-            }
+          forwardRollResultToPopups({
+            rollResult: request.rollResult,
+            baseRoll: request.baseRoll,
+            rollType: request.rollType,
+            rollName: request.rollName,
+            checkRacialTraits: request.checkRacialTraits
           });
           sendResponse({ success: true });
         } else if (request.action === "setAutoBackwardsSync") {
@@ -1401,6 +1382,22 @@
     let silentRollsEnabled = false;
     let gmPanel = null;
     const characterPopups = {};
+    function forwardRollResultToPopups(payload) {
+      Object.keys(characterPopups).forEach((characterName) => {
+        const popup = characterPopups[characterName];
+        try {
+          if (popup && !popup.closed) {
+            popup.postMessage({ action: "rollResult", ...payload }, "*");
+            debug.log(`\u{1F4E4} Forwarded rollResult to popup for ${characterName}`);
+          } else {
+            delete characterPopups[characterName];
+          }
+        } catch (error) {
+          debug.warn(`\u26A0\uFE0F Error forwarding rollResult to popup "${characterName}":`, error);
+          delete characterPopups[characterName];
+        }
+      });
+    }
     let combatStarted = false;
     let initiativeTracker = {
       combatants: [],
