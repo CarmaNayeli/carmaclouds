@@ -91,6 +91,13 @@ export default function CoyoteCloudTab() {
 
       {/* CTA */}
       <section className="bg-black border border-[#ffdd77] rounded-lg p-6 text-center">
+        <Image
+          src="/coyotes-and-candles-logo.png"
+          alt="Coyotes & Candles"
+          width={96}
+          height={96}
+          className="mx-auto mb-4"
+        />
         <h3 className="text-2xl font-semibold mb-3 text-[#ffdd77]">Join a Coyotes &amp; Candles game</h3>
         <p className="text-gray-400 mb-5">
           The VTT runs inside Coyotes &amp; Candles&apos; tabletop sessions &mdash; book or join a game
