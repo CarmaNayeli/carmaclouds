@@ -21,8 +21,24 @@
     if (e.source !== window)
       return;
     const d = e.data;
-    if (d && d.source === "coyotes-meet" && d.type === "coyotecloud:request") {
+    if (!d || d.source !== "coyotes-meet")
+      return;
+    if (d.type === "coyotecloud:request") {
       postRoster();
+      return;
+    }
+    if (d.type === "coyotecloud:writeback") {
+      const { requestId, dicecloudCharacterId, values } = d;
+      const reply = (payload) => window.postMessage(
+        { source: "carmaclouds", type: "coyotecloud:writeback-result", requestId, ...payload },
+        window.location.origin
+      );
+      browserAPI.runtime.sendMessage({ action: "coyotecloudWriteback", dicecloudCharacterId, values }).then((res) => reply({
+        ok: !!(res && res.ok),
+        error: res && res.error,
+        applied: res && res.applied,
+        failed: res && res.failed
+      })).catch((err) => reply({ ok: false, error: String(err && err.message || err) }));
     }
   });
   postRoster();

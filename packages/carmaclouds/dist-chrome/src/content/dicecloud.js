@@ -1468,6 +1468,29 @@
   // src/content/dicecloud.js
   var browserAPI = typeof browser !== "undefined" && browser.runtime ? browser : chrome;
   console.log("CarmaClouds: DiceCloud content script loaded");
+  async function captureDiceCloudTokenIfEnabled() {
+    try {
+      const { coyotecloudWritebackEnabled } = await browserAPI.storage.local.get(["coyotecloudWritebackEnabled"]);
+      if (!coyotecloudWritebackEnabled)
+        return;
+      const token = localStorage.getItem("Meteor.loginToken");
+      if (!token)
+        return;
+      const { diceCloudToken } = await browserAPI.storage.local.get(["diceCloudToken"]);
+      if (diceCloudToken !== token) {
+        await browserAPI.storage.local.set({ diceCloudToken: token });
+        console.log("CarmaClouds: captured DiceCloud session token for write-back");
+      }
+    } catch (e) {
+      console.warn("CarmaClouds: token capture skipped:", e);
+    }
+  }
+  captureDiceCloudTokenIfEnabled();
+  browserAPI.storage.onChanged.addListener((changes, area) => {
+    if (area === "local" && changes.coyotecloudWritebackEnabled?.newValue) {
+      captureDiceCloudTokenIfEnabled();
+    }
+  });
   function waitForPageLoad() {
     if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", initializeDiceCloudSync);

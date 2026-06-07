@@ -89,6 +89,31 @@ export async function init(containerEl) {
     });
   }
 
+  // ── Opt-in write-back toggle (captures DiceCloud token; enables C&C → DiceCloud) ──
+  const wbToggle = $('#cc-writeback-toggle');
+  const wbStatus = $('#cc-writeback-status');
+  async function refreshWbStatus() {
+    const { coyotecloudWritebackEnabled, diceCloudToken } = await browserAPI.storage.local.get(['coyotecloudWritebackEnabled', 'diceCloudToken']);
+    if (wbToggle) wbToggle.checked = !!coyotecloudWritebackEnabled;
+    if (!wbStatus) return;
+    if (!coyotecloudWritebackEnabled) wbStatus.textContent = 'Off. Turn on to push sheet changes from C&C back to DiceCloud.';
+    else if (diceCloudToken) wbStatus.textContent = '✓ On — DiceCloud token captured.';
+    else wbStatus.textContent = 'On — open dicecloud.com (logged in) once to capture your login token.';
+  }
+  if (wbToggle) {
+    await refreshWbStatus();
+    wbToggle.addEventListener('change', async () => {
+      if (wbToggle.checked) {
+        await browserAPI.storage.local.set({ coyotecloudWritebackEnabled: true });
+      } else {
+        // Turning off clears both the flag and the stored session token.
+        await browserAPI.storage.local.set({ coyotecloudWritebackEnabled: false });
+        await browserAPI.storage.local.remove('diceCloudToken');
+      }
+      setTimeout(refreshWbStatus, 700);
+    });
+  }
+
   await loadSyncedList(supabase, containerEl, dicecloudUserId);
 }
 
@@ -198,6 +223,17 @@ function renderShell({ dicecloudUserId }) {
         <button id="cc-open-site" style="margin-top:10px;width:100%;padding:9px;border:1px solid #e8b840;border-radius:6px;background:transparent;color:#e8b840;font-weight:600;cursor:pointer;">
           🌙 Open Coyotes &amp; Candles
         </button>
+      </div>
+
+      <div style="background:#141414;border:1px solid #333;border-radius:10px;padding:12px;margin-bottom:14px;">
+        <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer;">
+          <input type="checkbox" id="cc-writeback-toggle" style="margin-top:3px;" />
+          <span style="font-size:13px;color:#b0b0b0;line-height:1.5;">
+            <strong style="color:#e0e0e0;">Sync changes back to DiceCloud</strong> (experimental)<br/>
+            Lets the C&amp;C sheet push HP, temp HP, death saves, inspiration &amp; spell slots to <em>your</em> DiceCloud character. Captures your DiceCloud login token on this device so writes can authenticate.
+          </span>
+        </label>
+        <div id="cc-writeback-status" style="font-size:12px;color:#888;margin-top:8px;"></div>
       </div>
 
       ${dicecloudUserId ? `

@@ -10,6 +10,32 @@ const browserAPI = (typeof browser !== 'undefined' && browser.runtime) ? browser
 
 console.log('CarmaClouds: DiceCloud content script loaded');
 
+// ── Opt-in DiceCloud session-token capture (for CoyoteCloud write-back) ──
+// Only runs when the user has enabled write-back. Captures the Meteor login
+// (resume) token so the background SW can authenticate DDP writes to DiceCloud.
+// Re-checks on storage changes so toggling it on takes effect without a reload.
+async function captureDiceCloudTokenIfEnabled() {
+  try {
+    const { coyotecloudWritebackEnabled } = await browserAPI.storage.local.get(['coyotecloudWritebackEnabled']);
+    if (!coyotecloudWritebackEnabled) return;
+    const token = localStorage.getItem('Meteor.loginToken');
+    if (!token) return;
+    const { diceCloudToken } = await browserAPI.storage.local.get(['diceCloudToken']);
+    if (diceCloudToken !== token) {
+      await browserAPI.storage.local.set({ diceCloudToken: token });
+      console.log('CarmaClouds: captured DiceCloud session token for write-back');
+    }
+  } catch (e) {
+    console.warn('CarmaClouds: token capture skipped:', e);
+  }
+}
+captureDiceCloudTokenIfEnabled();
+browserAPI.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.coyotecloudWritebackEnabled?.newValue) {
+    captureDiceCloudTokenIfEnabled();
+  }
+});
+
 // Wait for page to load
 function waitForPageLoad() {
   if (document.readyState === 'loading') {

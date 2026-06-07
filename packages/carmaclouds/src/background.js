@@ -4,9 +4,13 @@
  */
 
 import { parseForFoundCloud, parseForOwlCloud } from './content/dicecloud-extraction.js';
+import DiceCloudSync from './lib/dicecloud-sync.js';
+import MeteorDDPClient from './lib/meteor-ddp-client.js';
 
 // Detect browser API (Firefox uses 'browser', Chrome uses 'chrome')
 const browserAPI = (typeof browser !== 'undefined' && browser.runtime) ? browser : chrome;
+// DiceCloudSync references a free `browserAPI` global; expose it for the SW.
+globalThis.browserAPI = browserAPI;
 
 console.log('CarmaClouds background service worker initialized');
 
@@ -39,6 +43,22 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Restart keep-alive on every message
   keepAlive();
   console.log('🔔 Background received message:', message.type || message.action);
+
+  // ── CoyoteCloud write-back: push trackable values to DiceCloud via DDP ──
+  if (message.action === 'coyotecloudWriteback') {
+    handleCoyotecloudWriteback(message.dicecloudCharacterId, message.values)
+      .then(sendResponse)
+      .catch((err) => sendResponse({ ok: false, error: String((err && err.message) || err) }));
+    return true; // async
+  }
+
+  // Store the user's DiceCloud session token (opt-in, captured on dicecloud.com)
+  if (message.action === 'storeDiceCloudToken') {
+    browserAPI.storage.local.set({ diceCloudToken: message.token })
+      .then(() => sendResponse({ ok: true }))
+      .catch((err) => sendResponse({ ok: false, error: String((err && err.message) || err) }));
+    return true; // async
+  }
 
   // Handle action-based messages (from Roll20 content scripts)
   if (message.action === 'getCharacterData') {
@@ -812,3 +832,53 @@ browserAPI.runtime.onInstalled.addListener((details) => {
     console.log('CarmaClouds: Extension updated');
   }
 });
+
+// ── CoyoteCloud write-back ───────────────────────────────────────────────────
+// Push trackable values from a Coyotes & Candles sheet back to the player's own
+// DiceCloud character over DDP, using the opted-in DiceCloud session token.
+async function handleCoyotecloudWriteback(characterId, values) {
+  if (!characterId) return { ok: false, error: 'Missing DiceCloud character id.' };
+
+  const { diceCloudToken } = await browserAPI.storage.local.get(['diceCloudToken']);
+  if (!diceCloudToken) return { ok: false, error: 'no-token' };
+
+  const v = values || {};
+  const applied = [];
+  const failed = [];
+  const ddp = new MeteorDDPClient('wss://dicecloud.com/websocket');
+
+  const tryApply = async (label, fn) => {
+    try { await fn(); applied.push(label); }
+    catch (e) { failed.push(label); console.error('[Writeback] failed:', label, e); }
+  };
+
+  try {
+    await ddp.connect();
+    await ddp.loginWithToken(diceCloudToken);
+
+    const sync = new DiceCloudSync(ddp);
+    await sync.initialize(characterId);
+
+    if (typeof v.hitPoints === 'number') {
+      await tryApply('Hit Points', () => sync.updateAttributeValue('Hit Points', v.hitPoints));
+    }
+    if (typeof v.temporaryHitPoints === 'number') {
+      await tryApply('Temp HP', () => sync.updateTemporaryHP(v.temporaryHitPoints));
+    }
+    if (typeof v.deathSuccesses === 'number' || typeof v.deathFailures === 'number') {
+      await tryApply('Death Saves', () => sync.updateDeathSaves(v.deathSuccesses ?? 0, v.deathFailures ?? 0));
+    }
+    if (typeof v.inspiration === 'boolean') {
+      await tryApply('Inspiration', () => sync.updateInspiration(v.inspiration ? 1 : 0));
+    }
+    if (v.spellSlots && typeof v.spellSlots === 'object') {
+      for (const [lvl, remaining] of Object.entries(v.spellSlots)) {
+        await tryApply(`Spell slots L${lvl}`, () => sync.updateSpellSlot(Number(lvl), remaining));
+      }
+    }
+
+    return { ok: failed.length === 0, applied, failed };
+  } finally {
+    try { ddp.disconnect(); } catch (_) { /* ignore */ }
+  }
+}

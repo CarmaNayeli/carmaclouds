@@ -1465,8 +1465,1976 @@
     return varData.value !== void 0 ? varData.value : varData;
   }
 
+  // src/lib/dicecloud-sync.js
+  var DiceCloudSync = class {
+    constructor(ddpClient) {
+      this.ddp = ddpClient;
+      this.characterId = null;
+      this.propertyCache = /* @__PURE__ */ new Map();
+      this.previousValues = /* @__PURE__ */ new Map();
+      this.enabled = false;
+      this.requestQueue = [];
+      this.isProcessingQueue = false;
+      this.minRequestDelay = 250;
+      this.lastRequestTime = 0;
+      this.maxRetries = 3;
+      this.propertyVariants = {
+        "Channel Divinity": ["channelDivinity", "channelDivinityCleric", "channelDivinityPaladin"],
+        "Ki Points": ["kiPoints", "ki", "kiPoint"],
+        "Sorcery Points": ["sorceryPoints", "sorceryPoint", "sorceryPt"],
+        "Bardic Inspiration": ["bardicInspiration", "bardic", "inspiration"],
+        "Superiority Dice": ["superiorityDice", "superiority"],
+        "Lay on Hands": ["layOnHands", "layOnHandsPool"],
+        "Wild Shape": ["wildShape", "wildShapeUses"],
+        "Rage": ["rage", "rageUses", "rages"],
+        "Action Surge": ["actionSurge", "actionSurgeUses"],
+        "Indomitable": ["indomitable", "indomitableUses"],
+        "Second Wind": ["secondWind", "secondWindUses"],
+        "Sneak Attack": ["sneakAttack", "sneakAttackDice"],
+        "Cunning Action": ["cunningAction"],
+        "Arcane Recovery": ["arcaneRecovery", "arcaneRecoveryUses"],
+        "Song of Rest": ["songOfRest"],
+        "Font of Magic": ["fontOfMagic"],
+        "Metamagic": ["metamagic"],
+        "Warlock Spell Slots": ["warlockSpellSlots", "pactMagicSlots"],
+        "Pact Magic": ["pactMagic", "pactMagicSlots"],
+        "Divine Sense": ["divineSense", "divineSenseUses"],
+        "Divine Smite": ["divineSmite"],
+        "Aura of Protection": ["auraOfProtection"],
+        "Cleansing Touch": ["cleansingTouch", "cleansingTouchUses"],
+        "Harness Divine Power": ["harnessDivinePower"],
+        "Wild Companion": ["wildCompanion", "wildCompanionUses"],
+        "Natural Recovery": ["naturalRecovery"],
+        "Beast Spells": ["beastSpells"],
+        "Favored Foe": ["favoredFoe", "favoredFoeUses"],
+        "Deft Explorer": ["deftExplorer"],
+        "Primal Awareness": ["primalAwareness"],
+        "Eldritch Invocations": ["eldritchInvocations"],
+        "Pact Boon": ["pactBoon"],
+        "Mystic Arcanum": ["mysticArcanum"],
+        "Eldritch Master": ["eldritchMaster"],
+        "Signature Spells": ["signatureSpells"],
+        "Spell Mastery": ["spellMastery"],
+        "Heroic Inspiration": ["heroicInspiration", "inspiration"],
+        "Temporary Hit Points": ["temporaryHitPoints", "tempHitPoints", "tempHP"],
+        "Hit Points": ["hitPoints", "hp", "health"],
+        "Death Saves - Success": ["deathSaveSuccesses", "succeededSaves", "deathSaves.successes"],
+        "Death Saves - Failure": ["deathSaveFails", "failedSaves", "deathSaves.failures"]
+      };
+    }
+    /**
+     * Add a request to the queue
+     * @param {Function} requestFn - Async function that makes the DDP call
+     * @param {string} description - Description for logging
+     * @returns {Promise} - Resolves when request completes
+     */
+    async queueRequest(requestFn, description = "DDP Request") {
+      return new Promise((resolve, reject) => {
+        const queueItem = {
+          requestFn,
+          description,
+          resolve,
+          reject,
+          retries: 0,
+          timestamp: Date.now()
+        };
+        this.requestQueue.push(queueItem);
+        console.log(`[DiceCloud Sync] Queued: ${description} (Queue size: ${this.requestQueue.length})`);
+        if (!this.isProcessingQueue) {
+          this.processQueue();
+        }
+      });
+    }
+    /**
+     * Process the request queue sequentially
+     */
+    async processQueue() {
+      if (this.isProcessingQueue) {
+        return;
+      }
+      this.isProcessingQueue = true;
+      while (this.requestQueue.length > 0) {
+        const item = this.requestQueue[0];
+        try {
+          const timeSinceLastRequest = Date.now() - this.lastRequestTime;
+          if (timeSinceLastRequest < this.minRequestDelay) {
+            const delayNeeded = this.minRequestDelay - timeSinceLastRequest;
+            console.log(`[DiceCloud Sync] Rate limiting: waiting ${delayNeeded}ms before next request`);
+            await this.sleep(delayNeeded);
+          }
+          console.log(`[DiceCloud Sync] Processing: ${item.description} (${this.requestQueue.length} remaining)`);
+          this.lastRequestTime = Date.now();
+          const result2 = await item.requestFn();
+          this.requestQueue.shift();
+          item.resolve(result2);
+          console.log(`[DiceCloud Sync] Completed: ${item.description}`);
+        } catch (error) {
+          console.error(`[DiceCloud Sync] Error: ${item.description}`, error);
+          const isTooManyRequests = error.message?.includes("too many requests") || error.message?.includes("rate limit") || error.error === "too-many-requests" || error.error === 429;
+          if (isTooManyRequests && item.retries < this.maxRetries) {
+            item.retries++;
+            const backoffDelay = Math.min(1e3 * Math.pow(2, item.retries), 1e4);
+            console.warn(`[DiceCloud Sync] Rate limited. Retry ${item.retries}/${this.maxRetries} after ${backoffDelay}ms`);
+            await this.sleep(backoffDelay);
+          } else {
+            this.requestQueue.shift();
+            item.reject(error);
+            if (isTooManyRequests) {
+              console.error(`[DiceCloud Sync] Max retries reached for: ${item.description}`);
+            }
+          }
+        }
+      }
+      this.isProcessingQueue = false;
+      console.log("[DiceCloud Sync] Queue processing complete");
+    }
+    /**
+     * Sleep utility
+     * @param {number} ms - Milliseconds to sleep
+     */
+    sleep(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+    /**
+     * Initialize sync for a character
+     * @param {string} characterId - DiceCloud character ID
+     */
+    async initialize(characterId) {
+      this.characterId = characterId;
+      this.propertyCache.clear();
+      console.log("[DiceCloud Sync] Initializing for character:", characterId);
+      console.log("[DiceCloud Sync] DDP client status:", this.ddp.isConnected());
+      try {
+        if (!this.ddp.isConnected()) {
+          console.log("[DiceCloud Sync] Connecting to DDP...");
+          await this.ddp.connect();
+          console.log("[DiceCloud Sync] DDP connected successfully");
+        }
+        await this.buildPropertyCache();
+        const result2 = await browserAPI.storage.local.get(["autoBackwardsSync"]);
+        const autoBackwardsSync = result2.autoBackwardsSync !== false;
+        this.enabled = autoBackwardsSync;
+        console.log("[DiceCloud Sync] Initialized successfully");
+        console.log("[DiceCloud Sync] Auto backwards sync preference:", autoBackwardsSync);
+        console.log("[DiceCloud Sync] Sync enabled:", this.enabled);
+      } catch (error) {
+        console.error("[DiceCloud Sync] Initialization failed:", error);
+        throw error;
+      }
+    }
+    /**
+     * Map all variant names to a single property ID
+     * @param {string} canonicalName - The canonical property name
+     * @param {string} foundVariableName - The variable name that was actually found in DiceCloud
+     * @param {string} propertyId - The property _id from DiceCloud
+     */
+    cachePropertyWithVariants(canonicalName, foundVariableName, propertyId) {
+      this.propertyCache.set(canonicalName, propertyId);
+      const variants = this.propertyVariants[canonicalName];
+      if (variants) {
+        for (const variant of variants) {
+          this.propertyCache.set(variant, propertyId);
+        }
+        console.log(`[DiceCloud Sync] \u{1F5FA}\uFE0F  Mapped ${canonicalName} (found as "${foundVariableName}") to ${propertyId}`);
+        console.log(`[DiceCloud Sync]     All variants cached: ${variants.join(", ")}`);
+      } else {
+        console.log(`[DiceCloud Sync] Cached property: ${canonicalName} -> ${propertyId}`);
+      }
+    }
+    /**
+     * Find a property in the raw API data by checking all possible variant names
+     * @param {Array} properties - Array of properties from DiceCloud API
+     * @param {string} canonicalName - The canonical property name to search for
+     * @param {Object} filter - Optional filter criteria (type, attributeType, etc.)
+     * @returns {Object|null} The found property or null
+     */
+    findPropertyByVariants(properties, canonicalName, filter = {}) {
+      const variants = this.propertyVariants[canonicalName];
+      if (!variants) {
+        return properties.find((p) => {
+          if (p.removed || p.inactive)
+            return false;
+          if (p.name !== canonicalName && p.variableName !== canonicalName)
+            return false;
+          for (const [key, value] of Object.entries(filter)) {
+            if (p[key] !== value)
+              return false;
+          }
+          return true;
+        });
+      }
+      for (const variant of variants) {
+        const property = properties.find((p) => {
+          if (p.removed || p.inactive)
+            return false;
+          if (p.variableName !== variant && p.name !== variant)
+            return false;
+          for (const [key, value] of Object.entries(filter)) {
+            if (p[key] !== value)
+              return false;
+          }
+          return true;
+        });
+        if (property) {
+          console.log(`[DiceCloud Sync] \u{1F50D} Found ${canonicalName} using variant "${variant}" (variableName: ${property.variableName})`);
+          return property;
+        }
+      }
+      return null;
+    }
+    /**
+     * Build cache of property names to IDs
+     */
+    async buildPropertyCache() {
+      console.log("[DiceCloud Sync] Building property cache...");
+      const result2 = await browserAPI.storage.local.get(["activeCharacterId", "characterProfiles"]);
+      const { activeCharacterId, characterProfiles } = result2;
+      console.log("[DiceCloud Sync] Storage result:", { activeCharacterId, characterProfilesKeys: characterProfiles ? Object.keys(characterProfiles) : null });
+      if (activeCharacterId && characterProfiles && characterProfiles[activeCharacterId]) {
+        const characterData = characterProfiles[activeCharacterId];
+        console.log("[DiceCloud Sync] Building cache from character data:", characterData.name);
+        if (!characterData.id) {
+          console.warn("[DiceCloud Sync] Character data has no DiceCloud ID, skipping cache build");
+          console.warn("[DiceCloud Sync] This is likely the default/placeholder character");
+          return;
+        }
+        const currentValuesFromAPI = {};
+        const tokenResult = await browserAPI.storage.local.get(["diceCloudToken"]);
+        const { diceCloudToken } = tokenResult;
+        if (diceCloudToken && characterData.id) {
+          console.log("[DiceCloud Sync] Fetching raw DiceCloud API data for property cache...");
+          try {
+            const response = await browserAPI.runtime.sendMessage({
+              action: "fetchDiceCloudAPI",
+              url: `https://dicecloud.com/api/creature/${characterData.id}`,
+              token: diceCloudToken
+            });
+            if (response.success && response.data) {
+              const apiData = response.data;
+              console.log("[DiceCloud Sync] Received API data for property cache");
+              if (apiData.creatureProperties && Array.isArray(apiData.creatureProperties)) {
+                console.log(`[DiceCloud Sync] Processing ${apiData.creatureProperties.length} raw properties`);
+                const allProperties = {};
+                for (const property of apiData.creatureProperties) {
+                  if (property._id && property.name) {
+                    if (!allProperties[property.name]) {
+                      allProperties[property.name] = [];
+                    }
+                    allProperties[property.name].push(property);
+                  }
+                }
+                const selectBestProperty = (name, properties, criteria = {}) => {
+                  if (properties.length === 1)
+                    return properties[0];
+                  const {
+                    requiredType,
+                    requiredAttributeType,
+                    requiredFields = [],
+                    sortBy = null,
+                    debug = false
+                  } = criteria;
+                  if (debug) {
+                    console.log(`[DiceCloud Sync] All ${name} properties found:`);
+                    properties.forEach((p) => {
+                      console.log(`  - ${p.name} (${p.type}): id=${p._id}, value=${p.value}, baseValue=${p.baseValue}, total=${p.total}, damage=${p.damage}, attributeType=${p.attributeType || "none"}`);
+                    });
+                  }
+                  if (requiredType && requiredAttributeType && requiredFields.length > 0) {
+                    const exactMatches = properties.filter(
+                      (p) => p.type === requiredType && p.attributeType === requiredAttributeType && requiredFields.every((field) => p[field] !== void 0) && !p.removed && !p.inactive
+                    );
+                    if (exactMatches.length > 0) {
+                      return sortBy ? exactMatches.sort(sortBy)[0] : exactMatches[0];
+                    }
+                  }
+                  if (requiredType && requiredAttributeType) {
+                    const typeMatches = properties.filter(
+                      (p) => p.type === requiredType && p.attributeType === requiredAttributeType && !p.removed && !p.inactive
+                    );
+                    if (typeMatches.length > 0) {
+                      return sortBy ? typeMatches.sort(sortBy)[0] : typeMatches[0];
+                    }
+                  }
+                  if (requiredType) {
+                    const typeOnly = properties.filter(
+                      (p) => p.type === requiredType && !p.removed && !p.inactive
+                    );
+                    if (typeOnly.length > 0) {
+                      return sortBy ? typeOnly.sort(sortBy)[0] : typeOnly[0];
+                    }
+                  }
+                  if (requiredFields.length > 0) {
+                    const withFields = properties.filter(
+                      (p) => requiredFields.every((field) => p[field] !== void 0) && !p.removed && !p.inactive
+                    );
+                    if (withFields.length > 0) {
+                      return sortBy ? withFields.sort(sortBy)[0] : withFields[0];
+                    }
+                  }
+                  const active = properties.find((p) => !p.removed && !p.inactive);
+                  return active || properties[0];
+                };
+                for (const [propertyName, properties] of Object.entries(allProperties)) {
+                  let selectedProperty = properties[0];
+                  if (propertyName === "Hit Points") {
+                    selectedProperty = selectBestProperty("Hit Points", properties, {
+                      requiredType: "attribute",
+                      requiredAttributeType: "healthBar",
+                      requiredFields: ["damage"],
+                      sortBy: (a, b) => (b.total || 0) - (a.total || 0),
+                      debug: true
+                    });
+                    if (selectedProperty) {
+                      this.propertyCache.set("Hit Points", selectedProperty._id);
+                      console.log(`[DiceCloud Sync] Selected Hit Points property: ${selectedProperty.name} -> ${selectedProperty._id} (type: ${selectedProperty.type}, attributeType: ${selectedProperty.attributeType || "none"}, value: ${selectedProperty.value}, total: ${selectedProperty.total}, baseValue: ${selectedProperty.baseValue}, damage: ${selectedProperty.damage})`);
+                      const currentHP = (selectedProperty.total || 0) - (selectedProperty.damage || 0);
+                      currentValuesFromAPI["Hit Points"] = currentHP;
+                      console.log(`[DiceCloud Sync] \u{1F4CA} Extracted current HP value: ${currentHP} (total: ${selectedProperty.total}, damage: ${selectedProperty.damage})`);
+                    } else {
+                      console.log(`[DiceCloud Sync] No suitable Hit Points property found`);
+                    }
+                    continue;
+                  }
+                  if (propertyName.includes("Hit Points") && propertyName !== "Hit Points" && !propertyName.includes("Temporary")) {
+                    const classHP = properties.find(
+                      (p) => p.type !== "skill" && (p.value !== void 0 || p.skillValue !== void 0)
+                    );
+                    if (classHP) {
+                      this.propertyCache.set("Hit Points", classHP._id);
+                      console.log(`[DiceCloud Sync] Cached class-specific HP as main Hit Points: ${propertyName} -> ${classHP._id} (type: ${classHP.type})`);
+                    }
+                    continue;
+                  }
+                  const spellSlotMatch = propertyName.match(/^(\d+(?:st|nd|rd|th)) Level$/);
+                  if (spellSlotMatch) {
+                    selectedProperty = selectBestProperty(propertyName, properties, {
+                      requiredType: "attribute",
+                      requiredAttributeType: "spellSlot",
+                      requiredFields: ["value"],
+                      debug: properties.length > 1
+                    });
+                    if (selectedProperty) {
+                      this.propertyCache.set(propertyName, selectedProperty._id);
+                      const slotLevel = spellSlotMatch[1].replace(/\D/g, "");
+                      this.propertyCache.set(`spellSlot${slotLevel}`, selectedProperty._id);
+                      console.log(`[DiceCloud Sync] Cached spell slot: ${propertyName} -> ${selectedProperty._id} (attributeType: ${selectedProperty.attributeType})`);
+                      const currentSlots = selectedProperty.value || 0;
+                      currentValuesFromAPI[`spellSlot${slotLevel}`] = currentSlots;
+                      console.log(`[DiceCloud Sync] \u{1F4CA} Extracted current spell slot value for level ${slotLevel}: ${currentSlots}`);
+                    }
+                    continue;
+                  }
+                  if (propertyName === "Channel Divinity") {
+                    selectedProperty = selectBestProperty("Channel Divinity", properties, {
+                      requiredType: "attribute",
+                      requiredAttributeType: "resource",
+                      requiredFields: ["damage"],
+                      debug: properties.length > 1
+                    });
+                    if (selectedProperty) {
+                      this.propertyCache.set("Channel Divinity", selectedProperty._id);
+                      console.log(`[DiceCloud Sync] Cached Channel Divinity: ${selectedProperty._id} (attributeType: ${selectedProperty.attributeType})`);
+                      const currentCD = selectedProperty.value || 0;
+                      currentValuesFromAPI["Channel Divinity"] = currentCD;
+                      console.log(`[DiceCloud Sync] \u{1F4CA} Extracted current Channel Divinity value: ${currentCD}`);
+                    }
+                    continue;
+                  }
+                  this.propertyCache.set(propertyName, selectedProperty._id);
+                  console.log(`[DiceCloud Sync] Cached property: ${propertyName} -> ${selectedProperty._id}`);
+                }
+                const actionsByName = {};
+                apiData.creatureProperties.forEach((p) => {
+                  if (p.type === "action" && p.name && p.uses !== void 0 && p.uses !== null && !p.removed && !p.inactive && !this.propertyCache.has(p.name)) {
+                    if (!actionsByName[p.name]) {
+                      actionsByName[p.name] = [];
+                    }
+                    actionsByName[p.name].push(p);
+                  }
+                });
+                let actionCount = 0;
+                for (const [actionName, actions] of Object.entries(actionsByName)) {
+                  const action = selectBestProperty(actionName, actions, {
+                    requiredType: "action",
+                    requiredFields: ["uses"],
+                    debug: actions.length > 1
+                  });
+                  if (action) {
+                    this.propertyCache.set(action.name, action._id);
+                    const maxUses = action.uses?.value ?? action.uses;
+                    const usedUses = action.usesUsed ?? 0;
+                    console.log(`[DiceCloud Sync] Cached action with uses: ${action.name} -> ${action._id} (${usedUses}/${maxUses} used)`);
+                    actionCount++;
+                  }
+                }
+                console.log(`[DiceCloud Sync] Found ${actionCount} actions with limited uses`);
+                if (allProperties["Temporary Hit Points"]) {
+                  const tempHP = selectBestProperty("Temporary Hit Points", allProperties["Temporary Hit Points"], {
+                    requiredType: "attribute",
+                    requiredAttributeType: "healthBar",
+                    requiredFields: ["value"],
+                    debug: allProperties["Temporary Hit Points"].length > 1
+                  });
+                  if (tempHP) {
+                    this.propertyCache.set("Temporary Hit Points", tempHP._id);
+                    console.log(`[DiceCloud Sync] Cached Temporary Hit Points: ${tempHP._id} (attributeType: ${tempHP.attributeType})`);
+                    const currentTempHP = tempHP.value || 0;
+                    currentValuesFromAPI["Temporary Hit Points"] = currentTempHP;
+                    console.log(`[DiceCloud Sync] \u{1F4CA} Extracted current Temp HP value: ${currentTempHP}`);
+                  }
+                }
+                ["Succeeded Saves", "Failed Saves"].forEach((saveName) => {
+                  if (allProperties[saveName]) {
+                    const deathSave = selectBestProperty(saveName, allProperties[saveName], {
+                      requiredType: "attribute",
+                      requiredAttributeType: "spellSlot",
+                      debug: allProperties[saveName].length > 1
+                    });
+                    if (deathSave) {
+                      this.propertyCache.set(saveName, deathSave._id);
+                      console.log(`[DiceCloud Sync] Cached Death Save: ${saveName} -> ${deathSave._id} (attributeType: ${deathSave.attributeType})`);
+                    }
+                  }
+                });
+                ["d6 Hit Dice", "d8 Hit Dice", "d10 Hit Dice", "d12 Hit Dice"].forEach((diceName) => {
+                  if (allProperties[diceName]) {
+                    const hitDie = selectBestProperty(diceName, allProperties[diceName], {
+                      requiredType: "attribute",
+                      requiredAttributeType: "hitDice",
+                      debug: allProperties[diceName].length > 1
+                    });
+                    if (hitDie) {
+                      this.propertyCache.set(diceName, hitDie._id);
+                      console.log(`[DiceCloud Sync] Cached Hit Die: ${diceName} -> ${hitDie._id} (attributeType: ${hitDie.attributeType})`);
+                    }
+                  }
+                });
+                if (allProperties["Heroic Inspiration"] || allProperties["Inspiration"]) {
+                  const inspirationProps = allProperties["Heroic Inspiration"] || allProperties["Inspiration"];
+                  const inspiration = selectBestProperty("Inspiration", inspirationProps, {
+                    requiredType: "attribute",
+                    requiredAttributeType: "resource",
+                    debug: inspirationProps.length > 1
+                  });
+                  if (inspiration) {
+                    this.propertyCache.set("Heroic Inspiration", inspiration._id);
+                    this.propertyCache.set("Inspiration", inspiration._id);
+                    console.log(`[DiceCloud Sync] Cached Inspiration: ${inspiration._id} (attributeType: ${inspiration.attributeType})`);
+                  }
+                }
+                const classResourceNames = [
+                  "Ki Points",
+                  "Sorcery Points",
+                  "Bardic Inspiration",
+                  "Superiority Dice",
+                  "Lay on Hands",
+                  "Wild Shape",
+                  "Rage",
+                  "Action Surge",
+                  "Indomitable",
+                  "Second Wind",
+                  "Sneak Attack",
+                  "Cunning Action",
+                  "Arcane Recovery",
+                  "Song of Rest",
+                  "Font of Magic",
+                  "Metamagic",
+                  "Sorcery Point",
+                  "Warlock Spell Slots",
+                  "Pact Magic",
+                  "Eldritch Invocations"
+                ];
+                let classResourceCount = 0;
+                for (const resourceName of classResourceNames) {
+                  if (allProperties[resourceName] && !this.propertyCache.has(resourceName)) {
+                    const resource = selectBestProperty(resourceName, allProperties[resourceName], {
+                      requiredType: "attribute",
+                      requiredAttributeType: "resource",
+                      requiredFields: ["damage"],
+                      debug: allProperties[resourceName].length > 1
+                    });
+                    if (resource) {
+                      this.propertyCache.set(resourceName, resource._id);
+                      console.log(`[DiceCloud Sync] Cached class resource: ${resourceName} -> ${resource._id} (attributeType: ${resource.attributeType})`);
+                      const currentValue = resource.value || 0;
+                      currentValuesFromAPI[resourceName] = currentValue;
+                      console.log(`[DiceCloud Sync] \u{1F4CA} Extracted current value for ${resourceName}: ${currentValue}`);
+                      classResourceCount++;
+                    }
+                  }
+                }
+                console.log(`[DiceCloud Sync] Found ${classResourceCount} class resources`);
+                const restorableByName = {};
+                apiData.creatureProperties.forEach((p) => {
+                  if (p.type === "attribute" && p.name && p.reset && p.reset !== "none" && !p.removed && !p.inactive && !this.propertyCache.has(p.name)) {
+                    if (!restorableByName[p.name]) {
+                      restorableByName[p.name] = [];
+                    }
+                    restorableByName[p.name].push(p);
+                  }
+                });
+                let restorableCount = 0;
+                for (const [attrName, attrs] of Object.entries(restorableByName)) {
+                  const attr = selectBestProperty(attrName, attrs, {
+                    requiredType: "attribute",
+                    requiredFields: ["reset"],
+                    debug: attrs.length > 1
+                  });
+                  if (attr) {
+                    this.propertyCache.set(attr.name, attr._id);
+                    console.log(`[DiceCloud Sync] Cached restorable attribute: ${attr.name} (resets on ${attr.reset}) -> ${attr._id}`);
+                    restorableCount++;
+                  }
+                }
+                console.log(`[DiceCloud Sync] Found ${restorableCount} additional restorable attributes`);
+                const customAttrsByName = {};
+                apiData.creatureProperties.forEach((p) => {
+                  if (p.type === "attribute" && p.name && !p.removed && !p.inactive && !this.propertyCache.has(p.name) && (p.value !== void 0 || p.baseValue !== void 0)) {
+                    if (!customAttrsByName[p.name]) {
+                      customAttrsByName[p.name] = [];
+                    }
+                    customAttrsByName[p.name].push(p);
+                  }
+                });
+                let customAttrCount = 0;
+                for (const [attrName, attrs] of Object.entries(customAttrsByName)) {
+                  const attr = selectBestProperty(attrName, attrs, {
+                    requiredType: "attribute",
+                    requiredFields: ["value"],
+                    debug: attrs.length > 1
+                  });
+                  if (attr) {
+                    this.propertyCache.set(attr.name, attr._id);
+                    console.log(`[DiceCloud Sync] Cached custom attribute: ${attr.name} -> ${attr._id} (value: ${attr.value}, baseValue: ${attr.baseValue})`);
+                    const currentValue = attr.value !== void 0 ? attr.value : attr.baseValue || 0;
+                    currentValuesFromAPI[attr.name] = currentValue;
+                    console.log(`[DiceCloud Sync] \u{1F4CA} Extracted current value for ${attr.name}: ${currentValue}`);
+                    customAttrCount++;
+                  }
+                }
+                console.log(`[DiceCloud Sync] Found ${customAttrCount} additional custom attributes to cache`);
+                const togglesByName = {};
+                apiData.creatureProperties.forEach((p) => {
+                  if (p.type === "toggle" && p.name && !p.removed && !p.inactive && !this.propertyCache.has(p.name)) {
+                    if (!togglesByName[p.name]) {
+                      togglesByName[p.name] = [];
+                    }
+                    togglesByName[p.name].push(p);
+                  }
+                });
+                let toggleCount = 0;
+                for (const [toggleName, toggles] of Object.entries(togglesByName)) {
+                  const toggle = selectBestProperty(toggleName, toggles, {
+                    requiredType: "toggle",
+                    debug: toggles.length > 1
+                  });
+                  if (toggle) {
+                    this.propertyCache.set(toggle.name, toggle._id);
+                    console.log(`[DiceCloud Sync] Cached toggle: ${toggle.name} -> ${toggle._id}`);
+                    toggleCount++;
+                  }
+                }
+                console.log(`[DiceCloud Sync] Found ${toggleCount} toggles`);
+                console.log("[DiceCloud Sync] \u{1F5FA}\uFE0F  Starting comprehensive variant mapping...");
+                for (const [canonicalName, variants] of Object.entries(this.propertyVariants)) {
+                  let foundProperty = null;
+                  let foundVariant = null;
+                  for (const variant of variants) {
+                    const property = apiData.creatureProperties.find((p) => {
+                      if (p.removed || p.inactive)
+                        return false;
+                      if (p.variableName === variant || p.name === variant) {
+                        if (canonicalName === "Channel Divinity" || canonicalName === "Ki Points" || canonicalName === "Sorcery Points" || canonicalName === "Bardic Inspiration") {
+                          return p.type === "attribute" && p.attributeType === "resource";
+                        }
+                        if (canonicalName === "Temporary Hit Points") {
+                          return p.type === "attribute" && p.attributeType === "healthBar";
+                        }
+                        if (canonicalName === "Hit Points") {
+                          return p.type === "attribute" && p.attributeType === "healthBar";
+                        }
+                        return p.type === "attribute" || p.type === "action";
+                      }
+                      return false;
+                    });
+                    if (property) {
+                      foundProperty = property;
+                      foundVariant = variant;
+                      break;
+                    }
+                  }
+                  if (foundProperty) {
+                    this.cachePropertyWithVariants(canonicalName, foundVariant, foundProperty._id);
+                    if (foundProperty.value !== void 0) {
+                      currentValuesFromAPI[canonicalName] = foundProperty.value;
+                      console.log(`[DiceCloud Sync] \u{1F4CA} Extracted current value for ${canonicalName}: ${foundProperty.value}`);
+                    }
+                  }
+                }
+                console.log("[DiceCloud Sync] \u2705 Comprehensive variant mapping complete");
+              }
+            } else {
+              console.warn("[DiceCloud Sync] Failed to fetch API data for property cache:", response.error);
+            }
+          } catch (error) {
+            console.error("[DiceCloud Sync] Error fetching API data for property cache:", error);
+          }
+        }
+        if (characterData.actions && Array.isArray(characterData.actions)) {
+          console.log(`[DiceCloud Sync] Processing ${characterData.actions.length} actions`);
+          for (const action of characterData.actions) {
+            if (action.name) {
+              if (!this.propertyCache.has(action.name)) {
+                const propertyId = this.findPropertyId(action.name);
+                if (propertyId) {
+                  this.propertyCache.set(action.name, propertyId);
+                  console.log(`[DiceCloud Sync] Cached action: ${action.name} -> ${propertyId}`);
+                } else {
+                  console.warn(`[DiceCloud Sync] No property ID found for action: ${action.name}`);
+                }
+              }
+            }
+          }
+        }
+        console.log(`[DiceCloud Sync] Property cache built with ${this.propertyCache.size} entries`);
+        console.log("[DiceCloud Sync] Available properties:", Array.from(this.propertyCache.keys()));
+        console.log("[DiceCloud Sync] Initializing previousValues from current character data...");
+        await this.initializePreviousValues(characterData, currentValuesFromAPI);
+      } else {
+        console.warn("[DiceCloud Sync] No character data available for cache building");
+        console.warn("[DiceCloud Sync] activeCharacterId:", activeCharacterId);
+        console.warn("[DiceCloud Sync] characterProfiles:", characterProfiles);
+      }
+    }
+    /**
+     * Initialize previousValues from character data to avoid syncing everything on first update
+     * @param {Object} characterData - Character data object
+     * @param {Object} apiValues - Current values extracted from DiceCloud API (optional)
+     */
+    async initializePreviousValues(characterData, apiValues = {}) {
+      console.log("[DiceCloud Sync] Populating previousValues to establish baseline...");
+      if (apiValues["Hit Points"] !== void 0) {
+        this.previousValues.set("Hit Points", apiValues["Hit Points"]);
+        console.log(`[DiceCloud Sync] \u{1F4CA} Initialized Hit Points from API: ${apiValues["Hit Points"]}`);
+      } else if (characterData.hp !== void 0) {
+        this.previousValues.set("Hit Points", characterData.hp);
+      }
+      if (apiValues["Temporary Hit Points"] !== void 0) {
+        this.previousValues.set("Temporary Hit Points", apiValues["Temporary Hit Points"]);
+        console.log(`[DiceCloud Sync] \u{1F4CA} Initialized Temp HP from API: ${apiValues["Temporary Hit Points"]}`);
+      } else if (characterData.tempHp !== void 0) {
+        this.previousValues.set("Temporary Hit Points", characterData.tempHp);
+      }
+      if (characterData.maxHp !== void 0) {
+        this.previousValues.set("Max Hit Points", characterData.maxHp);
+      }
+      for (let level = 1; level <= 9; level++) {
+        const cacheKey = `spellSlot${level}`;
+        if (characterData.spellSlots) {
+          const currentKey = `level${level}SpellSlots`;
+          const maxKey = `level${level}SpellSlotsMax`;
+          if (characterData.spellSlots[currentKey] !== void 0 && characterData.spellSlots[maxKey] !== void 0) {
+            if (characterData.spellSlots[maxKey] > 0) {
+              this.previousValues.set(cacheKey, characterData.spellSlots[currentKey]);
+              console.log(`[DiceCloud Sync] \u{1F4CA} Initialized spell slot level ${level} from extension: ${characterData.spellSlots[currentKey]}`);
+            }
+          }
+        } else if (apiValues[cacheKey] !== void 0) {
+          this.previousValues.set(cacheKey, apiValues[cacheKey]);
+          console.log(`[DiceCloud Sync] \u{1F4CA} Initialized spell slot level ${level} from API (fallback): ${apiValues[cacheKey]}`);
+        }
+      }
+      if (apiValues["Channel Divinity"] !== void 0) {
+        this.previousValues.set("Channel Divinity", apiValues["Channel Divinity"]);
+        console.log(`[DiceCloud Sync] \u{1F4CA} Initialized Channel Divinity from API: ${apiValues["Channel Divinity"]}`);
+      } else if (characterData.channelDivinity && characterData.channelDivinity.current !== void 0) {
+        this.previousValues.set("Channel Divinity", characterData.channelDivinity.current);
+      }
+      if (characterData.resources && Array.isArray(characterData.resources)) {
+        for (const resource of characterData.resources) {
+          if (resource.name && resource.current !== void 0) {
+            this.previousValues.set(resource.name, resource.current);
+          }
+        }
+      }
+      if (characterData.actions && Array.isArray(characterData.actions)) {
+        for (const action of characterData.actions) {
+          if (action.name && action.uses && action.usesUsed !== void 0) {
+            const cacheKey = `action_${action.name}`;
+            this.previousValues.set(cacheKey, action.usesUsed);
+          }
+        }
+      }
+      if (characterData.deathSaves) {
+        if (characterData.deathSaves.successes !== void 0) {
+          this.previousValues.set("Succeeded Saves", characterData.deathSaves.successes);
+        }
+        if (characterData.deathSaves.failures !== void 0) {
+          this.previousValues.set("Failed Saves", characterData.deathSaves.failures);
+        }
+      }
+      if (characterData.inspiration !== void 0) {
+        this.previousValues.set("Inspiration", characterData.inspiration);
+      }
+      if (apiValues && Object.keys(apiValues).length > 0) {
+        for (const [key, value] of Object.entries(apiValues)) {
+          if (!this.previousValues.has(key)) {
+            this.previousValues.set(key, value);
+            console.log(`[DiceCloud Sync] \u{1F4CA} Initialized ${key} from API: ${value}`);
+          }
+        }
+      }
+      console.log(`[DiceCloud Sync] Initialized ${this.previousValues.size} previous values`);
+    }
+    /**
+     * Increment action uses (e.g., used 1 of 3 uses)
+     * @param {string} actionName - Name of the action
+     * @param {number} amount - Amount to increment (usually 1)
+     */
+    async incrementActionUses(actionName, amount = 1) {
+      if (!this.enabled) {
+        console.warn("[DiceCloud Sync] Sync not enabled");
+        return;
+      }
+      const propertyId = this.findPropertyId(actionName);
+      if (!propertyId) {
+        console.warn(`[DiceCloud Sync] Property not found: ${actionName}`);
+        return;
+      }
+      return this.queueRequest(
+        async () => {
+          console.log(`[DiceCloud Sync] Incrementing uses for ${actionName} (${propertyId}) by ${amount}`);
+          const result2 = await this.ddp.call("creatureProperties.update", {
+            _id: propertyId,
+            path: ["usesUsed"],
+            value: amount
+          });
+          console.log("[DiceCloud Sync] \u23F3 Increment request sent:", result2);
+          return result2;
+        },
+        `Increment ${actionName} uses`
+      );
+    }
+    /**
+     * Set action uses to a specific value
+     * @param {string} actionName - Name of the action
+     * @param {number} value - New value for usesUsed
+     */
+    async setActionUses(actionName, value) {
+      if (!this.enabled) {
+        console.warn("[DiceCloud Sync] Sync not enabled");
+        return;
+      }
+      const propertyId = this.findPropertyId(actionName);
+      if (!propertyId) {
+        console.warn(`[DiceCloud Sync] Property not found: ${actionName}`);
+        return;
+      }
+      return this.queueRequest(
+        async () => {
+          console.log(`[DiceCloud Sync] Setting uses for ${actionName} (${propertyId}) to ${value}`);
+          const result2 = await this.ddp.call("creatureProperties.update", {
+            _id: propertyId,
+            path: ["usesUsed"],
+            value
+          });
+          console.log("[DiceCloud Sync] \u23F3 Set uses request sent:", result2);
+          return result2;
+        },
+        `Set ${actionName} uses to ${value}`
+      );
+    }
+    /**
+     * Update attribute value (HP, Ki Points, Sorcery Points, etc.)
+     * @param {string} attributeName - Name of the attribute
+     * @param {number} value - New value
+     */
+    async updateAttributeValue(attributeName, value) {
+      if (!this.enabled) {
+        console.warn("[DiceCloud Sync] Sync not enabled");
+        return;
+      }
+      const propertyId = this.findPropertyId(attributeName);
+      if (!propertyId) {
+        console.warn(`[DiceCloud Sync] Property not found: ${attributeName}`);
+        return;
+      }
+      console.log(`[DiceCloud Sync] Updating attribute ${attributeName} (${propertyId}) to ${value}`);
+      const updatePayload = {
+        _id: propertyId,
+        path: ["value"],
+        // Default, will be updated based on property type
+        value
+      };
+      try {
+        const tokenResult = await browserAPI.storage.local.get(["diceCloudToken"]);
+        const { diceCloudToken } = tokenResult;
+        if (diceCloudToken) {
+          const characterId = this.characterId;
+          const currentResponse = await browserAPI.runtime.sendMessage({
+            action: "fetchDiceCloudAPI",
+            url: `https://dicecloud.com/api/creature/${characterId}`,
+            token: diceCloudToken
+          });
+          if (currentResponse.success && currentResponse.data) {
+            const property = currentResponse.data.creatureProperties.find((p) => p._id === propertyId);
+            if (property) {
+              console.log("[DiceCloud Sync] Property before update:", {
+                id: property._id,
+                name: property.name,
+                type: property.type,
+                attributeType: property.attributeType,
+                value: property.value,
+                baseValue: property.baseValue,
+                total: property.total,
+                damage: property.damage,
+                skillValue: property.skillValue,
+                dirty: property.dirty
+              });
+              let fieldName = "value";
+              let updateValue = value;
+              let useHealthBarMethod = false;
+              if (property.type === "skill") {
+                fieldName = "skillValue";
+              } else if (property.type === "effect") {
+                fieldName = property.calculation ? "calculation" : "value";
+              } else if (property.type === "attribute" && property.attributeType === "healthBar") {
+                console.log(`[DiceCloud Sync] HealthBar update: currentHP=${property.value}, newCurrentHP=${value}, total=${property.total}, currentDamage=${property.damage}`);
+                useHealthBarMethod = true;
+                updateValue = value;
+              } else if (property.type === "attribute") {
+                fieldName = "value";
+              }
+              console.log(`[DiceCloud Sync] Using field name: ${fieldName} for property type: ${property.type}, attributeType: ${property.attributeType || "none"}`);
+              console.log(`[DiceCloud Sync] Use healthBar method: ${useHealthBarMethod}`);
+              if (useHealthBarMethod) {
+                updatePayload.operation = "set";
+                updatePayload.value = updateValue;
+                delete updatePayload.path;
+              } else {
+                updatePayload.path = [fieldName];
+                updatePayload.value = updateValue;
+              }
+            }
+          }
+        } else {
+          console.warn("[DiceCloud Sync] No DiceCloud token available for verification");
+        }
+      } catch (error) {
+        console.error("[DiceCloud Sync] Failed to get current property value:", error);
+      }
+      let methodName = "creatureProperties.update";
+      if (updatePayload.operation === "set" && !updatePayload.path) {
+        methodName = "creatureProperties.damage";
+      }
+      console.log(`[DiceCloud Sync] Using DDP method: ${methodName}`);
+      console.log("[DiceCloud Sync] DDP update payload:", JSON.stringify(updatePayload, null, 2));
+      return this.queueRequest(
+        async () => {
+          const result2 = await this.ddp.call(methodName, updatePayload);
+          console.log(`[DiceCloud Sync] \u23F3 Update request sent using ${methodName}:`, result2);
+          console.log("[DiceCloud Sync] Checking if update was applied...");
+          setTimeout(async () => {
+            try {
+              const tokenResult = await browserAPI.storage.local.get(["diceCloudToken"]);
+              const { diceCloudToken } = tokenResult;
+              if (diceCloudToken) {
+                console.log("[DiceCloud Sync] Verifying update for property:", propertyId);
+                console.log("[DiceCloud Sync] Character ID available:", this.characterId);
+                const characterId = this.characterId;
+                if (!characterId) {
+                  console.error("[DiceCloud Sync] No character ID available for verification");
+                  return;
+                }
+                const verifyResponse = await browserAPI.runtime.sendMessage({
+                  action: "fetchDiceCloudAPI",
+                  url: `https://dicecloud.com/api/creature/${characterId}`,
+                  token: diceCloudToken
+                });
+                console.log("[DiceCloud Sync] Verification API response:", verifyResponse);
+                if (verifyResponse.success && verifyResponse.data) {
+                  console.log("[DiceCloud Sync] Verification API data received, looking for property:", propertyId);
+                  console.log("[DiceCloud Sync] Total properties in response:", verifyResponse.data.creatureProperties?.length);
+                  const property = verifyResponse.data.creatureProperties.find((p) => p._id === propertyId);
+                  if (property) {
+                    console.log("[DiceCloud Sync] Property after update:", {
+                      id: property._id,
+                      name: property.name,
+                      type: property.type,
+                      attributeType: property.attributeType,
+                      value: property.value,
+                      total: property.total,
+                      baseValue: property.baseValue,
+                      damage: property.damage,
+                      dirty: property.dirty,
+                      lastUpdated: property.lastUpdated
+                    });
+                    if (property.value === value) {
+                      console.log("[DiceCloud Sync] \u2705 SUCCESS: Value updated correctly!");
+                    } else {
+                      console.warn("[DiceCloud Sync] \u274C ISSUE: Value did not change. Expected:", value, "Actual:", property.value);
+                      if (property.total && property.damage !== void 0) {
+                        const calculatedValue = property.total - property.damage;
+                        console.log(`[DiceCloud Sync] Calculated value: ${property.total} - ${property.damage} = ${calculatedValue}`);
+                      }
+                    }
+                  } else {
+                    console.warn("[DiceCloud Sync] Property not found in character data");
+                    console.log(
+                      "[DiceCloud Sync] Available HP properties:",
+                      verifyResponse.data.creatureProperties.filter((p) => p.name && p.name.toLowerCase().includes("hit points")).map((p) => ({ id: p._id, name: p.name, value: p.value }))
+                    );
+                  }
+                } else {
+                  console.error("[DiceCloud Sync] Failed to verify update:", verifyResponse.error);
+                }
+              } else {
+                console.warn("[DiceCloud Sync] No DiceCloud token available for verification");
+              }
+            } catch (error) {
+              console.error("[DiceCloud Sync] Failed to verify update:", error);
+            }
+          }, 1e3);
+          return result2;
+        },
+        `Update ${attributeName} to ${value}`
+      );
+    }
+    /**
+     * Update spell slot current value
+     * @param {number} level - Spell level (1-9)
+     * @param {number} slotsRemaining - Number of slots remaining
+     */
+    async updateSpellSlot(level, slotsRemaining) {
+      if (!this.enabled) {
+        console.warn("[DiceCloud Sync] Sync not enabled");
+        return;
+      }
+      try {
+        const slotKey = `spellSlot${level}`;
+        const slotName = `${level}${this.getOrdinalSuffix(level)} Level`;
+        let propertyId = this.findPropertyId(slotKey);
+        if (!propertyId) {
+          propertyId = this.findPropertyId(slotName);
+        }
+        if (!propertyId) {
+          console.warn(`[DiceCloud Sync] \u274C Spell slot level ${level} not found in property cache`);
+          console.warn(`[DiceCloud Sync] Tried keys: "${slotKey}", "${slotName}"`);
+          const spellSlotProps = Array.from(this.propertyCache.keys()).filter((name) => name.toLowerCase().includes("level") || name.toLowerCase().includes("spell"));
+          console.warn(`[DiceCloud Sync] Cached spell-related properties:`, spellSlotProps);
+          return;
+        }
+        console.log(`[DiceCloud Sync] Updating spell slot level ${level} to ${slotsRemaining} remaining`);
+        const debugTokenResult = await browserAPI.storage.local.get(["diceCloudToken"]);
+        if (debugTokenResult.diceCloudToken && this.characterId) {
+          const debugResponse = await browserAPI.runtime.sendMessage({
+            action: "fetchDiceCloudAPI",
+            url: `https://dicecloud.com/api/creature/${this.characterId}`,
+            token: debugTokenResult.diceCloudToken
+          });
+          if (debugResponse.success && debugResponse.data) {
+            const spellSlotProp = debugResponse.data.creatureProperties.find((p) => p._id === propertyId);
+            if (spellSlotProp) {
+              console.log(`[DiceCloud Sync] \u{1F50D} Spell slot property structure:
+` + JSON.stringify(spellSlotProp, null, 2));
+            }
+          }
+        }
+        const result2 = await this.queueRequest(
+          () => this.ddp.call("creatureProperties.update", {
+            _id: propertyId,
+            path: ["value"],
+            value: slotsRemaining
+          }),
+          `Update spell slot level ${level} to ${slotsRemaining}`
+        );
+        console.log(`[DiceCloud Sync] \u23F3 Spell slot level ${level} update request sent:`, result2);
+        return result2;
+      } catch (error) {
+        console.error(`[DiceCloud Sync] \u274C Failed to update spell slot level ${level}:`, error);
+        throw error;
+      }
+    }
+    /**
+     * Fetch character data from DiceCloud API
+     * @param {string} characterId - The character ID
+     * @returns {Promise<object>} The API response data
+     */
+    async fetchDiceCloudData(characterId) {
+      const tokenResult = await browserAPI.storage.local.get(["diceCloudToken"]);
+      if (!tokenResult.diceCloudToken) {
+        throw new Error("No DiceCloud token found");
+      }
+      const response = await browserAPI.runtime.sendMessage({
+        action: "fetchDiceCloudAPI",
+        url: `https://dicecloud.com/api/creature/${characterId}`,
+        token: tokenResult.diceCloudToken
+      });
+      if (!response.success) {
+        throw new Error("API request failed");
+      }
+      return response.data;
+    }
+    /**
+     * Update Channel Divinity uses
+     * @param {number} usesRemaining - Number of uses remaining
+     */
+    async updateChannelDivinity(usesRemaining) {
+      if (!this.enabled) {
+        console.warn("[DiceCloud Sync] Sync not enabled");
+        return;
+      }
+      try {
+        const propertyId = this.findPropertyId("Channel Divinity");
+        if (!propertyId) {
+          console.warn("[DiceCloud Sync] Channel Divinity not found");
+          return;
+        }
+        console.log(`[DiceCloud Sync] Updating Channel Divinity to ${usesRemaining} uses remaining`);
+        const apiData = await this.fetchDiceCloudData(this.characterId);
+        const property = apiData?.creatureProperties?.find((p) => p._id === propertyId);
+        if (!property) {
+          console.error("[DiceCloud Sync] Could not find Channel Divinity property in API data");
+          return;
+        }
+        const total = property.total || property.baseValue?.value || 3;
+        console.log(`[DiceCloud Sync] Resource calculation: total=${total}, usesRemaining=${usesRemaining}, damage=${property.damage || 0}`);
+        console.log(`[DiceCloud Sync] Channel Divinity before update:`, {
+          value: property.value,
+          damage: property.damage,
+          total: property.total
+        });
+        const result2 = await this.queueRequest(
+          () => this.ddp.call("creatureProperties.damage", {
+            _id: propertyId,
+            value: usesRemaining,
+            operation: "set"
+          }),
+          `Update Channel Divinity to ${usesRemaining}`
+        );
+        console.log("[DiceCloud Sync] \u23F3 Channel Divinity update request sent:", result2);
+        if (this.characterId) {
+          console.log("[DiceCloud Sync] Verifying Channel Divinity update...");
+          try {
+            const verifyData = await this.fetchDiceCloudData(this.characterId);
+            if (verifyData && verifyData.creatureProperties) {
+              const verifiedProperty = verifyData.creatureProperties.find((p) => p._id === propertyId);
+              if (verifiedProperty) {
+                const actualUsesRemaining = (verifiedProperty.total || total) - (verifiedProperty.damage || 0);
+                console.log(`[DiceCloud Sync] Channel Divinity after update:`, {
+                  value: verifiedProperty.value,
+                  damage: verifiedProperty.damage,
+                  total: verifiedProperty.total,
+                  calculatedUsesRemaining: actualUsesRemaining
+                });
+                if (actualUsesRemaining === usesRemaining || verifiedProperty.value === usesRemaining) {
+                  console.log("[DiceCloud Sync] \u2705 SUCCESS: Channel Divinity updated correctly!");
+                } else {
+                  console.warn(`[DiceCloud Sync] \u26A0\uFE0F WARNING: Channel Divinity value mismatch! Expected ${usesRemaining}, got ${actualUsesRemaining}`);
+                }
+              }
+            }
+          } catch (verifyError) {
+            console.warn("[DiceCloud Sync] Could not verify Channel Divinity update:", verifyError);
+          }
+        }
+        return result2;
+      } catch (error) {
+        console.error("[DiceCloud Sync] Failed to update Channel Divinity:", error);
+        throw error;
+      }
+    }
+    /**
+     * Update any generic resource by name
+     * @param {string} resourceName - Name of the resource (Ki Points, Sorcery Points, etc.)
+     * @param {number} value - New value
+     */
+    async updateResource(resourceName, value) {
+      if (!this.enabled) {
+        console.warn("[DiceCloud Sync] Sync not enabled");
+        return;
+      }
+      try {
+        const propertyId = this.findPropertyId(resourceName);
+        if (!propertyId) {
+          console.warn(`[DiceCloud Sync] \u274C Resource "${resourceName}" not found in property cache`);
+          console.warn(`[DiceCloud Sync] Available cached properties:`, Array.from(this.propertyCache.keys()).sort());
+          const similarNames = Array.from(this.propertyCache.keys()).filter((name) => name.toLowerCase().includes(resourceName.toLowerCase()) || resourceName.toLowerCase().includes(name.toLowerCase())).slice(0, 5);
+          if (similarNames.length > 0) {
+            console.warn(`[DiceCloud Sync] \u{1F4A1} Did you mean one of these? ${similarNames.join(", ")}`);
+          }
+          return;
+        }
+        console.log(`[DiceCloud Sync] Updating ${resourceName} to ${value}`);
+        const result2 = await this.queueRequest(
+          () => this.ddp.call("creatureProperties.update", {
+            _id: propertyId,
+            path: ["value"],
+            value
+          }),
+          `Update ${resourceName} to ${value}`
+        );
+        console.log(`[DiceCloud Sync] \u23F3 ${resourceName} update request sent:`, result2);
+        return result2;
+      } catch (error) {
+        console.error(`[DiceCloud Sync] \u274C Failed to update ${resourceName}:`, error);
+        throw error;
+      }
+    }
+    /**
+     * Update Temporary Hit Points
+     * @param {number} tempHP - Temporary HP value
+     */
+    async updateTemporaryHP(tempHP) {
+      return this.updateResource("Temporary Hit Points", tempHP);
+    }
+    /**
+     * Update Death Saves
+     * @param {number} succeeded - Number of succeeded death saves
+     * @param {number} failed - Number of failed death saves
+     */
+    async updateDeathSaves(succeeded, failed) {
+      const results = [];
+      if (succeeded !== void 0) {
+        results.push(await this.updateResource("Succeeded Saves", succeeded));
+      }
+      if (failed !== void 0) {
+        results.push(await this.updateResource("Failed Saves", failed));
+      }
+      return results;
+    }
+    /**
+     * Update Hit Dice remaining
+     * @param {string} dieType - Die type ('d6', 'd8', 'd10', 'd12')
+     * @param {number} remaining - Number of hit dice remaining
+     */
+    async updateHitDice(dieType, remaining) {
+      const resourceName = `${dieType} Hit Dice`;
+      return this.updateResource(resourceName, remaining);
+    }
+    /**
+     * Update Inspiration/Heroic Inspiration
+     * @param {number} value - Inspiration value (typically 0 or 1)
+     */
+    async updateInspiration(value) {
+      return this.updateResource("Heroic Inspiration", value);
+    }
+    /**
+     * Update toggle state (conditions, active features, etc.)
+     * @param {string} toggleName - Name of the toggle
+     * @param {boolean} enabled - Whether the toggle is enabled
+     */
+    async updateToggle(toggleName, enabled) {
+      if (!this.enabled) {
+        console.warn("[DiceCloud Sync] Sync not enabled");
+        return;
+      }
+      try {
+        const propertyId = this.findPropertyId(toggleName);
+        if (!propertyId) {
+          console.warn(`[DiceCloud Sync] Toggle "${toggleName}" not found`);
+          return;
+        }
+        console.log(`[DiceCloud Sync] Setting toggle ${toggleName} to ${enabled ? "enabled" : "disabled"}`);
+        const result2 = await this.queueRequest(
+          () => this.ddp.call("creatureProperties.update", {
+            _id: propertyId,
+            path: ["enabled"],
+            value: enabled
+          }),
+          `Update toggle ${toggleName} to ${enabled ? "enabled" : "disabled"}`
+        );
+        console.log(`[DiceCloud Sync] \u23F3 Toggle ${toggleName} update request sent:`, result2);
+        return result2;
+      } catch (error) {
+        console.error(`[DiceCloud Sync] Failed to update toggle ${toggleName}:`, error);
+        throw error;
+      }
+    }
+    /**
+     * Helper to get ordinal suffix (1st, 2nd, 3rd, etc.)
+     */
+    getOrdinalSuffix(num) {
+      const j = num % 10;
+      const k = num % 100;
+      if (j === 1 && k !== 11)
+        return "st";
+      if (j === 2 && k !== 12)
+        return "nd";
+      if (j === 3 && k !== 13)
+        return "rd";
+      return "th";
+    }
+    findPropertyId(attributeName) {
+      const propertyId = this.propertyCache.get(attributeName);
+      if (propertyId) {
+        console.log(`[DiceCloud Sync] \u2705 Found property ID for "${attributeName}": ${propertyId}`);
+        return propertyId;
+      }
+      for (const [canonicalName, variants] of Object.entries(this.propertyVariants)) {
+        if (variants.includes(attributeName) || canonicalName === attributeName) {
+          const canonicalId = this.propertyCache.get(canonicalName);
+          if (canonicalId) {
+            console.log(`[DiceCloud Sync] \u{1F50D} Found "${attributeName}" via canonical name "${canonicalName}": ${canonicalId}`);
+            this.propertyCache.set(attributeName, canonicalId);
+            return canonicalId;
+          }
+          for (const variant of variants) {
+            const variantId = this.propertyCache.get(variant);
+            if (variantId) {
+              console.log(`[DiceCloud Sync] \u{1F50D} Found "${attributeName}" via variant "${variant}": ${variantId}`);
+              this.propertyCache.set(attributeName, variantId);
+              return variantId;
+            }
+          }
+        }
+      }
+      if (attributeName === "Hit Points" || attributeName === "hitPoints" || attributeName === "hp") {
+        console.log("[DiceCloud Sync] Looking for Hit Points alternatives...");
+        const hpRelatedProps = Array.from(this.propertyCache.keys()).filter(
+          (name) => name.toLowerCase().includes("hit points") || name.toLowerCase().includes("hp") || name.toLowerCase().includes("health")
+        );
+        console.log("[DiceCloud Sync] HP-related properties found:", hpRelatedProps);
+        const classSpecificHP = hpRelatedProps.find((name) => name !== "Hit Points" && name.includes("Hit Points"));
+        if (classSpecificHP) {
+          const classSpecificId = this.propertyCache.get(classSpecificHP);
+          console.log(`[DiceCloud Sync] Using class-specific HP: ${classSpecificHP} -> ${classSpecificId}`);
+          return classSpecificId;
+        }
+      }
+      if (attributeName === "Channel Divinity" || attributeName === "channelDivinity" || attributeName === "channelDivinityCleric" || attributeName === "channelDivinityPaladin") {
+        console.log("[DiceCloud Sync] Looking for Channel Divinity alternatives...");
+        const cdRelatedProps = Array.from(this.propertyCache.keys()).filter(
+          (name) => name.toLowerCase().includes("channel divinity") || name.toLowerCase().includes("channeldivinity")
+        );
+        console.log("[DiceCloud Sync] Channel Divinity-related properties found:", cdRelatedProps);
+        const classSpecificCD = cdRelatedProps.find(
+          (name) => name !== "Channel Divinity" && (name.includes("Channel Divinity") || name.includes("channelDivinity"))
+        );
+        if (classSpecificCD) {
+          const classSpecificId = this.propertyCache.get(classSpecificCD);
+          console.log(`[DiceCloud Sync] Using class-specific Channel Divinity: ${classSpecificCD} -> ${classSpecificId}`);
+          return classSpecificId;
+        }
+        if (cdRelatedProps.length > 0) {
+          const anyCD = cdRelatedProps[0];
+          const anyCDId = this.propertyCache.get(anyCD);
+          console.log(`[DiceCloud Sync] Using Channel Divinity variant: ${anyCD} -> ${anyCDId}`);
+          return anyCDId;
+        }
+      }
+      console.warn(`[DiceCloud Sync] \u274C Property ID not found for: "${attributeName}"`);
+      console.warn(`[DiceCloud Sync] Available properties (showing first 20):`, Array.from(this.propertyCache.keys()).slice(0, 20));
+      const potentialMatches = Array.from(this.propertyCache.keys()).filter(
+        (name) => name.toLowerCase().includes(attributeName.toLowerCase()) || attributeName.toLowerCase().includes(name.toLowerCase())
+      );
+      if (potentialMatches.length > 0) {
+        console.warn(`[DiceCloud Sync] \u{1F4A1} Potential matches:`, potentialMatches);
+      }
+      return null;
+    }
+    setupRoll20EventListeners() {
+      console.log("[DiceCloud Sync] Setting up Roll20 event listeners...");
+      window.addEventListener("message", (event) => {
+        if (event.data.type === "characterDataUpdate") {
+          console.log("[SYNC DEBUG] Received characterDataUpdate message");
+          console.log("[SYNC DEBUG] Full event.data:", event.data);
+          console.log("[SYNC DEBUG] event.data.characterData:", event.data.characterData);
+          console.log("[SYNC DEBUG] channelDivinity in message:", event.data.characterData?.channelDivinity);
+          console.log("[SYNC DEBUG] resources in message:", event.data.characterData?.resources);
+          this.handleCharacterDataUpdate(event.data.characterData);
+        }
+      });
+      window.addEventListener("message", (event) => {
+        if (event.data.type === "actionUsageUpdate") {
+          this.handleActionUsageUpdate(event.data.actionName, event.data.usesUsed);
+        }
+      });
+      window.addEventListener("message", (event) => {
+        if (event.data.type === "attributeUpdate") {
+          this.handleAttributeUpdate(event.data.attributeName, event.data.value);
+        }
+      });
+      console.log("[DiceCloud Sync] Roll20 event listeners set up");
+    }
+    /**
+     * Handle character data updates from Roll20
+     * @param {Object} characterData - Updated character data
+     */
+    async handleCharacterDataUpdate(characterData) {
+      if (!this.enabled) {
+        console.warn("[DiceCloud Sync] Sync not enabled, ignoring update");
+        return;
+      }
+      console.log("[DiceCloud Sync] ========== HANDLING CHARACTER DATA UPDATE ==========");
+      console.log("[DiceCloud Sync] Character:", characterData.name);
+      console.log("[DiceCloud Sync] Received data keys:", Object.keys(characterData));
+      console.log("[DiceCloud Sync] Resources:", characterData.resources);
+      console.log("[DiceCloud Sync] Channel Divinity:", characterData.channelDivinity);
+      console.log("[DiceCloud Sync] Death Saves:", characterData.deathSaves);
+      console.log("[DiceCloud Sync] Inspiration:", characterData.inspiration);
+      console.log("[DiceCloud Sync] Actions:", characterData.actions);
+      console.log("[DiceCloud Sync] Property Cache size:", this.propertyCache.size);
+      console.log("[DiceCloud Sync] Property Cache keys:", Array.from(this.propertyCache.keys()));
+      console.log("[DiceCloud Sync] ========================================");
+      if (this.previousValues.size === 0) {
+        console.log("[DiceCloud Sync] \u{1F527} previousValues is empty, initializing from first update (no sync)");
+        await this.initializePreviousValues(characterData);
+        return;
+      }
+      const hasChanged = (key, newValue) => {
+        const oldValue = this.previousValues.get(key);
+        if (oldValue === void 0) {
+          console.log(`[DiceCloud Sync] \u{1F4E5} Initializing ${key}: ${newValue} (no sync)`);
+          this.previousValues.set(key, newValue);
+          return false;
+        }
+        const changed = oldValue !== newValue;
+        if (changed) {
+          console.log(`[DiceCloud Sync] \u270F\uFE0F Value changed for ${key}: ${oldValue} -> ${newValue} (will sync)`);
+          this.previousValues.set(key, newValue);
+        }
+        return changed;
+      };
+      if (characterData.hp !== void 0 && hasChanged("Hit Points", characterData.hp)) {
+        await this.updateAttributeValue("Hit Points", characterData.hp);
+      }
+      if (characterData.tempHp !== void 0 && hasChanged("Temporary Hit Points", characterData.tempHp)) {
+        await this.updateAttributeValue("Temporary Hit Points", characterData.tempHp);
+      }
+      if (characterData.maxHp !== void 0 && hasChanged("Max Hit Points", characterData.maxHp)) {
+        await this.updateAttributeValue("Max Hit Points", characterData.maxHp);
+      }
+      if (characterData.spellSlots) {
+        for (let level = 1; level <= 9; level++) {
+          const currentKey = `level${level}SpellSlots`;
+          const maxKey = `level${level}SpellSlotsMax`;
+          if (characterData.spellSlots[currentKey] !== void 0 && characterData.spellSlots[maxKey] !== void 0) {
+            if (characterData.spellSlots[maxKey] > 0) {
+              const cacheKey = `spellSlot${level}`;
+              const currentValue = characterData.spellSlots[currentKey];
+              const previousValue = this.previousValues.get(cacheKey);
+              console.log(`[SYNC DEBUG] Spell Slot Level ${level} - previous: ${previousValue}, current: ${currentValue}`);
+              if (hasChanged(cacheKey, currentValue)) {
+                console.log(`[DiceCloud Sync] \u2705 Syncing spell slot level ${level}: ${currentValue}/${characterData.spellSlots[maxKey]}`);
+                await this.updateSpellSlot(level, currentValue);
+              } else {
+                console.log(`[SYNC DEBUG] \u23ED\uFE0F Spell slot level ${level} unchanged (${currentValue}), skipping sync`);
+              }
+            }
+          }
+        }
+      }
+      console.log("[SYNC DEBUG] characterData.channelDivinity:", characterData.channelDivinity);
+      console.log("[SYNC DEBUG] characterData.resources:", characterData.resources);
+      if (characterData.channelDivinity && characterData.channelDivinity.current !== void 0) {
+        const currentValue = characterData.channelDivinity.current;
+        const previousValue = this.previousValues.get("Channel Divinity");
+        console.log(`[SYNC DEBUG] Channel Divinity - previous: ${previousValue}, current: ${currentValue}`);
+        if (hasChanged("Channel Divinity", currentValue)) {
+          console.log(`[DiceCloud Sync] \u2705 Syncing Channel Divinity: ${currentValue}/${characterData.channelDivinity.max}`);
+          await this.updateChannelDivinity(currentValue);
+        } else {
+          console.log(`[SYNC DEBUG] \u23ED\uFE0F Channel Divinity unchanged (${currentValue}), skipping sync`);
+        }
+      } else {
+        console.log("[SYNC DEBUG] Channel Divinity check failed - object is null or current is undefined");
+      }
+      console.log("[SYNC DEBUG] Checking resources for sync...");
+      if (characterData.resources && Array.isArray(characterData.resources)) {
+        console.log(`[SYNC DEBUG] Found ${characterData.resources.length} resources in characterData`);
+        for (const resource of characterData.resources) {
+          console.log(`[SYNC DEBUG] Resource: ${resource.name} - current: ${resource.current}, max: ${resource.max}`);
+          if (resource.name && resource.current !== void 0) {
+            const propertyId = this.findPropertyId(resource.name);
+            console.log(`[SYNC DEBUG] Property ID for ${resource.name}: ${propertyId || "NOT FOUND"}`);
+            if (hasChanged(resource.name, resource.current)) {
+              console.log(`[DiceCloud Sync] \u2705 Syncing resource ${resource.name}: ${resource.current}/${resource.max}`);
+              await this.updateResource(resource.name, resource.current);
+            } else {
+              console.log(`[SYNC DEBUG] \u23ED\uFE0F Resource ${resource.name} unchanged, skipping sync`);
+            }
+          } else {
+            console.log(`[SYNC DEBUG] \u274C Resource ${resource.name} missing name or current value`);
+          }
+        }
+      } else {
+        console.log("[SYNC DEBUG] No resources array in characterData");
+      }
+      console.log("[SYNC DEBUG] Checking death saves for sync...");
+      if (characterData.deathSaves) {
+        console.log(`[SYNC DEBUG] Death saves object:`, characterData.deathSaves);
+        if (characterData.deathSaves.successes !== void 0) {
+          const propertyId = this.findPropertyId("Succeeded Saves");
+          console.log(`[SYNC DEBUG] Property ID for Succeeded Saves: ${propertyId || "NOT FOUND"}`);
+          if (hasChanged("Succeeded Saves", characterData.deathSaves.successes)) {
+            console.log(`[DiceCloud Sync] \u2705 Syncing Succeeded Saves: ${characterData.deathSaves.successes}`);
+            await this.updateDeathSaves(characterData.deathSaves.successes, void 0);
+          } else {
+            console.log(`[SYNC DEBUG] \u23ED\uFE0F Succeeded Saves unchanged, skipping sync`);
+          }
+        }
+        if (characterData.deathSaves.failures !== void 0) {
+          const propertyId = this.findPropertyId("Failed Saves");
+          console.log(`[SYNC DEBUG] Property ID for Failed Saves: ${propertyId || "NOT FOUND"}`);
+          if (hasChanged("Failed Saves", characterData.deathSaves.failures)) {
+            console.log(`[DiceCloud Sync] \u2705 Syncing Failed Saves: ${characterData.deathSaves.failures}`);
+            await this.updateDeathSaves(void 0, characterData.deathSaves.failures);
+          } else {
+            console.log(`[SYNC DEBUG] \u23ED\uFE0F Failed Saves unchanged, skipping sync`);
+          }
+        }
+      } else {
+        console.log("[SYNC DEBUG] No deathSaves object in characterData");
+      }
+      console.log("[SYNC DEBUG] Checking inspiration for sync...");
+      if (characterData.inspiration !== void 0) {
+        const propertyId = this.findPropertyId("Inspiration");
+        console.log(`[SYNC DEBUG] Inspiration value: ${characterData.inspiration}, Property ID: ${propertyId || "NOT FOUND"}`);
+        if (hasChanged("Inspiration", characterData.inspiration)) {
+          console.log(`[DiceCloud Sync] \u2705 Syncing Inspiration: ${characterData.inspiration}`);
+          await this.updateInspiration(characterData.inspiration);
+        } else {
+          console.log(`[SYNC DEBUG] \u23ED\uFE0F Inspiration unchanged, skipping sync`);
+        }
+      } else {
+        console.log("[SYNC DEBUG] No inspiration value in characterData");
+      }
+      console.log("[SYNC DEBUG] Checking actions for sync...");
+      if (characterData.actions && Array.isArray(characterData.actions)) {
+        console.log(`[SYNC DEBUG] Found ${characterData.actions.length} actions in characterData`);
+        for (const action of characterData.actions) {
+          console.log(`[SYNC DEBUG] Action: ${action.name} - uses: ${action.uses}, usesUsed: ${action.usesUsed}, _id: ${action._id}`);
+          if (action.name && action.uses && action.usesUsed !== void 0 && action._id) {
+            const cacheKey = `action_${action.name}`;
+            if (hasChanged(cacheKey, action.usesUsed)) {
+              console.log(`[DiceCloud Sync] \u2705 Syncing action ${action.name}: ${action.usesUsed} uses used`);
+              await this.setActionUses(action._id, action.usesUsed);
+            } else {
+              console.log(`[SYNC DEBUG] \u23ED\uFE0F Action ${action.name} unchanged, skipping sync`);
+            }
+          } else {
+            console.log(`[SYNC DEBUG] \u274C Action ${action.name} missing required fields (uses: ${action.uses}, usesUsed: ${action.usesUsed}, _id: ${action._id})`);
+          }
+        }
+      } else {
+        console.log("[SYNC DEBUG] No actions array in characterData");
+      }
+    }
+    /**
+     * Handle action usage updates from Roll20
+     * @param {string} actionName - Name of the action
+     * @param {number} usesUsed - New uses used value
+     */
+    async handleActionUsageUpdate(actionName, usesUsed) {
+      if (!this.enabled) {
+        console.warn("[DiceCloud Sync] Sync not enabled, ignoring action update");
+        return;
+      }
+      console.log(`[DiceCloud Sync] Handling action usage update: ${actionName} -> ${usesUsed}`);
+      await this.setActionUses(actionName, usesUsed);
+    }
+    /**
+     * Handle attribute updates from Roll20
+     * @param {string} attributeName - Name of the attribute
+     * @param {number} value - New value
+     */
+    async handleAttributeUpdate(attributeName, value) {
+      if (!this.enabled) {
+        console.warn("[DiceCloud Sync] Sync not enabled, ignoring attribute update");
+        return;
+      }
+      console.log(`[DiceCloud Sync] Handling attribute update: ${attributeName} -> ${value}`);
+      await this.updateAttributeValue(attributeName, value);
+    }
+    /**
+     * Check if sync is enabled
+     * @returns {boolean} True if sync is enabled
+     */
+    isEnabled() {
+      return this.enabled;
+    }
+    /**
+     * Disable sync
+     */
+    disable() {
+      this.enabled = false;
+      console.log("[DiceCloud Sync] Sync disabled");
+    }
+    /**
+     * Enable sync
+     */
+    enable() {
+      if (this.characterId && this.ddp.isConnected()) {
+        this.enabled = true;
+        console.log("[DiceCloud Sync] Sync enabled");
+      } else {
+        console.warn("[DiceCloud Sync] Cannot enable sync - not initialized");
+      }
+    }
+  };
+  var dicecloud_sync_default = DiceCloudSync;
+  if (typeof window !== "undefined") {
+    window.initializeDiceCloudSync = async function() {
+      console.log("[DiceCloud Sync] Global initialization called");
+      console.log("[DiceCloud Sync] Current URL:", window.location.href);
+      try {
+        const tokenResult = await browserAPI.storage.local.get(["diceCloudToken"]);
+        const { diceCloudToken } = tokenResult;
+        if (window.diceCloudSync && window.diceCloudSync.ddp && window.diceCloudSync.ddp.isConnected()) {
+          console.log("[DiceCloud Sync] DDP already connected, checking authentication...");
+          if (diceCloudToken) {
+            console.log("[DiceCloud Sync] Authenticating existing DDP connection...");
+            try {
+              const result2 = await window.diceCloudSync.ddp.call("login", {
+                resume: diceCloudToken
+              });
+              console.log("[DiceCloud Sync] DDP authentication successful:", result2);
+              const charResult = await browserAPI.storage.local.get(["activeCharacterId", "characterProfiles"]);
+              const { activeCharacterId, characterProfiles } = charResult;
+              if (activeCharacterId && characterProfiles && characterProfiles[activeCharacterId]) {
+                const profileData = characterProfiles[activeCharacterId];
+                if (profileData && profileData.id) {
+                  console.log("[DiceCloud Sync] Re-initializing with character:", profileData.id);
+                  await window.diceCloudSync.initialize(profileData.id);
+                }
+              }
+              return;
+            } catch (error) {
+              console.error("[DiceCloud Sync] Authentication failed:", error);
+            }
+          } else {
+            console.log("[DiceCloud Sync] Already initialized, skipping");
+            return;
+          }
+        }
+        console.log("[DiceCloud Sync] Creating new DDP client...");
+        const ddpClient = new DDPClient("wss://dicecloud.com/websocket");
+        if (diceCloudToken) {
+          console.log("[DiceCloud Sync] Setting up DDP authentication...");
+          ddpClient.onConnected = async () => {
+            console.log("[DiceCloud Sync] DDP connected, authenticating...");
+            try {
+              const result2 = await ddpClient.call("login", {
+                resume: diceCloudToken
+              });
+              console.log("[DiceCloud Sync] DDP authentication successful:", result2);
+            } catch (error) {
+              console.error("[DiceCloud Sync] DDP authentication failed:", error);
+            }
+          };
+          console.log("[DiceCloud Sync] About to connect to DDP...");
+          try {
+            await ddpClient.connect();
+            console.log("[DiceCloud Sync] DDP connect() completed");
+          } catch (error) {
+            console.error("[DiceCloud Sync] DDP connect() failed:", error);
+          }
+        } else {
+          console.warn("[DiceCloud Sync] No DiceCloud token found for DDP authentication");
+          console.log("[DiceCloud Sync] About to connect to DDP without token...");
+          try {
+            await ddpClient.connect();
+            console.log("[DiceCloud Sync] DDP connect() completed without token");
+          } catch (error) {
+            console.error("[DiceCloud Sync] DDP connect() failed without token:", error);
+          }
+        }
+        const sync = new DiceCloudSync(ddpClient);
+        window.diceCloudSync = sync;
+        console.log("[DiceCloud Sync] Sync instance created, checking for active character...");
+        let retryCount = 0;
+        const MAX_RETRIES = 3;
+        const tryInitialize = async () => {
+          try {
+            console.log("[DiceCloud Sync] Trying to initialize... (attempt", retryCount + 1, "/", MAX_RETRIES, ")");
+            if (typeof browserAPI !== "undefined" && browserAPI && browserAPI.storage && browserAPI.storage.local) {
+              console.log("[DiceCloud Sync] Browser API available, checking storage...");
+              const result2 = await browserAPI.storage.local.get(["activeCharacterId", "characterProfiles", "carmaclouds_characters"]);
+              const { activeCharacterId, characterProfiles, carmaclouds_characters } = result2;
+              console.log("[DiceCloud Sync] Storage result:", { activeCharacterId, characterProfilesKeys: characterProfiles ? Object.keys(characterProfiles) : null, carmacloudChars: carmaclouds_characters ? carmaclouds_characters.length : 0 });
+              if (activeCharacterId && characterProfiles && characterProfiles[activeCharacterId]) {
+                const characterData = characterProfiles[activeCharacterId];
+                console.log("[DiceCloud Sync] Character data for key:", activeCharacterId, characterData);
+                if (characterProfiles && typeof characterProfiles === "object") {
+                  console.log("[DiceCloud Sync] Checking characterProfiles object:", Object.keys(characterProfiles));
+                  const profileData = characterProfiles[activeCharacterId] || characterProfiles.default || characterProfiles["slot-1"];
+                  if (profileData && profileData.id) {
+                    console.log("[DiceCloud Sync] Found character data in characterProfiles:", profileData);
+                    console.log("[DiceCloud Sync] Found DiceCloud character ID:", profileData.id);
+                    await sync.initialize(profileData.id);
+                    sync.setupRoll20EventListeners();
+                    console.log("[DiceCloud Sync] Event listeners set up");
+                    console.log("[DiceCloud Sync] Global initialization complete");
+                    return;
+                  }
+                }
+              } else if (activeCharacterId && carmaclouds_characters && carmaclouds_characters.length > 0) {
+                const character = carmaclouds_characters.find((char) => char.id === activeCharacterId);
+                if (character && character.id) {
+                  console.log("[DiceCloud Sync] Found character in carmaclouds format:", character.name);
+                  console.log("[DiceCloud Sync] DiceCloud character ID:", character.id);
+                  await sync.initialize(character.id);
+                  sync.setupRoll20EventListeners();
+                  console.log("[DiceCloud Sync] Event listeners set up");
+                  console.log("[DiceCloud Sync] Global initialization complete");
+                  return;
+                } else {
+                  console.warn("[DiceCloud Sync] Character not found in carmaclouds_characters array");
+                }
+              } else {
+                console.warn("[DiceCloud Sync] No active character found in storage");
+                console.log("[DiceCloud Sync] All storage keys:", Object.keys(result2));
+                console.log("[DiceCloud Sync] All storage data:", result2);
+              }
+            } else {
+              console.warn("[DiceCloud Sync] Browser API not available");
+            }
+            retryCount++;
+            if (retryCount < MAX_RETRIES) {
+              console.log("[DiceCloud Sync] Retrying in 2 seconds...");
+              setTimeout(tryInitialize, 2e3);
+            } else {
+              console.log("[DiceCloud Sync] Max retries reached, stopping initialization attempts");
+              console.log("[DiceCloud Sync] Sync will remain available for manual initialization via message handlers");
+            }
+          } catch (error) {
+            if (error.message && error.message.includes("Extension context invalidated")) {
+              console.warn("[DiceCloud Sync] Extension context invalidated - service worker terminated.");
+              console.warn("[DiceCloud Sync] This happens when Chrome terminates the background service worker.");
+              console.warn("[DiceCloud Sync] The extension will reinitialize when the page is refreshed or the extension is reloaded.");
+              return;
+            }
+            console.error("[DiceCloud Sync] Error during initialization:", error);
+            console.log("[DiceCloud Sync] Retrying in 5 seconds...");
+            setTimeout(tryInitialize, 5e3);
+          }
+        };
+        tryInitialize();
+      } catch (error) {
+        console.error("[DiceCloud Sync] Failed to create sync instance:", error);
+        console.error("[DiceCloud Sync] Error details:", error.stack);
+      }
+    };
+    if (window.location.hostname === "app.roll20.net") {
+      console.log("[DiceCloud Sync] Detected Roll20, initializing sync...");
+      setTimeout(() => {
+        window.initializeDiceCloudSync();
+      }, 1e3);
+      if (typeof browserAPI !== "undefined" && browserAPI && browserAPI.storage && browserAPI.storage.onChanged) {
+        browserAPI.storage.onChanged.addListener((changes, areaName) => {
+          if (areaName === "local" && changes.diceCloudToken) {
+            const newToken = changes.diceCloudToken.newValue;
+            const oldToken = changes.diceCloudToken.oldValue;
+            if (newToken && newToken !== oldToken) {
+              console.log("[DiceCloud Sync] Token detected, re-initializing with authentication...");
+              window.initializeDiceCloudSync();
+            }
+          }
+        });
+        console.log("[DiceCloud Sync] Storage listener registered for token changes");
+      }
+    }
+    ;
+  }
+
+  // src/lib/meteor-ddp-client.js
+  var MeteorDDPClient = class {
+    constructor(url) {
+      this.url = url;
+      this.ws = null;
+      this.sessionId = null;
+      this.connected = false;
+      this.nextId = 1;
+      this.pendingMethods = /* @__PURE__ */ new Map();
+      this.subscriptions = /* @__PURE__ */ new Map();
+      this.heartbeatInterval = null;
+      this.reconnectAttempts = 0;
+      this.maxReconnectAttempts = 5;
+      this.onConnected = null;
+      this.onDisconnected = null;
+      this.onError = null;
+    }
+    /**
+     * Connect to DiceCloud Meteor server
+     */
+    async connect() {
+      return new Promise((resolve, reject) => {
+        const wsUrl = this.url.replace("https://", "wss://").replace("http://", "ws://");
+        console.log("[DDP] Connecting to:", wsUrl);
+        this.ws = new WebSocket(wsUrl);
+        this.ws.onopen = () => {
+          console.log("[DDP] WebSocket opened");
+          this.send({
+            msg: "connect",
+            version: "1",
+            support: ["1", "pre2", "pre1"]
+          });
+        };
+        this.ws.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            this.handleMessage(message);
+            if (message.msg === "connected" && !this.connected) {
+              this.connected = true;
+              this.sessionId = message.session;
+              this.reconnectAttempts = 0;
+              this.startHeartbeat();
+              console.log("[DDP] Connected with session:", this.sessionId);
+              if (this.onConnected)
+                this.onConnected();
+              resolve(this.sessionId);
+            }
+          } catch (error) {
+            console.error("[DDP] Failed to parse message:", error);
+            if (this.onError)
+              this.onError(error);
+          }
+        };
+        this.ws.onerror = (error) => {
+          console.error("[DDP] WebSocket error:", error);
+          if (this.onError)
+            this.onError(error);
+          reject(error);
+        };
+        this.ws.onclose = () => {
+          console.log("[DDP] WebSocket closed");
+          this.connected = false;
+          this.stopHeartbeat();
+          if (this.onDisconnected)
+            this.onDisconnected();
+          if (this.reconnectAttempts < this.maxReconnectAttempts) {
+            this.reconnectAttempts++;
+            const delay = Math.min(1e3 * Math.pow(2, this.reconnectAttempts), 3e4);
+            console.log(`[DDP] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
+            setTimeout(() => this.connect(), delay);
+          }
+        };
+      });
+    }
+    /**
+     * Disconnect from server
+     */
+    disconnect() {
+      this.stopHeartbeat();
+      if (this.ws) {
+        this.ws.close();
+        this.ws = null;
+      }
+      this.connected = false;
+      this.sessionId = null;
+    }
+    /**
+     * Send a message to the server
+     */
+    send(message) {
+      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+        console.warn("[DDP] Cannot send message - WebSocket not open");
+        return false;
+      }
+      const json = JSON.stringify(message);
+      if (message.msg !== "ping" && message.msg !== "pong") {
+        console.log("[DDP] Sending:", message.msg, message);
+      }
+      this.ws.send(json);
+      return true;
+    }
+    /**
+     * Handle incoming messages from server
+     */
+    handleMessage(message) {
+      if (message.msg !== "ping" && message.msg !== "pong") {
+        console.log("[DDP] Received:", message.msg, message);
+      }
+      switch (message.msg) {
+        case "connected":
+          break;
+        case "failed":
+          console.error("[DDP] Connection failed:", message);
+          break;
+        case "ping":
+          this.send({ msg: "pong", id: message.id });
+          break;
+        case "pong":
+          break;
+        case "result":
+          this.handleMethodResult(message);
+          break;
+        case "updated":
+          console.log("[DDP] Methods updated:", message.methods);
+          break;
+        case "ready":
+          this.handleSubscriptionReady(message);
+          break;
+        case "nosub":
+          this.handleSubscriptionError(message);
+          break;
+        case "added":
+        case "changed":
+        case "removed":
+          break;
+        case "error":
+          console.error("[DDP] Protocol error:", message);
+          break;
+        default:
+          console.warn("[DDP] Unknown message type:", message.msg);
+      }
+    }
+    /**
+     * Handle method call result
+     */
+    handleMethodResult(message) {
+      const { id, error, result: result2 } = message;
+      const pending = this.pendingMethods.get(id);
+      if (!pending) {
+        console.warn("[DDP] Received result for unknown method:", id);
+        return;
+      }
+      this.pendingMethods.delete(id);
+      if (error) {
+        console.error("[DDP] Method error:", error);
+        pending.reject(new Error(error.message || error.reason || "Method call failed"));
+      } else {
+        console.log("[DDP] Method result:", result2);
+        pending.resolve(result2);
+      }
+    }
+    /**
+     * Handle subscription ready
+     */
+    handleSubscriptionReady(message) {
+      const { subs } = message;
+      for (const id of subs) {
+        const sub = this.subscriptions.get(id);
+        if (sub && sub.resolve) {
+          sub.resolve();
+        }
+      }
+    }
+    /**
+     * Handle subscription error
+     */
+    handleSubscriptionError(message) {
+      const { id, error } = message;
+      const sub = this.subscriptions.get(id);
+      if (sub && sub.reject) {
+        sub.reject(new Error(error?.message || "Subscription failed"));
+      }
+      this.subscriptions.delete(id);
+    }
+    /**
+     * Call a Meteor method
+     */
+    async call(methodName, ...params) {
+      if (!this.connected) {
+        throw new Error("Not connected to server");
+      }
+      const id = String(this.nextId++);
+      return new Promise((resolve, reject) => {
+        this.pendingMethods.set(id, { resolve, reject });
+        this.send({
+          msg: "method",
+          method: methodName,
+          params,
+          id
+        });
+        setTimeout(() => {
+          if (this.pendingMethods.has(id)) {
+            this.pendingMethods.delete(id);
+            reject(new Error(`Method call timeout: ${methodName}`));
+          }
+        }, 3e4);
+      });
+    }
+    /**
+     * Subscribe to a publication
+     */
+    async subscribe(name, ...params) {
+      if (!this.connected) {
+        throw new Error("Not connected to server");
+      }
+      const id = String(this.nextId++);
+      return new Promise((resolve, reject) => {
+        this.subscriptions.set(id, { name, params, resolve, reject });
+        this.send({
+          msg: "sub",
+          id,
+          name,
+          params
+        });
+        setTimeout(() => {
+          if (this.subscriptions.has(id)) {
+            const sub = this.subscriptions.get(id);
+            this.subscriptions.delete(id);
+            reject(new Error(`Subscription timeout: ${name}`));
+          }
+        }, 3e4);
+      });
+    }
+    /**
+     * Unsubscribe from a publication
+     */
+    unsubscribe(subscriptionId) {
+      this.send({
+        msg: "unsub",
+        id: subscriptionId
+      });
+      this.subscriptions.delete(subscriptionId);
+    }
+    /**
+     * Login with token (resume token from API)
+     */
+    async loginWithToken(token) {
+      try {
+        const result2 = await this.call("login", {
+          resume: token
+        });
+        console.log("[DDP] Logged in:", result2);
+        return result2;
+      } catch (error) {
+        console.error("[DDP] Login failed:", error);
+        throw error;
+      }
+    }
+    /**
+     * Start heartbeat ping-pong
+     */
+    startHeartbeat() {
+      this.stopHeartbeat();
+      this.heartbeatInterval = setInterval(() => {
+        if (this.connected) {
+          const pingId = String(this.nextId++);
+          this.send({
+            msg: "ping",
+            id: pingId
+          });
+        }
+      }, 25e3);
+    }
+    /**
+     * Stop heartbeat
+     */
+    stopHeartbeat() {
+      if (this.heartbeatInterval) {
+        clearInterval(this.heartbeatInterval);
+        this.heartbeatInterval = null;
+      }
+    }
+    /**
+     * Get connection status
+     */
+    isConnected() {
+      return this.connected && this.ws && this.ws.readyState === WebSocket.OPEN;
+    }
+  };
+  if (typeof window !== "undefined") {
+    window.DDPClient = MeteorDDPClient;
+  }
+  var meteor_ddp_client_default = MeteorDDPClient;
+
   // src/background.js
-  var browserAPI = typeof browser !== "undefined" && browser.runtime ? browser : chrome;
+  var browserAPI2 = typeof browser !== "undefined" && browser.runtime ? browser : chrome;
+  globalThis.browserAPI = browserAPI2;
   console.log("CarmaClouds background service worker initialized");
   var SUPABASE_URL = "https://luiesmfjdcmpywavvfqm.supabase.co";
   var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aWVzbWZqZGNtcHl3YXZ2ZnFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4ODYxNDksImV4cCI6MjA4NTQ2MjE0OX0.oqjHFf2HhCLcanh0HVryoQH7iSV7E9dHHZJdYehxZ0U";
@@ -1476,7 +3444,7 @@
       clearInterval(keepAliveInterval);
     }
     keepAliveInterval = setInterval(() => {
-      if (browserAPI.runtime?.id) {
+      if (browserAPI2.runtime?.id) {
         console.log("\u{1F504} Keep-alive ping");
       } else {
         clearInterval(keepAliveInterval);
@@ -1484,9 +3452,17 @@
     }, 2e4);
   }
   keepAlive();
-  browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  browserAPI2.runtime.onMessage.addListener((message, sender, sendResponse) => {
     keepAlive();
     console.log("\u{1F514} Background received message:", message.type || message.action);
+    if (message.action === "coyotecloudWriteback") {
+      handleCoyotecloudWriteback(message.dicecloudCharacterId, message.values).then(sendResponse).catch((err) => sendResponse({ ok: false, error: String(err && err.message || err) }));
+      return true;
+    }
+    if (message.action === "storeDiceCloudToken") {
+      browserAPI2.storage.local.set({ diceCloudToken: message.token }).then(() => sendResponse({ ok: true })).catch((err) => sendResponse({ ok: false, error: String(err && err.message || err) }));
+      return true;
+    }
     if (message.action === "getCharacterData") {
       console.log("\u{1F4CB} Getting character data for Roll20...");
       handleGetCharacterData(message.characterId).then((result2) => {
@@ -1533,7 +3509,7 @@
     }
     if (message.action === "notifyPopupUpdate") {
       console.log("\u{1F514} Notifying popup sheets of character data update");
-      browserAPI.runtime.sendMessage({
+      browserAPI2.runtime.sendMessage({
         type: "UPDATE_CHARACTER_DATA",
         data: message.data
       }).catch(() => {
@@ -1555,14 +3531,14 @@
     }
     if (message.action === "relayToRoll20") {
       const roll20Patterns = ["*://app.roll20.net/*"];
-      browserAPI.tabs.query({ url: roll20Patterns }).then((tabs) => {
+      browserAPI2.tabs.query({ url: roll20Patterns }).then((tabs) => {
         if (tabs.length === 0) {
           console.warn("\u26A0\uFE0F No Roll20 tabs found to relay message to");
           sendResponse({ success: false, error: "No Roll20 tabs found" });
           return;
         }
         for (const tab of tabs) {
-          browserAPI.tabs.sendMessage(tab.id, message.data).catch((err) => {
+          browserAPI2.tabs.sendMessage(tab.id, message.data).catch((err) => {
             console.warn(`\u26A0\uFE0F Failed to relay to tab ${tab.id}:`, err);
           });
         }
@@ -1609,7 +3585,7 @@
   });
   async function handleGetCharacterData(requestedCharacterId) {
     try {
-      const result2 = await browserAPI.storage.local.get(["carmaclouds_characters", "activeCharacterId"]);
+      const result2 = await browserAPI2.storage.local.get(["carmaclouds_characters", "activeCharacterId"]);
       const characters = result2.carmaclouds_characters || [];
       const activeCharacterId = requestedCharacterId || result2.activeCharacterId;
       let activeCharacter = null;
@@ -1666,7 +3642,7 @@
   async function handleStoreCharacterData(characterData, slotId) {
     try {
       console.log("\u{1F4BE} Storing character to slot:", slotId || "default");
-      const result2 = await browserAPI.storage.local.get("carmaclouds_characters");
+      const result2 = await browserAPI2.storage.local.get("carmaclouds_characters");
       const characters = result2.carmaclouds_characters || [];
       const characterId = characterData.id || characterData.dicecloud_character_id || slotId;
       if (!characterId) {
@@ -1697,7 +3673,7 @@
           // Ensure ID is always set
         });
       }
-      await browserAPI.storage.local.set({ carmaclouds_characters: characters });
+      await browserAPI2.storage.local.set({ carmaclouds_characters: characters });
       console.log("\u2705 Character data stored successfully to carmaclouds_characters");
       console.log("   Total characters in array:", characters.length);
       return { success: true };
@@ -1708,7 +3684,7 @@
   }
   async function handleGetAllCharacterProfiles(supabaseUserId) {
     try {
-      const result2 = await browserAPI.storage.local.get("carmaclouds_characters");
+      const result2 = await browserAPI2.storage.local.get("carmaclouds_characters");
       let characters = result2.carmaclouds_characters || [];
       console.log("\u{1F50D} getAllCharacterProfiles - Total characters in storage:", characters.length);
       if (supabaseUserId) {
@@ -1759,7 +3735,7 @@
               }
             });
             console.log("   Merged: now have", characters.length, "total characters");
-            await browserAPI.storage.local.set({ carmaclouds_characters: characters });
+            await browserAPI2.storage.local.set({ carmaclouds_characters: characters });
             console.log("   \u2705 Saved merged characters to local storage");
           }
         } catch (dbError) {
@@ -1813,7 +3789,7 @@
   }
   async function handleSetActiveCharacter(characterId) {
     try {
-      const result2 = await browserAPI.storage.local.get("carmaclouds_characters");
+      const result2 = await browserAPI2.storage.local.get("carmaclouds_characters");
       const characters = result2.carmaclouds_characters || [];
       const character = characters.find((char) => char.id === characterId);
       if (!character) {
@@ -1822,7 +3798,7 @@
           error: "Character not found"
         };
       }
-      await browserAPI.storage.local.set({ activeCharacterId: characterId });
+      await browserAPI2.storage.local.set({ activeCharacterId: characterId });
       return {
         success: true,
         characterId
@@ -1837,14 +3813,14 @@
   }
   async function handleRequestPreparedData() {
     try {
-      const tabs = await browserAPI.tabs.query({ url: "*://app.roll20.net/*" });
+      const tabs = await browserAPI2.tabs.query({ url: "*://app.roll20.net/*" });
       if (tabs.length === 0) {
         return {
           success: false,
           error: "No Roll20 tab found. Please open Roll20 first."
         };
       }
-      const response = await browserAPI.tabs.sendMessage(tabs[0].id, {
+      const response = await browserAPI2.tabs.sendMessage(tabs[0].id, {
         type: "REQUEST_PREPARED_DATA"
       });
       if (response && response.success) {
@@ -1879,7 +3855,7 @@
       console.log("\u{1F4BE} Step 1: Starting sync for character:", characterData.name);
       const storageKey = `carmaclouds_character_${characterData.name || "unknown"}`;
       console.log("\u{1F4BE} Step 2: Saving individual character with key:", storageKey);
-      await browserAPI.storage.local.set({
+      await browserAPI2.storage.local.set({
         [storageKey]: {
           ...characterData,
           syncedAt: (/* @__PURE__ */ new Date()).toISOString(),
@@ -1889,7 +3865,7 @@
       });
       console.log("\u2705 Step 2: Individual character saved");
       console.log("\u{1F4BE} Step 3: Getting characters list...");
-      const result2 = await browserAPI.storage.local.get("carmaclouds_characters");
+      const result2 = await browserAPI2.storage.local.get("carmaclouds_characters");
       const characters = result2.carmaclouds_characters || [];
       console.log("\u2705 Step 3: Found", characters.length, "existing characters");
       console.log("\u{1F4BE} Step 4: Updating characters list...");
@@ -1911,17 +3887,17 @@
         });
       }
       console.log("\u{1F4BE} Step 5: Saving updated characters list...");
-      await browserAPI.storage.local.set({ carmaclouds_characters: characters });
+      await browserAPI2.storage.local.set({ carmaclouds_characters: characters });
       console.log("\u2705 Step 5: Characters list saved");
       if (characterData.id) {
         console.log("\u{1F4BE} Step 6: Setting as active character:", characterData.id);
-        await browserAPI.storage.local.set({ activeCharacterId: characterData.id });
+        await browserAPI2.storage.local.set({ activeCharacterId: characterData.id });
         console.log("\u2705 Step 6: Active character ID set");
       }
       console.log("\u{1F389} Character successfully synced to CarmaClouds storage");
       try {
         console.log("\u{1F4BE} Step 7: Syncing to Supabase database...");
-        const authResult = await browserAPI.storage.local.get(["diceCloudUserId", "username"]);
+        const authResult = await browserAPI2.storage.local.get(["diceCloudUserId", "username"]);
         let parsed = null, owlParsed = null;
         try {
           parsed = parseForFoundCloud(characterData.raw, characterData.id);
@@ -2008,9 +3984,9 @@
         console.error("\u274C Failed to sync to Supabase (non-fatal):", supabaseError);
       }
       try {
-        const tabs = await browserAPI.tabs.query({ active: true, currentWindow: true });
+        const tabs = await browserAPI2.tabs.query({ active: true, currentWindow: true });
         if (tabs.length > 0) {
-          await browserAPI.tabs.sendMessage(tabs[0].id, {
+          await browserAPI2.tabs.sendMessage(tabs[0].id, {
             action: "dataSynced",
             characterName: characterData.name
           });
@@ -2034,7 +4010,7 @@
   }
   async function handleClearAllCloudData() {
     try {
-      const result2 = await browserAPI.storage.local.get(["diceCloudUserId"]);
+      const result2 = await browserAPI2.storage.local.get(["diceCloudUserId"]);
       const userId = result2.diceCloudUserId;
       if (!userId) {
         throw new Error("No DiceCloud user ID found. Please log in first.");
@@ -2075,7 +4051,7 @@
       handleClearAllCloudData
     };
   }
-  browserAPI.runtime.onInstalled.addListener((details) => {
+  browserAPI2.runtime.onInstalled.addListener((details) => {
     console.log("CarmaClouds extension installed/updated:", details.reason);
     if (details.reason === "install") {
       console.log("CarmaClouds: First time installation");
@@ -2083,5 +4059,54 @@
       console.log("CarmaClouds: Extension updated");
     }
   });
+  async function handleCoyotecloudWriteback(characterId, values) {
+    if (!characterId)
+      return { ok: false, error: "Missing DiceCloud character id." };
+    const { diceCloudToken } = await browserAPI2.storage.local.get(["diceCloudToken"]);
+    if (!diceCloudToken)
+      return { ok: false, error: "no-token" };
+    const v = values || {};
+    const applied = [];
+    const failed = [];
+    const ddp = new meteor_ddp_client_default("wss://dicecloud.com/websocket");
+    const tryApply = async (label, fn) => {
+      try {
+        await fn();
+        applied.push(label);
+      } catch (e) {
+        failed.push(label);
+        console.error("[Writeback] failed:", label, e);
+      }
+    };
+    try {
+      await ddp.connect();
+      await ddp.loginWithToken(diceCloudToken);
+      const sync = new dicecloud_sync_default(ddp);
+      await sync.initialize(characterId);
+      if (typeof v.hitPoints === "number") {
+        await tryApply("Hit Points", () => sync.updateAttributeValue("Hit Points", v.hitPoints));
+      }
+      if (typeof v.temporaryHitPoints === "number") {
+        await tryApply("Temp HP", () => sync.updateTemporaryHP(v.temporaryHitPoints));
+      }
+      if (typeof v.deathSuccesses === "number" || typeof v.deathFailures === "number") {
+        await tryApply("Death Saves", () => sync.updateDeathSaves(v.deathSuccesses ?? 0, v.deathFailures ?? 0));
+      }
+      if (typeof v.inspiration === "boolean") {
+        await tryApply("Inspiration", () => sync.updateInspiration(v.inspiration ? 1 : 0));
+      }
+      if (v.spellSlots && typeof v.spellSlots === "object") {
+        for (const [lvl, remaining] of Object.entries(v.spellSlots)) {
+          await tryApply(`Spell slots L${lvl}`, () => sync.updateSpellSlot(Number(lvl), remaining));
+        }
+      }
+      return { ok: failed.length === 0, applied, failed };
+    } finally {
+      try {
+        ddp.disconnect();
+      } catch (_) {
+      }
+    }
+  }
 })();
 //# sourceMappingURL=background.js.map
