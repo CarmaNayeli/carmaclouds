@@ -76,4 +76,18 @@ if ($signExit -ne 0) {
     exit $signExit
 }
 
+# 6. Publish the newest signed .xpi to the website under a stable filename so the
+#    download link never changes between versions.
+$releasesDir = Join-Path $PSScriptRoot "..\..\releases"
+$newest = Get-ChildItem -Path $releasesDir -Filter "*.xpi" -ErrorAction SilentlyContinue |
+    Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if ($newest) {
+    $dest = Join-Path $PSScriptRoot "website\public\carmaclouds-firefox.xpi"
+    # build.js syncs to the repo-root website/, so resolve that path too.
+    $repoWebsite = Join-Path $PSScriptRoot "..\..\website\public\carmaclouds-firefox.xpi"
+    $target = if (Test-Path (Split-Path $repoWebsite)) { $repoWebsite } else { $dest }
+    Copy-Item $newest.FullName $target -Force
+    Write-Host "Published signed xpi to $target" -ForegroundColor Green
+}
+
 Write-Host "Done. Signed .xpi is in the releases/ folder." -ForegroundColor Green

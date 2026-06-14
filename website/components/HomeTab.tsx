@@ -30,7 +30,7 @@ export default function HomeTab({ setActiveTab }: HomeTabProps) {
               Download for Chrome/Edge
             </a>
             <a
-              href="/carmaclouds-firefox.zip"
+              href="/carmaclouds-firefox.xpi"
               download
               className="inline-block bg-[#16a75a] hover:bg-[#1bc76a] text-white font-medium px-6 py-3 rounded-lg transition-colors"
             >
@@ -38,7 +38,7 @@ export default function HomeTab({ setActiveTab }: HomeTabProps) {
             </a>
           </div>
           <p className="text-gray-500 text-sm mt-4">
-            Not on the store yet — see the <strong className="text-gray-300">Installing the Browser Extension</strong> guide below for how to load the ZIP in Chrome or Firefox.
+            Not on the store yet — see the <strong className="text-gray-300">Installing the Browser Extension</strong> guide below for how to load the extension in Chrome or Firefox.
           </p>
         </div>
       </section>
@@ -100,22 +100,22 @@ export default function HomeTab({ setActiveTab }: HomeTabProps) {
             <ol className="space-y-2 text-gray-400 text-sm">
               <li className="flex items-start">
                 <span className="text-[#16a75a] mr-2 font-bold">1.</span>
-                <span>Download the Firefox ZIP file (no need to unzip)</span>
+                <span>Download the Firefox <code className="bg-gray-800 px-1.5 py-0.5 rounded text-xs">.xpi</code> file</span>
               </li>
               <li className="flex items-start">
                 <span className="text-[#16a75a] mr-2 font-bold">2.</span>
-                <span>Go to <code className="bg-gray-800 px-1.5 py-0.5 rounded text-xs">about:debugging#/runtime/this-firefox</code> in your address bar</span>
+                <span>Go to <code className="bg-gray-800 px-1.5 py-0.5 rounded text-xs">about:addons</code> in your address bar</span>
               </li>
               <li className="flex items-start">
                 <span className="text-[#16a75a] mr-2 font-bold">3.</span>
-                <span>Click <strong className="text-gray-200">Load Temporary Add-on</strong></span>
+                <span>Click the <strong className="text-gray-200">gear icon</strong> and choose <strong className="text-gray-200">Install Add-on From File…</strong></span>
               </li>
               <li className="flex items-start">
                 <span className="text-[#16a75a] mr-2 font-bold">4.</span>
-                <span>Select the ZIP file, or unzip and pick any file inside the folder (e.g. <code className="bg-gray-800 px-1.5 py-0.5 rounded text-xs">manifest.json</code>)</span>
+                <span>Select the downloaded <code className="bg-gray-800 px-1.5 py-0.5 rounded text-xs">.xpi</code> file and confirm</span>
               </li>
             </ol>
-            <p className="text-gray-500 text-xs mt-3">Temporary add-ons are removed when Firefox closes. Re-load after each restart.</p>
+            <p className="text-gray-500 text-xs mt-3">The add-on is signed by Mozilla, so it installs permanently — no need to reload after restarting Firefox. Many browsers also install it directly when you open the <code className="bg-gray-800 px-0.5 rounded text-xs">.xpi</code>.</p>
           </div>
         </div>
       </section>
