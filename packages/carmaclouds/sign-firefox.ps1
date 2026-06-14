@@ -60,14 +60,28 @@ if (-not $ApiKey -or -not $ApiSecret -or
     exit 1
 }
 
-# 3. Bump the version. Mozilla rejects re-signing an already-signed version, so
-#    each signed build needs a fresh number. Bumps manifest_firefox.json,
-#    manifest.json, and package.json in lockstep (regex-replace the first
-#    "version" field to preserve each file's formatting).
+# 3. Bump the version across every component so they stay in lockstep. Mozilla
+#    rejects re-signing an already-signed version, so each signed build needs a
+#    fresh number. manifest_firefox.json is the source of truth; all other
+#    components are forced to the new version (the website/public copies are
+#    regenerated from these by build.js, so they don't need editing directly).
+#    Each target keeps its own match pattern so we only touch the version field
+#    and preserve the file's formatting.
 if ($Bump -ne "none") {
-    $manifest = "manifest_firefox.json"
-    $m = [regex]::Match((Get-Content -Raw $manifest), '"version"\s*:\s*"(\d+)\.(\d+)\.(\d+)"')
-    if (-not $m.Success) { Write-Error "Could not read version from $manifest."; exit 1 }
+    $jsonPattern = '("version"\s*:\s*")\d+\.\d+\.\d+(")'
+    $targets = @(
+        @{ Path = "manifest_firefox.json";           Pattern = $jsonPattern },          # Firefox (MV2)
+        @{ Path = "manifest.json";                   Pattern = $jsonPattern },          # Chrome (MV3)
+        @{ Path = "package.json";                    Pattern = $jsonPattern },          # npm package
+        @{ Path = "owlbear-extension\manifest.json"; Pattern = $jsonPattern },          # OwlCloud Owlbear extension
+        @{ Path = "foundry-module\module.json";      Pattern = $jsonPattern },          # FoundCloud Foundry module
+        @{ Path = "foundry-module\README.md";        Pattern = '(\*\*Version:\*\*\s*)\d+\.\d+\.\d+()' }  # module readme
+    )
+
+    # Read current version from the source of truth.
+    $srcPath = Join-Path $PSScriptRoot "manifest_firefox.json"
+    $m = [regex]::Match((Get-Content -Raw $srcPath), '"version"\s*:\s*"(\d+)\.(\d+)\.(\d+)"')
+    if (-not $m.Success) { Write-Error "Could not read version from manifest_firefox.json."; exit 1 }
     $major = [int]$m.Groups[1].Value
     $minor = [int]$m.Groups[2].Value
     $patch = [int]$m.Groups[3].Value
@@ -78,14 +92,22 @@ if ($Bump -ne "none") {
     }
     $oldVersion = "$($m.Groups[1].Value).$($m.Groups[2].Value).$($m.Groups[3].Value)"
     $newVersion = "$major.$minor.$patch"
+
     # Write UTF-8 WITHOUT a BOM. Windows PowerShell 5.1's `Set-Content -Encoding utf8`
     # prepends a BOM, which gets copied into dist/manifest.json and makes web-ext /
     # AMO's JSON parser reject the build.
     $utf8NoBom = New-Object System.Text.UTF8Encoding $false
-    foreach ($file in @("manifest_firefox.json", "manifest.json", "package.json")) {
-        $content = Get-Content -Raw $file
-        $updated = [regex]::Replace($content, '("version"\s*:\s*")\d+\.\d+\.\d+(")', "`${1}$newVersion`${2}", 1)
-        [System.IO.File]::WriteAllText((Join-Path $PSScriptRoot $file), $updated, $utf8NoBom)
+    foreach ($t in $targets) {
+        $path = Join-Path $PSScriptRoot $t.Path
+        if (-not (Test-Path $path)) { Write-Warning "Skipping missing file: $($t.Path)"; continue }
+        $content = Get-Content -Raw $path
+        if (-not [regex]::IsMatch($content, $t.Pattern)) {
+            Write-Warning "No version field matched in $($t.Path) — left unchanged."
+            continue
+        }
+        $updated = [regex]::Replace($content, $t.Pattern, "`${1}$newVersion`${2}", 1)
+        [System.IO.File]::WriteAllText($path, $updated, $utf8NoBom)
+        Write-Host "  updated $($t.Path)" -ForegroundColor DarkGray
     }
     Write-Host "Version bumped: $oldVersion -> $newVersion ($Bump)" -ForegroundColor Cyan
 }
