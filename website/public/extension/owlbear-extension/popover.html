@@ -1175,6 +1175,9 @@
     </div>
   </div>
 
+  <!-- Rebuild: IR + render layer (window.CarmaCloudsCore), must load before popover.js -->
+  <script src="./cc-core.js"></script>
+
   <!-- Load Owlbear SDK and Supabase Auth -->
   <script type="module">
     import OBR, { buildImage } from 'https://esm.sh/@owlbear-rodeo/sdk@3.1.0';

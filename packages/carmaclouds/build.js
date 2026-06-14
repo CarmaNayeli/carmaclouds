@@ -128,6 +128,23 @@ console.log('✅ Both builds complete!');
 console.log('   - Firefox (MV2): dist/');
 console.log('   - Chrome (MV3):  dist-chrome/');
 
+// Bundle the rebuild's IR + render layer (@carmaclouds/core) into the Owlbear
+// extension as a window global, since the popover loads as a classic script.
+console.log('\n📦 Bundling cc-core.js for the Owlbear extension...');
+const esbuild = (await import('esbuild')).default;
+for (const out of ['dist', 'dist-chrome']) {
+  await esbuild.build({
+    entryPoints: ['src/owlbear-cc-core-entry.js'],
+    bundle: true,
+    format: 'iife',
+    platform: 'browser',
+    target: 'es2020',
+    outfile: path.join(out, 'owlbear-extension', 'cc-core.js'),
+    logLevel: 'silent',
+  });
+}
+console.log('✅ Bundled cc-core.js into dist/ and dist-chrome/ owlbear-extension/');
+
 // Sync Foundry module to website directory
 console.log('\n📋 Syncing Foundry module to website...');
 const foundryModuleSource = path.join('.', 'foundry-module');
