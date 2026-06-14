@@ -4,12 +4,17 @@
 
 .DESCRIPTION
     Loads AMO API credentials from a .env file (or -ApiKey/-ApiSecret params),
-    rebuilds the extension, and submits it to Mozilla for unlisted signing.
-    The signed .xpi is written to ..\..\releases\.
+    bumps the version (Mozilla rejects re-signing the same version), rebuilds the
+    extension, and submits it to Mozilla for unlisted signing. The signed .xpi is
+    written to ..\..\releases\ and published to website/public/carmaclouds-firefox.xpi.
 
 .EXAMPLE
     .\sign-firefox.ps1
-    # Reads WEB_EXT_API_KEY / WEB_EXT_API_SECRET from .env
+    # Reads creds from .env, bumps the patch version, builds, signs
+
+.EXAMPLE
+    .\sign-firefox.ps1 -Bump minor
+    # Bump the minor version instead of patch (also: major, none)
 
 .EXAMPLE
     .\sign-firefox.ps1 -ApiKey "user:12345:67" -ApiSecret "abc123..."
@@ -23,6 +28,8 @@ param(
     [string]$ApiKey,
     [string]$ApiSecret,
     [string]$EnvFile = ".env",
+    [ValidateSet("patch", "minor", "major", "none")]
+    [string]$Bump = "patch",
     [switch]$SkipBuild
 )
 
@@ -53,14 +60,44 @@ if (-not $ApiKey -or -not $ApiSecret -or
     exit 1
 }
 
-# 3. Build (unless skipped).
+# 3. Bump the version. Mozilla rejects re-signing an already-signed version, so
+#    each signed build needs a fresh number. Bumps manifest_firefox.json,
+#    manifest.json, and package.json in lockstep (regex-replace the first
+#    "version" field to preserve each file's formatting).
+if ($Bump -ne "none") {
+    $manifest = "manifest_firefox.json"
+    $m = [regex]::Match((Get-Content -Raw $manifest), '"version"\s*:\s*"(\d+)\.(\d+)\.(\d+)"')
+    if (-not $m.Success) { Write-Error "Could not read version from $manifest."; exit 1 }
+    $major = [int]$m.Groups[1].Value
+    $minor = [int]$m.Groups[2].Value
+    $patch = [int]$m.Groups[3].Value
+    switch ($Bump) {
+        "major" { $major++; $minor = 0; $patch = 0 }
+        "minor" { $minor++; $patch = 0 }
+        "patch" { $patch++ }
+    }
+    $oldVersion = "$($m.Groups[1].Value).$($m.Groups[2].Value).$($m.Groups[3].Value)"
+    $newVersion = "$major.$minor.$patch"
+    # Write UTF-8 WITHOUT a BOM. Windows PowerShell 5.1's `Set-Content -Encoding utf8`
+    # prepends a BOM, which gets copied into dist/manifest.json and makes web-ext /
+    # AMO's JSON parser reject the build.
+    $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+    foreach ($file in @("manifest_firefox.json", "manifest.json", "package.json")) {
+        $content = Get-Content -Raw $file
+        $updated = [regex]::Replace($content, '("version"\s*:\s*")\d+\.\d+\.\d+(")', "`${1}$newVersion`${2}", 1)
+        [System.IO.File]::WriteAllText((Join-Path $PSScriptRoot $file), $updated, $utf8NoBom)
+    }
+    Write-Host "Version bumped: $oldVersion -> $newVersion ($Bump)" -ForegroundColor Cyan
+}
+
+# 4. Build (unless skipped).
 if (-not $SkipBuild) {
     Write-Host "Building extension..." -ForegroundColor Cyan
     node build.js
     if ($LASTEXITCODE -ne 0) { Write-Error "Build failed."; exit 1 }
 }
 
-# 4. Sign. web-ext reads these env vars automatically.
+# 5. Sign. web-ext reads these env vars automatically.
 $env:WEB_EXT_API_KEY = $ApiKey
 $env:WEB_EXT_API_SECRET = $ApiSecret
 
@@ -68,7 +105,7 @@ Write-Host "Submitting to Mozilla for signing (unlisted channel)..." -Foreground
 npm run sign:firefox
 $signExit = $LASTEXITCODE
 
-# 5. Clean up secrets from the session.
+# 6. Clean up secrets from the session.
 Remove-Item Env:WEB_EXT_API_KEY, Env:WEB_EXT_API_SECRET -ErrorAction SilentlyContinue
 
 if ($signExit -ne 0) {
@@ -76,7 +113,7 @@ if ($signExit -ne 0) {
     exit $signExit
 }
 
-# 6. Publish the newest signed .xpi to the website under a stable filename so the
+# 7. Publish the newest signed .xpi to the website under a stable filename so the
 #    download link never changes between versions.
 $releasesDir = Join-Path $PSScriptRoot "..\..\releases"
 $newest = Get-ChildItem -Path $releasesDir -Filter "*.xpi" -ErrorAction SilentlyContinue |
