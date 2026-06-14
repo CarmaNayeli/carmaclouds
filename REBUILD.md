@@ -110,6 +110,16 @@ raw DiceCloud
   the generic attribute/resource/action lists lives once; D&D-specific layout is one
   shared view. This is also where the 4-adapter duplication collapses.
 
+### Rendering: build DOM, never `innerHTML`
+
+The rebuilt render layer folds in the innerHTML refactor instead of leaving it as a
+separate pass. Rebuilt adapters construct UI with DOM APIs (a tiny `h()` builder over
+`createElement` / `textContent`), so interpolated character data can never be parsed as
+HTML. This removes the ~165 `UNSAFE_VAR_ASSIGNMENT` warnings *by construction* and is
+doubly important now: the IR imports arbitrary, user-named attributes/spells from any
+system, so their names/descriptions are even less trustworthy as HTML than before.
+No new render code should use `innerHTML` with interpolated values.
+
 ## Sequencing (clean rebuild, on this branch)
 
 0. **Fixtures first.** Capture raw DiceCloud JSON for at least one D&D character and one
@@ -117,8 +127,9 @@ raw DiceCloud
    Everything below is tested against these.
 1. `normalize()` + IR types. Snapshot-test the IR for both fixtures.
 2. `deriveDnd()` view. Assert it reproduces today's D&D output for the D&D fixture.
-3. Rebuild the **Owlbear** adapter on the IR (our pilot surface). Validate live.
-4. Migrate Roll20, Foundry, Coyote adapters.
+3. Rebuild the **Owlbear** adapter on the IR (our pilot surface), rendering via the DOM
+   builder (no `innerHTML`). Validate live.
+4. Migrate Roll20, Foundry, Coyote adapters the same way (DOM-built, IR-driven).
 5. Delete the old D&D-centric parse paths (`parseForRollCloud` D&D plucking, slot
    synthesis, class-based hit dice, hardcoded ability/skill reads).
 

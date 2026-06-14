@@ -1,9 +1,10 @@
 /**
- * Proof-of-concept: author a DiceCloud property over DDP (write-back groundwork).
+ * Author DiceCloud properties over DDP (fixture authoring + write-back groundwork).
  *
  * Logs into dicecloud.com via DDP with the resume token from .env and inserts a
- * single property onto the non-D&D test creature. DiceCloud generates the _id and
- * recomputes (property.dirty = true), so we only supply editable fields.
+ * batch of properties onto the non-D&D test creature. DiceCloud generates the _id
+ * and recomputes (property.dirty = true), so we only supply editable fields plus a
+ * required `order`.
  *
  *   creatureProperties.insert({ creatureProperty, parentRef: { id, collection } })
  *
@@ -38,18 +39,35 @@ if (!token || !creatureId) {
   process.exit(1);
 }
 
-// The property to author. A custom "stat" attribute with no D&D analog — the case
-// the current importer can't represent.
-const creatureProperty = {
-  type: 'attribute',
-  attributeType: 'stat',
-  name: 'Glory (test)',
-  variableName: 'gloryTest',
-  baseValue: { calculation: '3' },
-  description: { text: 'Inserted via DDP write-back proof-of-concept.' },
-  tags: [],
-  order: 1e6, // required by schema; server's rebuildNestedSets recomputes tree position
-};
+const rootRef = { id: creatureId, collection: 'creatures' };
+const SPELL_LIST_ID = 'DhPfdr5A2m8nc4J7s'; // PF-Test "Spell List"
+
+// Batch of fixture properties: each is { creatureProperty, parentRef }.
+// Covers the generic cases the current importer can't represent.
+const batch = [
+  // A resource pool with a reset period (charges).
+  {
+    creatureProperty: {
+      type: 'attribute', attributeType: 'resource',
+      name: 'Mythic Power (test)', variableName: 'mythicPower',
+      baseValue: { calculation: '3' }, reset: 'longRest', tags: [], order: 1e6,
+    },
+    parentRef: rootRef,
+  },
+  // A charge-based spell: 2 uses, recharge on long rest, consuming the resource above.
+  {
+    creatureProperty: {
+      type: 'spell',
+      name: 'Surge of Glory (test)', level: 1, school: 'evocation',
+      uses: { calculation: '2' }, reset: 'longRest',
+      castingTime: 'action', range: 'Self', duration: 'Instantaneous',
+      components: { verbal: true, somatic: false, material: false, concentration: false, ritual: false },
+      description: { text: 'Charge-based spell: 2 uses, recharge on long rest. DDP fixture.' },
+      tags: [], order: 1e6 + 1,
+    },
+    parentRef: { id: SPELL_LIST_ID, collection: 'creatureProperties' },
+  },
+];
 
 const ddp = new DDPClient('wss://dicecloud.com/websocket');
 
@@ -58,15 +76,18 @@ try {
   const loginResult = await ddp.loginWithToken(token);
   console.log('\n[insert] logged in as userId:', loginResult?.id);
 
-  const newId = await ddp.call('creatureProperties.insert', {
-    creatureProperty,
-    parentRef: { id: creatureId, collection: 'creatures' },
-  });
+  for (const { creatureProperty, parentRef } of batch) {
+    try {
+      const newId = await ddp.call('creatureProperties.insert', { creatureProperty, parentRef });
+      console.log(`  ✅ ${creatureProperty.type}/${creatureProperty.name} -> ${newId}`);
+    } catch (err) {
+      console.error(`  ❌ ${creatureProperty.type}/${creatureProperty.name}: ${err?.message || err}`);
+    }
+  }
 
-  console.log(`\n✅ Inserted property _id: ${newId}`);
-  console.log('   Re-run fetch-dicecloud-fixtures.mjs to see how DiceCloud computed it.');
+  console.log('\nDone. Re-run fetch-dicecloud-fixtures.mjs to capture computed results.');
   process.exit(0);
 } catch (err) {
-  console.error('\n❌ Insert failed:', err?.message || err);
+  console.error('\n❌ DDP error:', err?.message || err);
   process.exit(1);
 }
