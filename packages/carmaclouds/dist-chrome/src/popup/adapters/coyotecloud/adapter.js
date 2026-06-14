@@ -11681,14 +11681,14 @@ ${suffix}`;
     const getVar = (name) => {
       if (!name)
         return void 0;
-      if (variables[name] !== void 0) {
-        return variables[name];
-      }
-      const lower = name.toLowerCase();
-      if (variables[lower] !== void 0) {
-        return variables[lower];
-      }
-      return void 0;
+      let v = variables[name];
+      if (v === void 0)
+        v = variables[name.toLowerCase()];
+      if (v === void 0)
+        return void 0;
+      if (v !== null && typeof v === "object")
+        return v.value ?? v.total ?? void 0;
+      return v;
     };
     const variablePattern = /\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g;
     result = result.replace(variablePattern, (match, varName) => {
@@ -11765,13 +11765,29 @@ ${suffix}`;
     const sum = terms.reduce((a, b) => a + b, 0);
     return isFinite(sum) ? sum : null;
   }
+  function bestFormula(obj) {
+    if (obj == null)
+      return "";
+    if (typeof obj === "string")
+      return obj;
+    if (typeof obj === "number")
+      return String(obj);
+    const val = obj.value;
+    const calc = obj.calculation;
+    if (typeof val === "number")
+      return String(val);
+    if (typeof val === "string" && val && !/[\[\]]/.test(val) && /^[0-9dD+\-*/(). ]+$/.test(val.replace(/\s/g, ""))) {
+      return val;
+    }
+    return calc || (typeof val === "string" ? val : "");
+  }
   function buildRollVarMap(properties) {
     const map = {};
     for (const p of properties || []) {
       if (!p)
         continue;
       if (p.type === "roll" && p.variableName && p.roll) {
-        const calc = typeof p.roll === "string" ? p.roll : p.roll.calculation || (p.roll.value != null ? String(p.roll.value) : "");
+        const calc = bestFormula(p.roll);
         if (calc)
           map[p.variableName] = calc;
       }
@@ -12408,19 +12424,19 @@ ${suffix}`;
           if (typeof damageChild.amount === "string") {
             formula2 = damageChild.amount;
           } else if (typeof damageChild.amount === "object") {
-            formula2 = damageChild.amount.calculation || String(damageChild.amount.value || "");
+            formula2 = bestFormula(damageChild.amount);
           }
         } else if (damageChild.roll) {
           if (typeof damageChild.roll === "string") {
             formula2 = damageChild.roll;
           } else if (typeof damageChild.roll === "object") {
-            formula2 = damageChild.roll.calculation || String(damageChild.roll.value || "");
+            formula2 = bestFormula(damageChild.roll);
           }
         } else if (damageChild.damage) {
           if (typeof damageChild.damage === "string") {
             formula2 = damageChild.damage;
           } else if (typeof damageChild.damage === "object") {
-            formula2 = damageChild.damage.calculation || String(damageChild.damage.value || "");
+            formula2 = bestFormula(damageChild.damage);
           }
         }
         if (formula2) {
@@ -12522,19 +12538,19 @@ ${suffix}`;
             if (typeof damageChild.amount === "string") {
               damage = damageChild.amount;
             } else if (typeof damageChild.amount === "object") {
-              damage = damageChild.amount.calculation || String(damageChild.amount.value || "");
+              damage = bestFormula(damageChild.amount);
             }
           } else if (damageChild.roll) {
             if (typeof damageChild.roll === "string") {
               damage = damageChild.roll;
             } else if (typeof damageChild.roll === "object") {
-              damage = damageChild.roll.calculation || String(damageChild.roll.value || "");
+              damage = bestFormula(damageChild.roll);
             }
           } else if (damageChild.damage) {
             if (typeof damageChild.damage === "string") {
               damage = damageChild.damage;
             } else if (typeof damageChild.damage === "object") {
-              damage = damageChild.damage.calculation || String(damageChild.damage.value || "");
+              damage = bestFormula(damageChild.damage);
             }
           }
           if (damageChild.damageType) {

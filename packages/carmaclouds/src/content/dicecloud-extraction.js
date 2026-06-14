@@ -211,16 +211,14 @@ function evaluateDamageFormula(formula, variables = {}) {
   // Helper to get variable value (case-insensitive)
   const getVar = (name) => {
     if (!name) return undefined;
-    // Try exact case first
-    if (variables[name] !== undefined) {
-      return variables[name];
-    }
-    // Try lowercase
-    const lower = name.toLowerCase();
-    if (variables[lower] !== undefined) {
-      return variables[lower];
-    }
-    return undefined;
+    // Try exact case, then lowercase
+    let v = variables[name];
+    if (v === undefined) v = variables[name.toLowerCase()];
+    if (v === undefined) return undefined;
+    // DiceCloud variables are usually objects like { value, total }; extract the
+    // numeric value so bare references (e.g. layOnHandsAmount) resolve.
+    if (v !== null && typeof v === 'object') return v.value ?? v.total ?? undefined;
+    return v;
   };
 
   // Replace variable references with their values
@@ -341,6 +339,25 @@ function evalArith(expr) {
  * formula "[2,3,...][slotLevel]d8"). The variable itself is empty, so the
  * formula has to be pulled from the roll property.
  */
+/**
+ * Pick the best formula string from a DiceCloud calculation object. Prefer the
+ * resolved `value` when it's already clean dice/number (e.g. "3d6", "12") so we
+ * use the work DiceCloud already did; fall back to the raw `calculation` for
+ * runtime-scaled forms (e.g. "[2,3,...][slotLevel]d8") that we resolve ourselves.
+ */
+function bestFormula(obj) {
+  if (obj == null) return '';
+  if (typeof obj === 'string') return obj;
+  if (typeof obj === 'number') return String(obj);
+  const val = obj.value;
+  const calc = obj.calculation;
+  if (typeof val === 'number') return String(val);
+  if (typeof val === 'string' && val && !/[\[\]]/.test(val) && /^[0-9dD+\-*/(). ]+$/.test(val.replace(/\s/g, ''))) {
+    return val;
+  }
+  return calc || (typeof val === 'string' ? val : '');
+}
+
 function buildRollVarMap(properties) {
   const map = {};
   for (const p of (properties || [])) {
@@ -349,9 +366,7 @@ function buildRollVarMap(properties) {
     // we just need their formula for reference resolution.
     if (!p) continue;
     if (p.type === 'roll' && p.variableName && p.roll) {
-      const calc = typeof p.roll === 'string'
-        ? p.roll
-        : (p.roll.calculation || (p.roll.value != null ? String(p.roll.value) : ''));
+      const calc = bestFormula(p.roll);
       if (calc) map[p.variableName] = calc;
     }
   }
@@ -1147,7 +1162,7 @@ export function parseForRollCloud(rawData) {
           if (typeof damageChild.amount === 'string') {
             formula = damageChild.amount;
           } else if (typeof damageChild.amount === 'object') {
-            formula = damageChild.amount.calculation || String(damageChild.amount.value || '');
+            formula = bestFormula(damageChild.amount);
           }
         }
         // Fallback to roll field (alternative structure)
@@ -1155,7 +1170,7 @@ export function parseForRollCloud(rawData) {
           if (typeof damageChild.roll === 'string') {
             formula = damageChild.roll;
           } else if (typeof damageChild.roll === 'object') {
-            formula = damageChild.roll.calculation || String(damageChild.roll.value || '');
+            formula = bestFormula(damageChild.roll);
           }
         }
         // Fallback to damage field
@@ -1163,7 +1178,7 @@ export function parseForRollCloud(rawData) {
           if (typeof damageChild.damage === 'string') {
             formula = damageChild.damage;
           } else if (typeof damageChild.damage === 'object') {
-            formula = damageChild.damage.calculation || String(damageChild.damage.value || '');
+            formula = bestFormula(damageChild.damage);
           }
         }
 
@@ -1308,7 +1323,7 @@ export function parseForRollCloud(rawData) {
             if (typeof damageChild.amount === 'string') {
               damage = damageChild.amount;
             } else if (typeof damageChild.amount === 'object') {
-              damage = damageChild.amount.calculation || String(damageChild.amount.value || '');
+              damage = bestFormula(damageChild.amount);
             }
           }
           // Fallback to roll field
@@ -1316,7 +1331,7 @@ export function parseForRollCloud(rawData) {
             if (typeof damageChild.roll === 'string') {
               damage = damageChild.roll;
             } else if (typeof damageChild.roll === 'object') {
-              damage = damageChild.roll.calculation || String(damageChild.roll.value || '');
+              damage = bestFormula(damageChild.roll);
             }
           }
           // Fallback to damage field
@@ -1324,7 +1339,7 @@ export function parseForRollCloud(rawData) {
             if (typeof damageChild.damage === 'string') {
               damage = damageChild.damage;
             } else if (typeof damageChild.damage === 'object') {
-              damage = damageChild.damage.calculation || String(damageChild.damage.value || '');
+              damage = bestFormula(damageChild.damage);
             }
           }
 
