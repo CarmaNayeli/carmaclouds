@@ -2660,9 +2660,11 @@ function populateAbilitiesTab(character) {
   const abilityNames = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
   const abilityShortNames = { strength: 'STR', dexterity: 'DEX', constitution: 'CON', intelligence: 'INT', wisdom: 'WIS', charisma: 'CHA' };
 
-  let html = '<div class="section-header">Ability Scores & Saving Throws</div>';
-  html += '<div class="ability-grid">';
+  const nodes = [
+    h('div', { class: 'section-header', text: 'Ability Scores & Saving Throws' })
+  ];
 
+  const abilityGrid = h('div', { class: 'ability-grid' });
   abilityNames.forEach(abilityName => {
     const score = character.attributes?.[abilityName] || 10;
     const modifier = character.attributeMods?.[abilityName] || Math.floor((score - 10) / 2);
@@ -2670,32 +2672,34 @@ function populateAbilitiesTab(character) {
     const isProficient = saveMod !== modifier;
     const abilityLabel = abilityShortNames[abilityName];
 
-    html += `
-      <div class="ability-box ${isProficient ? 'save-proficient' : ''}">
-        <div style="padding: 8px; text-align: center;">
-          <div class="ability-name">${abilityLabel}</div>
-          <div class="ability-score" style="font-size: 18px; font-weight: bold;">${score}</div>
-        </div>
-        <div style="display: flex; border-top: 1px solid var(--theme-border);">
-          <div style="flex: 1; padding: 6px; cursor: pointer; text-align: center; border-right: 1px solid var(--theme-border);" onclick="event.stopPropagation(); event.preventDefault(); rollAbilityCheck('${abilityLabel}', ${modifier})" title="Roll ${abilityLabel} check">
-            <div style="font-size: 11px; color: var(--theme-primary-light); pointer-events: none;">Check</div>
-            <div style="font-weight: bold; pointer-events: none;">${modifier >= 0 ? '+' : ''}${modifier}</div>
-          </div>
-          <div style="flex: 1; padding: 6px; cursor: pointer; text-align: center;" onclick="event.stopPropagation(); event.preventDefault(); rollSavingThrow('${abilityLabel}', ${saveMod})" title="Roll ${abilityLabel} save">
-            <div style="font-size: 11px; color: ${isProficient ? '#10B981' : 'var(--theme-primary-light)'}; pointer-events: none;">Save</div>
-            <div style="font-weight: bold; color: ${isProficient ? '#10B981' : 'inherit'}; pointer-events: none;">${saveMod >= 0 ? '+' : ''}${saveMod}</div>
-          </div>
-        </div>
-      </div>
-    `;
+    abilityGrid.appendChild(
+      h('div', { class: `ability-box ${isProficient ? 'save-proficient' : ''}` },
+        h('div', { style: 'padding: 8px; text-align: center;' },
+          h('div', { class: 'ability-name', text: abilityLabel }),
+          h('div', { class: 'ability-score', style: 'font-size: 18px; font-weight: bold;', text: String(score) })),
+        h('div', { style: 'display: flex; border-top: 1px solid var(--theme-border);' },
+          h('div', {
+              style: 'flex: 1; padding: 6px; cursor: pointer; text-align: center; border-right: 1px solid var(--theme-border);',
+              title: `Roll ${abilityLabel} check`,
+              onClick: (e) => { e.stopPropagation(); e.preventDefault(); rollAbilityCheck(abilityLabel, modifier); }
+            },
+            h('div', { style: 'font-size: 11px; color: var(--theme-primary-light); pointer-events: none;', text: 'Check' }),
+            h('div', { style: 'font-weight: bold; pointer-events: none;', text: `${modifier >= 0 ? '+' : ''}${modifier}` })),
+          h('div', {
+              style: 'flex: 1; padding: 6px; cursor: pointer; text-align: center;',
+              title: `Roll ${abilityLabel} save`,
+              onClick: (e) => { e.stopPropagation(); e.preventDefault(); rollSavingThrow(abilityLabel, saveMod); }
+            },
+            h('div', { style: `font-size: 11px; color: ${isProficient ? '#10B981' : 'var(--theme-primary-light)'}; pointer-events: none;`, text: 'Save' }),
+            h('div', { style: `font-weight: bold; color: ${isProficient ? '#10B981' : 'inherit'}; pointer-events: none;`, text: `${saveMod >= 0 ? '+' : ''}${saveMod}` }))))
+    );
   });
-
-  html += '</div>';
+  nodes.push(abilityGrid);
 
   // Skills Section
   if (character.skills && Object.keys(character.skills).length > 0) {
-    html += '<div class="section-header">Skills</div>';
-    html += '<div class="skill-list">';
+    nodes.push(h('div', { class: 'section-header', text: 'Skills' }));
+    const skillList = h('div', { class: 'skill-list' });
 
     const skillNames = {
       acrobatics: 'Acrobatics', animalHandling: 'Animal Handling', arcana: 'Arcana',
@@ -2730,18 +2734,21 @@ function populateAbilitiesTab(character) {
         proficiencyClass = 'skill-expert';
       }
 
-      html += `
-        <div class="skill-item ${proficiencyClass}" onclick="rollSkillCheck('${skillName}', ${bonus})" title="Click to roll ${skillName}">
-          <span class="skill-name">${skillName}</span>
-          <span class="skill-bonus">${bonus >= 0 ? '+' : ''}${bonus}</span>
-        </div>
-      `;
+      skillList.appendChild(
+        h('div', {
+            class: `skill-item ${proficiencyClass}`.trim(),
+            title: `Click to roll ${skillName}`,
+            onClick: () => rollSkillCheck(skillName, bonus)
+          },
+          h('span', { class: 'skill-name', text: skillName }),
+          h('span', { class: 'skill-bonus', text: `${bonus >= 0 ? '+' : ''}${bonus}` }))
+      );
     });
 
-    html += '</div>';
+    nodes.push(skillList);
   }
 
-  abilitiesContent.innerHTML = html;
+  setChildren(abilitiesContent, nodes);
 }
 
 /**
