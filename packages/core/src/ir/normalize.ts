@@ -10,6 +10,7 @@ import type {
   IRAttribute,
   IRCharacter,
   IRConsumes,
+  IRSkill,
   RawDiceCloud,
   ResetPeriod,
 } from './types';
@@ -17,6 +18,18 @@ import type {
 const DND_ABILITIES = [
   'strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma',
 ];
+
+/**
+ * Best-effort system hint (never load-bearing). PF2e also uses the six abilities,
+ * so we additionally require D&D-5e-specific signals: a single proficiencyBonus
+ * variable and a class-based hit-dice attribute.
+ */
+function detectSystem(byVar: Record<string, IRAttribute>): 'dnd5e' | 'generic' {
+  const hasAbilities = DND_ABILITIES.every((ab) => byVar[ab]);
+  const hasProfBonus = !!byVar['proficiencyBonus'];
+  const hasHitDice = Object.values(byVar).some((a) => a.type === 'hitDice');
+  return hasAbilities && hasProfBonus && hasHitDice ? 'dnd5e' : 'generic';
+}
 
 /** Coerce a DiceCloud value (number, calculation object, or string) to a number. */
 function numOf(v: any): number {
@@ -88,6 +101,20 @@ function normalizeAttribute(p: any): IRAttribute {
   return attr;
 }
 
+function normalizeSkill(p: any): IRSkill {
+  return {
+    id: p._id,
+    name: p.name ?? p.variableName ?? '',
+    variableName: p.variableName ?? '',
+    skillType: p.skillType ?? 'skill',
+    value: numOf(p.value),
+    ability: p.ability || undefined,
+    proficiency: numOf(p.proficiency),
+    active: activeOf(p),
+    tags: Array.isArray(p.tags) ? p.tags : [],
+  };
+}
+
 function consumesOf(p: any): IRConsumes[] {
   const consumed = p.resources?.attributesConsumed;
   if (!Array.isArray(consumed)) return [];
@@ -154,6 +181,10 @@ export function normalize(raw: RawDiceCloud): IRCharacter {
     .filter((p) => p.type === 'attribute')
     .map(normalizeAttribute);
 
+  const skills = props
+    .filter((p) => p.type === 'skill')
+    .map(normalizeSkill);
+
   const actions = props.filter(isActionLike).map(normalizeAction);
 
   const byVar: Record<string, IRAttribute> = {};
@@ -161,14 +192,13 @@ export function normalize(raw: RawDiceCloud): IRCharacter {
     if (a.variableName) byVar[a.variableName] = a;
   }
 
-  const systemHint = DND_ABILITIES.every((ab) => byVar[ab]) ? 'dnd5e' : 'generic';
-
   return {
     id: creature._id ?? '',
     name: creature.name ?? '',
     portrait: creature.picture || creature.avatarPicture || undefined,
-    systemHint,
+    systemHint: detectSystem(byVar),
     attributes,
+    skills,
     actions,
     byVar,
   };

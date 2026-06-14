@@ -50,6 +50,27 @@ export interface IRAttribute {
   description?: string;
 }
 
+/**
+ * A trained/rollable proficiency. DiceCloud models D&D skills, saves, tool/language/
+ * armor/weapon proficiencies - and custom things like 13th Age backgrounds - all as
+ * `skill` properties distinguished by skillType.
+ */
+export interface IRSkill {
+  id: string;
+  name: string;
+  variableName: string;
+  /** 'skill' | 'save' | 'check' | 'language' | 'armor' | 'weapon' | custom. */
+  skillType: string;
+  /** Computed roll bonus. */
+  value: number;
+  /** Linked ability variableName, when any. */
+  ability?: string;
+  /** Proficiency multiplier (0, 0.5, 1, 2). */
+  proficiency: number;
+  active: boolean;
+  tags: string[];
+}
+
 export interface IRUses {
   current: number;
   max: number;
@@ -99,6 +120,7 @@ export interface IRCharacter {
   /** Best-effort hint, never load-bearing. */
   systemHint: 'dnd5e' | 'generic' | (string & {});
   attributes: IRAttribute[];
+  skills: IRSkill[];
   actions: IRAction[];
   /** variableName -> attribute, for fast lookup by adapters and the D&D view. */
   byVar: Record<string, IRAttribute>;
