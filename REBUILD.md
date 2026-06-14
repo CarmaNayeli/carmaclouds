@@ -151,6 +151,7 @@ No new render code should use `innerHTML` with interpolated values.
 
 ## Still open
 
-- **D&D detection** for the view: presence of `strength..charisma` variableNames and/or
-  `dnd5e` tags. Treat as a hint only.
-- New IR table name + columns (define once we see the IR shape settle).
+- **D&D detection** for the view: currently six abilities + `proficiencyBonus` +
+  a hitDice attribute. Hint only; will mis-flag e.g. 13th Age (has recovery dice).
+- IR table: **`clouds_character_ir`** (migration `20260615_create_clouds_character_ir.sql`).
+  Columns: `ir` JSONB + `ir_version`, `system_hint`, optional `raw`. Done.
