@@ -2,7 +2,7 @@
 
 Companion module for the FoundCloud browser extension. Syncs DiceCloud V2 characters to Foundry VTT with Discord integration.
 
-**Version:** 2.4.0
+**Version:** 2.4.1
 **Compatibility:** Foundry VTT v11-v13
 **System:** D&D 5e
 
@@ -15,14 +15,14 @@ FoundCloud uses **cloud sync** to bring your DiceCloud characters into Foundry V
 
 ## Features
 
-- ✅ **Cloud Sync**: Characters synced from DiceCloud via Supabase
-- ✅ **One-Click Import**: Import characters directly into Foundry
-- ✅ **Complete Character Data**: Abilities, skills, saves, HP, AC, initiative, and more
-- ✅ **Spell Import**: Automatically import all spells with full details
-- ✅ **Equipment Import**: Import weapons, armor, and items with quantities
-- ✅ **Class Features**: Import actions and special abilities
-- ✅ **Portrait Support**: Character images imported automatically
-- ✅ **Race/Species**: Character race information preserved
+- âœ… **Cloud Sync**: Characters synced from DiceCloud via Supabase
+- âœ… **One-Click Import**: Import characters directly into Foundry
+- âœ… **Complete Character Data**: Abilities, skills, saves, HP, AC, initiative, and more
+- âœ… **Spell Import**: Automatically import all spells with full details
+- âœ… **Equipment Import**: Import weapons, armor, and items with quantities
+- âœ… **Class Features**: Import actions and special abilities
+- âœ… **Portrait Support**: Character images imported automatically
+- âœ… **Race/Species**: Character race information preserved
 
 ## Installation
 
@@ -68,14 +68,14 @@ FoundCloud uses **cloud sync** to bring your DiceCloud characters into Foundry V
 
 ### Importing Characters
 
-1. **Sync in Extension**: Open CarmaClouds extension → FoundCloud tab → Click "☁️ Sync to Cloud" on your character
+1. **Sync in Extension**: Open CarmaClouds extension â†’ FoundCloud tab â†’ Click "â˜ï¸ Sync to Cloud" on your character
 2. **Import in Foundry**: Open the **Actors** sidebar
 3. Click the orange **"Import from DiceCloud"** button
 4. Select your character from the list
 5. Choose import options:
-   - ☑️ Import Spells
-   - ☑️ Import Equipment  
-   - ☑️ Import Class Features
+   - â˜‘ï¸ Import Spells
+   - â˜‘ï¸ Import Equipment  
+   - â˜‘ï¸ Import Class Features
 6. Click **Import**
 
 Your character will be created as a Foundry actor with stats, skills, spells, features, and inventory!
@@ -98,7 +98,7 @@ Enable/disable in module settings: **Discord Integration**
 
 ## Module Settings
 
-Configure FoundCloud in **Game Settings → Module Settings → FoundCloud**:
+Configure FoundCloud in **Game Settings â†’ Module Settings â†’ FoundCloud**:
 
 ### World Settings (GM Only)
 - **Auto-sync on Combat Turn**: Sync character when their turn starts
@@ -118,8 +118,8 @@ Configure FoundCloud in **Game Settings → Module Settings → FoundCloud**:
 ### Architecture
 
 ```
-DiceCloud → Browser Extension → Foundry Module → Foundry Actor
-                                       ↓
+DiceCloud â†’ Browser Extension â†’ Foundry Module â†’ Foundry Actor
+                                       â†“
                                   Discord (via Pip Bot)
 ```
 
@@ -232,18 +232,18 @@ Hooks.on('foundcloud.rollReceived', (rollData) => {
 
 ```
 foundry-module/
-├── module.json              # Module manifest
-├── README.md                # This file
-├── scripts/
-│   ├── foundcloud.js        # Main entry point
-│   ├── settings.js          # Settings registration
-│   ├── extension-bridge.js  # Extension communication
-│   ├── dicecloud-importer.js # Character import logic
-│   └── ui.js                # UI dialogs
-├── styles/
-│   └── foundcloud.css       # Module styles
-└── lang/
-    └── en.json              # English translations
+â”œâ”€â”€ module.json              # Module manifest
+â”œâ”€â”€ README.md                # This file
+â”œâ”€â”€ scripts/
+â”‚   â”œâ”€â”€ foundcloud.js        # Main entry point
+â”‚   â”œâ”€â”€ settings.js          # Settings registration
+â”‚   â”œâ”€â”€ extension-bridge.js  # Extension communication
+â”‚   â”œâ”€â”€ dicecloud-importer.js # Character import logic
+â”‚   â””â”€â”€ ui.js                # UI dialogs
+â”œâ”€â”€ styles/
+â”‚   â””â”€â”€ foundcloud.css       # Module styles
+â””â”€â”€ lang/
+    â””â”€â”€ en.json              # English translations
 ```
 
 ### Building
@@ -275,4 +275,4 @@ See main repository for license information.
 
 ---
 
-Made with ❤️ for the D&D community
+Made with â¤ï¸ for the D&D community

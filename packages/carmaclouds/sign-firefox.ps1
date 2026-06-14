@@ -102,7 +102,7 @@ if ($Bump -ne "none") {
         if (-not (Test-Path $path)) { Write-Warning "Skipping missing file: $($t.Path)"; continue }
         $content = Get-Content -Raw $path
         if (-not [regex]::IsMatch($content, $t.Pattern)) {
-            Write-Warning "No version field matched in $($t.Path) — left unchanged."
+            Write-Warning "No version field matched in $($t.Path) - left unchanged."
             continue
         }
         $updated = [regex]::Replace($content, $t.Pattern, "`${1}$newVersion`${2}", 1)
