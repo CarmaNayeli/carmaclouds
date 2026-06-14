@@ -38,12 +38,18 @@
       "Bash(gh pr create:*)",
       "Bash(gh repo delete:*)",
       "WebFetch(domain:www.carmabella.com)",
-      "Bash(git -C /c/Users/c_dow/carmaclouds diff -- packages/carmaclouds/src/content/dicecloud-extraction.js)"
+      "Bash(git -C /c/Users/c_dow/carmaclouds diff -- packages/carmaclouds/src/content/dicecloud-extraction.js)",
+      "Bash(git -C /c/Users/c_dow/carmaclouds status -sb)",
+      "Bash(git -C /c/Users/c_dow/carmaclouds status --short)",
+      "Bash(git -C /c/Users/c_dow/coyotesandcandles status -sb)",
+      "Bash(git -C /c/Users/c_dow/coyotesandcandles status --short)"
     ],
     "additionalDirectories": [
       "c:\\Users\\c_dow\\carmaclouds\\packages\\core\\src",
       "c:\\Users\\c_dow\\carmaclouds\\packages\\carmaclouds\\src\\{popup\\adapters",
-      "c:\\Users\\c_dow\\carmaclouds\\packages\\rollcloud\\src\\lib"
+      "c:\\Users\\c_dow\\carmaclouds\\packages\\rollcloud\\src\\lib",
+      "c:\\Users\\c_dow\\coyotesandcandles\\lib\\meet\\sheets",
+      "c:\\Users\\c_dow\\coyotesandcandles\\app\\meet\\[roomId]\\_components\\board"
     ]
   }
 }

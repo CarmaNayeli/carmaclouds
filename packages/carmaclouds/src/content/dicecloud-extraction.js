@@ -1455,6 +1455,31 @@ export function parseForRollCloud(rawData) {
       spellSlots[`level${level}`] = { current, max };
     }
   }
+
+  // Pact Magic (Warlock) — NOT stored as level1-9 slots. DiceCloud models it as a
+  // 'pactSlot' attribute (value=current, total=max, tag 'pactSpellSlot') plus a
+  // 'pactSlotLevelVisible' stat for the slot level. Emit pactMagicSlots /
+  // pactMagicSlotsMax / pactMagicSlotLevel so consumers can show real pact slots
+  // instead of defaulting to a full, unused pool.
+  const numOf = (v) => {
+    if (v == null) return undefined;
+    if (typeof v === 'number') return v;
+    if (typeof v === 'object') return v.value ?? v.total ?? undefined;
+    const n = Number(v); return Number.isFinite(n) ? n : undefined;
+  };
+  const pactProp = spellSlotProps.find(p =>
+    p.variableName === 'pactSlot' || (Array.isArray(p.tags) && p.tags.includes('pactSpellSlot')));
+  const pactMax = (pactProp && (pactProp.total ?? pactProp.value)) ?? numOf(variables.pactSlot);
+  if (pactMax && pactMax > 0) {
+    const pactCurrent = (pactProp && (pactProp.value ?? pactProp.total)) ?? numOf(variables.pactSlot) ?? pactMax;
+    const pactLevel = numOf(variables.pactSlotLevelVisible) ?? numOf(variables.pactSlotLevel)
+      ?? numOf(variables.pactCasterLevel) ?? 1;
+    spellSlots.pactMagicSlots = pactCurrent;
+    spellSlots.pactMagicSlotsMax = pactMax;
+    spellSlots.pactMagicSlotLevel = pactLevel;
+    console.log(`🔮 Pact Magic: ${pactCurrent}/${pactMax} at level ${pactLevel}`);
+  }
+
   console.log('🔮 Final spell slots:', spellSlots);
 
   // Parse resources from properties (only resource-type attributes)

@@ -1106,6 +1106,26 @@
         spellSlots[`level${level2}`] = { current, max };
       }
     }
+    const numOf = (v) => {
+      if (v == null)
+        return void 0;
+      if (typeof v === "number")
+        return v;
+      if (typeof v === "object")
+        return v.value ?? v.total ?? void 0;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : void 0;
+    };
+    const pactProp = spellSlotProps.find((p) => p.variableName === "pactSlot" || Array.isArray(p.tags) && p.tags.includes("pactSpellSlot"));
+    const pactMax = (pactProp && (pactProp.total ?? pactProp.value)) ?? numOf(variables2.pactSlot);
+    if (pactMax && pactMax > 0) {
+      const pactCurrent = (pactProp && (pactProp.value ?? pactProp.total)) ?? numOf(variables2.pactSlot) ?? pactMax;
+      const pactLevel = numOf(variables2.pactSlotLevelVisible) ?? numOf(variables2.pactSlotLevel) ?? numOf(variables2.pactCasterLevel) ?? 1;
+      spellSlots.pactMagicSlots = pactCurrent;
+      spellSlots.pactMagicSlotsMax = pactMax;
+      spellSlots.pactMagicSlotLevel = pactLevel;
+      console.log(`\u{1F52E} Pact Magic: ${pactCurrent}/${pactMax} at level ${pactLevel}`);
+    }
     console.log("\u{1F52E} Final spell slots:", spellSlots);
     const resources = properties.filter((p) => p.type === "resource" || p.type === "attribute" && p.attributeType === "resource").map((resource) => ({
       id: resource._id,
