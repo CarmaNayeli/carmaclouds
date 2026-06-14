@@ -14,6 +14,7 @@ export * from './types/character';
 
 // System-agnostic IR (rebuild) - see REBUILD.md
 export * from './ir';
+export * from './render';
 
 // Cache Manager
 export * from './cache/CacheManager';

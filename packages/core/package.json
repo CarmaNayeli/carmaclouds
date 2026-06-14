@@ -26,6 +26,7 @@
     "./modules/*": "./src/modules/*",
     "./browser.js": "./src/browser.js",
     "./ir": "./src/ir/index.ts",
+    "./render": "./src/render/index.ts",
     "./src/*": "./src/*"
   },
   "scripts": {
@@ -42,6 +43,7 @@
   ],
   "license": "MIT",
   "devDependencies": {
+    "linkedom": "^0.18.12",
     "typescript": "^5.0.0"
   },
   "dependencies": {
