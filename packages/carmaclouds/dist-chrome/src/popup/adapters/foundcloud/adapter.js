@@ -12398,11 +12398,7 @@ ${suffix}`;
       let attackRoll = "";
       const attackChild = spellChildren.find((c) => c.type === "attack" || c.type === "roll" && c.name && c.name.toLowerCase().includes("attack"));
       if (attackChild && attackChild.roll) {
-        if (typeof attackChild.roll === "string") {
-          attackRoll = attackChild.roll;
-        } else if (typeof attackChild.roll === "object") {
-          attackRoll = attackChild.roll.calculation || attackChild.roll.value || "use_spell_attack_bonus";
-        }
+        attackRoll = bestFormula(attackChild.roll) || "use_spell_attack_bonus";
       }
       if (!attackRoll) {
         const spellDescription = extractText(spell.description).toLowerCase();
@@ -12511,17 +12507,13 @@ ${suffix}`;
       });
       let attackRoll = "";
       if (action.attackRoll) {
-        attackRoll = typeof action.attackRoll === "string" ? action.attackRoll : String(action.attackRoll.value || action.attackRoll.calculation || "");
+        attackRoll = bestFormula(action.attackRoll);
       } else if (action.type === "attack" && action.roll) {
-        attackRoll = typeof action.roll === "string" ? action.roll : String(action.roll.calculation || action.roll.value || "");
+        attackRoll = bestFormula(action.roll);
       } else {
         const attackChild = actionChildren.find((c) => c.type === "attack" || c.type === "roll" && c.name && c.name.toLowerCase().includes("attack"));
         if (attackChild && attackChild.roll) {
-          if (typeof attackChild.roll === "string") {
-            attackRoll = attackChild.roll;
-          } else if (typeof attackChild.roll === "object") {
-            attackRoll = attackChild.roll.calculation || attackChild.roll.value || "";
-          }
+          attackRoll = bestFormula(attackChild.roll);
         }
       }
       if (attackRoll) {
@@ -12530,7 +12522,7 @@ ${suffix}`;
       let damage = "";
       let damageType = "";
       if (action.damage) {
-        damage = typeof action.damage === "string" ? action.damage : String(action.damage.value || action.damage.calculation || "");
+        damage = bestFormula(action.damage);
       } else {
         const damageChild = actionChildren.find((c) => c.type === "damage" || c.type === "roll" && c.name && c.name.toLowerCase().includes("damage"));
         if (damageChild) {
