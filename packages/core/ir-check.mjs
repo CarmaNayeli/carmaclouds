@@ -20,7 +20,7 @@ for (const fixture of ['dnd5e-character', 'non-dnd-character']) {
   console.log(`  attributes: ${ir.attributes.length}  ${JSON.stringify(types)}`);
   console.log(`  actions: ${ir.actions.length} (spells: ${ir.actions.filter(a => a.kind === 'spell').length})`);
 
-  console.log(`  skills: ${ir.skills.length}`);
+  console.log(`  skills: ${ir.skills.length} | inventory: ${ir.inventory.length}`);
 
   if (fixture === 'dnd5e-character') {
     ok(ir.systemHint === 'dnd5e', 'detected as dnd5e');
@@ -37,6 +37,7 @@ for (const fixture of ['dnd5e-character', 'non-dnd-character']) {
     ok(dnd.hitDice.length >= 1 && dnd.hitDice[0].size, `derived hit dice ${JSON.stringify(dnd.hitDice)}`);
     ok(dnd.hitPoints.max > 0, `derived HP ${JSON.stringify(dnd.hitPoints)}`);
     ok(dnd.proficiencyBonus > 0, `derived proficiencyBonus = ${dnd.proficiencyBonus}`);
+    ok(ir.inventory.length >= 1 && ir.inventory.some(i => i.equipped), `inventory imported (${ir.inventory.length}, some equipped)`);
     console.log(`     spellSlots: ${JSON.stringify(dnd.spellSlots)}`);
   }
 

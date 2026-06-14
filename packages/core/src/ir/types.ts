@@ -71,6 +71,18 @@ export interface IRSkill {
   tags: string[];
 }
 
+export interface IRItem {
+  id: string;
+  name: string;
+  plural?: string;
+  quantity: number;
+  equipped: boolean;
+  weight?: number;
+  value?: number;
+  description?: string;
+  tags: string[];
+}
+
 export interface IRUses {
   current: number;
   max: number;
@@ -122,6 +134,7 @@ export interface IRCharacter {
   attributes: IRAttribute[];
   skills: IRSkill[];
   actions: IRAction[];
+  inventory: IRItem[];
   /** variableName -> attribute, for fast lookup by adapters and the D&D view. */
   byVar: Record<string, IRAttribute>;
 }

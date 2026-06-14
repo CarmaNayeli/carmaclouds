@@ -10,6 +10,7 @@ import type {
   IRAttribute,
   IRCharacter,
   IRConsumes,
+  IRItem,
   IRSkill,
   RawDiceCloud,
   ResetPeriod,
@@ -115,6 +116,20 @@ function normalizeSkill(p: any): IRSkill {
   };
 }
 
+function normalizeItem(p: any): IRItem {
+  return {
+    id: p._id,
+    name: p.name ?? '',
+    plural: p.plural || undefined,
+    quantity: p.quantity != null ? numOf(p.quantity) : 1,
+    equipped: !!p.equipped,
+    weight: has(p.weight) ? numOf(p.weight) : undefined,
+    value: has(p.value) ? numOf(p.value) : undefined,
+    description: textOf(p.description),
+    tags: Array.isArray(p.tags) ? p.tags : [],
+  };
+}
+
 function consumesOf(p: any): IRConsumes[] {
   const consumed = p.resources?.attributesConsumed;
   if (!Array.isArray(consumed)) return [];
@@ -187,6 +202,10 @@ export function normalize(raw: RawDiceCloud): IRCharacter {
 
   const actions = props.filter(isActionLike).map(normalizeAction);
 
+  const inventory = props
+    .filter((p) => p.type === 'item')
+    .map(normalizeItem);
+
   const byVar: Record<string, IRAttribute> = {};
   for (const a of attributes) {
     if (a.variableName) byVar[a.variableName] = a;
@@ -200,6 +219,7 @@ export function normalize(raw: RawDiceCloud): IRCharacter {
     attributes,
     skills,
     actions,
+    inventory,
     byVar,
   };
 }
