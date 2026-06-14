@@ -37,7 +37,8 @@
       "Bash(gh release:*)",
       "Bash(gh pr create:*)",
       "Bash(gh repo delete:*)",
-      "WebFetch(domain:www.carmabella.com)"
+      "WebFetch(domain:www.carmabella.com)",
+      "Bash(git -C /c/Users/c_dow/carmaclouds diff -- packages/carmaclouds/src/content/dicecloud-extraction.js)"
     ],
     "additionalDirectories": [
       "c:\\Users\\c_dow\\carmaclouds\\packages\\core\\src",

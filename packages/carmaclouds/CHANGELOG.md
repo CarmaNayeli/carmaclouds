@@ -2,6 +2,11 @@
 
 All notable changes to the CarmaClouds extension suite will be documented in this file.
 
+## [Unreleased]
+
+### Fixed
+- **DiceCloud parse: currency and background now populated.** Coins (cp/sp/ep/gp/pp) are summed from the coin inventory items ("Gold piece", etc.) rather than from non-existent currency variables, so `raw_dicecloud_data.currency` is no longer always zero. Background is derived from the folder filling DiceCloud's "Background" property slot (was hardcoded empty). Affects FoundCloud/CoyoteCloud (Foundry + Coyotes & Candles) imports after a re-sync.
+
 ## [2.4.0] - 2025-02-12
 
 ### 🎯 Major Features

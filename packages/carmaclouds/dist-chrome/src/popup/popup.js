@@ -11823,6 +11823,35 @@ ${suffix}`;
       return true;
     });
   }
+  function coinDenomination(name) {
+    const m = String(name || "").trim().match(/^(copper|silver|electrum|gold|platinum)\s+pieces?\b/i);
+    return m ? COIN_DENOMINATIONS[m[1].toLowerCase()] : null;
+  }
+  function extractCurrency(properties) {
+    const currency = { pp: 0, gp: 0, ep: 0, sp: 0, cp: 0 };
+    if (!Array.isArray(properties))
+      return currency;
+    for (const p of properties) {
+      if (!p || p.type !== "item")
+        continue;
+      const denom = coinDenomination(p.name);
+      if (!denom)
+        continue;
+      const qty = typeof p.quantity === "number" ? p.quantity : Number(p.quantity) || 0;
+      currency[denom] += qty;
+    }
+    return currency;
+  }
+  function extractBackground(properties) {
+    if (!Array.isArray(properties))
+      return "";
+    const slot = properties.find((p) => p && p.type === "propertySlot" && (p.name === "Background" || Array.isArray(p.tags) && p.tags.includes("backgroundSlot")));
+    if (!slot || !slot._id)
+      return "";
+    const fillers = properties.filter((p) => p && p.type === "folder" && p.parent && p.parent.id === slot._id);
+    const filler = fillers.find((p) => Array.isArray(p.tags) && p.tags.includes("background")) || fillers[0];
+    return filler && filler.name ? String(filler.name).trim() : "";
+  }
   function evaluateConditionals(text, variables2 = {}) {
     if (!text || typeof text !== "string")
       return text;
@@ -12899,7 +12928,7 @@ ${suffix}`;
       race,
       class: characterClass || "Unknown",
       level,
-      background: "",
+      background: extractBackground(properties),
       alignment: creature.alignment || "",
       attributes,
       attributeMods,
@@ -13215,13 +13244,8 @@ ${suffix}`;
         conditionImmunities: extractVariable(rawData.variables, "conditionImmunities"),
         languages: extractVariable(rawData.variables, "languages"),
         size: extractVariable(rawData.variables, "size") || "medium",
-        currency: {
-          pp: extractVariable(rawData.variables, "pp") || 0,
-          gp: extractVariable(rawData.variables, "gp") || 0,
-          ep: extractVariable(rawData.variables, "ep") || 0,
-          sp: extractVariable(rawData.variables, "sp") || 0,
-          cp: extractVariable(rawData.variables, "cp") || 0
-        },
+        // Coins live as inventory items ("Gold piece", etc.), not as variables.
+        currency: extractCurrency(rawData.properties),
         experiencePoints: extractVariable(rawData.variables, "experiencePoints") || 0
       }
     };
@@ -13234,7 +13258,7 @@ ${suffix}`;
     const varData = variables2[varName];
     return varData.value !== void 0 ? varData.value : varData;
   }
-  var STANDARD_VARS;
+  var STANDARD_VARS, COIN_DENOMINATIONS;
   var init_dicecloud_extraction = __esm({
     "src/content/dicecloud-extraction.js"() {
       STANDARD_VARS = {
@@ -13263,6 +13287,7 @@ ${suffix}`;
         ],
         combat: ["armorClass", "hitPoints", "speed", "initiative", "proficiencyBonus"]
       };
+      COIN_DENOMINATIONS = { copper: "cp", silver: "sp", electrum: "ep", gold: "gp", platinum: "pp" };
     }
   });
 
