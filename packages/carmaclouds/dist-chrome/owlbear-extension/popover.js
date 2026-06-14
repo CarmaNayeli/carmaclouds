@@ -2529,13 +2529,16 @@ function populateStatsTab(character) {
   // Hit Dice section
   if (character.hitDice) {
     const hitDice = character.hitDice;
+    // hitDice.type may already include the leading "d" (e.g. "d6"); normalize so
+    // we never render "dd6".
+    const dieLabel = `d${String(hitDice.type ?? '8').replace(/^d/i, '')}`;
     html += `
       <div class="section-header">Hit Dice</div>
       <div class="stat-grid">
         <div class="stat-box">
           <div class="stat-label">Hit Dice</div>
           <div class="stat-value">${hitDice.current || 0}</div>
-          <div class="stat-modifier">/ ${hitDice.max || 0} d${hitDice.type || '8'}</div>
+          <div class="stat-modifier">/ ${hitDice.max || 0} ${dieLabel}</div>
         </div>
       </div>
     `;
@@ -4280,13 +4283,16 @@ window.takeShortRest = async function() {
   // Allow spending hit dice
   const hitDice = currentCharacter.hitDice;
   if (hitDice && hitDice.current > 0) {
-    const spend = window.prompt(`You have ${hitDice.current}/${hitDice.max} Hit Dice (d${hitDice.type})\n\nHow many do you want to spend?`);
+    // hitDice.type may be "d6" or "6"; extract the numeric size for rolling.
+    const dieSize = parseInt(String(hitDice.type ?? '8').replace(/^d/i, ''), 10) || 8;
+    const dieLabel = `d${dieSize}`;
+    const spend = window.prompt(`You have ${hitDice.current}/${hitDice.max} Hit Dice (${dieLabel})\n\nHow many do you want to spend?`);
     if (spend) {
       const count = Math.min(parseInt(spend) || 0, hitDice.current);
       if (count > 0) {
         let totalHealing = 0;
         for (let i = 0; i < count; i++) {
-          const roll = Math.floor(Math.random() * (hitDice.type)) + 1;
+          const roll = Math.floor(Math.random() * dieSize) + 1;
           const conMod = currentCharacter.attributeMods?.constitution || 0;
           totalHealing += roll + conMod;
         }

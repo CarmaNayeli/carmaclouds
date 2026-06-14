@@ -1372,34 +1372,52 @@
       source: Array.isArray(p.tags) ? p.tags.join(", ") : "",
       uses: p.uses && (p.uses.max ?? 0) > 0 ? { current: p.uses.value ?? p.uses.currentValue ?? 0, max: p.uses.max ?? 0 } : void 0
     }));
-    const classLower = (base.class || "").toLowerCase();
-    const hitDieMap = {
-      "barbarian": 12,
-      "fighter": 10,
-      "paladin": 10,
-      "ranger": 10,
-      "bard": 8,
-      "cleric": 8,
-      "druid": 8,
-      "monk": 8,
-      "rogue": 8,
-      "warlock": 8,
-      "sorcerer": 6,
-      "wizard": 6
+    const normDie = (s) => {
+      const m = String(s ?? "").match(/d?\s*(\d+)/i);
+      return m ? `d${m[1]}` : null;
     };
-    let hitDieType = 8;
-    for (const [cls, die] of Object.entries(hitDieMap)) {
-      if (classLower.includes(cls)) {
-        hitDieType = die;
-        break;
+    const hitDiceProps = (properties || []).filter(
+      (p) => p && p.type === "attribute" && p.attributeType === "hitDice"
+    );
+    let hitDice;
+    if (hitDiceProps.length > 0) {
+      let current = 0, max = 0;
+      for (const p of hitDiceProps) {
+        current += Number(p.value ?? p.currentValue ?? 0) || 0;
+        max += Number(p.total ?? p.value ?? 0) || 0;
       }
+      const size = normDie(hitDiceProps[0].hitDiceSize) || normDie(hitDiceProps[0].name) || "d8";
+      hitDice = { current, max, type: size };
+    } else {
+      const classLower = (base.class || "").toLowerCase();
+      const hitDieMap = {
+        "barbarian": 12,
+        "fighter": 10,
+        "paladin": 10,
+        "ranger": 10,
+        "bard": 8,
+        "cleric": 8,
+        "druid": 8,
+        "monk": 8,
+        "rogue": 8,
+        "warlock": 8,
+        "sorcerer": 6,
+        "wizard": 6
+      };
+      let hitDieType = 8;
+      for (const [cls, die] of Object.entries(hitDieMap)) {
+        if (classLower.includes(cls)) {
+          hitDieType = die;
+          break;
+        }
+      }
+      const hitDiceUsed = variables2?.hitDiceUsed?.value ?? variables2?.hitDiceUsed?.total ?? 0;
+      hitDice = {
+        current: Math.max(0, (base.level || 1) - hitDiceUsed),
+        max: base.level || 1,
+        type: `d${hitDieType}`
+      };
     }
-    const hitDiceUsed = variables2?.hitDiceUsed?.value ?? variables2?.hitDiceUsed?.total ?? 0;
-    const hitDice = {
-      current: Math.max(0, (base.level || 1) - hitDiceUsed),
-      max: base.level || 1,
-      type: `d${hitDieType}`
-    };
     const picture = creature?.picture || creature?.avatarPicture || null;
     return {
       id: characterId || base.id,

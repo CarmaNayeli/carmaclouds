@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "build": "node build.js",
-    "dev": "node build.js --watch"
+    "dev": "node build.js --watch",
+    "lint:firefox": "web-ext lint --source-dir=dist",
+    "sign:firefox": "web-ext sign --source-dir=dist --artifacts-dir=../../releases --channel=unlisted"
   },
   "keywords": [
     "carmaclouds",
@@ -19,6 +21,7 @@
   "author": "Dice Cat",
   "license": "MIT",
   "devDependencies": {
-    "archiver": "^7.0.1"
+    "archiver": "^7.0.1",
+    "web-ext": "^10.4.0"
   }
 }

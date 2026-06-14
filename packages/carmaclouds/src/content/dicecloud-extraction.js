@@ -1801,23 +1801,52 @@ export function parseForOwlCloud(rawData, characterId = null) {
         : undefined,
     }));
 
-  // Hit dice — derive type from class
-  const classLower = (base.class || '').toLowerCase();
-  const hitDieMap = {
-    'barbarian': 12, 'fighter': 10, 'paladin': 10, 'ranger': 10,
-    'bard': 8, 'cleric': 8, 'druid': 8, 'monk': 8, 'rogue': 8, 'warlock': 8,
-    'sorcerer': 6, 'wizard': 6
+  // Hit dice — prefer an explicit DiceCloud "hitDice" attribute. This works for
+  // any d20 system (the size + value/total come straight from the sheet), not just
+  // D&D classes. Fall back to deriving the die from the class name only when no
+  // hit-dice attribute exists.
+  // Normalize a die size to a single "d<N>" form (avoids "dd8" when the source
+  // already includes the leading "d", e.g. hitDiceSize === "d6").
+  const normDie = (s) => {
+    const m = String(s ?? '').match(/d?\s*(\d+)/i);
+    return m ? `d${m[1]}` : null;
   };
-  let hitDieType = 8;
-  for (const [cls, die] of Object.entries(hitDieMap)) {
-    if (classLower.includes(cls)) { hitDieType = die; break; }
+  const hitDiceProps = (properties || []).filter(
+    p => p && p.type === 'attribute' && p.attributeType === 'hitDice'
+  );
+
+  let hitDice;
+  if (hitDiceProps.length > 0) {
+    // Sum across pools (handles multiclass: one hitDice attribute per class).
+    let current = 0, max = 0;
+    for (const p of hitDiceProps) {
+      current += Number(p.value ?? p.currentValue ?? 0) || 0;
+      max += Number(p.total ?? p.value ?? 0) || 0;
+    }
+    // Use the size from the first pool, then fall back to the property name
+    // (e.g. "d6 Hit Dice") if the size field is absent.
+    const size = normDie(hitDiceProps[0].hitDiceSize)
+      || normDie(hitDiceProps[0].name)
+      || 'd8';
+    hitDice = { current, max, type: size };
+  } else {
+    const classLower = (base.class || '').toLowerCase();
+    const hitDieMap = {
+      'barbarian': 12, 'fighter': 10, 'paladin': 10, 'ranger': 10,
+      'bard': 8, 'cleric': 8, 'druid': 8, 'monk': 8, 'rogue': 8, 'warlock': 8,
+      'sorcerer': 6, 'wizard': 6
+    };
+    let hitDieType = 8;
+    for (const [cls, die] of Object.entries(hitDieMap)) {
+      if (classLower.includes(cls)) { hitDieType = die; break; }
+    }
+    const hitDiceUsed = variables?.hitDiceUsed?.value ?? variables?.hitDiceUsed?.total ?? 0;
+    hitDice = {
+      current: Math.max(0, (base.level || 1) - hitDiceUsed),
+      max: base.level || 1,
+      type: `d${hitDieType}`,
+    };
   }
-  const hitDiceUsed = variables?.hitDiceUsed?.value ?? variables?.hitDiceUsed?.total ?? 0;
-  const hitDice = {
-    current: Math.max(0, (base.level || 1) - hitDiceUsed),
-    max: base.level || 1,
-    type: `d${hitDieType}`,
-  };
 
   // Portrait from creature
   const picture = creature?.picture || creature?.avatarPicture || null;
