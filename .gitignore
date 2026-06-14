@@ -16,6 +16,9 @@ releases/
 .env.local
 .env.*.local
 
+# IR fixtures contain real DiceCloud character data pulled via the API
+packages/core/src/ir/__fixtures__/
+
 # IDE
 .vscode/
 .idea/

@@ -37,9 +37,16 @@ if (!token) {
   process.exit(1);
 }
 
+// Accept either a bare id or a full URL like https://dicecloud.com/character/<id>/Name
+const idOf = (v) => {
+  if (!v) return v;
+  const m = v.match(/character\/([^/?#]+)/);
+  return m ? m[1] : v.trim();
+};
+
 const targets = [
-  { id: env.DICECLOUD_DND_CREATURE_ID, name: 'dnd5e-character' },
-  { id: env.DICECLOUD_NONDND_CREATURE_ID, name: 'non-dnd-character' },
+  { id: idOf(env.DICECLOUD_DND_CREATURE_ID), name: 'dnd5e-character' },
+  { id: idOf(env.DICECLOUD_NONDND_CREATURE_ID), name: 'non-dnd-character' },
 ].filter(t => t.id);
 
 if (targets.length === 0) {
