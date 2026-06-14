@@ -853,10 +853,10 @@
       let text = "";
       if (typeof field === "string") {
         text = field;
-      } else if (typeof field === "object" && field.text) {
-        text = field.text;
+      } else if (typeof field === "object") {
+        text = typeof field.value === "string" && field.value.trim() ? field.value : field.text || "";
       }
-      return evaluateConditionals(text, variables2);
+      return evaluateConditionals(text, variables2).replace(/\*\*/g, "");
     };
     const spells = properties.filter((p) => p.type === "spell" && isValidProperty(p)).map((spell) => {
       const spellChildren = properties.filter((p) => {

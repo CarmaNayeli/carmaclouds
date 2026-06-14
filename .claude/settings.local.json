@@ -42,7 +42,17 @@
       "Bash(git -C /c/Users/c_dow/carmaclouds status -sb)",
       "Bash(git -C /c/Users/c_dow/carmaclouds status --short)",
       "Bash(git -C /c/Users/c_dow/coyotesandcandles status -sb)",
-      "Bash(git -C /c/Users/c_dow/coyotesandcandles status --short)"
+      "Bash(git -C /c/Users/c_dow/coyotesandcandles status --short)",
+      "Bash(grep -n \"web-ext\\\\|sign\\\\|AMO\\\\|amo\" package.json)",
+      "Bash(ls node_modules/.bin/web-ext)",
+      "Bash(ls -la /c/Users/c_dow/carmaclouds/releases/*.xpi)",
+      "Bash(npx web-ext *)",
+      "Bash(rm -rf carmaclouds-chrome carmaclouds-chrome.zip)",
+      "Bash(cp -r ../packages/carmaclouds/dist-chrome carmaclouds-chrome)",
+      "Bash(7z a *)",
+      "Bash(rm -rf carmaclouds-firefox carmaclouds-firefox.zip)",
+      "Bash(cp -r ../packages/carmaclouds/dist carmaclouds-firefox)",
+      "PowerShell($Errors = $null; [System.Management.Automation.PSParser]::Tokenize\\(\\(Get-Content -Raw \".\\\\packages\\\\carmaclouds\\\\sign-firefox.ps1\"\\), [ref]$Errors\\) | Out-Null; if \\($Errors.Count -eq 0\\) { \"Syntax OK\" } else { $Errors | ForEach-Object { $_.Message } })"
     ],
     "additionalDirectories": [
       "c:\\Users\\c_dow\\carmaclouds\\packages\\core\\src",

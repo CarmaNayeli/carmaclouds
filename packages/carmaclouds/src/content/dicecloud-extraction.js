@@ -1098,11 +1098,14 @@ export function parseForRollCloud(rawData) {
     let text = '';
     if (typeof field === 'string') {
       text = field;
-    } else if (typeof field === 'object' && field.text) {
-      text = field.text;
+    } else if (typeof field === 'object') {
+      // Prefer DiceCloud's resolved `value` (inline { … } calcs already computed,
+      // e.g. "**1d8 + 3**") over the raw `text` template ("**{max(slotLevel,1)}d8
+      // + {#spellList.abilityMod}**"), falling back to text when there's no value.
+      text = (typeof field.value === 'string' && field.value.trim()) ? field.value : (field.text || '');
     }
-    // Evaluate any conditional expressions using the character's variables
-    return evaluateConditionals(text, variables);
+    // Evaluate conditionals, then drop leftover markdown bold the sheets don't render.
+    return evaluateConditionals(text, variables).replace(/\*\*/g, '');
   };
 
   // Parse spells from properties with child attack/damage extraction (exclude inactive/disabled)
