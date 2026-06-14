@@ -25,6 +25,7 @@
     "./common/*": "./src/common/*",
     "./modules/*": "./src/modules/*",
     "./browser.js": "./src/browser.js",
+    "./ir": "./src/ir/index.ts",
     "./src/*": "./src/*"
   },
   "scripts": {

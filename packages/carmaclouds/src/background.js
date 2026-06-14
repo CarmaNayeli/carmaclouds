@@ -4,6 +4,7 @@
  */
 
 import { parseForFoundCloud, parseForOwlCloud } from './content/dicecloud-extraction.js';
+import { upsertCharacterIR } from '@carmaclouds/core/ir';
 import DiceCloudSync from './lib/dicecloud-sync.js';
 import MeteorDDPClient from './lib/meteor-ddp-client.js';
 
@@ -733,6 +734,18 @@ async function handleSyncToCarmaClouds(characterData) {
     } catch (supabaseError) {
       console.error('❌ Failed to sync to Supabase (non-fatal):', supabaseError);
       // Don't fail the entire sync if Supabase fails
+    }
+
+    // Step 7b: write the system-agnostic IR (rebuild) to its own table. This is
+    // the central sync, so it covers every adapter. Non-fatal.
+    try {
+      const ir = await upsertCharacterIR(characterData.raw || characterData, {
+        url: SUPABASE_URL,
+        anonKey: SUPABASE_ANON_KEY,
+      });
+      console.log(`✅ Step 7b: IR synced to clouds_character_ir (${ir.systemHint})`);
+    } catch (irError) {
+      console.warn('⚠️ IR sync failed (non-fatal):', irError);
     }
 
     // Send message to popup to notify about the sync
