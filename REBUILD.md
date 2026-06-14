@@ -129,12 +129,17 @@ raw DiceCloud
 - Non-D&D assertions: recovery die present with size; custom attributes surfaced;
   charge-based spell shows correct uses + reset.
 
-## Open decisions
+## Decisions
 
-- **Types:** core is plain JS. Use JSDoc typedefs (no build change) vs. introduce TS in
-  `packages/core`? (Lean: JSDoc to start.)
+- **Types: TypeScript** in `packages/core` (IR module is TS; long-term win over JSDoc).
+- **Storage: a new dedicated Supabase table** for the IR (not a column on
+  `clouds_characters`). Keeps the new model cleanly separated from the legacy parsed data
+  during and after migration.
+- **Fixtures via API:** pull real character JSON directly from the DiceCloud API
+  (`scripts/fetch-dicecloud-fixtures.mjs`) using creds in `packages/carmaclouds/.env`.
+
+## Still open
+
 - **D&D detection** for the view: presence of `strength..charisma` variableNames and/or
   `dnd5e` tags. Treat as a hint only.
-- **Storage:** add IR to Supabase `clouds_characters` as a new column alongside the old
-  parsed data during migration, or compute IR on read? (Lean: persist it; keeps adapters
-  thin and lets us diff against old output.)
+- New IR table name + columns (define once we see the IR shape settle).
