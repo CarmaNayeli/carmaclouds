@@ -94,3 +94,36 @@
 /* inventory */
 .cc-equipped-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--theme-primary-light, #34D399); flex: none; }
 .cc-item-qty { color: var(--theme-text-muted, #9ca3af); font-size: 12px; }
+
+/* class/level subtitle in the header */
+.cc-classes { font-size: 11px; color: var(--theme-text-secondary, #cbd5e1); }
+
+/* action: now a container wrapping a clickable row + an optional description */
+.cc-action { flex-direction: column; align-items: stretch; padding: 0; cursor: default; }
+.cc-action:hover { background: var(--theme-bg-card, rgba(255,255,255,0.04)); }
+.cc-action-row { display: flex; align-items: center; gap: 8px; padding: 5px 8px; cursor: pointer; border-radius: 6px; }
+.cc-action-row:hover { background: var(--theme-bg-hover, rgba(255,255,255,0.1)); }
+.cc-action-expand {
+  background: none; border: none; cursor: pointer; padding: 0 2px; line-height: 1;
+  font-size: 11px; color: var(--theme-text-muted, #9ca3af); flex: none;
+}
+.cc-action-meta { font-size: 10px; color: var(--theme-text-muted, #9ca3af); white-space: nowrap; }
+.cc-action-flag {
+  font-size: 9px; font-weight: 700; padding: 1px 4px; border-radius: 4px;
+  background: var(--theme-bg-accent, rgba(139,92,246,0.18)); color: var(--theme-primary-lighter, #C4B5FD);
+}
+.cc-action-desc {
+  padding: 4px 10px 8px 22px; font-size: 12px; line-height: 1.4; white-space: pre-wrap;
+  color: var(--theme-text-secondary, #cbd5e1); border-top: 1px solid var(--theme-border, rgba(255,255,255,0.08));
+}
+
+/* conditions & toggles (buffs / toggles) */
+.cc-condition-list { display: flex; flex-wrap: wrap; gap: 5px; }
+.cc-condition {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; font-size: 12px;
+  background: var(--theme-bg-card, rgba(255,255,255,0.04)); border: 1px solid var(--theme-border, rgba(255,255,255,0.1)); border-radius: 999px;
+}
+.cc-condition-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--theme-text-muted, #6b7280); flex: none; }
+.cc-condition-dot.cc-on { background: var(--theme-primary-light, #34D399); }
+.cc-condition-name { font-weight: 600; }
+.cc-condition-kind { font-size: 9px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--theme-text-muted, #9ca3af); }

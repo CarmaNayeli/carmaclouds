@@ -56,6 +56,11 @@ function combatStats(ir: IRCharacter): HTMLElement | null {
   if (init) items.push(['Init', signed(init.value)]);
   const prof = pick('proficiencyBonus', 'proficiency');
   if (prof && prof.value) items.push(['Prof', signed(prof.value)]);
+  // Best-effort spellcasting summary (shown only when the sheet defines them).
+  const spellDC = pick('spellSaveDC', 'spellSaveDc', 'spellDifficultyClass', 'spellDc');
+  if (spellDC && spellDC.value) items.push(['Spell DC', String(spellDC.value)]);
+  const spellAtk = pick('spellAttack', 'spellAttackBonus', 'spellAttackMod', 'spellAttackRoll');
+  if (spellAtk && spellAtk.value) items.push(['Spell Atk', signed(spellAtk.value)]);
 
   if (items.length === 0) return null;
   return h('div', { class: 'cc-combat' },
@@ -166,7 +171,7 @@ function attributesSection(ir: IRCharacter): HTMLElement | null {
   return h('div', {}, sectionHeader('Attributes'), list);
 }
 
-/** Actions & spells, showing real uses (current/max + reset). */
+/** Actions & spells: real uses (current/max + reset), spell meta, expandable description. */
 function actionsSection(ir: IRCharacter, opts: RenderOpts): HTMLElement | null {
   if (ir.actions.length === 0) return null;
 
@@ -174,10 +179,19 @@ function actionsSection(ir: IRCharacter, opts: RenderOpts): HTMLElement | null {
   for (const action of ir.actions) {
     const meta: HTMLElement[] = [];
     if (action.kind === 'spell' && action.spell) {
-      meta.push(h('span', { class: 'cc-action-tag', text: `L${action.spell.level}` }));
+      const s = action.spell;
+      meta.push(h('span', { class: 'cc-action-tag', text: s.level === 0 ? 'Cantrip' : `L${s.level}` }));
+      if (s.school) meta.push(h('span', { class: 'cc-action-meta', text: s.school }));
+      if (s.range) meta.push(h('span', { class: 'cc-action-meta', text: s.range }));
+      if (s.concentration) meta.push(h('span', { class: 'cc-action-flag', title: 'Concentration', text: 'C' }));
+      if (s.ritual) meta.push(h('span', { class: 'cc-action-flag', title: 'Ritual', text: 'R' }));
     }
     if (action.attack) {
-      meta.push(h('span', { class: 'cc-action-attack', title: 'Attack bonus', text: signed(action.attack.bonus) }));
+      meta.push(h('span', {
+        class: 'cc-action-attack',
+        title: action.kind === 'spell' ? 'Spell attack' : 'Attack bonus',
+        text: signed(action.attack.bonus),
+      }));
     }
     for (const d of action.damage) {
       meta.push(h('span', { class: 'cc-action-damage', text: d.type ? `${d.formula} ${d.type}` : d.formula }));
@@ -186,17 +200,59 @@ function actionsSection(ir: IRCharacter, opts: RenderOpts): HTMLElement | null {
       ? h('span', { class: 'cc-action-uses' }, poolPill(action.uses.current, action.uses.max), resetBadge(action.uses.reset))
       : null;
 
-    list.appendChild(
-      h('div', {
-          class: `cc-action cc-action-${action.kind}` + (action.active ? '' : ' cc-inactive'),
-          onClick: opts.onUse ? () => opts.onUse!(action) : undefined,
+    // Collapsible description (text only — DiceCloud descriptions can hold markup,
+    // which h() renders as plain text via textContent, never HTML).
+    const desc = (action.description || '').trim();
+    let descPanel: HTMLElement | null = null;
+    let expandBtn: HTMLElement | null = null;
+    if (desc) {
+      descPanel = h('div', { class: 'cc-action-desc', style: 'display:none;', text: desc });
+      expandBtn = h('button', {
+        class: 'cc-action-expand', title: 'Show description', text: '▸',
+        onClick: (e: Event) => {
+          e.stopPropagation(); // don't trigger onUse
+          const open = descPanel!.style.display === 'none';
+          descPanel!.style.display = open ? 'block' : 'none';
+          expandBtn!.textContent = open ? '▾' : '▸';
         },
-        h('span', { class: 'cc-action-name', text: action.name }),
-        ...meta,
-        usesEl),
+      });
+    }
+
+    const row = h('div', {
+        class: 'cc-action-row',
+        onClick: opts.onUse ? () => opts.onUse!(action) : undefined,
+      },
+      expandBtn,
+      h('span', { class: 'cc-action-name', text: action.name }),
+      ...meta,
+      usesEl);
+
+    list.appendChild(
+      h('div', { class: `cc-action cc-action-${action.kind}` + (action.active ? '' : ' cc-inactive') },
+        row,
+        descPanel),
     );
   }
   return h('div', {}, sectionHeader('Actions & Spells'), list);
+}
+
+/** Active buffs + toggles (conditions affecting the character). */
+function conditionsSection(ir: IRCharacter): HTMLElement | null {
+  if (!ir.conditions || ir.conditions.length === 0) return null;
+
+  const list = h('div', { class: 'cc-condition-list' });
+  for (const c of ir.conditions) {
+    list.appendChild(
+      h('div', {
+          class: 'cc-condition' + (c.active ? '' : ' cc-inactive'),
+          title: c.description || undefined,
+        },
+        h('span', { class: 'cc-condition-dot' + (c.active ? ' cc-on' : '') }),
+        h('span', { class: 'cc-condition-name', text: c.name }),
+        h('span', { class: 'cc-condition-kind', text: c.kind })),
+    );
+  }
+  return h('div', {}, sectionHeader('Conditions & Toggles'), list);
 }
 
 /** Inventory list with quantity + equipped marker. */
@@ -216,15 +272,22 @@ function inventorySection(ir: IRCharacter): HTMLElement | null {
 
 /** Build the full character sheet element from an IR. */
 export function renderCharacterSheet(ir: IRCharacter, opts: RenderOpts = {}): HTMLElement {
+  // Class/level subtitle, e.g. "Cleric 6 / Wizard 2" (empty for classless systems).
+  const classLine = (ir.classes || [])
+    .map((c) => (c.level ? `${c.name} ${c.level}` : c.name))
+    .join(' / ');
+
   const header = h('div', { class: 'cc-header' },
     ir.portrait ? h('img', { class: 'cc-portrait', src: ir.portrait, alt: ir.name }) : null,
     h('div', { class: 'cc-title' },
       h('div', { class: 'cc-name', text: ir.name || 'Unnamed' }),
+      classLine ? h('div', { class: 'cc-classes', text: classLine }) : null,
       h('span', { class: 'cc-system', text: ir.systemHint })));
 
   return h('div', { class: 'cc-sheet', dataset: { system: ir.systemHint } },
     header,
     combatStats(ir),
+    conditionsSection(ir),
     abilityGrid(ir, opts),
     skillsSection(ir, opts),
     resourcesSection(ir),

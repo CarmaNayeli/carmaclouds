@@ -167,6 +167,14 @@
     }
     const actions = props.filter(isActionLike).map((p) => normalizeAction(p, damageByParent));
     const inventory = props.filter((p) => p.type === "item").map(normalizeItem);
+    const conditions = props.filter((p) => p.type === "buff" || p.type === "toggle").map((p) => ({
+      id: p._id,
+      name: p.name ?? "",
+      kind: p.type,
+      active: activeOf(p),
+      description: textOf(p.description)
+    })).filter((c) => c.name);
+    const classes = props.filter((p) => p.type === "class").map((p) => ({ name: p.name ?? "", level: numOf(p.level) })).filter((c) => c.name);
     const byVar = {};
     for (const a of attributes) {
       if (a.variableName)
@@ -181,6 +189,8 @@
       skills,
       actions,
       inventory,
+      conditions,
+      classes,
       byVar
     };
   }
@@ -317,6 +327,12 @@
     const prof = pick("proficiencyBonus", "proficiency");
     if (prof && prof.value)
       items.push(["Prof", signed(prof.value)]);
+    const spellDC = pick("spellSaveDC", "spellSaveDc", "spellDifficultyClass", "spellDc");
+    if (spellDC && spellDC.value)
+      items.push(["Spell DC", String(spellDC.value)]);
+    const spellAtk = pick("spellAttack", "spellAttackBonus", "spellAttackMod", "spellAttackRoll");
+    if (spellAtk && spellAtk.value)
+      items.push(["Spell Atk", signed(spellAtk.value)]);
     if (items.length === 0)
       return null;
     return h("div", { class: "cc-combat" }, ...items.map(([label, val]) => h("div", { class: "cc-stat" }, h("div", { class: "cc-stat-label", text: label }), h("div", { class: "cc-stat-value", text: val }))));
@@ -394,21 +410,64 @@
     for (const action of ir.actions) {
       const meta = [];
       if (action.kind === "spell" && action.spell) {
-        meta.push(h("span", { class: "cc-action-tag", text: `L${action.spell.level}` }));
+        const s = action.spell;
+        meta.push(h("span", { class: "cc-action-tag", text: s.level === 0 ? "Cantrip" : `L${s.level}` }));
+        if (s.school)
+          meta.push(h("span", { class: "cc-action-meta", text: s.school }));
+        if (s.range)
+          meta.push(h("span", { class: "cc-action-meta", text: s.range }));
+        if (s.concentration)
+          meta.push(h("span", { class: "cc-action-flag", title: "Concentration", text: "C" }));
+        if (s.ritual)
+          meta.push(h("span", { class: "cc-action-flag", title: "Ritual", text: "R" }));
       }
       if (action.attack) {
-        meta.push(h("span", { class: "cc-action-attack", title: "Attack bonus", text: signed(action.attack.bonus) }));
+        meta.push(h("span", {
+          class: "cc-action-attack",
+          title: action.kind === "spell" ? "Spell attack" : "Attack bonus",
+          text: signed(action.attack.bonus)
+        }));
       }
       for (const d of action.damage) {
         meta.push(h("span", { class: "cc-action-damage", text: d.type ? `${d.formula} ${d.type}` : d.formula }));
       }
       const usesEl = action.uses ? h("span", { class: "cc-action-uses" }, poolPill(action.uses.current, action.uses.max), resetBadge(action.uses.reset)) : null;
-      list.appendChild(h("div", {
-        class: `cc-action cc-action-${action.kind}` + (action.active ? "" : " cc-inactive"),
+      const desc = (action.description || "").trim();
+      let descPanel = null;
+      let expandBtn = null;
+      if (desc) {
+        descPanel = h("div", { class: "cc-action-desc", style: "display:none;", text: desc });
+        expandBtn = h("button", {
+          class: "cc-action-expand",
+          title: "Show description",
+          text: "\u25B8",
+          onClick: (e) => {
+            e.stopPropagation();
+            const open = descPanel.style.display === "none";
+            descPanel.style.display = open ? "block" : "none";
+            expandBtn.textContent = open ? "\u25BE" : "\u25B8";
+          }
+        });
+      }
+      const row = h("div", {
+        class: "cc-action-row",
         onClick: opts.onUse ? () => opts.onUse(action) : void 0
-      }, h("span", { class: "cc-action-name", text: action.name }), ...meta, usesEl));
+      }, expandBtn, h("span", { class: "cc-action-name", text: action.name }), ...meta, usesEl);
+      list.appendChild(h("div", { class: `cc-action cc-action-${action.kind}` + (action.active ? "" : " cc-inactive") }, row, descPanel));
     }
     return h("div", {}, sectionHeader("Actions & Spells"), list);
+  }
+  function conditionsSection(ir) {
+    if (!ir.conditions || ir.conditions.length === 0)
+      return null;
+    const list = h("div", { class: "cc-condition-list" });
+    for (const c of ir.conditions) {
+      list.appendChild(h("div", {
+        class: "cc-condition" + (c.active ? "" : " cc-inactive"),
+        title: c.description || void 0
+      }, h("span", { class: "cc-condition-dot" + (c.active ? " cc-on" : "") }), h("span", { class: "cc-condition-name", text: c.name }), h("span", { class: "cc-condition-kind", text: c.kind })));
+    }
+    return h("div", {}, sectionHeader("Conditions & Toggles"), list);
   }
   function inventorySection(ir) {
     if (ir.inventory.length === 0)
@@ -420,8 +479,9 @@
     return h("div", {}, sectionHeader("Inventory"), list);
   }
   function renderCharacterSheet(ir, opts = {}) {
-    const header = h("div", { class: "cc-header" }, ir.portrait ? h("img", { class: "cc-portrait", src: ir.portrait, alt: ir.name }) : null, h("div", { class: "cc-title" }, h("div", { class: "cc-name", text: ir.name || "Unnamed" }), h("span", { class: "cc-system", text: ir.systemHint })));
-    return h("div", { class: "cc-sheet", dataset: { system: ir.systemHint } }, header, combatStats(ir), abilityGrid(ir, opts), skillsSection(ir, opts), resourcesSection(ir), actionsSection(ir, opts), attributesSection(ir), inventorySection(ir));
+    const classLine = (ir.classes || []).map((c) => c.level ? `${c.name} ${c.level}` : c.name).join(" / ");
+    const header = h("div", { class: "cc-header" }, ir.portrait ? h("img", { class: "cc-portrait", src: ir.portrait, alt: ir.name }) : null, h("div", { class: "cc-title" }, h("div", { class: "cc-name", text: ir.name || "Unnamed" }), classLine ? h("div", { class: "cc-classes", text: classLine }) : null, h("span", { class: "cc-system", text: ir.systemHint })));
+    return h("div", { class: "cc-sheet", dataset: { system: ir.systemHint } }, header, combatStats(ir), conditionsSection(ir), abilityGrid(ir, opts), skillsSection(ir, opts), resourcesSection(ir), actionsSection(ir, opts), attributesSection(ir), inventorySection(ir));
   }
 
   // ../core/dist/render/mount.js

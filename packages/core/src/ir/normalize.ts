@@ -9,6 +9,8 @@ import type {
   IRAction,
   IRAttribute,
   IRCharacter,
+  IRClassLevel,
+  IRCondition,
   IRConsumes,
   IRDamage,
   IRItem,
@@ -226,6 +228,24 @@ export function normalize(raw: RawDiceCloud): IRCharacter {
     .filter((p) => p.type === 'item')
     .map(normalizeItem);
 
+  // Buffs + toggles: the character's activatable conditions/effects.
+  const conditions: IRCondition[] = props
+    .filter((p) => p.type === 'buff' || p.type === 'toggle')
+    .map((p): IRCondition => ({
+      id: p._id,
+      name: p.name ?? '',
+      kind: p.type,
+      active: activeOf(p),
+      description: textOf(p.description),
+    }))
+    .filter((c) => c.name);
+
+  // Class/level lines (DiceCloud `class` properties).
+  const classes: IRClassLevel[] = props
+    .filter((p) => p.type === 'class')
+    .map((p): IRClassLevel => ({ name: p.name ?? '', level: numOf(p.level) }))
+    .filter((c) => c.name);
+
   const byVar: Record<string, IRAttribute> = {};
   for (const a of attributes) {
     if (a.variableName) byVar[a.variableName] = a;
@@ -240,6 +260,8 @@ export function normalize(raw: RawDiceCloud): IRCharacter {
     skills,
     actions,
     inventory,
+    conditions,
+    classes,
     byVar,
   };
 }

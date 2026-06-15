@@ -1704,6 +1704,14 @@
     }
     const actions = props.filter(isActionLike).map((p) => normalizeAction(p, damageByParent));
     const inventory = props.filter((p) => p.type === "item").map(normalizeItem);
+    const conditions = props.filter((p) => p.type === "buff" || p.type === "toggle").map((p) => ({
+      id: p._id,
+      name: p.name ?? "",
+      kind: p.type,
+      active: activeOf(p),
+      description: textOf(p.description)
+    })).filter((c) => c.name);
+    const classes = props.filter((p) => p.type === "class").map((p) => ({ name: p.name ?? "", level: numOf(p.level) })).filter((c) => c.name);
     const byVar = {};
     for (const a of attributes) {
       if (a.variableName)
@@ -1718,6 +1726,8 @@
       skills,
       actions,
       inventory,
+      conditions,
+      classes,
       byVar
     };
   }

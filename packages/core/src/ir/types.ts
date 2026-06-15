@@ -130,6 +130,26 @@ export interface IRAction {
   tags: string[];
 }
 
+/**
+ * A buff or toggle — DiceCloud's activatable conditions/effects (rage, bless, a
+ * stance, a feature toggle). Carried with its on/off state so the sheet can show
+ * what's currently affecting the character.
+ */
+export interface IRCondition {
+  id: string;
+  name: string;
+  /** 'buff' (an applied effect) | 'toggle' (a user switch) | custom. */
+  kind: 'buff' | 'toggle' | (string & {});
+  active: boolean;
+  description?: string;
+}
+
+/** A class + its level (DiceCloud `class` property). Empty for non-class systems. */
+export interface IRClassLevel {
+  name: string;
+  level: number;
+}
+
 /** The normalized character. Generic first; D&D is a derived view on top. */
 export interface IRCharacter {
   id: string;
@@ -141,6 +161,10 @@ export interface IRCharacter {
   skills: IRSkill[];
   actions: IRAction[];
   inventory: IRItem[];
+  /** Active buffs / toggles (conditions affecting the character). */
+  conditions: IRCondition[];
+  /** Class/level lines; empty for classless systems. */
+  classes: IRClassLevel[];
   /** variableName -> attribute, for fast lookup by adapters and the D&D view. */
   byVar: Record<string, IRAttribute>;
 }
