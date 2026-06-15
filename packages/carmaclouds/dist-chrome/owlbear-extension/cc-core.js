@@ -292,6 +292,27 @@
       h("span", { class: "cc-pool-max", text: String(max) })
     );
   }
+  function skillsSection(ir, opts) {
+    const skills = ir.skills.filter((s) => s.skillType === "skill" && s.active && s.variableName);
+    if (skills.length === 0)
+      return null;
+    const list = h("div", { class: "cc-skill-list" });
+    for (const s of skills) {
+      list.appendChild(
+        h(
+          "div",
+          {
+            class: "cc-skill" + (s.proficiency > 0 ? " cc-proficient" : ""),
+            title: `Roll ${s.name}`,
+            onClick: () => opts.onRoll?.(s.name, s.value)
+          },
+          h("span", { class: "cc-skill-name", text: s.name }),
+          h("span", { class: "cc-skill-bonus", text: signed(s.value) })
+        )
+      );
+    }
+    return h("div", {}, sectionHeader("Skills"), list);
+  }
   function abilityGrid(ir, opts) {
     const dnd = deriveDnd(ir);
     if (Object.keys(dnd.abilities).length === 0)
@@ -349,7 +370,7 @@
       "hitDice",
       "utility"
     ]);
-    const custom = ir.attributes.filter((a) => !hidden.has(a.type) && a.variableName);
+    const custom = ir.attributes.filter((a) => !hidden.has(a.type) && a.variableName && a.value !== 0);
     if (custom.length === 0)
       return null;
     const list = h("div", { class: "cc-attr-list" });
@@ -373,6 +394,9 @@
       const meta = [];
       if (action.kind === "spell" && action.spell) {
         meta.push(h("span", { class: "cc-action-tag", text: `L${action.spell.level}` }));
+      }
+      if (action.attack) {
+        meta.push(h("span", { class: "cc-action-attack", title: "Attack bonus", text: signed(action.attack.bonus) }));
       }
       const usesEl = action.uses ? h("span", { class: "cc-action-uses" }, poolPill(action.uses.current, action.uses.max), resetBadge(action.uses.reset)) : null;
       list.appendChild(
@@ -424,6 +448,7 @@
       { class: "cc-sheet", dataset: { system: ir.systemHint } },
       header,
       abilityGrid(ir, opts),
+      skillsSection(ir, opts),
       resourcesSection(ir),
       actionsSection(ir, opts),
       attributesSection(ir),

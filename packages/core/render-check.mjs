@@ -35,6 +35,7 @@ for (const fixture of ['dnd5e-character', 'non-dnd-character']) {
     boxes[0].dispatchEvent(new globalThis.Event('click'));
     ok(rolls === 1, 'clicking an ability box fires onRoll');
     ok(el.querySelector('.cc-resource-list'), 'has a Resources section');
+    ok(el.querySelectorAll('.cc-skill-list .cc-skill').length >= 15, `has a Skills list (${el.querySelectorAll('.cc-skill').length} skills)`);
     ok(el.querySelector('.cc-item-list'), 'has an Inventory section');
   }
 

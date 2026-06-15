@@ -39,6 +39,26 @@ function poolPill(current: number, max: number): HTMLElement {
     h('span', { class: 'cc-pool-max', text: String(max) }));
 }
 
+/** Trained skills (skillType 'skill'), clickable to roll. */
+function skillsSection(ir: IRCharacter, opts: RenderOpts): HTMLElement | null {
+  const skills = ir.skills.filter((s) => s.skillType === 'skill' && s.active && s.variableName);
+  if (skills.length === 0) return null;
+
+  const list = h('div', { class: 'cc-skill-list' });
+  for (const s of skills) {
+    list.appendChild(
+      h('div', {
+          class: 'cc-skill' + (s.proficiency > 0 ? ' cc-proficient' : ''),
+          title: `Roll ${s.name}`,
+          onClick: () => opts.onRoll?.(s.name, s.value),
+        },
+        h('span', { class: 'cc-skill-name', text: s.name }),
+        h('span', { class: 'cc-skill-bonus', text: signed(s.value) })),
+    );
+  }
+  return h('div', {}, sectionHeader('Skills'), list);
+}
+
 /** D&D ability grid (only when the derived view has abilities). */
 function abilityGrid(ir: IRCharacter, opts: RenderOpts): HTMLElement | null {
   const dnd = deriveDnd(ir);
@@ -95,7 +115,9 @@ function attributesSection(ir: IRCharacter): HTMLElement | null {
   const hidden = new Set([
     'ability', 'modifier', 'healthBar', 'resource', 'spellSlot', 'hitDice', 'utility',
   ]);
-  const custom = ir.attributes.filter((a) => !hidden.has(a.type) && a.variableName);
+  // Also drop zero-valued entries - on sparse sheets these are unset internals
+  // (Speed 0, Size 0, Level 0) rather than meaningful custom stats.
+  const custom = ir.attributes.filter((a) => !hidden.has(a.type) && a.variableName && a.value !== 0);
   if (custom.length === 0) return null;
 
   const list = h('div', { class: 'cc-attr-list' });
@@ -118,6 +140,9 @@ function actionsSection(ir: IRCharacter, opts: RenderOpts): HTMLElement | null {
     const meta: HTMLElement[] = [];
     if (action.kind === 'spell' && action.spell) {
       meta.push(h('span', { class: 'cc-action-tag', text: `L${action.spell.level}` }));
+    }
+    if (action.attack) {
+      meta.push(h('span', { class: 'cc-action-attack', title: 'Attack bonus', text: signed(action.attack.bonus) }));
     }
     const usesEl = action.uses
       ? h('span', { class: 'cc-action-uses' }, poolPill(action.uses.current, action.uses.max), resetBadge(action.uses.reset))
@@ -162,6 +187,7 @@ export function renderCharacterSheet(ir: IRCharacter, opts: RenderOpts = {}): HT
   return h('div', { class: 'cc-sheet', dataset: { system: ir.systemHint } },
     header,
     abilityGrid(ir, opts),
+    skillsSection(ir, opts),
     resourcesSection(ir),
     actionsSection(ir, opts),
     attributesSection(ir),

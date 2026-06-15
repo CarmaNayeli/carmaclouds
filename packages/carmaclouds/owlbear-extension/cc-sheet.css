@@ -52,7 +52,20 @@
 
 /* action meta */
 .cc-action-tag { font-size: 10px; padding: 1px 5px; border-radius: 4px; background: var(--theme-bg-accent, rgba(139,92,246,0.18)); }
+.cc-action-attack { font-size: 12px; font-weight: 700; color: var(--theme-primary-light, #A78BFA); font-variant-numeric: tabular-nums; }
 .cc-action-uses { display: inline-flex; align-items: center; gap: 5px; }
+
+/* skills */
+.cc-skill-list { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.cc-skill {
+  display: flex; align-items: center; gap: 8px; padding: 4px 8px; cursor: pointer; font-size: 12px;
+  background: var(--theme-bg-card, rgba(255,255,255,0.04)); border: 1px solid var(--theme-border, rgba(255,255,255,0.1)); border-radius: 6px;
+}
+.cc-skill:hover { background: var(--theme-bg-hover, rgba(255,255,255,0.1)); }
+.cc-skill-name { flex: 1; }
+.cc-skill-bonus { font-weight: 700; font-variant-numeric: tabular-nums; }
+.cc-skill.cc-proficient { border-color: var(--theme-primary, #8B5CF6); }
+.cc-skill.cc-proficient .cc-skill-name::before { content: '●'; font-size: 8px; margin-right: 5px; color: var(--theme-primary-light, #A78BFA); }
 
 /* inventory */
 .cc-equipped-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--theme-primary-light, #34D399); flex: none; }
