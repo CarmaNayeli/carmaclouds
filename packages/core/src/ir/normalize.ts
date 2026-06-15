@@ -10,6 +10,7 @@ import type {
   IRAttribute,
   IRCharacter,
   IRConsumes,
+  IRDamage,
   IRItem,
   IRSkill,
   RawDiceCloud,
@@ -140,9 +141,16 @@ function consumesOf(p: any): IRConsumes[] {
   }));
 }
 
-function normalizeAction(p: any): IRAction {
+function normalizeAction(p: any, damageByParent: Record<string, any[]>): IRAction {
   const kind: IRAction['kind'] =
     p.type === 'spell' ? 'spell' : p.type === 'feature' ? 'feature' : 'action';
+
+  const damage = (damageByParent[p._id] ?? [])
+    .map((d): IRDamage => ({
+      formula: d.amount?.calculation ?? String(d.amount?.value ?? ''),
+      type: d.damageType || undefined,
+    }))
+    .filter((d) => d.formula);
 
   const action: IRAction = {
     id: p._id,
@@ -150,6 +158,7 @@ function normalizeAction(p: any): IRAction {
     kind,
     active: activeOf(p),
     consumes: consumesOf(p),
+    damage,
     tags: Array.isArray(p.tags) ? p.tags : [],
     description: textOf(p.description),
   };
@@ -203,7 +212,15 @@ export function normalize(raw: RawDiceCloud): IRCharacter {
     .filter((p) => p.type === 'skill')
     .map(normalizeSkill);
 
-  const actions = props.filter(isActionLike).map(normalizeAction);
+  // Damage is stored as child `damage` properties pointing at their action/spell.
+  const damageByParent: Record<string, any[]> = {};
+  for (const p of props) {
+    if (p.type === 'damage' && p.parent?.id) {
+      (damageByParent[p.parent.id] ??= []).push(p);
+    }
+  }
+
+  const actions = props.filter(isActionLike).map((p) => normalizeAction(p, damageByParent));
 
   const inventory = props
     .filter((p) => p.type === 'item')

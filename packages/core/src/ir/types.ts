@@ -96,6 +96,11 @@ export interface IRConsumes {
   amount: number;
 }
 
+export interface IRDamage {
+  formula: string;
+  type?: string;
+}
+
 export interface IRSpellMeta {
   level: number;
   school?: string;
@@ -119,6 +124,7 @@ export interface IRAction {
   /** Resources spent on use, by DiceCloud variableName / property id. */
   consumes: IRConsumes[];
   attack?: { bonus: number };
+  damage: IRDamage[];
   spell?: IRSpellMeta;
   description?: string;
   tags: string[];

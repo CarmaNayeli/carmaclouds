@@ -170,6 +170,9 @@ function actionsSection(ir: IRCharacter, opts: RenderOpts): HTMLElement | null {
     if (action.attack) {
       meta.push(h('span', { class: 'cc-action-attack', title: 'Attack bonus', text: signed(action.attack.bonus) }));
     }
+    for (const d of action.damage) {
+      meta.push(h('span', { class: 'cc-action-damage', text: d.type ? `${d.formula} ${d.type}` : d.formula }));
+    }
     const usesEl = action.uses
       ? h('span', { class: 'cc-action-uses' }, poolPill(action.uses.current, action.uses.max), resetBadge(action.uses.reset))
       : null;

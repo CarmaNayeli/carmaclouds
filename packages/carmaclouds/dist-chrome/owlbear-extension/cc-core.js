@@ -107,14 +107,19 @@
       amount: numOf(c.quantity ?? c.amount ?? 1)
     }));
   }
-  function normalizeAction(p) {
+  function normalizeAction(p, damageByParent) {
     const kind = p.type === "spell" ? "spell" : p.type === "feature" ? "feature" : "action";
+    const damage = (damageByParent[p._id] ?? []).map((d) => ({
+      formula: d.amount?.calculation ?? String(d.amount?.value ?? ""),
+      type: d.damageType || void 0
+    })).filter((d) => d.formula);
     const action = {
       id: p._id,
       name: p.name ?? "",
       kind,
       active: activeOf(p),
       consumes: consumesOf(p),
+      damage,
       tags: Array.isArray(p.tags) ? p.tags : [],
       description: textOf(p.description)
     };
@@ -148,12 +153,19 @@
     return false;
   }
   function normalize(raw) {
+    var _a;
     const creature = raw?.creatures?.[0] ?? raw?.creature ?? {};
     const allProps = raw?.creatureProperties ?? raw?.properties ?? [];
     const props = allProps.filter((p) => !isRemoved(p));
     const attributes = props.filter((p) => p.type === "attribute").map(normalizeAttribute);
     const skills = props.filter((p) => p.type === "skill").map(normalizeSkill);
-    const actions = props.filter(isActionLike).map(normalizeAction);
+    const damageByParent = {};
+    for (const p of props) {
+      if (p.type === "damage" && p.parent?.id) {
+        (damageByParent[_a = p.parent.id] ?? (damageByParent[_a] = [])).push(p);
+      }
+    }
+    const actions = props.filter(isActionLike).map((p) => normalizeAction(p, damageByParent));
     const inventory = props.filter((p) => p.type === "item").map(normalizeItem);
     const byVar = {};
     for (const a of attributes) {
@@ -429,6 +441,9 @@
       }
       if (action.attack) {
         meta.push(h("span", { class: "cc-action-attack", title: "Attack bonus", text: signed(action.attack.bonus) }));
+      }
+      for (const d of action.damage) {
+        meta.push(h("span", { class: "cc-action-damage", text: d.type ? `${d.formula} ${d.type}` : d.formula }));
       }
       const usesEl = action.uses ? h("span", { class: "cc-action-uses" }, poolPill(action.uses.current, action.uses.max), resetBadge(action.uses.reset)) : null;
       list.appendChild(

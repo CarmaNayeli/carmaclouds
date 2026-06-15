@@ -62,6 +62,7 @@
 /* action meta */
 .cc-action-tag { font-size: 10px; padding: 1px 5px; border-radius: 4px; background: var(--theme-bg-accent, rgba(139,92,246,0.18)); }
 .cc-action-attack { font-size: 12px; font-weight: 700; color: var(--theme-primary-light, #A78BFA); font-variant-numeric: tabular-nums; }
+.cc-action-damage { font-size: 10px; padding: 1px 5px; border-radius: 4px; background: rgba(239,68,68,0.18); color: #fca5a5; white-space: nowrap; }
 .cc-action-uses { display: inline-flex; align-items: center; gap: 5px; }
 
 /* skills */

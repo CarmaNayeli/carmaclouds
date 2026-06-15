@@ -11632,14 +11632,19 @@ ${suffix}`;
       amount: numOf(c.quantity ?? c.amount ?? 1)
     }));
   }
-  function normalizeAction(p) {
+  function normalizeAction(p, damageByParent) {
     const kind = p.type === "spell" ? "spell" : p.type === "feature" ? "feature" : "action";
+    const damage = (damageByParent[p._id] ?? []).map((d) => ({
+      formula: d.amount?.calculation ?? String(d.amount?.value ?? ""),
+      type: d.damageType || void 0
+    })).filter((d) => d.formula);
     const action = {
       id: p._id,
       name: p.name ?? "",
       kind,
       active: activeOf(p),
       consumes: consumesOf(p),
+      damage,
       tags: Array.isArray(p.tags) ? p.tags : [],
       description: textOf(p.description)
     };
@@ -11678,7 +11683,13 @@ ${suffix}`;
     const props = allProps.filter((p) => !isRemoved(p));
     const attributes = props.filter((p) => p.type === "attribute").map(normalizeAttribute);
     const skills = props.filter((p) => p.type === "skill").map(normalizeSkill);
-    const actions = props.filter(isActionLike).map(normalizeAction);
+    const damageByParent = {};
+    for (const p of props) {
+      if (p.type === "damage" && p.parent?.id) {
+        (damageByParent[p.parent.id] ??= []).push(p);
+      }
+    }
+    const actions = props.filter(isActionLike).map((p) => normalizeAction(p, damageByParent));
     const inventory = props.filter((p) => p.type === "item").map(normalizeItem);
     const byVar = {};
     for (const a of attributes) {

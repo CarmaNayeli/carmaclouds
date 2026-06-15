@@ -39,6 +39,8 @@ for (const fixture of ['dnd5e-character', 'non-dnd-character']) {
     ok(el.querySelector('.cc-item-list'), 'has an Inventory section');
     const combat = el.querySelector('.cc-combat')?.textContent || '';
     ok(/HP/.test(combat) && /Prof/.test(combat), `combat strip shows HP + Prof (${combat.replace(/\s+/g, ' ').trim().slice(0, 50)})`);
+    const dmg = el.querySelectorAll('.cc-action-damage');
+    ok(dmg.length >= 1, `actions show damage (${dmg.length}, e.g. "${dmg[0]?.textContent || ''}")`);
   }
 
   if (fixture === 'non-dnd-character') {
