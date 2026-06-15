@@ -2228,12 +2228,13 @@ function initializePopup() {
               ? `discord_user_id=eq.${discordUserId}&is_active=eq.true`
               : `user_id_dicecloud=eq.${dicecloudUserId}&is_active=eq.true`;
 
+            const __ocToken = (typeof window.getSupabaseAccessToken === 'function') ? await window.getSupabaseAccessToken() : null;
             const charResponse = await fetch(
               `${supabaseManager.supabaseUrl}/rest/v1/clouds_characters?${charQuery}&select=*&limit=1`,
               {
                 headers: {
                   'apikey': supabaseManager.supabaseKey,
-                  'Authorization': `Bearer ${supabaseManager.supabaseKey}`
+                  'Authorization': `Bearer ${__ocToken || supabaseManager.supabaseKey}`
                 }
               }
             );

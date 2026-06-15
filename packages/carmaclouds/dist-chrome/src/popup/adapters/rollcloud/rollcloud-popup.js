@@ -1724,12 +1724,13 @@ Local data will also be removed.`)) {
               const dicecloudUserId = tokenResult.tokenData.user_id_dicecloud || result.diceCloudUserId;
               if (discordUserId || dicecloudUserId) {
                 let charQuery = discordUserId ? `discord_user_id=eq.${discordUserId}&is_active=eq.true` : `user_id_dicecloud=eq.${dicecloudUserId}&is_active=eq.true`;
+                const __rcToken = typeof window.getSupabaseAccessToken === "function" ? await window.getSupabaseAccessToken() : null;
                 const charResponse = await fetch(
                   `${supabaseManager.supabaseUrl}/rest/v1/rollcloud_characters?${charQuery}&select=*&limit=1`,
                   {
                     headers: {
                       "apikey": supabaseManager.supabaseKey,
-                      "Authorization": `Bearer ${supabaseManager.supabaseKey}`
+                      "Authorization": `Bearer ${__rcToken || supabaseManager.supabaseKey}`
                     }
                   }
                 );

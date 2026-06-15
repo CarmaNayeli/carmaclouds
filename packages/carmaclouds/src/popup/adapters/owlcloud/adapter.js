@@ -76,12 +76,14 @@ export async function init(containerEl) {
       if (!diceCloudUserId || !pushedCharactersList) return;
 
       try {
+        // GDPR Phase 2: send the end-user JWT (falls back to anon). See gdpr-auth-migration.
+        const __token = (typeof window.getSupabaseAccessToken === 'function') ? await window.getSupabaseAccessToken() : null;
         const response = await fetch(
           `${SUPABASE_URL}/rest/v1/clouds_characters?user_id_dicecloud=eq.${diceCloudUserId}&select=dicecloud_character_id,character_name,level,class,race`,
           {
             headers: {
               'apikey': SUPABASE_ANON_KEY,
-              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+              'Authorization': `Bearer ${__token || SUPABASE_ANON_KEY}`
             }
           }
         );
@@ -130,13 +132,14 @@ export async function init(containerEl) {
                     deleteBtn.disabled = true;
                     deleteBtn.textContent = '⏳';
 
+                    const __delToken = (typeof window.getSupabaseAccessToken === 'function') ? await window.getSupabaseAccessToken() : null;
                     const response = await fetch(
                       `${SUPABASE_URL}/rest/v1/clouds_characters?dicecloud_character_id=eq.${char.dicecloud_character_id}&user_id_dicecloud=eq.${diceCloudUserId}`,
                       {
                         method: 'DELETE',
                         headers: {
                           'apikey': SUPABASE_ANON_KEY,
-                          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                          'Authorization': `Bearer ${__delToken || SUPABASE_ANON_KEY}`
                         }
                       }
                     );
@@ -173,7 +176,10 @@ export async function init(containerEl) {
     let supabaseUserId = null;
     if (supabase) {
       const { data: { session } } = await supabase.auth.getSession();
-      supabaseUserId = session?.user?.id;
+      // Cross-context sync: the Owlbear popover lists characters by supabase_user_id,
+      // so OwlCloud needs a real (non-anonymous) account id the popover can match. An
+      // anonymous session id is per-browser and unreachable there → treat as not signed in.
+      supabaseUserId = (session?.user && !session.user.is_anonymous) ? session.user.id : null;
     }
 
     if (!diceCloudUserId || !supabaseUserId) {
@@ -290,13 +296,14 @@ export async function init(containerEl) {
               }
 
               // Push to database
+              const __pushToken = (typeof window.getSupabaseAccessToken === 'function') ? await window.getSupabaseAccessToken() : null;
               const response = await fetch(
                 `${SUPABASE_URL}/rest/v1/clouds_characters?on_conflict=user_id_dicecloud,dicecloud_character_id`,
                 {
                   method: 'POST',
                   headers: {
                     'apikey': SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Authorization': `Bearer ${__pushToken || SUPABASE_ANON_KEY}`,
                     'Content-Type': 'application/json',
                     'Prefer': 'resolution=merge-duplicates,return=representation'
                   },

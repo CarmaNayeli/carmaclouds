@@ -13791,15 +13791,18 @@ ${suffix}`;
     const ir = normalize(raw);
     if (!ir.id)
       throw new Error("upsertCharacterIR: normalized IR has no character id");
+    const row = toIRRow(ir);
+    if (target.ownerId)
+      row.owner_id = target.ownerId;
     const res = await fetch(`${target.url}/rest/v1/clouds_character_ir?on_conflict=dicecloud_character_id`, {
       method: "POST",
       headers: {
         apikey: target.anonKey,
-        Authorization: `Bearer ${target.anonKey}`,
+        Authorization: `Bearer ${target.authToken || target.anonKey}`,
         "Content-Type": "application/json",
         Prefer: "resolution=merge-duplicates,return=minimal"
       },
-      body: JSON.stringify(toIRRow(ir))
+      body: JSON.stringify(row)
     });
     if (!res.ok) {
       throw new Error(`clouds_character_ir upsert failed: ${res.status} ${await res.text()}`);
@@ -14129,12 +14132,13 @@ ${suffix}`;
         if (!diceCloudUserId || !pushedCharactersList)
           return;
         try {
+          const __token = typeof window.getSupabaseAccessToken === "function" ? await window.getSupabaseAccessToken() : null;
           const response2 = await fetch(
             `${SUPABASE_URL2}/rest/v1/clouds_characters?user_id_dicecloud=eq.${diceCloudUserId}&select=dicecloud_character_id,character_name,level,class,race`,
             {
               headers: {
                 "apikey": SUPABASE_ANON_KEY2,
-                "Authorization": `Bearer ${SUPABASE_ANON_KEY2}`
+                "Authorization": `Bearer ${__token || SUPABASE_ANON_KEY2}`
               }
             }
           );
@@ -14178,13 +14182,14 @@ This cannot be undone.`)) {
                     try {
                       deleteBtn.disabled = true;
                       deleteBtn.textContent = "\u23F3";
+                      const __delToken = typeof window.getSupabaseAccessToken === "function" ? await window.getSupabaseAccessToken() : null;
                       const response3 = await fetch(
                         `${SUPABASE_URL2}/rest/v1/clouds_characters?dicecloud_character_id=eq.${char.dicecloud_character_id}&user_id_dicecloud=eq.${diceCloudUserId}`,
                         {
                           method: "DELETE",
                           headers: {
                             "apikey": SUPABASE_ANON_KEY2,
-                            "Authorization": `Bearer ${SUPABASE_ANON_KEY2}`
+                            "Authorization": `Bearer ${__delToken || SUPABASE_ANON_KEY2}`
                           }
                         }
                       );
@@ -14217,7 +14222,7 @@ This cannot be undone.`)) {
       let supabaseUserId = null;
       if (supabase2) {
         const { data: { session } } = await supabase2.auth.getSession();
-        supabaseUserId = session?.user?.id;
+        supabaseUserId = session?.user && !session.user.is_anonymous ? session.user.id : null;
       }
       if (!diceCloudUserId || !supabaseUserId) {
         if (loginPrompt) {
@@ -14319,13 +14324,14 @@ This cannot be undone.`)) {
                   characterData.supabase_user_id = supabaseUserId2;
                   console.log("\u2705 Including Supabase user ID:", supabaseUserId2);
                 }
+                const __pushToken = typeof window.getSupabaseAccessToken === "function" ? await window.getSupabaseAccessToken() : null;
                 const response2 = await fetch(
                   `${SUPABASE_URL2}/rest/v1/clouds_characters?on_conflict=user_id_dicecloud,dicecloud_character_id`,
                   {
                     method: "POST",
                     headers: {
                       "apikey": SUPABASE_ANON_KEY2,
-                      "Authorization": `Bearer ${SUPABASE_ANON_KEY2}`,
+                      "Authorization": `Bearer ${__pushToken || SUPABASE_ANON_KEY2}`,
                       "Content-Type": "application/json",
                       "Prefer": "resolution=merge-duplicates,return=representation"
                     },
@@ -14475,7 +14481,7 @@ This cannot be undone.`)) {
       if (supabase2) {
         try {
           const { data: { session } } = await supabase2.auth.getSession();
-          supabaseUserId = session?.user?.id;
+          supabaseUserId = session?.user && !session.user.is_anonymous ? session.user.id : null;
         } catch (err) {
           console.warn("Failed to get Supabase session:", err);
         }
@@ -14624,13 +14630,14 @@ This cannot be undone.`)) {
                 const SUPABASE_URL2 = "https://luiesmfjdcmpywavvfqm.supabase.co";
                 const SUPABASE_ANON_KEY2 = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aWVzbWZqZGNtcHl3YXZ2ZnFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4ODYxNDksImV4cCI6MjA4NTQ2MjE0OX0.oqjHFf2HhCLcanh0HVryoQH7iSV7E9dHHZJdYehxZ0U";
                 try {
+                  const __r20Token = typeof window.getSupabaseAccessToken === "function" ? await window.getSupabaseAccessToken() : null;
                   const updateResponse = await fetch(
                     `${SUPABASE_URL2}/rest/v1/clouds_characters?dicecloud_character_id=eq.${character.id}`,
                     {
                       method: "PATCH",
                       headers: {
                         "apikey": SUPABASE_ANON_KEY2,
-                        "Authorization": `Bearer ${SUPABASE_ANON_KEY2}`,
+                        "Authorization": `Bearer ${__r20Token || SUPABASE_ANON_KEY2}`,
                         "Content-Type": "application/json",
                         "Prefer": "return=representation"
                       },

@@ -25,7 +25,10 @@ CREATE INDEX IF NOT EXISTS idx_auth_tokens_discord_user_id ON public.auth_tokens
 -- Add comments for documentation
 COMMENT ON TABLE public.auth_tokens IS 'Stores DiceCloud authentication tokens for cross-session persistence';
 COMMENT ON COLUMN public.auth_tokens.user_id IS 'Browser fingerprint-based user identifier';
-COMMENT ON COLUMN public.auth_tokens.dicecloud_token IS 'Encrypted DiceCloud authentication token';
+-- NOTE: legacy plaintext column. Real encryption-at-rest is added in
+-- 20260617_encrypt_auth_tokens_phase2_5.sql (dicecloud_token_enc + Vault key);
+-- this plaintext column is dropped at that cutover.
+COMMENT ON COLUMN public.auth_tokens.dicecloud_token IS 'DiceCloud auth token (legacy PLAINTEXT — superseded by dicecloud_token_enc, encrypted at rest)';
 COMMENT ON COLUMN public.auth_tokens.username IS 'DiceCloud username';
 COMMENT ON COLUMN public.auth_tokens.user_id_dicecloud IS 'DiceCloud user ID';
 COMMENT ON COLUMN public.auth_tokens.token_expires IS 'Token expiration timestamp';

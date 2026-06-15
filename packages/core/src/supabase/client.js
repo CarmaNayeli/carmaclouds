@@ -136,6 +136,85 @@ class SupabaseTokenManager {
   }
 
   /**
+   * GDPR Phase 2.5 helpers — encrypted, owner-scoped token storage.
+   * The token is encrypted at rest (Vault key, server-side) and only ever
+   * read/written for the row where owner_id = auth.uid(), via SECURITY DEFINER
+   * RPCs. The client never sees the encryption key.
+   */
+  _getAuthedSupabase() {
+    return (typeof window !== 'undefined' && window.supabaseClient)
+      || (typeof self !== 'undefined' && self.supabaseClient)
+      || null;
+  }
+
+  async _ensureAuthSession(client) {
+    const ensure = (typeof window !== 'undefined' && window.ensureSupabaseSession)
+      || (typeof self !== 'undefined' && self.ensureSupabaseSession);
+    if (ensure) {
+      try { await ensure(client); } catch (_) { /* fail-safe */ }
+    }
+  }
+
+  /** Store the token via the encrypted RPC. Returns { ok: true } on success. */
+  async storeTokenEncrypted(tokenData) {
+    try {
+      const client = this._getAuthedSupabase();
+      if (!client || typeof client.rpc !== 'function') return { ok: false };
+      await this._ensureAuthSession(client);
+      const { error } = await client.rpc('store_my_dicecloud_token', {
+        p_token: tokenData.token,
+        p_username: tokenData.username || 'DiceCloud User',
+        p_user_id_dicecloud: tokenData.userId || null,
+        p_token_expires: this.normalizeDate(tokenData.tokenExpires),
+      });
+      if (error) {
+        debug.warn('⚠️ Encrypted token store unavailable, falling back:', error.message);
+        return { ok: false };
+      }
+      return { ok: true };
+    } catch (err) {
+      debug.warn('⚠️ storeTokenEncrypted failed, falling back:', err?.message || err);
+      return { ok: false };
+    }
+  }
+
+  /**
+   * Retrieve the token via the encrypted RPC.
+   * Returns null when unavailable (caller falls back to legacy), a
+   * { success:false, error } object for an expired token, or
+   * { success:true, token, username, userId, tokenExpires } on success.
+   */
+  async retrieveTokenEncrypted() {
+    try {
+      const client = this._getAuthedSupabase();
+      if (!client || typeof client.rpc !== 'function') return null;
+      await this._ensureAuthSession(client);
+      const { data, error } = await client.rpc('get_my_dicecloud_token');
+      if (error) {
+        debug.warn('⚠️ Encrypted token retrieve unavailable, falling back:', error.message);
+        return null;
+      }
+      if (!data || data.length === 0) return null;
+      const row = data[0];
+      if (row.token_expires && new Date() >= new Date(row.token_expires)) {
+        debug.log('⚠️ Encrypted token expired');
+        return { success: false, error: 'Token expired' };
+      }
+      debug.log('✅ Token retrieved from Supabase (encrypted RPC)');
+      return {
+        success: true,
+        token: row.token,
+        username: row.username,
+        userId: row.user_id_dicecloud,
+        tokenExpires: row.token_expires,
+      };
+    } catch (err) {
+      debug.warn('⚠️ retrieveTokenEncrypted failed, falling back:', err?.message || err);
+      return null;
+    }
+  }
+
+  /**
    * Store auth token in Supabase
    */
   async storeToken(tokenData) {
@@ -145,6 +224,16 @@ class SupabaseTokenManager {
       // Clear any previous invalidation/conflict info FIRST when logging in
       // This prevents stale data from causing login failures
       await browserAPI.storage.local.remove(['sessionInvalidated', 'sessionConflict']);
+
+      // GDPR Phase 2.5: prefer the encrypted, owner-scoped RPC. When the cutover
+      // migration is live this stores the token as ciphertext under auth.uid();
+      // before it exists (or with no session) it returns falsy and we fall through
+      // to the legacy plaintext path below. See gdpr-auth-migration.
+      const enc = await this.storeTokenEncrypted(tokenData);
+      if (enc.ok) {
+        debug.log('✅ Token stored in Supabase (encrypted RPC)');
+        return { success: true };
+      }
 
       // Use persistent browser ID for consistent storage/retrieval across browser updates
       const visitorId = await this.getOrCreatePersistentUserId();
@@ -291,6 +380,11 @@ class SupabaseTokenManager {
   async retrieveToken() {
     try {
       debug.log('🌐 Retrieving token from Supabase...');
+
+      // GDPR Phase 2.5: try the encrypted, owner-scoped RPC first. Returns null
+      // when unavailable (pre-cutover / no session) so we fall back to legacy.
+      const enc = await this.retrieveTokenEncrypted();
+      if (enc) return enc;
 
       // Use persistent user ID to survive browser updates
       const userId = await this.getOrCreatePersistentUserId();
@@ -1338,41 +1432,104 @@ class SupabaseTokenManager {
   }
 }
 
+/**
+ * GDPR migration — Phase 1 foundation.
+ *
+ * Guarantee that a Supabase session (real JWT) exists, so that Phase 2 can send
+ * `auth.uid()`-bearing requests and Phase 3 can enforce per-user RLS. If the
+ * user already signed in with email/password we leave that session alone;
+ * otherwise we fall back to an *anonymous* sign-in so nobody is forced to create
+ * an account.
+ *
+ * Fails safe: if "Anonymous sign-ins" is not yet enabled in the Supabase
+ * dashboard (Phase 0), signInAnonymously() errors and we simply no-op. That
+ * keeps this code shippable before the dashboard switch is flipped, and the app
+ * continues to work on the legacy anon-key path until the Phase 3 cutover.
+ *
+ * Returns the access token (JWT) if a session exists, otherwise null.
+ */
+async function ensureSupabaseSession(client) {
+  try {
+    const { data: { session } } = await client.auth.getSession();
+    if (session?.access_token) {
+      return session.access_token;
+    }
+    if (typeof client.auth.signInAnonymously !== 'function') {
+      // Older supabase-js without anonymous auth — nothing to do.
+      return null;
+    }
+    const { data, error } = await client.auth.signInAnonymously();
+    if (error) {
+      // Most likely: anonymous sign-ins not enabled yet (Phase 0 pending).
+      debug.warn('⚠️ ensureSupabaseSession: anonymous sign-in unavailable —', error.message);
+      return null;
+    }
+    debug.log('✅ ensureSupabaseSession: established anonymous session');
+    return data?.session?.access_token || null;
+  } catch (err) {
+    debug.error('❌ ensureSupabaseSession failed:', err);
+    return null;
+  }
+}
+
+/**
+ * Convenience for raw-fetch call sites (adapters, background): return the current
+ * end-user access token, ensuring a session first. Returns null on any failure so
+ * callers do `Bearer ${token || SUPABASE_ANON_KEY}` and stay on the legacy path.
+ */
+async function getSupabaseAccessToken() {
+  try {
+    const client = (typeof window !== 'undefined' && window.supabaseClient)
+      || (typeof self !== 'undefined' && self.supabaseClient)
+      || null;
+    if (!client) return null;
+    await ensureSupabaseSession(client);
+    const { data: { session } } = await client.auth.getSession();
+    return session?.access_token || null;
+  } catch (err) {
+    debug.warn('⚠️ getSupabaseAccessToken failed:', err?.message || err);
+    return null;
+  }
+}
+
 // Export for use in other modules
 // Always export to window/self for browser extensions
 if (typeof window !== 'undefined') {
   window.SupabaseTokenManager = SupabaseTokenManager;
+  window.ensureSupabaseSession = ensureSupabaseSession;
+  window.getSupabaseAccessToken = getSupabaseAccessToken;
 
   // Create global Supabase client for authentication (email/password login)
   // This is separate from SupabaseTokenManager which handles DiceCloud tokens
-  console.log('🔍 [Supabase Client] Checking for createSupabaseClient function...', typeof window.createSupabaseClient);
-  if (typeof window.createSupabaseClient === 'function') {
+  const initSupabaseAuthClient = (origin) => {
     try {
       window.supabaseClient = window.createSupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      console.log('✅ [Supabase Client] Created global Supabase auth client');
+      console.log(`✅ [Supabase Client] Created global Supabase auth client${origin}`);
       debug.log('✅ Created global Supabase auth client');
+      // Phase 1: ensure a JWT exists (anonymous fallback). Non-blocking.
+      ensureSupabaseSession(window.supabaseClient);
     } catch (error) {
       console.error('❌ [Supabase Client] Failed to create Supabase client:', error);
       debug.error('❌ Failed to create Supabase client:', error);
     }
+  };
+
+  console.log('🔍 [Supabase Client] Checking for createSupabaseClient function...', typeof window.createSupabaseClient);
+  if (typeof window.createSupabaseClient === 'function') {
+    initSupabaseAuthClient('');
   } else {
     console.warn('⚠️ [Supabase Client] createSupabaseClient function not available yet - will retry on DOMContentLoaded');
     // Retry after DOM loads (when module scripts have finished)
     window.addEventListener('DOMContentLoaded', () => {
       console.log('🔍 [Supabase Client] DOMContentLoaded - retrying createSupabaseClient check...', typeof window.createSupabaseClient);
       if (typeof window.createSupabaseClient === 'function' && !window.supabaseClient) {
-        try {
-          window.supabaseClient = window.createSupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-          console.log('✅ [Supabase Client] Created global Supabase auth client (after DOMContentLoaded)');
-          debug.log('✅ Created global Supabase auth client (after DOMContentLoaded)');
-        } catch (error) {
-          console.error('❌ [Supabase Client] Failed to create Supabase client:', error);
-          debug.error('❌ Failed to create Supabase client:', error);
-        }
+        initSupabaseAuthClient(' (after DOMContentLoaded)');
       }
     });
   }
 } else if (typeof self !== 'undefined') {
+  self.ensureSupabaseSession = ensureSupabaseSession;
+  self.getSupabaseAccessToken = getSupabaseAccessToken;
   // Service worker context
   self.SupabaseTokenManager = SupabaseTokenManager;
 }

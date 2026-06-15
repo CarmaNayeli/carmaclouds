@@ -52,14 +52,27 @@
       "Bash(7z a *)",
       "Bash(rm -rf carmaclouds-firefox carmaclouds-firefox.zip)",
       "Bash(cp -r ../packages/carmaclouds/dist carmaclouds-firefox)",
-      "PowerShell($Errors = $null; [System.Management.Automation.PSParser]::Tokenize\\(\\(Get-Content -Raw \".\\\\packages\\\\carmaclouds\\\\sign-firefox.ps1\"\\), [ref]$Errors\\) | Out-Null; if \\($Errors.Count -eq 0\\) { \"Syntax OK\" } else { $Errors | ForEach-Object { $_.Message } })"
+      "PowerShell($Errors = $null; [System.Management.Automation.PSParser]::Tokenize\\(\\(Get-Content -Raw \".\\\\packages\\\\carmaclouds\\\\sign-firefox.ps1\"\\), [ref]$Errors\\) | Out-Null; if \\($Errors.Count -eq 0\\) { \"Syntax OK\" } else { $Errors | ForEach-Object { $_.Message } })",
+      "Bash(git ls-files *)",
+      "PowerShell(powershell -ExecutionPolicy Bypass -File \"C:\\\\Users\\\\c_dow\\\\carmaclouds\\\\packages\\\\carmaclouds\\\\sign-firefox.ps1\")",
+      "PowerShell($errs = $null; [System.Management.Automation.Language.Parser]::ParseFile\\(\"C:\\\\Users\\\\c_dow\\\\carmaclouds\\\\packages\\\\carmaclouds\\\\sign-firefox.ps1\", [ref]$null, [ref]$errs\\) | Out-Null; if \\($errs.Count -eq 0\\) { \"Parse OK \\(from disk\\)\" } else { $errs | ForEach-Object { $_.Message } })",
+      "PowerShell(powershell -ExecutionPolicy Bypass -File \"C:\\\\Users\\\\c_dow\\\\carmaclouds\\\\packages\\\\carmaclouds\\\\sign-firefox.ps1\" -Bump none -SkipBuild)",
+      "Bash(rm -f foundcloud-foundry-module.zip)",
+      "Bash(npx esbuild *)",
+      "Bash(rm -f .t.mjs)",
+      "Bash(rm -f .p.mjs)",
+      "Bash(node build.js)",
+      "Bash(npm pack *)",
+      "Bash(xargs -I{} echo \"fixture files in package: {}\")",
+      "PowerShell(Set-Location C:\\\\Users\\\\c_dow\\\\carmaclouds\\\\packages\\\\carmaclouds; powershell -ExecutionPolicy Bypass -File .\\\\sign-firefox.ps1 2>&1 | Select-Object -Last 40)"
     ],
     "additionalDirectories": [
       "c:\\Users\\c_dow\\carmaclouds\\packages\\core\\src",
       "c:\\Users\\c_dow\\carmaclouds\\packages\\carmaclouds\\src\\{popup\\adapters",
       "c:\\Users\\c_dow\\carmaclouds\\packages\\rollcloud\\src\\lib",
       "c:\\Users\\c_dow\\coyotesandcandles\\lib\\meet\\sheets",
-      "c:\\Users\\c_dow\\coyotesandcandles\\app\\meet\\[roomId]\\_components\\board"
+      "c:\\Users\\c_dow\\coyotesandcandles\\app\\meet\\[roomId]\\_components\\board",
+      "c:\\Users\\c_dow\\.claude\\projects\\c--Users-c-dow-carmaclouds\\memory"
     ]
   }
 }

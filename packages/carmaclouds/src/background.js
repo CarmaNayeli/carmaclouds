@@ -7,6 +7,7 @@ import { parseForFoundCloud, parseForOwlCloud } from './content/dicecloud-extrac
 import { upsertCharacterIR } from '@carmaclouds/core/ir';
 import DiceCloudSync from './lib/dicecloud-sync.js';
 import MeteorDDPClient from './lib/meteor-ddp-client.js';
+import { createClient } from '@supabase/supabase-js';
 
 // Detect browser API (Firefox uses 'browser', Chrome uses 'chrome')
 const browserAPI = (typeof browser !== 'undefined' && browser.runtime) ? browser : chrome;
@@ -18,6 +19,51 @@ console.log('CarmaClouds background service worker initialized');
 // Supabase configuration for direct API calls
 const SUPABASE_URL = 'https://luiesmfjdcmpywavvfqm.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aWVzbWZqZGNtcHl3YXZ2ZnFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4ODYxNDksImV4cCI6MjA4NTQ2MjE0OX0.oqjHFf2HhCLcanh0HVryoQH7iSV7E9dHHZJdYehxZ0U';
+
+// GDPR migration — Phase 2 (service-worker side).
+// The service worker has no DOM/localStorage, so it gets its own supabase-js
+// client backed by chrome.storage.local. It shares the same storageKey as the
+// popup client, so a session established in either context is visible to both.
+// Used only to obtain the end-user JWT; all data calls remain raw fetch.
+const SB_AUTH_STORAGE_KEY = 'cc-sb-auth';
+const chromeStorageAuthAdapter = {
+  getItem: (key) => browserAPI.storage.local.get(key).then((r) => r?.[key] ?? null),
+  setItem: (key, value) => browserAPI.storage.local.set({ [key]: value }),
+  removeItem: (key) => browserAPI.storage.local.remove(key),
+};
+const sbAuthClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    storage: chromeStorageAuthAdapter,
+    storageKey: SB_AUTH_STORAGE_KEY,
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: false,
+  },
+});
+
+/**
+ * Return the current end-user Supabase session as { token, userId }, signing in
+ * anonymously if none exists. Fails safe: on any error (e.g. anonymous sign-ins
+ * not yet enabled) returns { token: null, userId: null } so callers fall back to
+ * the anon key and the legacy path keeps working. See gdpr-auth-migration.
+ */
+async function getSupabaseAuth() {
+  try {
+    let { data: { session } } = await sbAuthClient.auth.getSession();
+    if (!session?.access_token && typeof sbAuthClient.auth.signInAnonymously === 'function') {
+      const { data, error } = await sbAuthClient.auth.signInAnonymously();
+      if (error) {
+        console.warn('⚠️ getSupabaseAuth: anonymous sign-in unavailable —', error.message);
+        return { token: null, userId: null };
+      }
+      session = data?.session || null;
+    }
+    return { token: session?.access_token || null, userId: session?.user?.id || null };
+  } catch (err) {
+    console.warn('⚠️ getSupabaseAuth failed (using anon fallback):', err);
+    return { token: null, userId: null };
+  }
+}
 
 // Keep service worker alive (Manifest V3 requirement)
 let keepAliveInterval;
@@ -636,6 +682,13 @@ async function handleSyncToCarmaClouds(characterData) {
 
     console.log('🎉 Character successfully synced to CarmaClouds storage');
 
+    // Phase 2: obtain the end-user JWT once, so both the clouds_characters write
+    // (Step 7) and the IR upsert (Step 7b, a separate try block) can attribute
+    // rows to their owner. Falls back to the anon key (token null) — non-breaking
+    // while RLS is permissive.
+    const { token: sbToken, userId: sbUserId } = await getSupabaseAuth();
+    const sbAuthHeader = `Bearer ${sbToken || SUPABASE_ANON_KEY}`;
+
     // Sync to Supabase database
     try {
       console.log('💾 Step 7: Syncing to Supabase database...');
@@ -665,7 +718,7 @@ async function handleSyncToCarmaClouds(characterData) {
         foundcloud_parsed_data: parsed || {},
         owlcloud_parsed_data: owlParsed || {},
         platform: ['dicecloud', 'foundcloud', 'rollcloud', 'owlcloud', 'coyotecloud'],
-        supabase_user_id: null, // Auth-based sync happens through FoundCloud tab
+        supabase_user_id: sbUserId, // Owner = authenticated user (null falls back to legacy)
         updated_at: new Date().toISOString()
       };
 
@@ -678,7 +731,7 @@ async function handleSyncToCarmaClouds(characterData) {
           method: 'GET',
           headers: {
             'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            'Authorization': sbAuthHeader
           }
         }
       );
@@ -696,7 +749,7 @@ async function handleSyncToCarmaClouds(characterData) {
               method: 'PATCH',
               headers: {
                 'apikey': SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                'Authorization': sbAuthHeader,
                 'Content-Type': 'application/json',
                 'Prefer': 'return=representation'
               },
@@ -712,7 +765,7 @@ async function handleSyncToCarmaClouds(characterData) {
               method: 'POST',
               headers: {
                 'apikey': SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                'Authorization': sbAuthHeader,
                 'Content-Type': 'application/json',
                 'Prefer': 'return=representation'
               },
@@ -742,6 +795,8 @@ async function handleSyncToCarmaClouds(characterData) {
       const ir = await upsertCharacterIR(characterData.raw || characterData, {
         url: SUPABASE_URL,
         anonKey: SUPABASE_ANON_KEY,
+        authToken: sbToken || undefined,
+        ownerId: sbUserId || undefined,
       });
       console.log(`✅ Step 7b: IR synced to clouds_character_ir (${ir.systemHint})`);
     } catch (irError) {
@@ -791,13 +846,16 @@ async function handleClearAllCloudData() {
     }
     
     console.log('🗑️ Deleting all characters for user:', userId);
-    
+
+    // Phase 2: send the end-user JWT (falls back to anon).
+    const { token: delToken } = await getSupabaseAuth();
+
     // Delete all characters for this user from Supabase
     const response = await fetch(`${SUPABASE_URL}/rest/v1/clouds_characters?user_id_dicecloud=eq.${userId}`, {
       method: 'DELETE',
       headers: {
         'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Authorization': `Bearer ${delToken || SUPABASE_ANON_KEY}`,
         'Content-Type': 'application/json',
         'Prefer': 'return=representation'
       }

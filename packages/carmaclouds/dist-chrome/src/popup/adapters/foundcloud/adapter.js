@@ -11728,15 +11728,18 @@ ${suffix}`;
     const ir = normalize(raw);
     if (!ir.id)
       throw new Error("upsertCharacterIR: normalized IR has no character id");
+    const row = toIRRow(ir);
+    if (target.ownerId)
+      row.owner_id = target.ownerId;
     const res = await fetch(`${target.url}/rest/v1/clouds_character_ir?on_conflict=dicecloud_character_id`, {
       method: "POST",
       headers: {
         apikey: target.anonKey,
-        Authorization: `Bearer ${target.anonKey}`,
+        Authorization: `Bearer ${target.authToken || target.anonKey}`,
         "Content-Type": "application/json",
         Prefer: "resolution=merge-duplicates,return=minimal"
       },
-      body: JSON.stringify(toIRRow(ir))
+      body: JSON.stringify(row)
     });
     if (!res.ok) {
       throw new Error(`clouds_character_ir upsert failed: ${res.status} ${await res.text()}`);
