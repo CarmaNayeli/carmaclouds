@@ -13,6 +13,7 @@
 -- Prereqs: extensions pgcrypto + supabase_vault enabled (Supabase has both).
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE EXTENSION IF NOT EXISTS supabase_vault;
 
 -- 1. Encryption key in Vault. Generates a strong random passphrase once; rerunning
 --    is a no-op (the secret name is unique). To rotate, delete+recreate and
@@ -32,6 +33,22 @@ END $$;
 --    end of this migration once data is migrated.
 ALTER TABLE public.auth_tokens
   ADD COLUMN IF NOT EXISTS dicecloud_token_enc BYTEA;
+
+-- 2a. Relax legacy NOT NULL columns the new RPC doesn't populate (the old
+--     fingerprint `user_id` and plaintext `dicecloud_token`). They are dropped
+--     entirely at the Phase 3 cutover; until then they must allow NULL so the
+--     encrypted-store RPC can insert a row without them.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_schema='public' AND table_name='auth_tokens' AND column_name='user_id') THEN
+    EXECUTE 'ALTER TABLE public.auth_tokens ALTER COLUMN user_id DROP NOT NULL';
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_schema='public' AND table_name='auth_tokens' AND column_name='dicecloud_token') THEN
+    EXECUTE 'ALTER TABLE public.auth_tokens ALTER COLUMN dicecloud_token DROP NOT NULL';
+  END IF;
+END $$;
 
 -- 3. Internal helpers (run as definer; can read Vault). Not exposed to anon/auth.
 CREATE OR REPLACE FUNCTION public._dicecloud_token_key()
