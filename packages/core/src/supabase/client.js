@@ -93,30 +93,6 @@ class SupabaseTokenManager {
   }
 
   /**
-   * Generate a unique session ID for this browser instance
-   */
-  generateSessionId() {
-    // Create a more unique session ID using additional entropy
-    const sessionData = [
-      navigator.userAgent,
-      navigator.language,
-      // Use fallback for screen in service workers
-      (typeof screen !== 'undefined' ? screen.width + 'x' + screen.height : 'unknown'),
-      new Date().getTimezoneOffset(),
-      Math.random().toString(36),
-      Date.now().toString(36)
-    ].join('|');
-    
-    let hash = 0;
-    for (let i = 0; i < sessionData.length; i++) {
-      const char = sessionData.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return 'session_' + Math.abs(hash).toString(36);
-  }
-
-  /**
    * Normalize date to ISO 8601 format for PostgreSQL
    * Handles Meteor date formats like "Sat Jan 25 2025 12:00:00 GMT+0300"
    */
@@ -225,149 +201,15 @@ class SupabaseTokenManager {
       // This prevents stale data from causing login failures
       await browserAPI.storage.local.remove(['sessionInvalidated', 'sessionConflict']);
 
-      // GDPR Phase 2.5: prefer the encrypted, owner-scoped RPC. When the cutover
-      // migration is live this stores the token as ciphertext under auth.uid();
-      // before it exists (or with no session) it returns falsy and we fall through
-      // to the legacy plaintext path below. See gdpr-auth-migration.
+      // The token is stored encrypted at rest via the owner-scoped RPC (Vault
+      // key); auth_tokens is RPC-only — there is no plaintext fallback.
       const enc = await this.storeTokenEncrypted(tokenData);
       if (enc.ok) {
         debug.log('✅ Token stored in Supabase (encrypted RPC)');
         return { success: true };
       }
-
-      // Use persistent browser ID for consistent storage/retrieval across browser updates
-      const visitorId = await this.getOrCreatePersistentUserId();
-      const sessionId = this.generateSessionId();
-
-      // Invalidate all OTHER sessions for this DiceCloud account (different browsers)
-      // This ensures only one browser can be logged in at a time per account
-      if (tokenData.userId) {
-        await this.invalidateOtherSessions(tokenData.userId, sessionId);
-      }
-
-      // Check for existing sessions with different tokens (same browser, different account)
-      const conflictCheck = await this.checkForTokenConflicts(visitorId, tokenData.token);
-
-      if (conflictCheck.hasConflict) {
-        debug.log('⚠️ Token conflict detected - different browser logged in');
-        // Store conflict info for later display
-        await this.storeConflictInfo(conflictCheck);
-      }
-
-      // Normalize token_expires to ISO 8601 format for PostgreSQL
-      const normalizedTokenExpires = this.normalizeDate(tokenData.tokenExpires);
-
-      const payload = {
-        user_id: visitorId, // Browser fingerprint for cross-session lookup
-        session_id: sessionId, // Unique session identifier
-        dicecloud_token: tokenData.token,
-        username: tokenData.username || 'DiceCloud User',
-        user_id_dicecloud: tokenData.userId, // Store DiceCloud ID separately
-        token_expires: normalizedTokenExpires,
-        browser_info: {
-          userAgent: navigator.userAgent,
-          authId: tokenData.authId, // Store authId in browser_info for reference
-          timestamp: new Date().toISOString(),
-          sessionId: sessionId
-        },
-        updated_at: new Date().toISOString(),
-        last_seen: new Date().toISOString(),
-        // Clear any previous invalidation (this is a fresh login)
-        invalidated_at: null,
-        invalidated_by_session: null,
-        invalidated_reason: null
-      };
-
-      // Only include Discord fields if provided, to avoid overwriting existing data with null
-      if (tokenData.discordUserId) {
-        payload.discord_user_id = tokenData.discordUserId;
-      }
-      if (tokenData.discordUsername) {
-        payload.discord_username = tokenData.discordUsername;
-      }
-      if (tokenData.discordGlobalName) {
-        payload.discord_global_name = tokenData.discordGlobalName;
-      }
-
-      debug.log('🌐 Storing with browser ID:', visitorId, 'Session ID:', sessionId, 'DiceCloud ID:', tokenData.authId);
-      if (tokenData.discordUserId) {
-        debug.log('🔗 Linking Discord account:', tokenData.discordUsername);
-      }
-
-      const response = await fetch(`${this.supabaseUrl}/rest/v1/${this.tableName}`, {
-        method: 'POST',
-        headers: {
-          'apikey': this.supabaseKey,
-          'Authorization': `Bearer ${this.supabaseKey}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'resolution=merge-duplicates,return=minimal'
-        },
-        body: JSON.stringify(payload)
-      });
-
-      debug.log('📥 Supabase POST response status:', response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        debug.log('⚠️ Supabase POST failed, trying PATCH. Error:', response.status, errorText);
-
-        // Try to update if insert fails (user already exists)
-        const updatePayload = {
-          dicecloud_token: tokenData.token,
-          username: tokenData.username || 'DiceCloud User',
-          user_id_dicecloud: tokenData.userId,
-          token_expires: normalizedTokenExpires,
-          session_id: sessionId, // Update session ID to match local storage
-          browser_info: {
-            userAgent: navigator.userAgent,
-            authId: tokenData.authId,
-            timestamp: new Date().toISOString(),
-            sessionId: sessionId
-          },
-          updated_at: new Date().toISOString(),
-          last_seen: new Date().toISOString(),
-          // Clear any previous invalidation (this is a fresh login)
-          invalidated_at: null,
-          invalidated_by_session: null,
-          invalidated_reason: null
-        };
-
-        // Only include Discord fields if provided, to avoid overwriting existing data with null
-        if (tokenData.discordUserId) {
-          updatePayload.discord_user_id = tokenData.discordUserId;
-        }
-        if (tokenData.discordUsername) {
-          updatePayload.discord_username = tokenData.discordUsername;
-        }
-        if (tokenData.discordGlobalName) {
-          updatePayload.discord_global_name = tokenData.discordGlobalName;
-        }
-
-        const updateResponse = await fetch(`${this.supabaseUrl}/rest/v1/${this.tableName}?user_id=eq.${visitorId}`, {
-          method: 'PATCH',
-          headers: {
-            'apikey': this.supabaseKey,
-            'Authorization': `Bearer ${this.supabaseKey}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=minimal'
-          },
-          body: JSON.stringify(updatePayload)
-        });
-
-        debug.log('📥 Supabase PATCH response status:', updateResponse.status);
-
-        if (!updateResponse.ok) {
-          const patchErrorText = await updateResponse.text();
-          debug.error('❌ Supabase PATCH also failed:', updateResponse.status, patchErrorText);
-          throw new Error(`Supabase update failed: ${updateResponse.status} - ${patchErrorText}`);
-        }
-      }
-
-      // Store session ID locally AFTER database update succeeds to avoid race condition
-      await this.storeCurrentSession(sessionId);
-
-      debug.log('✅ Token stored in Supabase successfully');
-      return { success: true };
+      debug.error('❌ storeToken: encrypted RPC unavailable (no Supabase session yet)');
+      return { success: false, error: 'No Supabase session — cannot store token' };
     } catch (error) {
       debug.error('❌ Failed to store token in Supabase:', error);
       return { success: false, error: error.message };
@@ -381,105 +223,10 @@ class SupabaseTokenManager {
     try {
       debug.log('🌐 Retrieving token from Supabase...');
 
-      // GDPR Phase 2.5: try the encrypted, owner-scoped RPC first. Returns null
-      // when unavailable (pre-cutover / no session) so we fall back to legacy.
+      // The token is read (and decrypted) only via the owner-scoped RPC.
       const enc = await this.retrieveTokenEncrypted();
       if (enc) return enc;
-
-      // Use persistent user ID to survive browser updates
-      const userId = await this.getOrCreatePersistentUserId();
-      debug.log('🔍 Using persistent user ID for lookup:', userId);
-      
-      const url = `${this.supabaseUrl}/rest/v1/${this.tableName}?user_id=eq.${userId}&select=*`;
-      debug.log('🌐 Supabase query URL:', url);
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'apikey': this.supabaseKey,
-          'Authorization': `Bearer ${this.supabaseKey}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      debug.log('📥 Supabase response status:', response.status);
-      debug.log('📥 Supabase response headers:', response.headers);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        debug.error('❌ Supabase fetch failed:', response.status, errorText);
-        throw new Error(`Supabase fetch failed: ${response.status} - ${errorText}`);
-      }
-
-      const data = await response.json();
-      debug.log('📦 Supabase response data:', data);
-      
-      if (data && data.length > 0) {
-        const tokenData = data[0];
-        debug.log('🔍 Found token data:', tokenData);
-
-        // Check if this session was invalidated by another login
-        if (tokenData.invalidated_at) {
-          debug.log('🚫 Session was invalidated at:', tokenData.invalidated_at);
-          debug.log('🚫 Invalidated reason:', tokenData.invalidated_reason);
-
-          // Clear local auth data to prevent auto-restore loops
-          await browserAPI.storage.local.remove(['diceCloudToken', 'diceCloudUserId', 'tokenExpires', 'username', 'currentSessionId']);
-
-          // Store info about who logged us out for display
-          await browserAPI.storage.local.set({
-            sessionInvalidated: {
-              at: tokenData.invalidated_at,
-              reason: tokenData.invalidated_reason || 'logged_in_elsewhere',
-              bySession: tokenData.invalidated_by_session
-            }
-          });
-
-          // Delete the invalidated record from Supabase to clean up
-          await this.deleteToken();
-
-          return {
-            success: false,
-            error: 'Session invalidated',
-            invalidated: true,
-            reason: tokenData.invalidated_reason || 'Another browser logged in with this account'
-          };
-        }
-
-        // Check if token is expired
-        if (tokenData.token_expires) {
-          const expiryDate = new Date(tokenData.token_expires);
-          const now = new Date();
-          debug.log('⏰ Token expiry check:', { expiryDate, now, expired: now >= expiryDate });
-
-          if (now >= expiryDate) {
-            debug.log('⚠️ Supabase token expired, removing...');
-            await this.deleteToken();
-            return { success: false, error: 'Token expired' };
-          }
-        }
-
-        // Restore session ID locally to match database for session validity checks
-        if (tokenData.session_id) {
-          await this.storeCurrentSession(tokenData.session_id);
-          debug.log('💾 Restored session ID from Supabase:', tokenData.session_id);
-        }
-
-        debug.log('✅ Token retrieved from Supabase');
-        return {
-          success: true,
-          token: tokenData.dicecloud_token,
-          username: tokenData.username,
-          userId: tokenData.user_id_dicecloud,
-          tokenExpires: tokenData.token_expires,
-          discordUserId: tokenData.discord_user_id,
-          discordUsername: tokenData.discord_username,
-          discordGlobalName: tokenData.discord_global_name
-        };
-      } else {
-        debug.log('ℹ️ No token found in Supabase for user:', userId);
-        return { success: false, error: 'No token found' };
-      }
+      return { success: false, error: 'No token found' };
     } catch (error) {
       debug.error('❌ Failed to retrieve token from Supabase:', error);
       return { success: false, error: error.message };
@@ -487,79 +234,35 @@ class SupabaseTokenManager {
   }
 
   /**
-   * Get raw token data from database (used for session checks)
-   * Returns the full database record without processing
+   * Get the caller's token record (used by older session-check call sites).
+   * Backed by the owner-scoped encrypted RPC; returns the legacy `{ success,
+   * tokenData }` shape. There is no session_id / discord / invalidated metadata
+   * any more (that single-session system was removed), so callers only get the
+   * token + expiry + dicecloud user id.
    */
   async getTokenFromDatabase() {
-    try {
-      debug.log('🌐 Getting raw token data from Supabase...');
-
-      // Use persistent user ID
-      const userId = await this.getOrCreatePersistentUserId();
-      debug.log('🔍 Using persistent user ID:', userId);
-
-      const url = `${this.supabaseUrl}/rest/v1/${this.tableName}?user_id=eq.${userId}&select=*`;
-
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'apikey': this.supabaseKey,
-          'Authorization': `Bearer ${this.supabaseKey}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        debug.error('❌ Supabase fetch failed:', response.status, errorText);
-        return { success: false, error: `Fetch failed: ${response.status}` };
-      }
-
-      const data = await response.json();
-
-      if (data && data.length > 0) {
-        debug.log('✅ Found token data in database');
-        return {
-          success: true,
-          tokenData: data[0]
-        };
-      } else {
-        debug.log('ℹ️ No token found in database');
-        return { success: false, error: 'No token found' };
-      }
-    } catch (error) {
-      debug.error('❌ Failed to get token from database:', error);
-      return { success: false, error: error.message };
+    const enc = await this.retrieveTokenEncrypted();
+    if (enc && enc.success) {
+      return {
+        success: true,
+        tokenData: {
+          dicecloud_token: enc.token,
+          username: enc.username,
+          user_id_dicecloud: enc.userId,
+          token_expires: enc.tokenExpires,
+        },
+      };
     }
+    return { success: false, error: 'No token found' };
   }
 
   /**
-   * Delete token from Supabase (logout)
+   * Logout cleanup. auth_tokens is RPC-only and tokens expire on their own;
+   * full erasure is delete_my_account_data(). Nothing to do for a plain logout.
    */
   async deleteToken() {
-    try {
-      debug.log('🌐 Deleting token from Supabase...');
-
-      const userId = await this.getOrCreatePersistentUserId();
-      const response = await fetch(`${this.supabaseUrl}/rest/v1/${this.tableName}?user_id=eq.${userId}`, {
-        method: 'DELETE',
-        headers: {
-          'apikey': this.supabaseKey,
-          'Authorization': `Bearer ${this.supabaseKey}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Supabase delete failed: ${response.status}`);
-      }
-
-      debug.log('✅ Token deleted from Supabase');
-      return { success: true };
-    } catch (error) {
-      debug.error('❌ Failed to delete token from Supabase:', error);
-      return { success: false, error: error.message };
-    }
+    debug.log('ℹ️ deleteToken: no-op (auth_tokens is RPC-only; tokens self-expire)');
+    return { success: true };
   }
 
   /**
@@ -959,351 +662,12 @@ class SupabaseTokenManager {
   }
 
   /**
-   * Update auth tokens with Discord information
-   */
-  async updateAuthTokens(dicecloudUserId, updateData) {
-    try {
-      const response = await fetch(
-        `${this.supabaseUrl}/rest/v1/auth_tokens?user_id_dicecloud=eq.${dicecloudUserId}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'apikey': this.supabaseKey,
-            'Authorization': `Bearer ${this.supabaseKey}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=minimal'
-          },
-          body: JSON.stringify(updateData)
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to update auth tokens: ${errorText}`);
-      }
-
-      debug.log('✅ Auth tokens updated successfully');
-      return true;
-    } catch (error) {
-      debug.error('❌ Failed to update auth tokens:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Store current session ID locally
-   */
-  async storeCurrentSession(sessionId) {
-    try {
-      await browserAPI.storage.local.set({
-        currentSessionId: sessionId,
-        sessionStartTime: Date.now()
-      });
-      debug.log('💾 Stored current session ID:', sessionId);
-    } catch (error) {
-      debug.error('❌ Failed to store session ID:', error);
-    }
-  }
-
-  /**
-   * Invalidate all other sessions for the same DiceCloud account
-   * Called when logging in to ensure only one browser is logged in at a time
-   * Only invalidates sessions from OTHER browsers (different user_id)
-   */
-  async invalidateOtherSessions(diceCloudUserId, currentSessionId) {
-    try {
-      if (!diceCloudUserId) {
-        debug.warn('⚠️ No DiceCloud user ID provided, skipping invalidation');
-        return;
-      }
-
-      debug.log('🔒 Invalidating other sessions for DiceCloud user:', diceCloudUserId);
-
-      // Get our persistent browser ID to exclude our own sessions
-      const ourBrowserId = await this.getOrCreatePersistentUserId();
-      debug.log('🔍 Our browser ID:', ourBrowserId);
-
-      // Find all sessions for this DiceCloud account
-      const queryUrl = `${this.supabaseUrl}/rest/v1/${this.tableName}?user_id_dicecloud=eq.${encodeURIComponent(diceCloudUserId)}&select=user_id,session_id,username,browser_info,invalidated_at`;
-      debug.log('🔍 Query URL:', queryUrl);
-
-      const response = await fetch(queryUrl, {
-        headers: {
-          'apikey': this.supabaseKey,
-          'Authorization': `Bearer ${this.supabaseKey}`
-        }
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        debug.warn('⚠️ Failed to fetch other sessions:', response.status, errorText);
-        return;
-      }
-
-      const otherSessions = await response.json();
-      debug.log('🔍 Found sessions for this account:', otherSessions.length, otherSessions);
-
-      if (otherSessions.length === 0) {
-        debug.log('ℹ️ No other sessions found for this DiceCloud account');
-        return;
-      }
-
-      // Mark sessions from OTHER browsers as invalidated (exclude our browser)
-      let invalidatedCount = 0;
-      for (const session of otherSessions) {
-        // Skip our own browser's sessions - we're replacing them, not invalidating
-        if (session.user_id === ourBrowserId) {
-          debug.log('⏭️ Skipping our own browser session:', session.session_id);
-          continue;
-        }
-
-        // Skip already invalidated sessions
-        if (session.invalidated_at) {
-          debug.log('⏭️ Session already invalidated:', session.session_id);
-          continue;
-        }
-
-        debug.log('🚫 Invalidating session from other browser:', session.session_id, 'browser:', session.user_id);
-
-        // Update the session to mark it as invalidated
-        const invalidateResponse = await fetch(
-          `${this.supabaseUrl}/rest/v1/${this.tableName}?user_id=eq.${encodeURIComponent(session.user_id)}`,
-          {
-            method: 'PATCH',
-            headers: {
-              'apikey': this.supabaseKey,
-              'Authorization': `Bearer ${this.supabaseKey}`,
-              'Content-Type': 'application/json',
-              'Prefer': 'return=representation'
-            },
-            body: JSON.stringify({
-              invalidated_at: new Date().toISOString(),
-              invalidated_by_session: currentSessionId,
-              invalidated_reason: 'logged_in_elsewhere'
-            })
-          }
-        );
-
-        if (invalidateResponse.ok) {
-          const result = await invalidateResponse.json();
-          debug.log('✅ Session invalidated:', session.session_id, 'Result:', result);
-          invalidatedCount++;
-        } else {
-          const errorText = await invalidateResponse.text();
-          debug.warn('⚠️ Failed to invalidate session:', session.session_id, 'Status:', invalidateResponse.status, 'Error:', errorText);
-
-          // If the column doesn't exist, log a helpful message
-          if (errorText.includes('column') && errorText.includes('does not exist')) {
-            debug.error('❌ Database migration needed! Run supabase/add_session_invalidation.sql');
-          }
-        }
-      }
-
-      debug.log(`🔒 Invalidation complete: ${invalidatedCount} session(s) invalidated`);
-    } catch (error) {
-      debug.error('❌ Error invalidating other sessions:', error);
-    }
-  }
-
-  /**
-   * Check for token conflicts with existing sessions
-   */
-  async checkForTokenConflicts(userId, newToken) {
-    try {
-      const response = await fetch(
-        `${this.supabaseUrl}/rest/v1/${this.tableName}?user_id=eq.${userId}&select=dicecloud_token,session_id,browser_info,username,last_seen`,
-        {
-          headers: {
-            'apikey': this.supabaseKey,
-            'Authorization': `Bearer ${this.supabaseKey}`
-          }
-        }
-      );
-
-      if (!response.ok) {
-        debug.warn('⚠️ Failed to check for conflicts:', response.status);
-        return { hasConflict: false };
-      }
-
-      const existingSessions = await response.json();
-      debug.log('🔍 Checking for conflicts with existing sessions:', existingSessions.length);
-
-      for (const session of existingSessions) {
-        if (session.dicecloud_token !== newToken) {
-          debug.log('⚠️ Found session with different token:', session.session_id);
-          return {
-            hasConflict: true,
-            conflictingSession: {
-              sessionId: session.session_id,
-              username: session.username,
-              lastSeen: session.last_seen,
-              browserInfo: session.browser_info
-            }
-          };
-        }
-      }
-
-      return { hasConflict: false };
-    } catch (error) {
-      debug.error('❌ Error checking for conflicts:', error);
-      return { hasConflict: false };
-    }
-  }
-
-  /**
-   * Store conflict information for later display
-   */
-  async storeConflictInfo(conflictCheck) {
-    try {
-      await browserAPI.storage.local.set({
-        sessionConflict: {
-          detected: true,
-          conflictingSession: conflictCheck.conflictingSession,
-          detectedAt: Date.now()
-        }
-      });
-      debug.log('💾 Stored conflict information');
-    } catch (error) {
-      debug.error('❌ Failed to store conflict info:', error);
-    }
-  }
-
-  /**
-   * Check if current session has been invalidated by another login
+   * Session validity. The old "one browser per account" single-session system
+   * was removed (multi-device is fine under Supabase Auth), so this is always
+   * valid. Kept as a stable no-op for existing callers.
    */
   async checkSessionValidity() {
-    try {
-      const { currentSessionId, sessionConflict, sessionInvalidated } = await browserAPI.storage.local.get(['currentSessionId', 'sessionConflict', 'sessionInvalidated']);
-
-      debug.log('🔍 checkSessionValidity - currentSessionId:', currentSessionId);
-      debug.log('🔍 checkSessionValidity - sessionConflict:', sessionConflict);
-      debug.log('🔍 checkSessionValidity - sessionInvalidated:', sessionInvalidated);
-
-      if (!currentSessionId) {
-        debug.log('✅ No session ID stored - session valid (new/fresh state)');
-        return { valid: true, reason: 'no_session' };
-      }
-
-      // Check if we already have an invalidation notification (another browser logged in)
-      if (sessionInvalidated) {
-        debug.log('⚠️ Found sessionInvalidated flag in local storage');
-        return {
-          valid: false,
-          reason: 'invalidated_by_other_login',
-          invalidatedAt: sessionInvalidated.at,
-          invalidatedReason: sessionInvalidated.reason
-        };
-      }
-
-      // Check if we already have a conflict notification
-      if (sessionConflict && sessionConflict.detected) {
-        debug.log('⚠️ Found sessionConflict flag in local storage');
-        return { valid: false, reason: 'conflict_detected', conflict: sessionConflict };
-      }
-
-      // Verify session still exists in Supabase and check for invalidation
-      const userId = await this.getOrCreatePersistentUserId();
-      debug.log('🔍 Checking session in database for user:', userId);
-
-      const response = await fetch(
-        `${this.supabaseUrl}/rest/v1/${this.tableName}?user_id=eq.${userId}&select=dicecloud_token,username,session_id,invalidated_at,invalidated_reason,invalidated_by_session`,
-        {
-          headers: {
-            'apikey': this.supabaseKey,
-            'Authorization': `Bearer ${this.supabaseKey}`
-          }
-        }
-      );
-
-      if (!response.ok) {
-        debug.warn('⚠️ Database check failed with status:', response.status);
-        return { valid: false, reason: 'check_failed' };
-      }
-
-      const sessions = await response.json();
-      debug.log('🔍 Found sessions in database:', sessions.length, sessions);
-
-      if (sessions.length === 0) {
-        debug.warn('⚠️ No session found in database for this browser');
-        return { valid: false, reason: 'session_not_found' };
-      }
-
-      const session = sessions[0];
-
-      // Check if session was invalidated by another login
-      if (session.invalidated_at) {
-        debug.log('🚫 Session was invalidated by another login at:', session.invalidated_at);
-
-        // Store invalidation info locally so we don't keep checking
-        await browserAPI.storage.local.set({
-          sessionInvalidated: {
-            at: session.invalidated_at,
-            reason: session.invalidated_reason || 'logged_in_elsewhere',
-            bySession: session.invalidated_by_session
-          }
-        });
-
-        return {
-          valid: false,
-          reason: 'invalidated_by_other_login',
-          invalidatedAt: session.invalidated_at,
-          invalidatedReason: session.invalidated_reason
-        };
-      }
-
-      // Check if session ID matches (another browser might have taken over)
-      if (session.session_id !== currentSessionId) {
-        debug.log('⚠️ Session ID mismatch - local:', currentSessionId, 'remote:', session.session_id);
-        return { valid: false, reason: 'session_replaced' };
-      }
-
-      // Check if local token matches remote token
-      const { diceCloudToken } = await browserAPI.storage.local.get('diceCloudToken');
-      if (diceCloudToken && session.dicecloud_token !== diceCloudToken) {
-        debug.log('⚠️ Token mismatch - local token differs from database');
-        return { valid: false, reason: 'token_mismatch' };
-      }
-
-      debug.log('✅ Session is valid');
-
-      // Session is valid - update heartbeat
-      await this.updateSessionHeartbeat(currentSessionId);
-
-      return { valid: true };
-    } catch (error) {
-      debug.error('❌ Error checking session validity:', error);
-      return { valid: true }; // Assume valid on error to avoid false logouts
-    }
-  }
-
-  /**
-   * Update session heartbeat to keep session alive
-   */
-  async updateSessionHeartbeat(sessionId) {
-    try {
-      const userId = await this.getOrCreatePersistentUserId();
-      const response = await fetch(
-        `${this.supabaseUrl}/rest/v1/${this.tableName}?user_id=eq.${userId}&session_id=eq.${sessionId}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'apikey': this.supabaseKey,
-            'Authorization': `Bearer ${this.supabaseKey}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=minimal'
-          },
-          body: JSON.stringify({
-            last_seen: new Date().toISOString()
-          })
-        }
-      );
-
-      if (!response.ok) {
-        debug.error('❌ Failed to update session heartbeat:', response.status);
-      }
-    } catch (error) {
-      debug.error('❌ Error updating session heartbeat:', error);
-    }
+    return { valid: true };
   }
 
   /**
