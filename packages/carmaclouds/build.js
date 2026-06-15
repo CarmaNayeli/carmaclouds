@@ -10,6 +10,15 @@ import path from 'path';
 const watch = process.argv.includes('--watch');
 const minify = process.argv.includes('--minify');
 
+// Compile @carmaclouds/core first so its ./ir and ./render exports (now pointing
+// at dist) resolve for esbuild. Keeps the package publishable (compiled JS+types)
+// while the extension bundles the same dist.
+console.log('📦 Building @carmaclouds/core (tsc)...');
+{
+  const { execSync } = await import('child_process');
+  execSync('npm run build', { cwd: path.join('..', 'core'), stdio: 'inherit' });
+}
+
 // Build Firefox version (Manifest V2)
 console.log('📦 Building Firefox version (Manifest V2)...');
 await buildExtension({
@@ -127,6 +136,47 @@ await buildExtension({
 console.log('✅ Both builds complete!');
 console.log('   - Firefox (MV2): dist/');
 console.log('   - Chrome (MV3):  dist-chrome/');
+
+// Bundle the rebuild's IR + render layer (@carmaclouds/core) into the Owlbear
+// extension as a window global, since the popover loads as a classic script.
+console.log('\n📦 Bundling cc-core.js for the Owlbear extension...');
+const esbuild = (await import('esbuild')).default;
+for (const out of ['dist', 'dist-chrome']) {
+  // Owlbear extension copy (loaded by its popover; also synced to the website).
+  await esbuild.build({
+    entryPoints: ['src/owlbear-cc-core-entry.js'],
+    bundle: true, format: 'iife', platform: 'browser', target: 'es2020',
+    outfile: path.join(out, 'owlbear-extension', 'cc-core.js'),
+    logLevel: 'silent',
+  });
+  // Shared copy at the dist root for other classic-script extension pages
+  // (e.g. src/popup-sheet.html -> ../cc-core.js). cc-sheet.css alongside it.
+  await esbuild.build({
+    entryPoints: ['src/owlbear-cc-core-entry.js'],
+    bundle: true, format: 'iife', platform: 'browser', target: 'es2020',
+    outfile: path.join(out, 'cc-core.js'),
+    logLevel: 'silent',
+  });
+  fs.copyFileSync(
+    path.join('owlbear-extension', 'cc-sheet.css'),
+    path.join(out, 'cc-sheet.css'),
+  );
+}
+console.log('✅ Bundled cc-core.js (owlbear-extension/ + dist root) and cc-sheet.css');
+
+// Bundle the IR + render layer for the Foundry module (ESM, imported by the
+// FoundCloud sheet), and provide cc-sheet.css as a module style.
+await esbuild.build({
+  entryPoints: ['src/foundry-cc-core-entry.js'],
+  bundle: true, format: 'esm', platform: 'browser', target: 'es2020',
+  outfile: path.join('foundry-module', 'scripts', 'cc-core.js'),
+  logLevel: 'silent',
+});
+fs.copyFileSync(
+  path.join('owlbear-extension', 'cc-sheet.css'),
+  path.join('foundry-module', 'styles', 'cc-sheet.css'),
+);
+console.log('✅ Bundled cc-core.js + cc-sheet.css into the Foundry module');
 
 // Sync Foundry module to website directory
 console.log('\n📋 Syncing Foundry module to website...');

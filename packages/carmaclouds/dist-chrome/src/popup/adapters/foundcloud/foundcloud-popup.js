@@ -11524,6 +11524,226 @@ ${suffix}`;
     }
   };
 
+  // ../core/dist/ir/normalize.js
+  var DND_ABILITIES = [
+    "strength",
+    "dexterity",
+    "constitution",
+    "intelligence",
+    "wisdom",
+    "charisma"
+  ];
+  function detectSystem(byVar) {
+    const hasAbilities = DND_ABILITIES.every((ab) => byVar[ab]);
+    const hasProfBonus = !!byVar["proficiencyBonus"];
+    const hasHitDice = Object.values(byVar).some((a) => a.type === "hitDice");
+    return hasAbilities && hasProfBonus && hasHitDice ? "dnd5e" : "generic";
+  }
+  function numOf(v) {
+    if (v == null)
+      return 0;
+    if (typeof v === "number")
+      return Number.isFinite(v) ? v : 0;
+    if (typeof v === "object")
+      return numOf(v.value ?? v.total ?? 0);
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  }
+  function has(v) {
+    return v != null && !(typeof v === "object" && v.value == null && v.total == null);
+  }
+  function textOf(d) {
+    if (!d)
+      return void 0;
+    if (typeof d === "string")
+      return d || void 0;
+    return d.text ?? d.value ?? void 0;
+  }
+  function resetOf(p) {
+    return p.reset ?? null;
+  }
+  function isRemoved(p) {
+    return !p || p.removed === true;
+  }
+  function activeOf(p) {
+    return !p.inactive && !p.deactivatedBySelf && !p.deactivatedByAncestor;
+  }
+  function normalizeAttribute(p) {
+    const value = numOf(p.value);
+    const total = numOf(p.total);
+    const damage = numOf(p.damage);
+    const attr = {
+      id: p._id,
+      name: p.name ?? p.variableName ?? "",
+      variableName: p.variableName ?? "",
+      type: p.attributeType ?? "stat",
+      value,
+      total,
+      damage,
+      reset: resetOf(p),
+      active: activeOf(p),
+      tags: Array.isArray(p.tags) ? p.tags : [],
+      description: textOf(p.description)
+    };
+    if (p.attributeType === "ability") {
+      attr.modifier = has(p.modifier) ? numOf(p.modifier) : Math.floor((value - 10) / 2);
+    }
+    if (p.attributeType === "hitDice" && p.hitDiceSize) {
+      attr.hitDiceSize = String(p.hitDiceSize);
+    }
+    if (p.attributeType === "spellSlot" && has(p.spellSlotLevel)) {
+      attr.spellSlotLevel = numOf(p.spellSlotLevel);
+    }
+    return attr;
+  }
+  function normalizeSkill(p) {
+    return {
+      id: p._id,
+      name: p.name ?? p.variableName ?? "",
+      variableName: p.variableName ?? "",
+      skillType: p.skillType ?? "skill",
+      value: numOf(p.value),
+      ability: p.ability || void 0,
+      proficiency: numOf(p.proficiency),
+      active: activeOf(p),
+      tags: Array.isArray(p.tags) ? p.tags : []
+    };
+  }
+  function normalizeItem(p) {
+    return {
+      id: p._id,
+      name: p.name ?? "",
+      plural: p.plural || void 0,
+      quantity: p.quantity != null ? numOf(p.quantity) : 1,
+      equipped: !!p.equipped,
+      weight: has(p.weight) ? numOf(p.weight) : void 0,
+      value: has(p.value) ? numOf(p.value) : void 0,
+      description: textOf(p.description),
+      tags: Array.isArray(p.tags) ? p.tags : []
+    };
+  }
+  function consumesOf(p) {
+    const consumed = p.resources?.attributesConsumed;
+    if (!Array.isArray(consumed))
+      return [];
+    return consumed.map((c) => ({
+      variableName: c.variableName || void 0,
+      propertyId: c._id || c.variableId || void 0,
+      amount: numOf(c.quantity ?? c.amount ?? 1)
+    }));
+  }
+  function normalizeAction(p, damageByParent) {
+    const kind = p.type === "spell" ? "spell" : p.type === "feature" ? "feature" : "action";
+    const damage = (damageByParent[p._id] ?? []).map((d) => ({
+      formula: d.amount?.calculation ?? String(d.amount?.value ?? ""),
+      type: d.damageType || void 0
+    })).filter((d) => d.formula);
+    const action = {
+      id: p._id,
+      name: p.name ?? "",
+      kind,
+      active: activeOf(p),
+      consumes: consumesOf(p),
+      damage,
+      tags: Array.isArray(p.tags) ? p.tags : [],
+      description: textOf(p.description)
+    };
+    const max = numOf(p.uses);
+    if (has(p.uses) && max > 0) {
+      const current = has(p.usesLeft) ? numOf(p.usesLeft) : Math.max(0, max - numOf(p.usesUsed));
+      action.uses = { current, max, reset: resetOf(p) };
+    }
+    if (has(p.attackRoll)) {
+      action.attack = { bonus: numOf(p.attackRoll) };
+    }
+    if (kind === "spell") {
+      action.spell = {
+        level: numOf(p.level),
+        school: p.school || void 0,
+        castingTime: p.castingTime || void 0,
+        range: p.range || void 0,
+        duration: p.duration || void 0,
+        components: p.components || void 0,
+        concentration: p.components?.concentration ?? void 0,
+        ritual: p.components?.ritual ?? void 0
+      };
+    }
+    return action;
+  }
+  function isActionLike(p) {
+    if (p.type === "action" || p.type === "spell")
+      return true;
+    if (p.type === "feature")
+      return has(p.uses) && numOf(p.uses) > 0;
+    return false;
+  }
+  function normalize(raw) {
+    var _a;
+    const creature = raw?.creatures?.[0] ?? raw?.creature ?? {};
+    const allProps = raw?.creatureProperties ?? raw?.properties ?? [];
+    const props = allProps.filter((p) => !isRemoved(p));
+    const attributes = props.filter((p) => p.type === "attribute").map(normalizeAttribute);
+    const skills = props.filter((p) => p.type === "skill").map(normalizeSkill);
+    const damageByParent = {};
+    for (const p of props) {
+      if (p.type === "damage" && p.parent?.id) {
+        (damageByParent[_a = p.parent.id] ?? (damageByParent[_a] = [])).push(p);
+      }
+    }
+    const actions = props.filter(isActionLike).map((p) => normalizeAction(p, damageByParent));
+    const inventory = props.filter((p) => p.type === "item").map(normalizeItem);
+    const byVar = {};
+    for (const a of attributes) {
+      if (a.variableName)
+        byVar[a.variableName] = a;
+    }
+    return {
+      id: creature._id ?? "",
+      name: creature.name ?? "",
+      portrait: creature.picture || creature.avatarPicture || void 0,
+      systemHint: detectSystem(byVar),
+      attributes,
+      skills,
+      actions,
+      inventory,
+      byVar
+    };
+  }
+
+  // ../core/dist/ir/persistence.js
+  var IR_VERSION = 1;
+  function toIRRow(ir, raw) {
+    return {
+      dicecloud_character_id: ir.id,
+      character_name: ir.name,
+      system_hint: ir.systemHint,
+      ir,
+      ir_version: IR_VERSION,
+      ...raw ? { raw } : {}
+    };
+  }
+
+  // ../core/dist/ir/sync.js
+  async function upsertCharacterIR(raw, target) {
+    const ir = normalize(raw);
+    if (!ir.id)
+      throw new Error("upsertCharacterIR: normalized IR has no character id");
+    const res = await fetch(`${target.url}/rest/v1/clouds_character_ir?on_conflict=dicecloud_character_id`, {
+      method: "POST",
+      headers: {
+        apikey: target.anonKey,
+        Authorization: `Bearer ${target.anonKey}`,
+        "Content-Type": "application/json",
+        Prefer: "resolution=merge-duplicates,return=minimal"
+      },
+      body: JSON.stringify(toIRRow(ir))
+    });
+    if (!res.ok) {
+      throw new Error(`clouds_character_ir upsert failed: ${res.status} ${await res.text()}`);
+    }
+    return ir;
+  }
+
   // src/content/dicecloud-extraction.js
   var STANDARD_VARS = {
     abilities: ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"],
@@ -12639,7 +12859,7 @@ ${suffix}`;
         spellSlots[`level${level2}`] = { current, max };
       }
     }
-    const numOf = (v) => {
+    const numOf2 = (v) => {
       if (v == null)
         return void 0;
       if (typeof v === "number")
@@ -12650,10 +12870,10 @@ ${suffix}`;
       return Number.isFinite(n) ? n : void 0;
     };
     const pactProp = spellSlotProps.find((p) => p.variableName === "pactSlot" || Array.isArray(p.tags) && p.tags.includes("pactSpellSlot"));
-    const pactMax = (pactProp && (pactProp.total ?? pactProp.value)) ?? numOf(variables2.pactSlot);
+    const pactMax = (pactProp && (pactProp.total ?? pactProp.value)) ?? numOf2(variables2.pactSlot);
     if (pactMax && pactMax > 0) {
-      const pactCurrent = (pactProp && (pactProp.value ?? pactProp.total)) ?? numOf(variables2.pactSlot) ?? pactMax;
-      const pactLevel = numOf(variables2.pactSlotLevelVisible) ?? numOf(variables2.pactSlotLevel) ?? numOf(variables2.pactCasterLevel) ?? 1;
+      const pactCurrent = (pactProp && (pactProp.value ?? pactProp.total)) ?? numOf2(variables2.pactSlot) ?? pactMax;
+      const pactLevel = numOf2(variables2.pactSlotLevelVisible) ?? numOf2(variables2.pactSlotLevel) ?? numOf2(variables2.pactCasterLevel) ?? 1;
       spellSlots.pactMagicSlots = pactCurrent;
       spellSlots.pactMagicSlotsMax = pactMax;
       spellSlots.pactMagicSlotLevel = pactLevel;
@@ -13210,6 +13430,11 @@ ${suffix}`;
       if (error) {
         throw new Error(error.message);
       }
+    }
+    try {
+      await upsertCharacterIR(char.raw, { url: SUPABASE_URL, anonKey: SUPABASE_ANON_KEY });
+    } catch (e) {
+      console.warn("\u26A0\uFE0F IR sync failed (non-fatal):", e);
     }
   }
   async function copyModuleUrl() {

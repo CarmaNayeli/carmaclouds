@@ -5,6 +5,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@carmaclouds/core/supabase/config.js';
+import { upsertCharacterIR } from '@carmaclouds/core/ir';
 import { parseForFoundCloud, parseForOwlCloud } from '../../../content/dicecloud-extraction.js';
 
 // Detect browser API (Firefox uses 'browser', Chrome uses 'chrome')
@@ -256,6 +257,14 @@ async function syncCharacterToSupabase(char) {
     if (error) {
       throw new Error(error.message);
     }
+  }
+
+  // Also write the system-agnostic IR (rebuild) to its own table. Non-fatal:
+  // never block the legacy clouds_characters sync on it.
+  try {
+    await upsertCharacterIR(char.raw, { url: SUPABASE_URL, anonKey: SUPABASE_ANON_KEY });
+  } catch (e) {
+    console.warn('⚠️ IR sync failed (non-fatal):', e);
   }
 }
 

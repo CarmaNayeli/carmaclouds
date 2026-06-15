@@ -2299,7 +2299,56 @@ function displayCharacter(character) {
   populateSpellsTab(character);
   populateInventoryTab(character);
 
+  // Rebuild (beta): additive system-agnostic IR view. Non-disruptive - injects a
+  // toggle + panel rendered from clouds_character_ir; the existing tabs are untouched.
+  renderIRPreview(character);
+
   console.log('🎭 Displaying character:', character.name);
+}
+
+/**
+ * Beta: fetch the system-agnostic IR for this character and render it via the
+ * bundled core render layer (window.CarmaCloudsCore). Opt-in behind a toggle so
+ * it can't disrupt the existing sheet. Silent no-op if anything is missing.
+ */
+let irToggleMounted = false;
+function renderIRPreview(character) {
+  try {
+    const core = window.CarmaCloudsCore;
+    if (!core || !core.mountIRToggle || irToggleMounted) return;
+
+    const opts = {
+      onRoll: (label, modifier) => {
+        if (typeof rollAbilityCheck === 'function') rollAbilityCheck(label, modifier);
+      },
+      onUse: async (action) => {
+        try {
+          const dmg = (action.damage || [])
+            .map((d) => (d.type ? `${d.formula} ${d.type}` : d.formula)).join(', ');
+          const uses = action.uses ? ` (${action.uses.current}/${action.uses.max})` : '';
+          const msg = `used ${action.name}${uses}${dmg ? ` — ${dmg}` : ''}`;
+          if (typeof addChatMessage === 'function') {
+            await addChatMessage(msg, 'action', currentCharacter?.name || action.name);
+          }
+        } catch (e) {
+          console.warn('IR onUse failed:', e);
+        }
+      },
+    };
+
+    const host = document.createElement('div');
+    host.style.cssText = 'margin: 0 0 12px;';
+    characterSection.insertBefore(host, characterSection.firstChild);
+    core.mountIRToggle(
+      host,
+      () => currentCharacter && (currentCharacter.id || currentCharacter.dicecloud_character_id),
+      { url: SUPABASE_URL, anonKey: SUPABASE_ANON_KEY },
+      opts,
+    );
+    irToggleMounted = true;
+  } catch (e) {
+    console.warn('IR preview failed (non-fatal):', e);
+  }
 }
 
 /**

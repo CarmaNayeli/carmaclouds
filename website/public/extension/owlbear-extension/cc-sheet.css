@@ -1,0 +1,96 @@
+/* Rebuild render layer styles (cc-* classes from @carmaclouds/core renderCharacterSheet).
+   Uses the popover's existing theme CSS variables so it matches the surrounding UI. */
+
+/* IR beta toggle (shared across adapter surfaces) */
+.cc-ir-toggle {
+  width: 100%; padding: 6px; font-size: 12px; font-weight: 600; cursor: pointer;
+  background: var(--theme-bg-card, rgba(255,255,255,0.06)); color: var(--theme-primary-light, #A78BFA);
+  border: 1px solid var(--theme-border, rgba(255,255,255,0.15)); border-radius: 6px;
+}
+.cc-ir-toggle:hover { background: var(--theme-bg-hover, rgba(255,255,255,0.12)); }
+
+.cc-sheet { display: flex; flex-direction: column; gap: 14px; color: var(--theme-text-primary, #e0e0e0); }
+
+.cc-header { display: flex; align-items: center; gap: 10px; }
+.cc-portrait { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid var(--theme-border, rgba(255,255,255,0.2)); }
+.cc-title { display: flex; flex-direction: column; }
+.cc-name { font-size: 16px; font-weight: 700; }
+.cc-system { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--theme-text-muted, #9ca3af); }
+
+/* combat stats strip */
+.cc-combat { display: flex; flex-wrap: wrap; gap: 6px; }
+.cc-combat .cc-stat {
+  flex: 1 1 auto; min-width: 56px; text-align: center; padding: 5px 8px;
+  background: var(--theme-bg-card, rgba(255,255,255,0.05)); border: 1px solid var(--theme-border, rgba(255,255,255,0.12)); border-radius: 8px;
+}
+.cc-stat-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--theme-text-muted, #9ca3af); }
+.cc-stat-value { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.cc-sheet .section-header {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
+  color: var(--theme-primary-light, #A78BFA); margin: 4px 0 6px;
+  border-bottom: 1px solid var(--theme-border, rgba(255,255,255,0.12)); padding-bottom: 3px;
+}
+
+/* Ability grid (D&D view) */
+.ability-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.ability-box {
+  background: var(--theme-bg-card, rgba(255,255,255,0.05)); border: 1px solid var(--theme-border, rgba(255,255,255,0.12));
+  border-radius: 8px; padding: 6px; text-align: center; cursor: pointer; transition: background 0.15s;
+}
+.ability-box:hover { background: var(--theme-bg-hover, rgba(255,255,255,0.12)); }
+.ability-box { padding: 0; overflow: hidden; cursor: default; }
+.ability-name { font-size: 10px; color: var(--theme-text-muted, #9ca3af); padding-top: 6px; }
+.ability-score { font-size: 16px; font-weight: 700; padding-bottom: 4px; }
+.cc-ability-rolls { display: flex; border-top: 1px solid var(--theme-border, rgba(255,255,255,0.12)); }
+.cc-ability-roll { flex: 1; padding: 4px 2px; cursor: pointer; transition: background 0.15s; }
+.cc-ability-roll:hover { background: var(--theme-bg-hover, rgba(255,255,255,0.15)); }
+.cc-ability-roll + .cc-ability-roll { border-left: 1px solid var(--theme-border, rgba(255,255,255,0.12)); }
+.cc-roll-label { font-size: 8px; color: var(--theme-text-muted, #9ca3af); }
+.cc-roll-val { font-size: 12px; font-weight: 700; color: var(--theme-primary-light, #A78BFA); }
+
+/* Generic rows: resources, attributes, actions, items */
+.cc-resource-list, .cc-attr-list, .cc-action-list, .cc-item-list { display: flex; flex-direction: column; gap: 4px; }
+.cc-resource, .cc-attr, .cc-action, .cc-item {
+  display: flex; align-items: center; gap: 8px; padding: 5px 8px;
+  background: var(--theme-bg-card, rgba(255,255,255,0.04)); border: 1px solid var(--theme-border, rgba(255,255,255,0.1));
+  border-radius: 6px; font-size: 13px;
+}
+.cc-action { cursor: pointer; }
+.cc-action:hover { background: var(--theme-bg-hover, rgba(255,255,255,0.1)); }
+.cc-resource-name, .cc-attr-name, .cc-action-name, .cc-item-name { flex: 1; }
+.cc-attr-value { font-weight: 700; }
+.cc-inactive { opacity: 0.45; }
+
+/* current / max pill */
+.cc-pool { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cc-pool-current { font-weight: 700; }
+.cc-pool-max { color: var(--theme-text-muted, #9ca3af); }
+
+/* reset badge (SR / LR) */
+.cc-reset-badge {
+  font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 999px;
+  background: var(--theme-bg-accent, rgba(139,92,246,0.18)); color: var(--theme-primary-lighter, #C4B5FD);
+}
+
+/* action meta */
+.cc-action-tag { font-size: 10px; padding: 1px 5px; border-radius: 4px; background: var(--theme-bg-accent, rgba(139,92,246,0.18)); }
+.cc-action-attack { font-size: 12px; font-weight: 700; color: var(--theme-primary-light, #A78BFA); font-variant-numeric: tabular-nums; }
+.cc-action-damage { font-size: 10px; padding: 1px 5px; border-radius: 4px; background: rgba(239,68,68,0.18); color: #fca5a5; white-space: nowrap; }
+.cc-action-uses { display: inline-flex; align-items: center; gap: 5px; }
+
+/* skills */
+.cc-skill-list { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.cc-skill {
+  display: flex; align-items: center; gap: 8px; padding: 4px 8px; cursor: pointer; font-size: 12px;
+  background: var(--theme-bg-card, rgba(255,255,255,0.04)); border: 1px solid var(--theme-border, rgba(255,255,255,0.1)); border-radius: 6px;
+}
+.cc-skill:hover { background: var(--theme-bg-hover, rgba(255,255,255,0.1)); }
+.cc-skill-name { flex: 1; }
+.cc-skill-bonus { font-weight: 700; font-variant-numeric: tabular-nums; }
+.cc-skill.cc-proficient { border-color: var(--theme-primary, #8B5CF6); }
+.cc-skill.cc-proficient .cc-skill-name::before { content: '●'; font-size: 8px; margin-right: 5px; color: var(--theme-primary-light, #A78BFA); }
+
+/* inventory */
+.cc-equipped-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--theme-primary-light, #34D399); flex: none; }
+.cc-item-qty { color: var(--theme-text-muted, #9ca3af); font-size: 12px; }
