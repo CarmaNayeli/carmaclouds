@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 // Last substantive update. Bump when the practices described here change.
 const LAST_UPDATED = '15 June 2026'
-const CONTACT_EMAIL = 'carmabella1222@gmail.com'
+const CONTACT_EMAIL = 'caitlyn.c.nayeli@gmail.com'
 
 export default function PrivacyPolicy() {
   return (
