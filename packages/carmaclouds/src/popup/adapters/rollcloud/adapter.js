@@ -64,19 +64,19 @@ export async function init(containerEl) {
       console.log('✅ Migrated characters saved to storage');
     }
 
-    // Also fetch from Supabase if authenticated
+    // Also fetch from Supabase if authenticated. Use the service worker's
+    // authoritative session so our auth.uid() matches what the SW writes under.
+    // Cross-context sync requires a real (non-anonymous) account id; an anonymous
+    // session is per-browser and can't be matched by the reader (see OwlCloud).
     const supabase = window.supabaseClient;
     let supabaseUserId = null;
-
-    if (supabase) {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        // Cross-context sync requires a real (non-anonymous) account id; an anonymous
-        // session is per-browser and can't be matched by the reader (see OwlCloud).
-        supabaseUserId = (session?.user && !session.user.is_anonymous) ? session.user.id : null;
-      } catch (err) {
-        console.warn('Failed to get Supabase session:', err);
+    try {
+      if (typeof window.getSupabaseAuthInfo === 'function') {
+        const info = await window.getSupabaseAuthInfo();
+        supabaseUserId = (info && info.isAnonymous === false) ? info.userId : null;
       }
+    } catch (err) {
+      console.warn('Failed to get Supabase auth info:', err);
     }
 
     if (supabaseUserId) {

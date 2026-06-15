@@ -1055,6 +1055,15 @@ async function init() {
         console.log('🔐 Sign in response:', { data, error });
         if (error) throw error;
         errorDiv.classList.add('hidden');
+        // Forward the account session to the service worker (the auth authority)
+        // so every context (SW, adapters, FoundCloud) shares this identity.
+        try {
+          await browserAPI.runtime.sendMessage({
+            type: 'CC_AUTH_SET',
+            access_token: data?.session?.access_token,
+            refresh_token: data?.session?.refresh_token,
+          });
+        } catch (e) { console.warn('CC_AUTH_SET failed:', e); }
         console.log('✅ Sign in successful, showing success message');
         showSuccessMessage('✅ Signed in successfully!');
       } catch (error) {
@@ -1114,6 +1123,17 @@ async function init() {
         console.log('🔐 Sign up response:', { data, error });
         if (error) throw error;
         errorDiv.classList.add('hidden');
+        // If sign-up returned a session (no email confirmation required), share it
+        // with the service worker so all contexts use this identity.
+        if (data?.session?.access_token) {
+          try {
+            await browserAPI.runtime.sendMessage({
+              type: 'CC_AUTH_SET',
+              access_token: data.session.access_token,
+              refresh_token: data.session.refresh_token,
+            });
+          } catch (e) { console.warn('CC_AUTH_SET failed:', e); }
+        }
         console.log('✅ Sign up successful, user:', data?.user);
         showSuccessMessage('✅ Account created successfully!');
       } catch (error) {
@@ -1133,6 +1153,9 @@ async function init() {
     document.getElementById('supabase-signout-btn').addEventListener('click', async () => {
       try {
         await supabase.auth.signOut();
+        // Tell the service worker to drop the account session too (it will fall
+        // back to an anonymous session on the next sync).
+        try { await browserAPI.runtime.sendMessage({ type: 'CC_AUTH_SET' }); } catch (_) {}
       } catch (error) {
         console.error('Error signing out:', error);
       }

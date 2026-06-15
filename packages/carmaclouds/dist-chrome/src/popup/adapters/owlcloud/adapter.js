@@ -133,9 +133,9 @@ This cannot be undone.`)) {
       }
       const supabase = window.supabaseClient;
       let supabaseUserId = null;
-      if (supabase) {
-        const { data: { session } } = await supabase.auth.getSession();
-        supabaseUserId = session?.user && !session.user.is_anonymous ? session.user.id : null;
+      if (typeof window.getSupabaseAuthInfo === "function") {
+        const info = await window.getSupabaseAuthInfo();
+        supabaseUserId = info && info.isAnonymous === false ? info.userId : null;
       }
       if (!diceCloudUserId || !supabaseUserId) {
         if (loginPrompt) {

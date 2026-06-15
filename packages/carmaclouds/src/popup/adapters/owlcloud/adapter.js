@@ -171,15 +171,16 @@ export async function init(containerEl) {
       }
     }
 
-    // Check if user is logged in to BOTH DiceCloud AND Supabase
+    // Check if user is logged in to BOTH DiceCloud AND Supabase. Use the service
+    // worker's authoritative session (CC_AUTH_GET) so we get the same auth.uid()
+    // the SW writes under. Cross-context sync: the Owlbear popover lists characters
+    // by supabase_user_id, so OwlCloud needs a real (non-anonymous) account id the
+    // popover can match — an anonymous id is per-browser and unreachable there.
     const supabase = window.supabaseClient;
     let supabaseUserId = null;
-    if (supabase) {
-      const { data: { session } } = await supabase.auth.getSession();
-      // Cross-context sync: the Owlbear popover lists characters by supabase_user_id,
-      // so OwlCloud needs a real (non-anonymous) account id the popover can match. An
-      // anonymous session id is per-browser and unreachable there → treat as not signed in.
-      supabaseUserId = (session?.user && !session.user.is_anonymous) ? session.user.id : null;
+    if (typeof window.getSupabaseAuthInfo === 'function') {
+      const info = await window.getSupabaseAuthInfo();
+      supabaseUserId = (info && info.isAnonymous === false) ? info.userId : null;
     }
 
     if (!diceCloudUserId || !supabaseUserId) {

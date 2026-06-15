@@ -13940,6 +13940,12 @@ ${suffix}`;
     }
   }
   async function syncCharacterToSupabase(char) {
+    if (typeof window !== "undefined" && window.adoptSupabaseSession) {
+      try {
+        await window.adoptSupabaseSession();
+      } catch (_) {
+      }
+    }
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     if (sessionError || !session) {
       throw new Error("Not authenticated. Please log in to sync characters.");
@@ -14027,23 +14033,7 @@ ${suffix}`;
       init_ir();
       init_dicecloud_extraction();
       browserAPI2 = typeof browser !== "undefined" && browser.runtime ? browser : chrome;
-      supabase = createClient(
-        SUPABASE_URL,
-        SUPABASE_ANON_KEY,
-        browserAPI2 && browserAPI2.storage ? {
-          auth: {
-            storage: {
-              getItem: (k) => browserAPI2.storage.local.get(k).then((r) => r && r[k] != null ? r[k] : null),
-              setItem: (k, v) => browserAPI2.storage.local.set({ [k]: v }),
-              removeItem: (k) => browserAPI2.storage.local.remove(k)
-            },
-            storageKey: "cc-sb-auth",
-            persistSession: true,
-            autoRefreshToken: true,
-            detectSessionInUrl: false
-          }
-        } : void 0
-      );
+      supabase = typeof window !== "undefined" && window.supabaseClient ? window.supabaseClient : createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       characters = [];
     }
   });
@@ -14236,9 +14226,9 @@ This cannot be undone.`)) {
       }
       const supabase2 = window.supabaseClient;
       let supabaseUserId = null;
-      if (supabase2) {
-        const { data: { session } } = await supabase2.auth.getSession();
-        supabaseUserId = session?.user && !session.user.is_anonymous ? session.user.id : null;
+      if (typeof window.getSupabaseAuthInfo === "function") {
+        const info = await window.getSupabaseAuthInfo();
+        supabaseUserId = info && info.isAnonymous === false ? info.userId : null;
       }
       if (!diceCloudUserId || !supabaseUserId) {
         if (loginPrompt) {
@@ -14494,13 +14484,13 @@ This cannot be undone.`)) {
       }
       const supabase2 = window.supabaseClient;
       let supabaseUserId = null;
-      if (supabase2) {
-        try {
-          const { data: { session } } = await supabase2.auth.getSession();
-          supabaseUserId = session?.user && !session.user.is_anonymous ? session.user.id : null;
-        } catch (err) {
-          console.warn("Failed to get Supabase session:", err);
+      try {
+        if (typeof window.getSupabaseAuthInfo === "function") {
+          const info = await window.getSupabaseAuthInfo();
+          supabaseUserId = info && info.isAnonymous === false ? info.userId : null;
         }
+      } catch (err) {
+        console.warn("Failed to get Supabase auth info:", err);
       }
       if (supabaseUserId) {
         console.log("User authenticated to Supabase, fetching characters from database...");
@@ -15738,6 +15728,15 @@ This cannot be undone.`)) {
           if (error)
             throw error;
           errorDiv.classList.add("hidden");
+          try {
+            await browserAPI6.runtime.sendMessage({
+              type: "CC_AUTH_SET",
+              access_token: data?.session?.access_token,
+              refresh_token: data?.session?.refresh_token
+            });
+          } catch (e2) {
+            console.warn("CC_AUTH_SET failed:", e2);
+          }
           console.log("\u2705 Sign in successful, showing success message");
           showSuccessMessage("\u2705 Signed in successfully!");
         } catch (error) {
@@ -15788,6 +15787,17 @@ This cannot be undone.`)) {
           if (error)
             throw error;
           errorDiv.classList.add("hidden");
+          if (data?.session?.access_token) {
+            try {
+              await browserAPI6.runtime.sendMessage({
+                type: "CC_AUTH_SET",
+                access_token: data.session.access_token,
+                refresh_token: data.session.refresh_token
+              });
+            } catch (e) {
+              console.warn("CC_AUTH_SET failed:", e);
+            }
+          }
           console.log("\u2705 Sign up successful, user:", data?.user);
           showSuccessMessage("\u2705 Account created successfully!");
         } catch (error) {
@@ -15804,6 +15814,10 @@ This cannot be undone.`)) {
       document.getElementById("supabase-signout-btn").addEventListener("click", async () => {
         try {
           await supabase2.auth.signOut();
+          try {
+            await browserAPI6.runtime.sendMessage({ type: "CC_AUTH_SET" });
+          } catch (_) {
+          }
         } catch (error) {
           console.error("Error signing out:", error);
         }

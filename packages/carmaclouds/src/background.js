@@ -99,6 +99,51 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // async
   }
 
+  // ── GDPR: the service worker is the single Supabase auth authority ──
+  // Every other context (popup, adapters, FoundCloud) adopts the SW's session so
+  // they all share one auth.uid(). Without this each context signs in anonymously
+  // and writes rows under different owners, which owner-only RLS then rejects.
+  if (message.type === 'CC_AUTH_GET') {
+    (async () => {
+      try {
+        await getSupabaseAuth(); // ensure a session exists (anon fallback)
+        const { data: { session } } = await sbAuthClient.auth.getSession();
+        sendResponse({
+          access_token: session?.access_token || null,
+          refresh_token: session?.refresh_token || null,
+          userId: session?.user?.id || null,
+          isAnonymous: session?.user?.is_anonymous ?? null,
+        });
+      } catch (e) {
+        sendResponse({ access_token: null, error: String((e && e.message) || e) });
+      }
+    })();
+    return true; // async
+  }
+
+  // Popup forwards a session it established (email login) or null (logout) so the
+  // SW adopts the same identity.
+  if (message.type === 'CC_AUTH_SET') {
+    (async () => {
+      try {
+        if (message.access_token && message.refresh_token) {
+          const { data, error } = await sbAuthClient.auth.setSession({
+            access_token: message.access_token,
+            refresh_token: message.refresh_token,
+          });
+          if (error) throw error;
+          sendResponse({ ok: true, userId: data?.session?.user?.id || null });
+        } else {
+          await sbAuthClient.auth.signOut();
+          sendResponse({ ok: true, userId: null });
+        }
+      } catch (e) {
+        sendResponse({ ok: false, error: String((e && e.message) || e) });
+      }
+    })();
+    return true; // async
+  }
+
   // Store the user's DiceCloud session token (opt-in, captured on dicecloud.com)
   if (message.action === 'storeDiceCloudToken') {
     browserAPI.storage.local.set({ diceCloudToken: message.token })

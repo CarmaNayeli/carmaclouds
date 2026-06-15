@@ -1477,11 +1477,53 @@ async function ensureSupabaseSession(client) {
  * end-user access token, ensuring a session first. Returns null on any failure so
  * callers do `Bearer ${token || SUPABASE_ANON_KEY}` and stay on the legacy path.
  */
+// The service worker is the single auth authority (see background.js CC_AUTH_*).
+// Popup/adapter contexts ask it for the shared session rather than signing in
+// themselves, so every context has the same auth.uid() and owner-only RLS accepts
+// their writes.
+function _ccRuntime() {
+  const api = (typeof browserAPI !== 'undefined' && browserAPI)
+    || (typeof chrome !== 'undefined' && chrome)
+    || (typeof browser !== 'undefined' && browser)
+    || null;
+  return (api && api.runtime && api.runtime.sendMessage) ? api : null;
+}
+
+async function _ccAuthGetFromSW() {
+  const api = _ccRuntime();
+  if (!api) return null;
+  try {
+    return await api.runtime.sendMessage({ type: 'CC_AUTH_GET' });
+  } catch (e) {
+    debug.warn('⚠️ CC_AUTH_GET failed:', e?.message || e);
+    return null;
+  }
+}
+
+/** Make `client` use the SW's session (so its auth.uid() matches everything else). */
+async function adoptSessionFromSW(client) {
+  try {
+    const resp = await _ccAuthGetFromSW();
+    if (resp && resp.access_token && resp.refresh_token) {
+      await client.auth.setSession({ access_token: resp.access_token, refresh_token: resp.refresh_token });
+      debug.log('✅ adopted SW session', resp.isAnonymous ? '(anonymous)' : '(account)');
+      return resp.access_token;
+    }
+    // No SW reachable (e.g. standalone/dev): fall back to local sign-in.
+    return await ensureSupabaseSession(client);
+  } catch (e) {
+    debug.warn('⚠️ adoptSessionFromSW failed, local fallback:', e?.message || e);
+    return await ensureSupabaseSession(client);
+  }
+}
+
+/** Current access token, preferring the SW's session. */
 async function getSupabaseAccessToken() {
+  const resp = await _ccAuthGetFromSW();
+  if (resp && resp.access_token) return resp.access_token;
   try {
     const client = (typeof window !== 'undefined' && window.supabaseClient)
-      || (typeof self !== 'undefined' && self.supabaseClient)
-      || null;
+      || (typeof self !== 'undefined' && self.supabaseClient) || null;
     if (!client) return null;
     await ensureSupabaseSession(client);
     const { data: { session } } = await client.auth.getSession();
@@ -1492,12 +1534,32 @@ async function getSupabaseAccessToken() {
   }
 }
 
+/** Current { userId, isAnonymous, token } from the SW's session. */
+async function getSupabaseAuthInfo() {
+  const resp = await _ccAuthGetFromSW();
+  if (resp) return { userId: resp.userId || null, isAnonymous: resp.isAnonymous, token: resp.access_token || null };
+  try {
+    const client = (typeof window !== 'undefined' && window.supabaseClient) || null;
+    if (!client) return { userId: null, isAnonymous: null, token: null };
+    const { data: { session } } = await client.auth.getSession();
+    return {
+      userId: session?.user?.id || null,
+      isAnonymous: session?.user?.is_anonymous ?? null,
+      token: session?.access_token || null,
+    };
+  } catch {
+    return { userId: null, isAnonymous: null, token: null };
+  }
+}
+
 // Export for use in other modules
 // Always export to window/self for browser extensions
 if (typeof window !== 'undefined') {
   window.SupabaseTokenManager = SupabaseTokenManager;
   window.ensureSupabaseSession = ensureSupabaseSession;
   window.getSupabaseAccessToken = getSupabaseAccessToken;
+  window.getSupabaseAuthInfo = getSupabaseAuthInfo;
+  window.adoptSupabaseSession = () => adoptSessionFromSW(window.supabaseClient);
 
   // Create global Supabase client for authentication (email/password login)
   // This is separate from SupabaseTokenManager which handles DiceCloud tokens
@@ -1527,8 +1589,9 @@ if (typeof window !== 'undefined') {
       window.supabaseClient = window.createSupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY, opts);
       console.log(`✅ [Supabase Client] Created global Supabase auth client${origin}`);
       debug.log('✅ Created global Supabase auth client');
-      // Phase 1: ensure a JWT exists (anonymous fallback). Non-blocking.
-      ensureSupabaseSession(window.supabaseClient);
+      // Adopt the service worker's session so the popup shares one auth.uid()
+      // with the SW (the single auth authority). Non-blocking.
+      adoptSessionFromSW(window.supabaseClient);
     } catch (error) {
       console.error('❌ [Supabase Client] Failed to create Supabase client:', error);
       debug.error('❌ Failed to create Supabase client:', error);

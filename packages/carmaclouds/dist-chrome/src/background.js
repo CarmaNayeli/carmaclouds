@@ -15279,6 +15279,44 @@ ${suffix}`;
       handleCoyotecloudWriteback(message.dicecloudCharacterId, message.values).then(sendResponse).catch((err) => sendResponse({ ok: false, error: String(err && err.message || err) }));
       return true;
     }
+    if (message.type === "CC_AUTH_GET") {
+      (async () => {
+        try {
+          await getSupabaseAuth();
+          const { data: { session } } = await sbAuthClient.auth.getSession();
+          sendResponse({
+            access_token: session?.access_token || null,
+            refresh_token: session?.refresh_token || null,
+            userId: session?.user?.id || null,
+            isAnonymous: session?.user?.is_anonymous ?? null
+          });
+        } catch (e) {
+          sendResponse({ access_token: null, error: String(e && e.message || e) });
+        }
+      })();
+      return true;
+    }
+    if (message.type === "CC_AUTH_SET") {
+      (async () => {
+        try {
+          if (message.access_token && message.refresh_token) {
+            const { data, error } = await sbAuthClient.auth.setSession({
+              access_token: message.access_token,
+              refresh_token: message.refresh_token
+            });
+            if (error)
+              throw error;
+            sendResponse({ ok: true, userId: data?.session?.user?.id || null });
+          } else {
+            await sbAuthClient.auth.signOut();
+            sendResponse({ ok: true, userId: null });
+          }
+        } catch (e) {
+          sendResponse({ ok: false, error: String(e && e.message || e) });
+        }
+      })();
+      return true;
+    }
     if (message.action === "storeDiceCloudToken") {
       browserAPI2.storage.local.set({ diceCloudToken: message.token }).then(() => sendResponse({ ok: true })).catch((err) => sendResponse({ ok: false, error: String(err && err.message || err) }));
       return true;
