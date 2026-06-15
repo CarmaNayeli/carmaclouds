@@ -64,7 +64,7 @@ CREATE OR REPLACE FUNCTION public.store_my_dicecloud_token(
   p_user_id_dicecloud TEXT DEFAULT NULL,
   p_token_expires TIMESTAMPTZ DEFAULT NULL
 )
-RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions AS $$
 DECLARE
   v_owner UUID := auth.uid();
 BEGIN
@@ -90,7 +90,7 @@ GRANT EXECUTE ON FUNCTION public.store_my_dicecloud_token(TEXT, TEXT, TEXT, TIME
 -- 5. Owner-scoped read RPC. Returns ONLY the caller's decrypted token.
 CREATE OR REPLACE FUNCTION public.get_my_dicecloud_token()
 RETURNS TABLE (token TEXT, username TEXT, user_id_dicecloud TEXT, token_expires TIMESTAMPTZ)
-LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+LANGUAGE sql SECURITY DEFINER SET search_path = public, extensions AS $$
   SELECT
     pgp_sym_decrypt(t.dicecloud_token_enc, public._dicecloud_token_key()),
     t.username, t.user_id_dicecloud, t.token_expires
