@@ -424,16 +424,31 @@ function renderCharacterSheet(ir, opts = {}) {
 }
 
 // ../core/dist/render/mount.js
-async function fetchCharacterIR(charId, target) {
-  const res = await fetch(`${target.url}/rest/v1/clouds_character_ir?dicecloud_character_id=eq.${encodeURIComponent(charId)}&select=ir`, { headers: { apikey: target.anonKey, Authorization: `Bearer ${target.anonKey}` } });
+async function fetchCharacterIR(charId, target, auth = {}) {
+  if (auth.shareToken) {
+    const res2 = await fetch(`${target.url}/rest/v1/rpc/get_character_ir`, {
+      method: "POST",
+      headers: {
+        apikey: target.anonKey,
+        Authorization: `Bearer ${target.anonKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ p_dicecloud_character_id: charId, p_share_token: auth.shareToken })
+    });
+    if (!res2.ok)
+      return null;
+    return await res2.json().catch(() => null) ?? null;
+  }
+  const bearer = auth.accessToken || target.anonKey;
+  const res = await fetch(`${target.url}/rest/v1/clouds_character_ir?dicecloud_character_id=eq.${encodeURIComponent(charId)}&select=ir`, { headers: { apikey: target.anonKey, Authorization: `Bearer ${bearer}` } });
   if (!res.ok)
     return null;
   const rows = await res.json().catch(() => []);
   return rows?.[0]?.ir ?? null;
 }
-async function mountCharacterIR(container, charId, target, opts = {}) {
+async function mountCharacterIR(container, charId, target, opts = {}, auth = {}) {
   try {
-    const ir = await fetchCharacterIR(charId, target);
+    const ir = await fetchCharacterIR(charId, target, auth);
     if (!ir) {
       container.replaceChildren(h("div", {
         class: "cc-empty",
@@ -453,7 +468,7 @@ async function mountCharacterIR(container, charId, target, opts = {}) {
     return null;
   }
 }
-function mountIRToggle(host, getCharId, target, opts = {}, label = "\u2697\uFE0F IR view (beta)") {
+function mountIRToggle(host, getCharId, target, opts = {}, getAuth, label = "\u2697\uFE0F IR view (beta)") {
   const btn = h("button", { class: "cc-ir-toggle", text: label });
   const panel = h("div", { class: "cc-ir-panel", style: "display:none; margin-top:8px;" });
   let loaded = false;
@@ -466,8 +481,15 @@ function mountIRToggle(host, getCharId, target, opts = {}, label = "\u2697\uFE0F
         panel.replaceChildren(h("div", { class: "cc-empty", text: "No character loaded yet." }));
         return;
       }
+      let auth = {};
+      try {
+        if (getAuth)
+          auth = await getAuth() || {};
+      } catch {
+        auth = {};
+      }
       loaded = true;
-      await mountCharacterIR(panel, id, target, opts);
+      await mountCharacterIR(panel, id, target, opts, auth);
     }
   });
   host.append(btn, panel);

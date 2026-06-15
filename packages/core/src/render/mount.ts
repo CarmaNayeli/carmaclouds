@@ -13,14 +13,49 @@ export interface IRTarget {
   anonKey: string;
 }
 
+/**
+ * How to authorize the IR read after the owner-only RLS cutover (clouds_character_ir
+ * is no longer anon-readable). Adapters supply whichever they have:
+ *   - `accessToken`: the owner's Supabase JWT → direct table read, RLS serves their
+ *     own row (used by the extension popup-sheet + the Owlbear popover, which hold a
+ *     session).
+ *   - `shareToken`: the per-character capability → the get_character_ir RPC, works
+ *     with just the anon key and no session (used by Foundry, and by C&C's board).
+ * With neither, it falls back to an anon table read (pre-cutover / dev only).
+ */
+export interface IRAuth {
+  shareToken?: string | null;
+  accessToken?: string | null;
+}
+
 /** GET the stored IR for a character, or null if there isn't one yet. */
 export async function fetchCharacterIR(
   charId: string,
   target: IRTarget,
+  auth: IRAuth = {},
 ): Promise<IRCharacter | null> {
+  // Capability path: token-gated RPC (no session needed, cross-context).
+  if (auth.shareToken) {
+    const res = await fetch(`${target.url}/rest/v1/rpc/get_character_ir`, {
+      method: 'POST',
+      headers: {
+        apikey: target.anonKey,
+        Authorization: `Bearer ${target.anonKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ p_dicecloud_character_id: charId, p_share_token: auth.shareToken }),
+    });
+    if (!res.ok) return null;
+    // The function returns the `ir` jsonb directly (or null).
+    return (await res.json().catch(() => null)) ?? null;
+  }
+
+  // Owner path: read the table as the authenticated owner (RLS serves their row).
+  // Falls back to the anon key when no token is given (pre-cutover / dev).
+  const bearer = auth.accessToken || target.anonKey;
   const res = await fetch(
     `${target.url}/rest/v1/clouds_character_ir?dicecloud_character_id=eq.${encodeURIComponent(charId)}&select=ir`,
-    { headers: { apikey: target.anonKey, Authorization: `Bearer ${target.anonKey}` } },
+    { headers: { apikey: target.anonKey, Authorization: `Bearer ${bearer}` } },
   );
   if (!res.ok) return null;
   const rows = await res.json().catch(() => []);
@@ -36,9 +71,10 @@ export async function mountCharacterIR(
   charId: string,
   target: IRTarget,
   opts: RenderOpts = {},
+  auth: IRAuth = {},
 ): Promise<IRCharacter | null> {
   try {
-    const ir = await fetchCharacterIR(charId, target);
+    const ir = await fetchCharacterIR(charId, target, auth);
     if (!ir) {
       container.replaceChildren(h('div', {
         class: 'cc-empty', style: 'padding: 10px; font-size: 12px; opacity: 0.7;',
@@ -69,6 +105,7 @@ export function mountIRToggle(
   getCharId: () => string | null | undefined,
   target: IRTarget,
   opts: RenderOpts = {},
+  getAuth?: () => IRAuth | Promise<IRAuth>,
   label = '⚗️ IR view (beta)',
 ): { panel: HTMLElement; reload: () => void } {
   const btn = h('button', { class: 'cc-ir-toggle', text: label });
@@ -84,8 +121,11 @@ export function mountIRToggle(
         panel.replaceChildren(h('div', { class: 'cc-empty', text: 'No character loaded yet.' }));
         return;
       }
+      // Resolve auth lazily, at open time, so a freshly-refreshed session token is used.
+      let auth: IRAuth = {};
+      try { if (getAuth) auth = (await getAuth()) || {}; } catch { auth = {}; }
       loaded = true;
-      await mountCharacterIR(panel, id, target, opts);
+      await mountCharacterIR(panel, id, target, opts, auth);
     }
   });
 

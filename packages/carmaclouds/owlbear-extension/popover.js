@@ -2344,6 +2344,14 @@ function renderIRPreview(character) {
       () => currentCharacter && (currentCharacter.id || currentCharacter.dicecloud_character_id),
       { url: SUPABASE_URL, anonKey: SUPABASE_ANON_KEY },
       opts,
+      // Owner read: the popover is signed into the same account that synced the
+      // character, so its JWT satisfies owner-only RLS on clouds_character_ir.
+      async () => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          return { accessToken: session?.access_token || null };
+        } catch { return {}; }
+      },
     );
     irToggleMounted = true;
   } catch (e) {

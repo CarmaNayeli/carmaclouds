@@ -614,10 +614,13 @@ export class FoundCloudSheetSimple extends ActorSheet {
           host.id = 'ir-sheet-host';
           host.style.cssText = 'margin: 8px;';
           root.insertBefore(host, root.firstChild);
+          // Foundry has no per-user Supabase session, so the IR is read via the
+          // per-character share token captured at import (get_character_ir RPC).
+          const actor = this.actor;
           core.mountIRToggle(host, () => diceCloudId, {
             url: 'https://luiesmfjdcmpywavvfqm.supabase.co',
             anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aWVzbWZqZGNtcHl3YXZ2ZnFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4ODYxNDksImV4cCI6MjA4NTQ2MjE0OX0.oqjHFf2HhCLcanh0HVryoQH7iSV7E9dHHZJdYehxZ0U',
-          }, {});
+          }, {}, () => ({ shareToken: actor.getFlag('foundcloud', 'irShareToken') || null }));
         }
       }
     } catch (e) {
