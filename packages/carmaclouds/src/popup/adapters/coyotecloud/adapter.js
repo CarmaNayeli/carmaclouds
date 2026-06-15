@@ -29,6 +29,15 @@ export async function init(containerEl) {
   console.log('Initializing CoyoteCloud adapter...');
   const supabase = getSupabase();
 
+  // Adopt the service worker's authoritative session before reading it, so the
+  // sync writes carry the owner's auth.uid() (stamped into supabase_user_id) and
+  // survive the owner-only RLS cutover. Without this we race the non-blocking
+  // bootstrap adoption and can write as an unowned anon row. Matches the
+  // FoundCloud / OwlCloud adapters.
+  if (typeof window !== 'undefined' && window.adoptSupabaseSession) {
+    try { await window.adoptSupabaseSession(); } catch (_) { /* fall through to anon */ }
+  }
+
   const stored = await browserAPI.storage.local.get(['carmaclouds_characters', 'diceCloudUserId']) || {};
   const localChars = stored.carmaclouds_characters || [];
   const dicecloudUserId = stored.diceCloudUserId || null;

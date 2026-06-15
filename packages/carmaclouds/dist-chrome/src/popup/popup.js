@@ -13348,6 +13348,12 @@ ${suffix}`;
   async function init(containerEl) {
     console.log("Initializing CoyoteCloud adapter...");
     const supabase2 = getSupabase();
+    if (typeof window !== "undefined" && window.adoptSupabaseSession) {
+      try {
+        await window.adoptSupabaseSession();
+      } catch (_) {
+      }
+    }
     const stored = await browserAPI.storage.local.get(["carmaclouds_characters", "diceCloudUserId"]) || {};
     const localChars = stored.carmaclouds_characters || [];
     const dicecloudUserId = stored.diceCloudUserId || null;
