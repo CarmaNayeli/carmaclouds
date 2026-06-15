@@ -11673,8 +11673,9 @@ ${suffix}`;
     return false;
   }
   function normalize(raw) {
-    const creature = raw?.creatures?.[0] ?? {};
-    const props = (raw?.creatureProperties ?? []).filter((p) => !isRemoved(p));
+    const creature = raw?.creatures?.[0] ?? raw?.creature ?? {};
+    const allProps = raw?.creatureProperties ?? raw?.properties ?? [];
+    const props = allProps.filter((p) => !isRemoved(p));
     const attributes = props.filter((p) => p.type === "attribute").map(normalizeAttribute);
     const skills = props.filter((p) => p.type === "skill").map(normalizeSkill);
     const actions = props.filter(isActionLike).map(normalizeAction);

@@ -189,8 +189,11 @@ function isActionLike(p: any): boolean {
 }
 
 export function normalize(raw: RawDiceCloud): IRCharacter {
-  const creature = raw?.creatures?.[0] ?? {};
-  const props = (raw?.creatureProperties ?? []).filter((p) => !isRemoved(p));
+  // Accept both the REST API shape ({ creatures[], creatureProperties[] }) and the
+  // extension's internal shape ({ creature, properties[] }).
+  const creature = raw?.creatures?.[0] ?? raw?.creature ?? {};
+  const allProps = raw?.creatureProperties ?? raw?.properties ?? [];
+  const props = allProps.filter((p) => !isRemoved(p));
 
   const attributes = props
     .filter((p) => p.type === 'attribute')

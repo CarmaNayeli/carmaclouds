@@ -139,9 +139,17 @@ export interface IRCharacter {
   byVar: Record<string, IRAttribute>;
 }
 
-/** Shape of the raw DiceCloud API response we normalize from. */
+/**
+ * Raw DiceCloud data we normalize from. Two shapes occur in the wild:
+ *  - REST `/api/creature/{id}`: { creatures[], creatureProperties[], creatureVariables[] }
+ *  - the extension's internal store: { creature, properties[], variables }
+ * normalize() accepts either.
+ */
 export interface RawDiceCloud {
   creatures?: any[];
   creatureProperties?: any[];
   creatureVariables?: any[];
+  creature?: any;
+  properties?: any[];
+  variables?: any;
 }
