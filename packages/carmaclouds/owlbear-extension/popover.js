@@ -2361,7 +2361,19 @@ async function renderIRPreview(character) {
       onRoll: (label, modifier) => {
         if (typeof rollAbilityCheck === 'function') rollAbilityCheck(label, modifier);
       },
-      onUse: (action) => console.log('IR action used:', action.name),
+      onUse: async (action) => {
+        try {
+          const dmg = (action.damage || [])
+            .map((d) => (d.type ? `${d.formula} ${d.type}` : d.formula)).join(', ');
+          const uses = action.uses ? ` (${action.uses.current}/${action.uses.max})` : '';
+          const msg = `used ${action.name}${uses}${dmg ? ` — ${dmg}` : ''}`;
+          if (typeof addChatMessage === 'function') {
+            await addChatMessage(msg, 'action', currentCharacter?.name || ir.name);
+          }
+        } catch (e) {
+          console.warn('IR onUse failed:', e);
+        }
+      },
     });
     panel.replaceChildren(sheet);
   } catch (e) {

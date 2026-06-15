@@ -31,9 +31,11 @@ for (const fixture of ['dnd5e-character', 'non-dnd-character']) {
   if (fixture === 'dnd5e-character') {
     const boxes = el.querySelectorAll('.ability-grid .ability-box');
     ok(boxes.length === 6, `6 ability boxes (got ${boxes.length})`);
-    // Clicking an ability box fires onRoll.
-    boxes[0].dispatchEvent(new globalThis.Event('click'));
-    ok(rolls === 1, 'clicking an ability box fires onRoll');
+    // Each ability has Check + Save roll cells; clicking one fires onRoll.
+    const cells = el.querySelectorAll('.cc-ability-roll');
+    ok(cells.length === 12, `6 abilities x (check+save) = 12 roll cells (got ${cells.length})`);
+    cells[1].dispatchEvent(new globalThis.Event('click')); // STR save
+    ok(rolls === 1, 'clicking a save cell fires onRoll');
     ok(el.querySelector('.cc-resource-list'), 'has a Resources section');
     ok(el.querySelectorAll('.cc-skill-list .cc-skill').length >= 15, `has a Skills list (${el.querySelectorAll('.cc-skill').length} skills)`);
     ok(el.querySelector('.cc-item-list'), 'has an Inventory section');

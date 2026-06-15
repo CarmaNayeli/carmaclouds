@@ -31,9 +31,15 @@
   border-radius: 8px; padding: 6px; text-align: center; cursor: pointer; transition: background 0.15s;
 }
 .ability-box:hover { background: var(--theme-bg-hover, rgba(255,255,255,0.12)); }
-.ability-name { font-size: 10px; color: var(--theme-text-muted, #9ca3af); }
-.ability-score { font-size: 16px; font-weight: 700; }
-.ability-mod { font-size: 12px; color: var(--theme-primary-light, #A78BFA); }
+.ability-box { padding: 0; overflow: hidden; cursor: default; }
+.ability-name { font-size: 10px; color: var(--theme-text-muted, #9ca3af); padding-top: 6px; }
+.ability-score { font-size: 16px; font-weight: 700; padding-bottom: 4px; }
+.cc-ability-rolls { display: flex; border-top: 1px solid var(--theme-border, rgba(255,255,255,0.12)); }
+.cc-ability-roll { flex: 1; padding: 4px 2px; cursor: pointer; transition: background 0.15s; }
+.cc-ability-roll:hover { background: var(--theme-bg-hover, rgba(255,255,255,0.15)); }
+.cc-ability-roll + .cc-ability-roll { border-left: 1px solid var(--theme-border, rgba(255,255,255,0.12)); }
+.cc-roll-label { font-size: 8px; color: var(--theme-text-muted, #9ca3af); }
+.cc-roll-val { font-size: 12px; font-weight: 700; color: var(--theme-primary-light, #A78BFA); }
 
 /* Generic rows: resources, attributes, actions, items */
 .cc-resource-list, .cc-attr-list, .cc-action-list, .cc-item-list { display: flex; flex-direction: column; gap: 4px; }

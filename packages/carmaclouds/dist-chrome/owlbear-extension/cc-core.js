@@ -367,17 +367,29 @@
       if (!a)
         continue;
       const label = ab.slice(0, 3).toUpperCase();
+      const save = dnd.saves[ab];
+      const rollCell = (kind, value) => h(
+        "div",
+        {
+          class: "cc-ability-roll",
+          title: `Roll ${label} ${kind === "CHK" ? "check" : "save"}`,
+          onClick: () => opts.onRoll?.(`${label} ${kind === "CHK" ? "check" : "save"}`, value)
+        },
+        h("div", { class: "cc-roll-label", text: kind }),
+        h("div", { class: "cc-roll-val", text: signed(value) })
+      );
       grid.appendChild(
         h(
           "div",
-          {
-            class: "ability-box",
-            title: `Roll ${label} check`,
-            onClick: () => opts.onRoll?.(label, a.modifier)
-          },
+          { class: "ability-box" },
           h("div", { class: "ability-name", text: label }),
           h("div", { class: "ability-score", text: String(a.score) }),
-          h("div", { class: "ability-mod", text: signed(a.modifier) })
+          h(
+            "div",
+            { class: "cc-ability-rolls" },
+            rollCell("CHK", a.modifier),
+            save !== void 0 ? rollCell("SAV", save) : null
+          )
         )
       );
     }
