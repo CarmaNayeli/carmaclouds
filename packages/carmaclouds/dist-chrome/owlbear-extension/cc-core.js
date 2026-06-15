@@ -292,6 +292,38 @@
       h("span", { class: "cc-pool-max", text: String(max) })
     );
   }
+  function combatStats(ir) {
+    const { byVar } = ir;
+    const pick = (...names) => names.map((n) => byVar[n]).find(Boolean);
+    const items = [];
+    const hp = pick("hitPoints", "hp");
+    if (hp)
+      items.push(["HP", `${hp.total - hp.damage}/${hp.total}`]);
+    const ac = pick("armorClass", "armor", "ac");
+    if (ac && ac.value)
+      items.push(["AC", String(ac.value)]);
+    const speed = pick("speed", "walkingSpeed");
+    if (speed && speed.value)
+      items.push(["Speed", String(speed.value)]);
+    const init = pick("initiative", "initiativeBonus", "initiativeMod");
+    if (init)
+      items.push(["Init", signed(init.value)]);
+    const prof = pick("proficiencyBonus", "proficiency");
+    if (prof && prof.value)
+      items.push(["Prof", signed(prof.value)]);
+    if (items.length === 0)
+      return null;
+    return h(
+      "div",
+      { class: "cc-combat" },
+      ...items.map(([label, val]) => h(
+        "div",
+        { class: "cc-stat" },
+        h("div", { class: "cc-stat-label", text: label }),
+        h("div", { class: "cc-stat-value", text: val })
+      ))
+    );
+  }
   function skillsSection(ir, opts) {
     const skills = ir.skills.filter((s) => s.skillType === "skill" && s.active && s.variableName);
     if (skills.length === 0)
@@ -447,6 +479,7 @@
       "div",
       { class: "cc-sheet", dataset: { system: ir.systemHint } },
       header,
+      combatStats(ir),
       abilityGrid(ir, opts),
       skillsSection(ir, opts),
       resourcesSection(ir),

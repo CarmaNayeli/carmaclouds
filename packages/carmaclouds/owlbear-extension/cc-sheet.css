@@ -9,6 +9,15 @@
 .cc-name { font-size: 16px; font-weight: 700; }
 .cc-system { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--theme-text-muted, #9ca3af); }
 
+/* combat stats strip */
+.cc-combat { display: flex; flex-wrap: wrap; gap: 6px; }
+.cc-combat .cc-stat {
+  flex: 1 1 auto; min-width: 56px; text-align: center; padding: 5px 8px;
+  background: var(--theme-bg-card, rgba(255,255,255,0.05)); border: 1px solid var(--theme-border, rgba(255,255,255,0.12)); border-radius: 8px;
+}
+.cc-stat-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--theme-text-muted, #9ca3af); }
+.cc-stat-value { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
 .cc-sheet .section-header {
   font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
   color: var(--theme-primary-light, #A78BFA); margin: 4px 0 6px;

@@ -37,6 +37,8 @@ for (const fixture of ['dnd5e-character', 'non-dnd-character']) {
     ok(el.querySelector('.cc-resource-list'), 'has a Resources section');
     ok(el.querySelectorAll('.cc-skill-list .cc-skill').length >= 15, `has a Skills list (${el.querySelectorAll('.cc-skill').length} skills)`);
     ok(el.querySelector('.cc-item-list'), 'has an Inventory section');
+    const combat = el.querySelector('.cc-combat')?.textContent || '';
+    ok(/HP/.test(combat) && /Prof/.test(combat), `combat strip shows HP + Prof (${combat.replace(/\s+/g, ' ').trim().slice(0, 50)})`);
   }
 
   if (fixture === 'non-dnd-character') {

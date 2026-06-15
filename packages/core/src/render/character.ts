@@ -39,6 +39,32 @@ function poolPill(current: number, max: number): HTMLElement {
     h('span', { class: 'cc-pool-max', text: String(max) }));
 }
 
+/** Top combat-stats strip (HP / AC / Speed / Init / Prof) - whichever exist. */
+function combatStats(ir: IRCharacter): HTMLElement | null {
+  const { byVar } = ir;
+  // DiceCloud sheets name these variably; try common aliases.
+  const pick = (...names: string[]) => names.map((n) => byVar[n]).find(Boolean);
+  const items: [string, string][] = [];
+
+  const hp = pick('hitPoints', 'hp');
+  if (hp) items.push(['HP', `${hp.total - hp.damage}/${hp.total}`]);
+  const ac = pick('armorClass', 'armor', 'ac');
+  if (ac && ac.value) items.push(['AC', String(ac.value)]);
+  const speed = pick('speed', 'walkingSpeed');
+  if (speed && speed.value) items.push(['Speed', String(speed.value)]);
+  const init = pick('initiative', 'initiativeBonus', 'initiativeMod');
+  if (init) items.push(['Init', signed(init.value)]);
+  const prof = pick('proficiencyBonus', 'proficiency');
+  if (prof && prof.value) items.push(['Prof', signed(prof.value)]);
+
+  if (items.length === 0) return null;
+  return h('div', { class: 'cc-combat' },
+    ...items.map(([label, val]) =>
+      h('div', { class: 'cc-stat' },
+        h('div', { class: 'cc-stat-label', text: label }),
+        h('div', { class: 'cc-stat-value', text: val }))));
+}
+
 /** Trained skills (skillType 'skill'), clickable to roll. */
 function skillsSection(ir: IRCharacter, opts: RenderOpts): HTMLElement | null {
   const skills = ir.skills.filter((s) => s.skillType === 'skill' && s.active && s.variableName);
@@ -186,6 +212,7 @@ export function renderCharacterSheet(ir: IRCharacter, opts: RenderOpts = {}): HT
 
   return h('div', { class: 'cc-sheet', dataset: { system: ir.systemHint } },
     header,
+    combatStats(ir),
     abilityGrid(ir, opts),
     skillsSection(ir, opts),
     resourcesSection(ir),
