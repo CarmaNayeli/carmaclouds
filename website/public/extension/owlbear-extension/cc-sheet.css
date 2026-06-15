@@ -1,6 +1,14 @@
 /* Rebuild render layer styles (cc-* classes from @carmaclouds/core renderCharacterSheet).
    Uses the popover's existing theme CSS variables so it matches the surrounding UI. */
 
+/* IR beta toggle (shared across adapter surfaces) */
+.cc-ir-toggle {
+  width: 100%; padding: 6px; font-size: 12px; font-weight: 600; cursor: pointer;
+  background: var(--theme-bg-card, rgba(255,255,255,0.06)); color: var(--theme-primary-light, #A78BFA);
+  border: 1px solid var(--theme-border, rgba(255,255,255,0.15)); border-radius: 6px;
+}
+.cc-ir-toggle:hover { background: var(--theme-bg-hover, rgba(255,255,255,0.12)); }
+
 .cc-sheet { display: flex; flex-direction: column; gap: 14px; color: var(--theme-text-primary, #e0e0e0); }
 
 .cc-header { display: flex; align-items: center; gap: 10px; }

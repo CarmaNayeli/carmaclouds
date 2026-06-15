@@ -516,6 +516,71 @@
     );
   }
 
+  // ../core/src/render/mount.ts
+  async function fetchCharacterIR(charId, target) {
+    const res = await fetch(
+      `${target.url}/rest/v1/clouds_character_ir?dicecloud_character_id=eq.${encodeURIComponent(charId)}&select=ir`,
+      { headers: { apikey: target.anonKey, Authorization: `Bearer ${target.anonKey}` } }
+    );
+    if (!res.ok)
+      return null;
+    const rows = await res.json().catch(() => []);
+    return rows?.[0]?.ir ?? null;
+  }
+  async function mountCharacterIR(container, charId, target, opts = {}) {
+    try {
+      const ir = await fetchCharacterIR(charId, target);
+      if (!ir) {
+        container.replaceChildren(h("div", {
+          class: "cc-empty",
+          style: "padding: 10px; font-size: 12px; opacity: 0.7;",
+          text: "No IR stored yet - re-sync this character from DiceCloud."
+        }));
+        return null;
+      }
+      container.replaceChildren(renderCharacterSheet(ir, opts));
+      return ir;
+    } catch (e) {
+      container.replaceChildren(h("div", {
+        class: "cc-empty",
+        style: "padding: 10px; font-size: 12px; opacity: 0.7;",
+        text: "Failed to load IR view."
+      }));
+      return null;
+    }
+  }
+  function mountIRToggle(host, getCharId, target, opts = {}, label = "\u2697\uFE0F IR view (beta)") {
+    const btn = h("button", { class: "cc-ir-toggle", text: label });
+    const panel = h("div", { class: "cc-ir-panel", style: "display:none; margin-top:8px;" });
+    let loaded = false;
+    btn.addEventListener("click", async () => {
+      const open = panel.style.display === "none";
+      panel.style.display = open ? "block" : "none";
+      if (open && !loaded) {
+        const id = getCharId();
+        if (!id) {
+          panel.replaceChildren(h("div", { class: "cc-empty", text: "No character loaded yet." }));
+          return;
+        }
+        loaded = true;
+        await mountCharacterIR(panel, id, target, opts);
+      }
+    });
+    host.append(btn, panel);
+    return { panel, reload: () => {
+      loaded = false;
+    } };
+  }
+
   // src/owlbear-cc-core-entry.js
-  window.CarmaCloudsCore = { normalize, deriveDnd, renderCharacterSheet, h, setChildren };
+  window.CarmaCloudsCore = {
+    normalize,
+    deriveDnd,
+    renderCharacterSheet,
+    h,
+    setChildren,
+    mountCharacterIR,
+    fetchCharacterIR,
+    mountIRToggle
+  };
 })();

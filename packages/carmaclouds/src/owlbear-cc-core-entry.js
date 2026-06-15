@@ -6,6 +6,9 @@
  * render layer on window for popover.js to use.
  */
 import { normalize, deriveDnd } from '@carmaclouds/core/ir';
-import { renderCharacterSheet, h, setChildren } from '@carmaclouds/core/render';
+import { renderCharacterSheet, h, setChildren, mountCharacterIR, fetchCharacterIR, mountIRToggle } from '@carmaclouds/core/render';
 
-window.CarmaCloudsCore = { normalize, deriveDnd, renderCharacterSheet, h, setChildren };
+window.CarmaCloudsCore = {
+  normalize, deriveDnd, renderCharacterSheet, h, setChildren,
+  mountCharacterIR, fetchCharacterIR, mountIRToggle,
+};

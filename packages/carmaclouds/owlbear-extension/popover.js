@@ -2311,53 +2311,13 @@ function displayCharacter(character) {
  * bundled core render layer (window.CarmaCloudsCore). Opt-in behind a toggle so
  * it can't disrupt the existing sheet. Silent no-op if anything is missing.
  */
-async function renderIRPreview(character) {
+let irToggleMounted = false;
+function renderIRPreview(character) {
   try {
     const core = window.CarmaCloudsCore;
-    if (!core || !core.renderCharacterSheet) return;
-    const charId = character.id || character.dicecloud_character_id;
-    if (!charId) return;
+    if (!core || !core.mountIRToggle || irToggleMounted) return;
 
-    // Build the toggle + panel once, at the top of the character section.
-    let panel = document.getElementById('ir-sheet-panel');
-    if (!panel) {
-      const host = document.createElement('div');
-      host.id = 'ir-sheet-host';
-      host.style.cssText = 'margin: 0 0 12px;';
-
-      const btn = document.createElement('button');
-      btn.textContent = '⚗️ IR view (beta)';
-      btn.style.cssText = 'width: 100%; padding: 6px; font-size: 12px; font-weight: 600; cursor: pointer;'
-        + ' background: var(--theme-bg-card, rgba(255,255,255,0.06)); color: var(--theme-primary-light, #A78BFA);'
-        + ' border: 1px solid var(--theme-border, rgba(255,255,255,0.15)); border-radius: 6px;';
-
-      panel = document.createElement('div');
-      panel.id = 'ir-sheet-panel';
-      panel.style.cssText = 'display: none; margin-top: 8px;';
-      btn.addEventListener('click', () => {
-        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-      });
-
-      host.append(btn, panel);
-      characterSection.insertBefore(host, characterSection.firstChild);
-    }
-
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/clouds_character_ir?dicecloud_character_id=eq.${encodeURIComponent(charId)}&select=ir`,
-      { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } },
-    );
-    const rows = res.ok ? await res.json() : [];
-    const ir = rows?.[0]?.ir;
-
-    if (!ir) {
-      panel.replaceChildren(core.h('div', {
-        class: 'cc-empty', style: 'padding: 10px; font-size: 12px; opacity: 0.7;',
-        text: 'No IR stored yet - re-sync this character from DiceCloud.',
-      }));
-      return;
-    }
-
-    const sheet = core.renderCharacterSheet(ir, {
+    const opts = {
       onRoll: (label, modifier) => {
         if (typeof rollAbilityCheck === 'function') rollAbilityCheck(label, modifier);
       },
@@ -2368,14 +2328,24 @@ async function renderIRPreview(character) {
           const uses = action.uses ? ` (${action.uses.current}/${action.uses.max})` : '';
           const msg = `used ${action.name}${uses}${dmg ? ` — ${dmg}` : ''}`;
           if (typeof addChatMessage === 'function') {
-            await addChatMessage(msg, 'action', currentCharacter?.name || ir.name);
+            await addChatMessage(msg, 'action', currentCharacter?.name || action.name);
           }
         } catch (e) {
           console.warn('IR onUse failed:', e);
         }
       },
-    });
-    panel.replaceChildren(sheet);
+    };
+
+    const host = document.createElement('div');
+    host.style.cssText = 'margin: 0 0 12px;';
+    characterSection.insertBefore(host, characterSection.firstChild);
+    core.mountIRToggle(
+      host,
+      () => currentCharacter && (currentCharacter.id || currentCharacter.dicecloud_character_id),
+      { url: SUPABASE_URL, anonKey: SUPABASE_ANON_KEY },
+      opts,
+    );
+    irToggleMounted = true;
   } catch (e) {
     console.warn('IR preview failed (non-fatal):', e);
   }

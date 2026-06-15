@@ -133,17 +133,27 @@ console.log('   - Chrome (MV3):  dist-chrome/');
 console.log('\n📦 Bundling cc-core.js for the Owlbear extension...');
 const esbuild = (await import('esbuild')).default;
 for (const out of ['dist', 'dist-chrome']) {
+  // Owlbear extension copy (loaded by its popover; also synced to the website).
   await esbuild.build({
     entryPoints: ['src/owlbear-cc-core-entry.js'],
-    bundle: true,
-    format: 'iife',
-    platform: 'browser',
-    target: 'es2020',
+    bundle: true, format: 'iife', platform: 'browser', target: 'es2020',
     outfile: path.join(out, 'owlbear-extension', 'cc-core.js'),
     logLevel: 'silent',
   });
+  // Shared copy at the dist root for other classic-script extension pages
+  // (e.g. src/popup-sheet.html -> ../cc-core.js). cc-sheet.css alongside it.
+  await esbuild.build({
+    entryPoints: ['src/owlbear-cc-core-entry.js'],
+    bundle: true, format: 'iife', platform: 'browser', target: 'es2020',
+    outfile: path.join(out, 'cc-core.js'),
+    logLevel: 'silent',
+  });
+  fs.copyFileSync(
+    path.join('owlbear-extension', 'cc-sheet.css'),
+    path.join(out, 'cc-sheet.css'),
+  );
 }
-console.log('✅ Bundled cc-core.js into dist/ and dist-chrome/ owlbear-extension/');
+console.log('✅ Bundled cc-core.js (owlbear-extension/ + dist root) and cc-sheet.css');
 
 // Sync Foundry module to website directory
 console.log('\n📋 Syncing Foundry module to website...');

@@ -1864,3 +1864,33 @@ if (domReady) {
   pendingOperations.push(initGMMode);
   pendingOperations.push(initShowToGM);
 }
+
+// Rebuild (beta): additive system-agnostic IR view, lazy-loaded on toggle click.
+// Reads the active `characterData` global; does not disturb the existing sheet.
+(function setupIRView() {
+  const IR_SUPABASE_URL = 'https://luiesmfjdcmpywavvfqm.supabase.co';
+  const IR_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aWVzbWZqZGNtcHl3YXZ2ZnFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4ODYxNDksImV4cCI6MjA4NTQ2MjE0OX0.oqjHFf2HhCLcanh0HVryoQH7iSV7E9dHHZJdYehxZ0U';
+
+  function inject() {
+    const core = window.CarmaCloudsCore;
+    const container = document.querySelector('.container');
+    if (!core || !core.mountIRToggle || !container || document.getElementById('ir-sheet-host')) return;
+
+    const host = document.createElement('div');
+    host.id = 'ir-sheet-host';
+    host.style.cssText = 'margin: 0 0 12px;';
+    container.insertBefore(host, container.firstChild);
+
+    core.mountIRToggle(
+      host,
+      () => (typeof characterData !== 'undefined' && characterData)
+        ? (characterData.id || characterData.dicecloud_character_id)
+        : null,
+      { url: IR_SUPABASE_URL, anonKey: IR_SUPABASE_ANON_KEY },
+      { onUse: (action) => console.log('IR action used:', action.name) },
+    );
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', inject);
+  else inject();
+})();
