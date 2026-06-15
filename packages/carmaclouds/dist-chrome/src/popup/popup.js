@@ -13568,14 +13568,14 @@ ${suffix}`;
     }
   });
 
-  // ../core/src/ir/types.ts
+  // ../core/dist/ir/types.js
   var init_types3 = __esm({
-    "../core/src/ir/types.ts"() {
+    "../core/dist/ir/types.js"() {
       "use strict";
     }
   });
 
-  // ../core/src/ir/normalize.ts
+  // ../core/dist/ir/normalize.js
   function detectSystem(byVar) {
     const hasAbilities = DND_ABILITIES.every((ab) => byVar[ab]);
     const hasProfBonus = !!byVar["proficiencyBonus"];
@@ -13721,6 +13721,7 @@ ${suffix}`;
     return false;
   }
   function normalize(raw) {
+    var _a;
     const creature = raw?.creatures?.[0] ?? raw?.creature ?? {};
     const allProps = raw?.creatureProperties ?? raw?.properties ?? [];
     const props = allProps.filter((p) => !isRemoved(p));
@@ -13729,7 +13730,7 @@ ${suffix}`;
     const damageByParent = {};
     for (const p of props) {
       if (p.type === "damage" && p.parent?.id) {
-        (damageByParent[p.parent.id] ??= []).push(p);
+        (damageByParent[_a = p.parent.id] ?? (damageByParent[_a] = [])).push(p);
       }
     }
     const actions = props.filter(isActionLike).map((p) => normalizeAction(p, damageByParent));
@@ -13753,7 +13754,7 @@ ${suffix}`;
   }
   var DND_ABILITIES;
   var init_normalize = __esm({
-    "../core/src/ir/normalize.ts"() {
+    "../core/dist/ir/normalize.js"() {
       "use strict";
       DND_ABILITIES = [
         "strength",
@@ -13766,14 +13767,7 @@ ${suffix}`;
     }
   });
 
-  // ../core/src/ir/views/dnd5e.ts
-  var init_dnd5e = __esm({
-    "../core/src/ir/views/dnd5e.ts"() {
-      "use strict";
-    }
-  });
-
-  // ../core/src/ir/persistence.ts
+  // ../core/dist/ir/persistence.js
   function toIRRow(ir, raw) {
     return {
       dicecloud_character_id: ir.id,
@@ -13786,51 +13780,45 @@ ${suffix}`;
   }
   var IR_VERSION;
   var init_persistence = __esm({
-    "../core/src/ir/persistence.ts"() {
+    "../core/dist/ir/persistence.js"() {
       "use strict";
       IR_VERSION = 1;
     }
   });
 
-  // ../core/src/ir/sync.ts
+  // ../core/dist/ir/sync.js
   async function upsertCharacterIR(raw, target) {
     const ir = normalize(raw);
     if (!ir.id)
       throw new Error("upsertCharacterIR: normalized IR has no character id");
-    const res = await fetch(
-      `${target.url}/rest/v1/clouds_character_ir?on_conflict=dicecloud_character_id`,
-      {
-        method: "POST",
-        headers: {
-          apikey: target.anonKey,
-          Authorization: `Bearer ${target.anonKey}`,
-          "Content-Type": "application/json",
-          Prefer: "resolution=merge-duplicates,return=minimal"
-        },
-        body: JSON.stringify(toIRRow(ir))
-      }
-    );
+    const res = await fetch(`${target.url}/rest/v1/clouds_character_ir?on_conflict=dicecloud_character_id`, {
+      method: "POST",
+      headers: {
+        apikey: target.anonKey,
+        Authorization: `Bearer ${target.anonKey}`,
+        "Content-Type": "application/json",
+        Prefer: "resolution=merge-duplicates,return=minimal"
+      },
+      body: JSON.stringify(toIRRow(ir))
+    });
     if (!res.ok) {
       throw new Error(`clouds_character_ir upsert failed: ${res.status} ${await res.text()}`);
     }
     return ir;
   }
   var init_sync = __esm({
-    "../core/src/ir/sync.ts"() {
+    "../core/dist/ir/sync.js"() {
       "use strict";
       init_normalize();
       init_persistence();
     }
   });
 
-  // ../core/src/ir/index.ts
+  // ../core/dist/ir/index.js
   var init_ir = __esm({
-    "../core/src/ir/index.ts"() {
+    "../core/dist/ir/index.js"() {
       "use strict";
       init_types3();
-      init_normalize();
-      init_dnd5e();
-      init_persistence();
       init_sync();
     }
   });

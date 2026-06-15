@@ -25,21 +25,42 @@
     "./common/*": "./src/common/*",
     "./modules/*": "./src/modules/*",
     "./browser.js": "./src/browser.js",
-    "./ir": "./src/ir/index.ts",
-    "./render": "./src/render/index.ts",
+    "./ir": {
+      "import": "./dist/ir/index.js",
+      "types": "./dist/ir/index.d.ts"
+    },
+    "./render": {
+      "import": "./dist/render/index.js",
+      "types": "./dist/render/index.d.ts"
+    },
     "./src/*": "./src/*"
   },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CarmaNayeli/carmaclouds.git",
+    "directory": "packages/core"
+  },
+  "sideEffects": false,
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
     "clean": "rm -rf dist",
+    "prepublishOnly": "npm run build",
     "test": "echo \"No tests yet\"",
     "lint": "eslint src --ext .ts"
   },
   "keywords": [
     "carmaclouds",
-    "shared",
-    "utilities"
+    "dicecloud",
+    "vtt",
+    "character-sheet"
   ],
   "license": "MIT",
   "devDependencies": {

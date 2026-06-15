@@ -1536,7 +1536,7 @@
     return varData.value !== void 0 ? varData.value : varData;
   }
 
-  // ../core/src/ir/normalize.ts
+  // ../core/dist/ir/normalize.js
   var DND_ABILITIES = [
     "strength",
     "dexterity",
@@ -1690,6 +1690,7 @@
     return false;
   }
   function normalize(raw) {
+    var _a;
     const creature = raw?.creatures?.[0] ?? raw?.creature ?? {};
     const allProps = raw?.creatureProperties ?? raw?.properties ?? [];
     const props = allProps.filter((p) => !isRemoved(p));
@@ -1698,7 +1699,7 @@
     const damageByParent = {};
     for (const p of props) {
       if (p.type === "damage" && p.parent?.id) {
-        (damageByParent[p.parent.id] ??= []).push(p);
+        (damageByParent[_a = p.parent.id] ?? (damageByParent[_a] = [])).push(p);
       }
     }
     const actions = props.filter(isActionLike).map((p) => normalizeAction(p, damageByParent));
@@ -1721,7 +1722,7 @@
     };
   }
 
-  // ../core/src/ir/persistence.ts
+  // ../core/dist/ir/persistence.js
   var IR_VERSION = 1;
   function toIRRow(ir, raw) {
     return {
@@ -1734,24 +1735,21 @@
     };
   }
 
-  // ../core/src/ir/sync.ts
+  // ../core/dist/ir/sync.js
   async function upsertCharacterIR(raw, target) {
     const ir = normalize(raw);
     if (!ir.id)
       throw new Error("upsertCharacterIR: normalized IR has no character id");
-    const res = await fetch(
-      `${target.url}/rest/v1/clouds_character_ir?on_conflict=dicecloud_character_id`,
-      {
-        method: "POST",
-        headers: {
-          apikey: target.anonKey,
-          Authorization: `Bearer ${target.anonKey}`,
-          "Content-Type": "application/json",
-          Prefer: "resolution=merge-duplicates,return=minimal"
-        },
-        body: JSON.stringify(toIRRow(ir))
-      }
-    );
+    const res = await fetch(`${target.url}/rest/v1/clouds_character_ir?on_conflict=dicecloud_character_id`, {
+      method: "POST",
+      headers: {
+        apikey: target.anonKey,
+        Authorization: `Bearer ${target.anonKey}`,
+        "Content-Type": "application/json",
+        Prefer: "resolution=merge-duplicates,return=minimal"
+      },
+      body: JSON.stringify(toIRRow(ir))
+    });
     if (!res.ok) {
       throw new Error(`clouds_character_ir upsert failed: ${res.status} ${await res.text()}`);
     }

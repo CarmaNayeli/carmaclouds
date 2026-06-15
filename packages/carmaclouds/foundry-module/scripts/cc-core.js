@@ -1,4 +1,4 @@
-// ../core/src/ir/normalize.ts
+// ../core/dist/ir/normalize.js
 var DND_ABILITIES = [
   "strength",
   "dexterity",
@@ -184,7 +184,7 @@ function normalize(raw) {
   };
 }
 
-// ../core/src/ir/views/dnd5e.ts
+// ../core/dist/ir/views/dnd5e.js
 var DND_ABILITIES2 = [
   "strength",
   "dexterity",
@@ -237,7 +237,7 @@ function deriveDnd(ir) {
   };
 }
 
-// ../core/src/render/h.ts
+// ../core/dist/render/h.js
 function append(el, child) {
   if (child == null || child === false || child === true)
     return;
@@ -283,7 +283,7 @@ function setChildren(el, ...children) {
   return el;
 }
 
-// ../core/src/render/character.ts
+// ../core/dist/render/character.js
 var RESET_LABEL = { shortRest: "SR", longRest: "LR" };
 var signed = (n) => `${n >= 0 ? "+" : ""}${n}`;
 function sectionHeader(title) {
@@ -295,13 +295,7 @@ function resetBadge(reset) {
   return h("span", { class: "cc-reset-badge", text: RESET_LABEL[reset] ?? reset });
 }
 function poolPill(current, max) {
-  return h(
-    "span",
-    { class: "cc-pool" },
-    h("span", { class: "cc-pool-current", text: String(current) }),
-    " / ",
-    h("span", { class: "cc-pool-max", text: String(max) })
-  );
+  return h("span", { class: "cc-pool" }, h("span", { class: "cc-pool-current", text: String(current) }), " / ", h("span", { class: "cc-pool-max", text: String(max) }));
 }
 function combatStats(ir) {
   const { byVar } = ir;
@@ -324,16 +318,7 @@ function combatStats(ir) {
     items.push(["Prof", signed(prof.value)]);
   if (items.length === 0)
     return null;
-  return h(
-    "div",
-    { class: "cc-combat" },
-    ...items.map(([label, val]) => h(
-      "div",
-      { class: "cc-stat" },
-      h("div", { class: "cc-stat-label", text: label }),
-      h("div", { class: "cc-stat-value", text: val })
-    ))
-  );
+  return h("div", { class: "cc-combat" }, ...items.map(([label, val]) => h("div", { class: "cc-stat" }, h("div", { class: "cc-stat-label", text: label }), h("div", { class: "cc-stat-value", text: val }))));
 }
 function skillsSection(ir, opts) {
   const skills = ir.skills.filter((s) => s.skillType === "skill" && s.active && s.variableName);
@@ -341,18 +326,11 @@ function skillsSection(ir, opts) {
     return null;
   const list = h("div", { class: "cc-skill-list" });
   for (const s of skills) {
-    list.appendChild(
-      h(
-        "div",
-        {
-          class: "cc-skill" + (s.proficiency > 0 ? " cc-proficient" : ""),
-          title: `Roll ${s.name}`,
-          onClick: () => opts.onRoll?.(s.name, s.value)
-        },
-        h("span", { class: "cc-skill-name", text: s.name }),
-        h("span", { class: "cc-skill-bonus", text: signed(s.value) })
-      )
-    );
+    list.appendChild(h("div", {
+      class: "cc-skill" + (s.proficiency > 0 ? " cc-proficient" : ""),
+      title: `Roll ${s.name}`,
+      onClick: () => opts.onRoll?.(s.name, s.value)
+    }, h("span", { class: "cc-skill-name", text: s.name }), h("span", { class: "cc-skill-bonus", text: signed(s.value) })));
   }
   return h("div", {}, sectionHeader("Skills"), list);
 }
@@ -367,30 +345,12 @@ function abilityGrid(ir, opts) {
       continue;
     const label = ab.slice(0, 3).toUpperCase();
     const save = dnd.saves[ab];
-    const rollCell = (kind, value) => h(
-      "div",
-      {
-        class: "cc-ability-roll",
-        title: `Roll ${label} ${kind === "CHK" ? "check" : "save"}`,
-        onClick: () => opts.onRoll?.(`${label} ${kind === "CHK" ? "check" : "save"}`, value)
-      },
-      h("div", { class: "cc-roll-label", text: kind }),
-      h("div", { class: "cc-roll-val", text: signed(value) })
-    );
-    grid.appendChild(
-      h(
-        "div",
-        { class: "ability-box" },
-        h("div", { class: "ability-name", text: label }),
-        h("div", { class: "ability-score", text: String(a.score) }),
-        h(
-          "div",
-          { class: "cc-ability-rolls" },
-          rollCell("CHK", a.modifier),
-          save !== void 0 ? rollCell("SAV", save) : null
-        )
-      )
-    );
+    const rollCell = (kind, value) => h("div", {
+      class: "cc-ability-roll",
+      title: `Roll ${label} ${kind === "CHK" ? "check" : "save"}`,
+      onClick: () => opts.onRoll?.(`${label} ${kind === "CHK" ? "check" : "save"}`, value)
+    }, h("div", { class: "cc-roll-label", text: kind }), h("div", { class: "cc-roll-val", text: signed(value) }));
+    grid.appendChild(h("div", { class: "ability-box" }, h("div", { class: "ability-name", text: label }), h("div", { class: "ability-score", text: String(a.score) }), h("div", { class: "cc-ability-rolls" }, rollCell("CHK", a.modifier), save !== void 0 ? rollCell("SAV", save) : null)));
   }
   return h("div", {}, sectionHeader("Abilities"), grid);
 }
@@ -403,15 +363,7 @@ function resourcesSection(ir) {
   for (const r of resources) {
     const current = r.total - r.damage;
     const sizeNote = r.hitDiceSize ? ` ${r.hitDiceSize}` : "";
-    list.appendChild(
-      h(
-        "div",
-        { class: "cc-resource" + (r.active ? "" : " cc-inactive") },
-        h("span", { class: "cc-resource-name", text: r.name + sizeNote }),
-        poolPill(current, r.total),
-        resetBadge(r.reset)
-      )
-    );
+    list.appendChild(h("div", { class: "cc-resource" + (r.active ? "" : " cc-inactive") }, h("span", { class: "cc-resource-name", text: r.name + sizeNote }), poolPill(current, r.total), resetBadge(r.reset)));
   }
   return h("div", {}, sectionHeader("Resources"), list);
 }
@@ -430,14 +382,7 @@ function attributesSection(ir) {
     return null;
   const list = h("div", { class: "cc-attr-list" });
   for (const a of custom) {
-    list.appendChild(
-      h(
-        "div",
-        { class: "cc-attr" + (a.active ? "" : " cc-inactive") },
-        h("span", { class: "cc-attr-name", text: a.name }),
-        h("span", { class: "cc-attr-value", text: String(a.value) })
-      )
-    );
+    list.appendChild(h("div", { class: "cc-attr" + (a.active ? "" : " cc-inactive") }, h("span", { class: "cc-attr-name", text: a.name }), h("span", { class: "cc-attr-value", text: String(a.value) })));
   }
   return h("div", {}, sectionHeader("Attributes"), list);
 }
@@ -457,18 +402,10 @@ function actionsSection(ir, opts) {
       meta.push(h("span", { class: "cc-action-damage", text: d.type ? `${d.formula} ${d.type}` : d.formula }));
     }
     const usesEl = action.uses ? h("span", { class: "cc-action-uses" }, poolPill(action.uses.current, action.uses.max), resetBadge(action.uses.reset)) : null;
-    list.appendChild(
-      h(
-        "div",
-        {
-          class: `cc-action cc-action-${action.kind}` + (action.active ? "" : " cc-inactive"),
-          onClick: opts.onUse ? () => opts.onUse(action) : void 0
-        },
-        h("span", { class: "cc-action-name", text: action.name }),
-        ...meta,
-        usesEl
-      )
-    );
+    list.appendChild(h("div", {
+      class: `cc-action cc-action-${action.kind}` + (action.active ? "" : " cc-inactive"),
+      onClick: opts.onUse ? () => opts.onUse(action) : void 0
+    }, h("span", { class: "cc-action-name", text: action.name }), ...meta, usesEl));
   }
   return h("div", {}, sectionHeader("Actions & Spells"), list);
 }
@@ -477,50 +414,18 @@ function inventorySection(ir) {
     return null;
   const list = h("div", { class: "cc-item-list" });
   for (const item of ir.inventory) {
-    list.appendChild(
-      h(
-        "div",
-        { class: "cc-item" + (item.equipped ? " cc-equipped" : "") },
-        item.equipped ? h("span", { class: "cc-equipped-dot", title: "Equipped" }) : null,
-        h("span", { class: "cc-item-name", text: item.name }),
-        item.quantity !== 1 ? h("span", { class: "cc-item-qty", text: `x${item.quantity}` }) : null
-      )
-    );
+    list.appendChild(h("div", { class: "cc-item" + (item.equipped ? " cc-equipped" : "") }, item.equipped ? h("span", { class: "cc-equipped-dot", title: "Equipped" }) : null, h("span", { class: "cc-item-name", text: item.name }), item.quantity !== 1 ? h("span", { class: "cc-item-qty", text: `x${item.quantity}` }) : null));
   }
   return h("div", {}, sectionHeader("Inventory"), list);
 }
 function renderCharacterSheet(ir, opts = {}) {
-  const header = h(
-    "div",
-    { class: "cc-header" },
-    ir.portrait ? h("img", { class: "cc-portrait", src: ir.portrait, alt: ir.name }) : null,
-    h(
-      "div",
-      { class: "cc-title" },
-      h("div", { class: "cc-name", text: ir.name || "Unnamed" }),
-      h("span", { class: "cc-system", text: ir.systemHint })
-    )
-  );
-  return h(
-    "div",
-    { class: "cc-sheet", dataset: { system: ir.systemHint } },
-    header,
-    combatStats(ir),
-    abilityGrid(ir, opts),
-    skillsSection(ir, opts),
-    resourcesSection(ir),
-    actionsSection(ir, opts),
-    attributesSection(ir),
-    inventorySection(ir)
-  );
+  const header = h("div", { class: "cc-header" }, ir.portrait ? h("img", { class: "cc-portrait", src: ir.portrait, alt: ir.name }) : null, h("div", { class: "cc-title" }, h("div", { class: "cc-name", text: ir.name || "Unnamed" }), h("span", { class: "cc-system", text: ir.systemHint })));
+  return h("div", { class: "cc-sheet", dataset: { system: ir.systemHint } }, header, combatStats(ir), abilityGrid(ir, opts), skillsSection(ir, opts), resourcesSection(ir), actionsSection(ir, opts), attributesSection(ir), inventorySection(ir));
 }
 
-// ../core/src/render/mount.ts
+// ../core/dist/render/mount.js
 async function fetchCharacterIR(charId, target) {
-  const res = await fetch(
-    `${target.url}/rest/v1/clouds_character_ir?dicecloud_character_id=eq.${encodeURIComponent(charId)}&select=ir`,
-    { headers: { apikey: target.anonKey, Authorization: `Bearer ${target.anonKey}` } }
-  );
+  const res = await fetch(`${target.url}/rest/v1/clouds_character_ir?dicecloud_character_id=eq.${encodeURIComponent(charId)}&select=ir`, { headers: { apikey: target.anonKey, Authorization: `Bearer ${target.anonKey}` } });
   if (!res.ok)
     return null;
   const rows = await res.json().catch(() => []);

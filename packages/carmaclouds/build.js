@@ -10,6 +10,15 @@ import path from 'path';
 const watch = process.argv.includes('--watch');
 const minify = process.argv.includes('--minify');
 
+// Compile @carmaclouds/core first so its ./ir and ./render exports (now pointing
+// at dist) resolve for esbuild. Keeps the package publishable (compiled JS+types)
+// while the extension bundles the same dist.
+console.log('📦 Building @carmaclouds/core (tsc)...');
+{
+  const { execSync } = await import('child_process');
+  execSync('npm run build', { cwd: path.join('..', 'core'), stdio: 'inherit' });
+}
+
 // Build Firefox version (Manifest V2)
 console.log('📦 Building Firefox version (Manifest V2)...');
 await buildExtension({
