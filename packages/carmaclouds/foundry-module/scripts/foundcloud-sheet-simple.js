@@ -602,6 +602,28 @@ export class FoundCloudSheetSimple extends ActorSheet {
   async activateListeners(html) {
     super.activateListeners(html);
 
+    // Rebuild (beta): additive system-agnostic IR view. Dynamic import so a
+    // missing/failed bundle can never break the sheet; guarded against dupes.
+    try {
+      const diceCloudId = this.actor.getFlag('foundcloud', 'diceCloudId');
+      const root = html?.[0];
+      if (diceCloudId && root && !root.querySelector('#ir-sheet-host')) {
+        const core = await import('./cc-core.js').catch(() => null);
+        if (core?.mountIRToggle) {
+          const host = document.createElement('div');
+          host.id = 'ir-sheet-host';
+          host.style.cssText = 'margin: 8px;';
+          root.insertBefore(host, root.firstChild);
+          core.mountIRToggle(host, () => diceCloudId, {
+            url: 'https://luiesmfjdcmpywavvfqm.supabase.co',
+            anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1aWVzbWZqZGNtcHl3YXZ2ZnFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4ODYxNDksImV4cCI6MjA4NTQ2MjE0OX0.oqjHFf2HhCLcanh0HVryoQH7iSV7E9dHHZJdYehxZ0U',
+          }, {});
+        }
+      }
+    } catch (e) {
+      console.warn('FoundCloud | IR view failed (non-fatal):', e);
+    }
+
     if (!this.isEditable) return;
 
     // Apply custom player color to portrait border and ensure token setup

@@ -21,7 +21,8 @@
     "styles/foundcloud.css",
     "styles/foundcloud-sheet.css",
     "styles/foundcloud-sheet-simple.css",
-    "styles/foundcloud-side-tab.css"
+    "styles/foundcloud-side-tab.css",
+    "styles/cc-sheet.css"
   ],
   "languages": [
     {

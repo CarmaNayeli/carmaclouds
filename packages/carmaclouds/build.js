@@ -155,6 +155,20 @@ for (const out of ['dist', 'dist-chrome']) {
 }
 console.log('✅ Bundled cc-core.js (owlbear-extension/ + dist root) and cc-sheet.css');
 
+// Bundle the IR + render layer for the Foundry module (ESM, imported by the
+// FoundCloud sheet), and provide cc-sheet.css as a module style.
+await esbuild.build({
+  entryPoints: ['src/foundry-cc-core-entry.js'],
+  bundle: true, format: 'esm', platform: 'browser', target: 'es2020',
+  outfile: path.join('foundry-module', 'scripts', 'cc-core.js'),
+  logLevel: 'silent',
+});
+fs.copyFileSync(
+  path.join('owlbear-extension', 'cc-sheet.css'),
+  path.join('foundry-module', 'styles', 'cc-sheet.css'),
+);
+console.log('✅ Bundled cc-core.js + cc-sheet.css into the Foundry module');
+
 // Sync Foundry module to website directory
 console.log('\n📋 Syncing Foundry module to website...');
 const foundryModuleSource = path.join('.', 'foundry-module');
