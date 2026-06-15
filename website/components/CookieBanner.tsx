@@ -26,8 +26,9 @@ export default function CookieBanner() {
         <div className="flex items-center gap-3">
           <span className="text-2xl">🍪</span>
           <p className="text-gray-300 text-sm">
-            <strong className="text-white">Good news!</strong> This website doesn't use cookies or track you in any way. 
-            We just wanted to let you know. 😊
+            <strong className="text-white">Good news!</strong> This website uses no cookies, analytics,
+            or trackers. The CarmaClouds extension only syncs the characters you choose — see our{' '}
+            <a href="/privacy" className="text-[#16a75a] hover:text-[#1ec96e] underline">Privacy Policy</a>.
           </p>
         </div>
         <button

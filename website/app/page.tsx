@@ -192,6 +192,10 @@ export default function Home() {
             >
               Report Issue
             </a>
+            {' • '}
+            <a href="/privacy" className="text-gray-500 hover:text-gray-300">
+              Privacy Policy
+            </a>
           </p>
         </footer>
       </div>
