@@ -239,7 +239,7 @@ This cannot be undone.`)) {
                 }
                 const __pushToken = typeof window.getSupabaseAccessToken === "function" ? await window.getSupabaseAccessToken() : null;
                 const response2 = await fetch(
-                  `${SUPABASE_URL}/rest/v1/clouds_characters?on_conflict=user_id_dicecloud,dicecloud_character_id`,
+                  `${SUPABASE_URL}/rest/v1/clouds_characters?on_conflict=supabase_user_id,dicecloud_character_id`,
                   {
                     method: "POST",
                     headers: {

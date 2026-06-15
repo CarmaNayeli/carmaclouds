@@ -1160,6 +1160,32 @@ async function init() {
         console.error('Error signing out:', error);
       }
     });
+
+    // GDPR right-to-erasure: delete every character + token owned by this account.
+    const deleteDataBtn = document.getElementById('supabase-delete-data-btn');
+    if (deleteDataBtn) {
+      deleteDataBtn.addEventListener('click', async () => {
+        if (!confirm('Permanently delete ALL your synced characters and your stored token?\n\nThis cannot be undone.')) {
+          return;
+        }
+        deleteDataBtn.disabled = true;
+        const original = deleteDataBtn.textContent;
+        deleteDataBtn.textContent = '⏳ Deleting…';
+        try {
+          const { error } = await supabase.rpc('delete_my_account_data');
+          if (error) throw error;
+          // Sign out locally + in the SW now that the data is gone.
+          try { await supabase.auth.signOut(); } catch (_) {}
+          try { await browserAPI.runtime.sendMessage({ type: 'CC_AUTH_SET' }); } catch (_) {}
+          showSuccessMessage('✅ All your data has been deleted.');
+        } catch (error) {
+          console.error('Delete data failed:', error);
+          alert('Failed to delete data: ' + (error.message || error));
+          deleteDataBtn.disabled = false;
+          deleteDataBtn.textContent = original;
+        }
+      });
+    }
   }
 
   // Check and update auth status

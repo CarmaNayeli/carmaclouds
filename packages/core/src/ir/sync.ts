@@ -42,7 +42,7 @@ export async function upsertCharacterIR(
   if (target.ownerId) (row as IRRow & { owner_id?: string }).owner_id = target.ownerId;
 
   const res = await fetch(
-    `${target.url}/rest/v1/clouds_character_ir?on_conflict=dicecloud_character_id`,
+    `${target.url}/rest/v1/clouds_character_ir?on_conflict=owner_id,dicecloud_character_id`,
     {
       method: 'POST',
       headers: {

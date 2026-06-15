@@ -11731,7 +11731,7 @@ ${suffix}`;
     const row = toIRRow(ir);
     if (target.ownerId)
       row.owner_id = target.ownerId;
-    const res = await fetch(`${target.url}/rest/v1/clouds_character_ir?on_conflict=dicecloud_character_id`, {
+    const res = await fetch(`${target.url}/rest/v1/clouds_character_ir?on_conflict=owner_id,dicecloud_character_id`, {
       method: "POST",
       headers: {
         apikey: target.anonKey,

@@ -13794,7 +13794,7 @@ ${suffix}`;
     const row = toIRRow(ir);
     if (target.ownerId)
       row.owner_id = target.ownerId;
-    const res = await fetch(`${target.url}/rest/v1/clouds_character_ir?on_conflict=dicecloud_character_id`, {
+    const res = await fetch(`${target.url}/rest/v1/clouds_character_ir?on_conflict=owner_id,dicecloud_character_id`, {
       method: "POST",
       headers: {
         apikey: target.anonKey,
@@ -14332,7 +14332,7 @@ This cannot be undone.`)) {
                 }
                 const __pushToken = typeof window.getSupabaseAccessToken === "function" ? await window.getSupabaseAccessToken() : null;
                 const response2 = await fetch(
-                  `${SUPABASE_URL2}/rest/v1/clouds_characters?on_conflict=user_id_dicecloud,dicecloud_character_id`,
+                  `${SUPABASE_URL2}/rest/v1/clouds_characters?on_conflict=supabase_user_id,dicecloud_character_id`,
                   {
                     method: "POST",
                     headers: {
@@ -15822,6 +15822,36 @@ This cannot be undone.`)) {
           console.error("Error signing out:", error);
         }
       });
+      const deleteDataBtn = document.getElementById("supabase-delete-data-btn");
+      if (deleteDataBtn) {
+        deleteDataBtn.addEventListener("click", async () => {
+          if (!confirm("Permanently delete ALL your synced characters and your stored token?\n\nThis cannot be undone.")) {
+            return;
+          }
+          deleteDataBtn.disabled = true;
+          const original = deleteDataBtn.textContent;
+          deleteDataBtn.textContent = "\u23F3 Deleting\u2026";
+          try {
+            const { error } = await supabase2.rpc("delete_my_account_data");
+            if (error)
+              throw error;
+            try {
+              await supabase2.auth.signOut();
+            } catch (_) {
+            }
+            try {
+              await browserAPI6.runtime.sendMessage({ type: "CC_AUTH_SET" });
+            } catch (_) {
+            }
+            showSuccessMessage("\u2705 All your data has been deleted.");
+          } catch (error) {
+            console.error("Delete data failed:", error);
+            alert("Failed to delete data: " + (error.message || error));
+            deleteDataBtn.disabled = false;
+            deleteDataBtn.textContent = original;
+          }
+        });
+      }
     }
     await updateAuthStatus();
     document.getElementById("open-website").addEventListener("click", (e) => {
