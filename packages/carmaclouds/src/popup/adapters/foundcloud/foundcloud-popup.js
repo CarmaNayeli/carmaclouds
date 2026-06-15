@@ -11,8 +11,24 @@ import { parseForFoundCloud, parseForOwlCloud } from '../../../content/dicecloud
 // Detect browser API (Firefox uses 'browser', Chrome uses 'chrome')
 const browserAPI = (typeof browser !== 'undefined' && browser.runtime) ? browser : chrome;
 
-// Initialize Supabase client
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Initialize Supabase client. Share the extension's single auth session (same
+// 'cc-sb-auth' storageKey the service worker + popup use) so FoundCloud reads/writes
+// under the same owner; otherwise owner-only RLS hides characters the SW synced.
+// See gdpr-auth-migration.
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY,
+  (browserAPI && browserAPI.storage) ? {
+    auth: {
+      storage: {
+        getItem: (k) => browserAPI.storage.local.get(k).then((r) => (r && r[k] != null ? r[k] : null)),
+        setItem: (k, v) => browserAPI.storage.local.set({ [k]: v }),
+        removeItem: (k) => browserAPI.storage.local.remove(k),
+      },
+      storageKey: 'cc-sb-auth',
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: false,
+    },
+  } : undefined);
 
 let characters = [];
 

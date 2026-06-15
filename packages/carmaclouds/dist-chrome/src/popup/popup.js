@@ -14027,7 +14027,23 @@ ${suffix}`;
       init_ir();
       init_dicecloud_extraction();
       browserAPI2 = typeof browser !== "undefined" && browser.runtime ? browser : chrome;
-      supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      supabase = createClient(
+        SUPABASE_URL,
+        SUPABASE_ANON_KEY,
+        browserAPI2 && browserAPI2.storage ? {
+          auth: {
+            storage: {
+              getItem: (k) => browserAPI2.storage.local.get(k).then((r) => r && r[k] != null ? r[k] : null),
+              setItem: (k, v) => browserAPI2.storage.local.set({ [k]: v }),
+              removeItem: (k) => browserAPI2.storage.local.remove(k)
+            },
+            storageKey: "cc-sb-auth",
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: false
+          }
+        } : void 0
+      );
       characters = [];
     }
   });

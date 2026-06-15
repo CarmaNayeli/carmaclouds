@@ -13286,7 +13286,23 @@ ${suffix}`;
 
   // src/popup/adapters/foundcloud/foundcloud-popup.js
   var browserAPI = typeof browser !== "undefined" && browser.runtime ? browser : chrome;
-  var supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  var supabase = createClient(
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY,
+    browserAPI && browserAPI.storage ? {
+      auth: {
+        storage: {
+          getItem: (k) => browserAPI.storage.local.get(k).then((r) => r && r[k] != null ? r[k] : null),
+          setItem: (k, v) => browserAPI.storage.local.set({ [k]: v }),
+          removeItem: (k) => browserAPI.storage.local.remove(k)
+        },
+        storageKey: "cc-sb-auth",
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: false
+      }
+    } : void 0
+  );
   var characters = [];
   function initFoundCloudPopup() {
     console.log("FoundCloud popup initializing...");

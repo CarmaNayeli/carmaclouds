@@ -1503,7 +1503,28 @@ if (typeof window !== 'undefined') {
   // This is separate from SupabaseTokenManager which handles DiceCloud tokens
   const initSupabaseAuthClient = (origin) => {
     try {
-      window.supabaseClient = window.createSupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      // CRITICAL: the popup must share ONE session with the background service
+      // worker, or they get different auth.uid()s and write characters under
+      // different owners — which the owner-only RLS then rejects on upsert. Back
+      // the auth session with chrome.storage.local under the same storageKey the
+      // SW uses ('cc-sb-auth'). See gdpr-auth-migration.
+      const ccApi = (typeof browserAPI !== 'undefined' && browserAPI && browserAPI.storage) ? browserAPI
+        : ((typeof chrome !== 'undefined' && chrome && chrome.storage) ? chrome
+        : ((typeof browser !== 'undefined' && browser && browser.storage) ? browser : null));
+      const opts = ccApi ? {
+        auth: {
+          storage: {
+            getItem: (k) => ccApi.storage.local.get(k).then((r) => (r && r[k] != null ? r[k] : null)),
+            setItem: (k, v) => ccApi.storage.local.set({ [k]: v }),
+            removeItem: (k) => ccApi.storage.local.remove(k),
+          },
+          storageKey: 'cc-sb-auth',
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: false,
+        },
+      } : undefined;
+      window.supabaseClient = window.createSupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY, opts);
       console.log(`✅ [Supabase Client] Created global Supabase auth client${origin}`);
       debug.log('✅ Created global Supabase auth client');
       // Phase 1: ensure a JWT exists (anonymous fallback). Non-blocking.
