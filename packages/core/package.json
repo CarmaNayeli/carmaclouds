@@ -1,6 +1,6 @@
 {
   "name": "@carmaclouds/core",
-  "version": "2.3.1",
+  "version": "2.3.2",
   "description": "Core utilities and types shared across CarmaClouds packages",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -37,7 +37,8 @@
   },
   "files": [
     "dist",
-    "src"
+    "src",
+    "!src/ir/__fixtures__"
   ],
   "publishConfig": {
     "access": "public"
@@ -53,6 +54,7 @@
     "dev": "tsc --watch",
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run build",
+    "release": "node scripts/publish.mjs",
     "test": "echo \"No tests yet\"",
     "lint": "eslint src --ext .ts"
   },
