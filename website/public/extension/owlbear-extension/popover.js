@@ -2323,15 +2323,21 @@ function renderIRPreview(character) {
       },
       onUse: async (action) => {
         try {
-          const dmg = (action.damage || [])
-            .map((d) => (d.type ? `${d.formula} ${d.type}` : d.formula)).join(', ');
           const uses = action.uses ? ` (${action.uses.current}/${action.uses.max})` : '';
-          const msg = `used ${action.name}${uses}${dmg ? ` — ${dmg}` : ''}`;
           if (typeof addChatMessage === 'function') {
-            await addChatMessage(msg, 'action', currentCharacter?.name || action.name);
+            await addChatMessage(`used ${action.name}${uses}`, 'action', currentCharacter?.name || action.name);
           }
         } catch (e) {
           console.warn('IR onUse failed:', e);
+        }
+      },
+      onRollFormula: async (label, formula) => {
+        try {
+          if (typeof addChatMessage === 'function') {
+            await addChatMessage(`${label}: ${formula}`, 'roll', currentCharacter?.name || label);
+          }
+        } catch (e) {
+          console.warn('IR onRollFormula failed:', e);
         }
       },
     };

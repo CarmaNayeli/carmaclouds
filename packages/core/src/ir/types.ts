@@ -117,6 +117,8 @@ export interface IRAction {
   id: string;
   name: string;
   kind: 'action' | 'spell' | 'feature';
+  /** DiceCloud action timing: 'action' | 'bonus' | 'reaction' | 'free' | 'long' | custom. */
+  actionType?: string;
   /** False when toggled/deactivated (e.g. an unprepared spell). Still imported. */
   active: boolean;
   /** Limited-use pool, with reset period (the "2 charges, recharge on long rest" case). */

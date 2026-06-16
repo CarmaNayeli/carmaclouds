@@ -74,6 +74,30 @@
       --shadow-hover: rgba(0,0,0,0.4);
     }
 
+    /* IR view (beta): adopt this sheet's own palette so it matches the RollCloud
+       look (and follows light/dark). The shared cc-sheet.css reads these
+       --theme-* variables; here we point them at RollCloud's --bg-/--accent- set. */
+    #ir-sheet-host {
+      --theme-bg-card: var(--bg-card);
+      --theme-bg-hover: var(--bg-card-hover);
+      --theme-bg-accent: var(--bg-resource);
+      --theme-border: var(--border-color);
+      --theme-text-primary: var(--text-primary);
+      --theme-text-secondary: var(--text-secondary);
+      --theme-text-muted: var(--text-muted);
+      --theme-primary: var(--accent-primary);
+      --theme-primary-light: var(--accent-primary);
+      --theme-primary-lighter: var(--accent-primary);
+    }
+    #ir-sheet-host .cc-ir-toggle {
+      background: var(--bg-card); color: var(--accent-primary); border-color: var(--border-card);
+    }
+    /* Colour-code actions/resources like the legacy RollCloud sheet. */
+    #ir-sheet-host .cc-action-spell { background: var(--bg-spell); border-color: var(--border-spell); }
+    #ir-sheet-host .cc-action-action { background: var(--bg-action); border-color: var(--border-action); }
+    #ir-sheet-host .cc-action-feature { background: var(--bg-feature); }
+    #ir-sheet-host .cc-resource { background: var(--bg-resource); }
+
     body {
       font-family: Arial, sans-serif;
       margin: 20px;

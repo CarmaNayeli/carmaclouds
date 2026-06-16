@@ -1887,7 +1887,13 @@ if (domReady) {
         ? (characterData.id || characterData.dicecloud_character_id)
         : null,
       { url: IR_SUPABASE_URL, anonKey: IR_SUPABASE_ANON_KEY },
-      { onUse: (action) => console.log('IR action used:', action.name) },
+      {
+        // Stubs so the Use/Cast/Attack/Damage buttons render. Actual Roll20 roll
+        // execution is the separate pending wiring (see rebuild-known-gaps).
+        onUse: (action) => console.log('IR use:', action.name),
+        onRoll: (label, mod) => console.log('IR roll:', label, mod),
+        onRollFormula: (label, formula) => console.log('IR roll:', label, formula),
+      },
       // Owner read: the IR is owned by our shared Supabase session (post owner-only RLS).
       async () => ({
         accessToken: (typeof window.getSupabaseAccessToken === 'function')

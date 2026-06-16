@@ -11,10 +11,10 @@
 
 .cc-sheet { display: flex; flex-direction: column; gap: 14px; color: var(--theme-text-primary, #e0e0e0); }
 
-.cc-header { display: flex; align-items: center; gap: 10px; }
-.cc-portrait { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid var(--theme-border, rgba(255,255,255,0.2)); }
-.cc-title { display: flex; flex-direction: column; }
-.cc-name { font-size: 16px; font-weight: 700; }
+.cc-header { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; }
+.cc-portrait { width: 92px; height: 92px; border-radius: 50%; object-fit: cover; border: 2px solid var(--theme-border, rgba(255,255,255,0.2)); }
+.cc-title { display: flex; flex-direction: column; align-items: center; }
+.cc-name { font-size: 22px; font-weight: 700; }
 .cc-system { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--theme-text-muted, #9ca3af); }
 
 /* combat stats strip */
@@ -50,7 +50,9 @@
 .cc-roll-val { font-size: 12px; font-weight: 700; color: var(--theme-primary-light, #A78BFA); }
 
 /* Generic rows: resources, attributes, actions, items */
-.cc-resource-list, .cc-attr-list, .cc-action-list, .cc-item-list { display: flex; flex-direction: column; gap: 4px; }
+.cc-action-list, .cc-item-list { display: flex; flex-direction: column; gap: 4px; }
+/* Resources + custom attributes are short — two columns to save vertical space. */
+.cc-resource-list, .cc-attr-list { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
 .cc-resource, .cc-attr, .cc-action, .cc-item {
   display: flex; align-items: center; gap: 8px; padding: 5px 8px;
   background: var(--theme-bg-card, rgba(255,255,255,0.04)); border: 1px solid var(--theme-border, rgba(255,255,255,0.1));
@@ -113,8 +115,20 @@
   background: var(--theme-bg-accent, rgba(139,92,246,0.18)); color: var(--theme-primary-lighter, #C4B5FD);
 }
 .cc-action-desc {
-  padding: 4px 10px 8px 22px; font-size: 12px; line-height: 1.4; white-space: pre-wrap;
+  padding: 6px 10px 8px; font-size: 12px; line-height: 1.4;
   color: var(--theme-text-secondary, #cbd5e1); border-top: 1px solid var(--theme-border, rgba(255,255,255,0.08));
+}
+.cc-detail-grid { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin-bottom: 6px; }
+.cc-detail-row { display: contents; }
+.cc-detail-key { font-weight: 700; color: var(--theme-text-muted, #9ca3af); white-space: nowrap; }
+.cc-detail-val { color: var(--theme-text-primary, #e0e0e0); }
+.cc-detail-desc { white-space: pre-wrap; }
+
+/* spells grouped by level */
+.cc-spell-group { margin-bottom: 8px; }
+.cc-spell-group-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--theme-text-muted, #9ca3af); margin: 6px 0 4px;
 }
 
 /* conditions & toggles (buffs / toggles) */
@@ -127,3 +141,58 @@
 .cc-condition-dot.cc-on { background: var(--theme-primary-light, #34D399); }
 .cc-condition-name { font-weight: 600; }
 .cc-condition-kind { font-size: 9px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--theme-text-muted, #9ca3af); }
+
+/* action do/details buttons */
+.cc-action-row { cursor: default; }
+.cc-action-controls { display: flex; gap: 6px; flex: none; }
+.cc-btn {
+  font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap;
+  border: 1px solid var(--theme-border, rgba(255,255,255,0.15));
+  background: var(--theme-bg-hover, rgba(255,255,255,0.1)); color: var(--theme-text-primary, #e0e0e0);
+}
+.cc-btn:hover { filter: brightness(1.12); }
+.cc-btn-do, .cc-btn-use { background: var(--theme-primary, #8B5CF6); color: #fff; border-color: transparent; }
+.cc-btn-attack { background: #dc2626; color: #fff; border-color: transparent; }
+.cc-btn-damage { background: #ea7317; color: #fff; border-color: transparent; }
+.cc-btn-details { background: transparent; }
+
+/* search + filter chips */
+.cc-controls { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.cc-search {
+  width: 100%; box-sizing: border-box; padding: 7px 10px; font-size: 13px; border-radius: 6px;
+  background: var(--theme-bg-card, rgba(255,255,255,0.05)); color: var(--theme-text-primary, #e0e0e0);
+  border: 1px solid var(--theme-border, rgba(255,255,255,0.15));
+}
+.cc-chip-row { display: flex; flex-wrap: wrap; gap: 5px; }
+.cc-chip {
+  font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px; cursor: pointer;
+  background: var(--theme-bg-card, rgba(255,255,255,0.05)); color: var(--theme-text-muted, #9ca3af);
+  border: 1px solid var(--theme-border, rgba(255,255,255,0.15));
+}
+.cc-chip-active { background: var(--theme-primary, #8B5CF6); color: #fff; border-color: transparent; }
+
+/* action modal (cast / attack / damage chooser) */
+.cc-modal-overlay {
+  position: fixed; inset: 0; z-index: 10000; padding: 16px;
+  display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.6);
+}
+.cc-modal {
+  width: 100%; max-width: 380px; padding: 16px; border-radius: 10px;
+  background: var(--theme-bg-card, var(--bg-secondary, #23252b)); color: var(--theme-text-primary, var(--text-primary, #e0e0e0));
+  border: 1px solid var(--theme-border, var(--border-color, rgba(255,255,255,0.15))); box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+}
+.cc-modal-title { font-size: 17px; font-weight: 700; }
+.cc-modal-sub { font-size: 12px; color: var(--theme-text-muted, var(--text-muted, #9ca3af)); margin-bottom: 12px; }
+.cc-modal-choices { display: flex; flex-direction: column; gap: 8px; margin: 8px 0; }
+.cc-modal-choice {
+  width: 100%; padding: 12px 14px; font-size: 14px; font-weight: 700; text-align: left; cursor: pointer;
+  border: none; border-radius: 8px; color: #fff;
+}
+.cc-modal-use { background: var(--theme-primary, #8B5CF6); }
+.cc-modal-attack { background: #dc2626; }
+.cc-modal-damage { background: #ea7317; }
+.cc-modal-cancel {
+  width: 100%; padding: 10px; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 8px;
+  background: var(--theme-bg-hover, rgba(255,255,255,0.08)); color: var(--theme-text-primary, var(--text-primary, #e0e0e0));
+  border: 1px solid var(--theme-border, var(--border-color, rgba(255,255,255,0.15)));
+}

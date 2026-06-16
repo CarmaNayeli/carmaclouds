@@ -13604,9 +13604,139 @@ ${suffix}`;
   function textOf(d) {
     if (!d)
       return void 0;
+    let t;
     if (typeof d === "string")
-      return d || void 0;
-    return d.text ?? d.value ?? void 0;
+      t = d;
+    else
+      t = typeof d.value === "string" && d.value.trim() ? d.value : d.text || void 0;
+    if (!t)
+      return void 0;
+    return t.replace(/\*\*/g, "") || void 0;
+  }
+  function descOf(p) {
+    const s = textOf(p.summary);
+    const d = textOf(p.description);
+    if (s && d && s !== d)
+      return `${s}
+
+${d}`;
+    return s ?? d;
+  }
+  function evalArith2(s) {
+    let i = 0;
+    const skip = () => {
+      while (i < s.length && /\s/.test(s[i]))
+        i++;
+    };
+    const FNS = ["max", "min", "floor", "ceil", "round", "abs"];
+    function expr() {
+      let v = term();
+      skip();
+      while (s[i] === "+" || s[i] === "-") {
+        const o = s[i++];
+        const r = term();
+        v = o === "+" ? v + r : v - r;
+        skip();
+      }
+      return v;
+    }
+    function term() {
+      let v = factor();
+      skip();
+      while (s[i] === "*" || s[i] === "/") {
+        const o = s[i++];
+        const r = factor();
+        v = o === "*" ? v * r : v / r;
+        skip();
+      }
+      return v;
+    }
+    function factor() {
+      skip();
+      if (s[i] === "(") {
+        i++;
+        const v = expr();
+        skip();
+        if (s[i] === ")")
+          i++;
+        return v;
+      }
+      if (s[i] === "-") {
+        i++;
+        return -factor();
+      }
+      if (s[i] === "+") {
+        i++;
+        return factor();
+      }
+      const fn = /^([a-zA-Z_]\w*)\s*\(/.exec(s.slice(i));
+      if (fn && FNS.includes(fn[1])) {
+        i += fn[0].length;
+        const args = [expr()];
+        skip();
+        while (s[i] === ",") {
+          i++;
+          args.push(expr());
+          skip();
+        }
+        if (s[i] === ")")
+          i++;
+        switch (fn[1]) {
+          case "max":
+            return Math.max(...args);
+          case "min":
+            return Math.min(...args);
+          case "floor":
+            return Math.floor(args[0]);
+          case "ceil":
+            return Math.ceil(args[0]);
+          case "round":
+            return Math.round(args[0]);
+          default:
+            return Math.abs(args[0]);
+        }
+      }
+      const num = /^\d+(\.\d+)?/.exec(s.slice(i));
+      if (num) {
+        i += num[0].length;
+        return parseFloat(num[0]);
+      }
+      throw new Error("parse");
+    }
+    try {
+      const v = expr();
+      skip();
+      return i >= s.length && Number.isFinite(v) ? v : null;
+    } catch {
+      return null;
+    }
+  }
+  function resolveInline(text, vars) {
+    if (!text || !text.includes("{"))
+      return text || void 0;
+    const out = text.replace(/\{([^}]*)\}/g, (_m, e) => {
+      const sub = e.replace(/[a-zA-Z_]\w*/g, (id) => ["max", "min", "floor", "ceil", "round", "abs"].includes(id) ? id : id in vars ? String(vars[id]) : id);
+      const v = evalArith2(sub);
+      return v == null ? "" : String(Number.isInteger(v) ? v : +v.toFixed(2));
+    });
+    return out.replace(/\s{2,}/g, " ").trim() || void 0;
+  }
+  function metaStr(field, vars) {
+    const t = field && typeof field === "object" ? textOf(field) : field || void 0;
+    return resolveInline(t, vars);
+  }
+  function buildVars(raw) {
+    const vars = {};
+    const rv = raw?.variables ?? raw?.creatureVariables;
+    if (Array.isArray(rv)) {
+      for (const v of rv)
+        if (v?.variableName)
+          vars[v.variableName] = numOf(v.value ?? v);
+    } else if (rv && typeof rv === "object") {
+      for (const [k, val] of Object.entries(rv))
+        vars[k] = numOf(val);
+    }
+    return vars;
   }
   function resetOf(p) {
     return p.reset ?? null;
@@ -13632,7 +13762,7 @@ ${suffix}`;
       reset: resetOf(p),
       active: activeOf(p),
       tags: Array.isArray(p.tags) ? p.tags : [],
-      description: textOf(p.description)
+      description: descOf(p)
     };
     if (p.attributeType === "ability") {
       attr.modifier = has(p.modifier) ? numOf(p.modifier) : Math.floor((value - 10) / 2);
@@ -13667,7 +13797,7 @@ ${suffix}`;
       equipped: !!p.equipped,
       weight: has(p.weight) ? numOf(p.weight) : void 0,
       value: has(p.value) ? numOf(p.value) : void 0,
-      description: textOf(p.description),
+      description: descOf(p),
       tags: Array.isArray(p.tags) ? p.tags : []
     };
   }
@@ -13681,7 +13811,7 @@ ${suffix}`;
       amount: numOf(c.quantity ?? c.amount ?? 1)
     }));
   }
-  function normalizeAction(p, damageByParent) {
+  function normalizeAction(p, damageByParent, attackByParent, vars) {
     const kind = p.type === "spell" ? "spell" : p.type === "feature" ? "feature" : "action";
     const damage = (damageByParent[p._id] ?? []).map((d) => ({
       formula: d.amount?.calculation ?? String(d.amount?.value ?? ""),
@@ -13691,11 +13821,12 @@ ${suffix}`;
       id: p._id,
       name: p.name ?? "",
       kind,
+      actionType: p.actionType || void 0,
       active: activeOf(p),
       consumes: consumesOf(p),
       damage,
       tags: Array.isArray(p.tags) ? p.tags : [],
-      description: textOf(p.description)
+      description: descOf(p)
     };
     const max = numOf(p.uses);
     if (has(p.uses) && max > 0) {
@@ -13704,14 +13835,21 @@ ${suffix}`;
     }
     if (has(p.attackRoll)) {
       action.attack = { bonus: numOf(p.attackRoll) };
+    } else if (p.type === "attack" && has(p.roll)) {
+      action.attack = { bonus: numOf(p.roll) };
+    } else {
+      const atk = attackByParent[p._id]?.[0];
+      if (atk && (has(atk.attackRoll) || has(atk.roll))) {
+        action.attack = { bonus: numOf(atk.attackRoll ?? atk.roll) };
+      }
     }
     if (kind === "spell") {
       action.spell = {
         level: numOf(p.level),
         school: p.school || void 0,
-        castingTime: p.castingTime || void 0,
-        range: p.range || void 0,
-        duration: p.duration || void 0,
+        castingTime: metaStr(p.castingTime, vars),
+        range: metaStr(p.range, vars),
+        duration: metaStr(p.duration, vars),
         components: p.components || void 0,
         concentration: p.components?.concentration ?? void 0,
         ritual: p.components?.ritual ?? void 0
@@ -13727,26 +13865,34 @@ ${suffix}`;
     return false;
   }
   function normalize(raw) {
-    var _a;
     const creature = raw?.creatures?.[0] ?? raw?.creature ?? {};
     const allProps = raw?.creatureProperties ?? raw?.properties ?? [];
     const props = allProps.filter((p) => !isRemoved(p));
     const attributes = props.filter((p) => p.type === "attribute").map(normalizeAttribute);
     const skills = props.filter((p) => p.type === "skill").map(normalizeSkill);
     const damageByParent = {};
+    const attackByParent = {};
     for (const p of props) {
-      if (p.type === "damage" && p.parent?.id) {
-        (damageByParent[_a = p.parent.id] ?? (damageByParent[_a] = [])).push(p);
-      }
+      const pid = p.parent?.id;
+      if (!pid)
+        continue;
+      if (p.type === "damage")
+        (damageByParent[pid] ?? (damageByParent[pid] = [])).push(p);
+      else if (p.type === "attack")
+        (attackByParent[pid] ?? (attackByParent[pid] = [])).push(p);
     }
-    const actions = props.filter(isActionLike).map((p) => normalizeAction(p, damageByParent));
+    const vars = buildVars(raw);
+    const actions = props.filter(isActionLike).map((p) => normalizeAction(p, damageByParent, attackByParent, vars));
+    const haveAction = new Set(actions.filter((a) => a.active).map((a) => a.name.toLowerCase()));
+    const weaponActions = props.filter((p) => p.type === "item" && p.equipped && ((attackByParent[p._id]?.length ?? 0) > 0 || (damageByParent[p._id]?.length ?? 0) > 0)).filter((p) => !haveAction.has((p.name ?? "").toLowerCase())).map((p) => normalizeAction({ ...p, type: "action" }, damageByParent, attackByParent, vars));
+    actions.push(...weaponActions);
     const inventory = props.filter((p) => p.type === "item").map(normalizeItem);
     const conditions = props.filter((p) => p.type === "buff" || p.type === "toggle").map((p) => ({
       id: p._id,
       name: p.name ?? "",
       kind: p.type,
       active: activeOf(p),
-      description: textOf(p.description)
+      description: descOf(p)
     })).filter((c) => c.name);
     const classes = props.filter((p) => p.type === "class").map((p) => ({ name: p.name ?? "", level: numOf(p.level) })).filter((c) => c.name);
     const byVar = {};
