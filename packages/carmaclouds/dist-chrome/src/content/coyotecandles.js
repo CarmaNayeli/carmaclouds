@@ -9,7 +9,10 @@
       character_name: c.name || "Unknown",
       level: c.preview?.level ?? c.level ?? null,
       class: c.preview?.class ?? c.class ?? null,
-      race: c.preview?.race ?? c.race ?? null
+      race: c.preview?.race ?? c.race ?? null,
+      // Each character carries its own DiceCloud owner id (from the raw creature),
+      // so the C&C import can look it up even if the global login was cleared.
+      user_id_dicecloud: c.raw?.creature?.owner || dicecloudUserId || null
     }));
     return { dicecloudUserId, characters };
   }
