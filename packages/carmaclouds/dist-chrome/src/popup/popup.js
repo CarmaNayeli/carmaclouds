@@ -13396,7 +13396,7 @@ ${suffix}`;
         syncBtn.disabled = true;
         syncBtn.innerHTML = "\u23F3 Syncing\u2026";
         try {
-          await syncCharacterToCloud(supabase2, pending, { dicecloudUserId, sessionUserId });
+          await syncCharacterToCloud(supabase2, pending, { dicecloudUserId });
           syncBtn.innerHTML = "\u2705 Synced to CoyoteCloud!";
           await loadSyncedList(supabase2, containerEl, dicecloudUserId);
         } catch (err) {
@@ -13439,7 +13439,22 @@ ${suffix}`;
     }
     await loadSyncedList(supabase2, containerEl, dicecloudUserId);
   }
-  async function syncCharacterToCloud(supabase2, char, { dicecloudUserId, sessionUserId }) {
+  async function syncCharacterToCloud(supabase2, char, { dicecloudUserId }) {
+    if (typeof window !== "undefined" && window.adoptSupabaseSession) {
+      try {
+        await window.adoptSupabaseSession();
+      } catch (_) {
+      }
+    }
+    let sessionUserId = null;
+    try {
+      const { data: { session } } = await supabase2.auth.getSession();
+      sessionUserId = session?.user?.id || null;
+    } catch (_) {
+    }
+    if (!sessionUserId) {
+      throw new Error("Could not sign in to sync. Reload the extension (and update to the latest version), then try again.");
+    }
     const parsed = parseForFoundCloud(char.raw, char.id);
     const owl = parseForOwlCloud(char.raw, char.id);
     const row = {
@@ -13452,10 +13467,9 @@ ${suffix}`;
       owlcloud_parsed_data: owl || {},
       raw_dicecloud_data: char.raw || {},
       user_id_dicecloud: dicecloudUserId,
+      supabase_user_id: sessionUserId,
       updated_at: (/* @__PURE__ */ new Date()).toISOString()
     };
-    if (sessionUserId)
-      row.supabase_user_id = sessionUserId;
     const { data: existing, error: checkError } = await supabase2.from("clouds_characters").select("id").eq("dicecloud_character_id", char.id).limit(1);
     if (checkError)
       throw new Error(checkError.message);

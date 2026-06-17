@@ -1888,11 +1888,28 @@ if (domReady) {
         : null,
       { url: IR_SUPABASE_URL, anonKey: IR_SUPABASE_ANON_KEY },
       {
-        // Stubs so the Use/Cast/Attack/Damage buttons render. Actual Roll20 roll
-        // execution is the separate pending wiring (see rebuild-known-gaps).
-        onUse: (action) => console.log('IR use:', action.name),
-        onRoll: (label, mod) => console.log('IR roll:', label, mod),
-        onRollFormula: (label, formula) => console.log('IR roll:', label, formula),
+        // Wire the IR view's rolls into the existing Roll20 pipeline (dice-roller.js
+        // `roll()` handles variable resolution, optional effects, advantage/disadvantage,
+        // and sending to the Roll20 tab). onUse just announces (no dice).
+        onRoll: (label, mod) => {
+          try {
+            if (typeof window.roll === 'function') window.roll(label, `1d20${mod >= 0 ? '+' : ''}${mod}`);
+          } catch (e) { console.warn('IR onRoll failed:', e); }
+        },
+        onRollFormula: (label, formula) => {
+          try { if (typeof window.roll === 'function') window.roll(label, formula); }
+          catch (e) { console.warn('IR onRollFormula failed:', e); }
+        },
+        onUse: (action) => {
+          try {
+            if (typeof window.sendToRoll20 === 'function' && characterData) {
+              const banner = (typeof getColoredBanner === 'function') ? getColoredBanner(characterData) : '';
+              const verb = action.kind === 'spell' ? 'Casts' : 'Uses';
+              const msg = `&{template:default} {{name=${banner}${characterData.name}}} {{${verb}=${action.name}}}`;
+              window.sendToRoll20({ action: 'announceSpell', message: msg, color: characterData.notificationColor });
+            }
+          } catch (e) { console.warn('IR onUse failed:', e); }
+        },
       },
       // Owner read: the IR is owned by our shared Supabase session (post owner-only RLS).
       async () => ({
