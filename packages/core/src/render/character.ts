@@ -427,10 +427,11 @@ function spellsSection(ir: IRCharacter, opts: RenderOpts): HTMLElement | null {
   const groups: HTMLElement[] = [];
   for (const lvl of [...byLevel.keys()].sort((a, b) => a - b)) {
     const label = lvl === 0 ? 'Cantrips' : `Level ${lvl}`;
+    const inLevel = byLevel.get(lvl)!.slice().sort((a, b) => a.name.localeCompare(b.name));
     groups.push(
       h('div', { class: 'cc-spell-group' },
         h('div', { class: 'cc-spell-group-label', text: label }),
-        h('div', { class: 'cc-action-list' }, ...byLevel.get(lvl)!.map((s) => actionEl(s, opts)))),
+        h('div', { class: 'cc-action-list' }, ...inLevel.map((s) => actionEl(s, opts)))),
     );
   }
   // Already grouped by level, so just a name search (it also hides empty groups).
@@ -497,14 +498,16 @@ export function renderCharacterSheet(ir: IRCharacter, opts: RenderOpts = {}): HT
       classLine ? h('div', { class: 'cc-classes', text: classLine }) : null,
       h('span', { class: 'cc-system', text: ir.systemHint })));
 
+  // Order for play: identity, combat stats, the rollable ability/skill blocks,
+  // then current effects + resources, then the action lists, then inventory.
   return h('div', { class: 'cc-sheet', dataset: { system: ir.systemHint } },
     header,
     combatStats(ir),
-    attributesSection(ir),
-    conditionsSection(ir),
     abilityGrid(ir, opts),
     skillsSection(ir, opts),
+    conditionsSection(ir),
     resourcesSection(ir),
+    attributesSection(ir),
     actionsSection(ir, opts),
     spellsSection(ir, opts),
     inventorySection(ir));

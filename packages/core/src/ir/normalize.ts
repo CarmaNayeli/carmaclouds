@@ -247,6 +247,99 @@ function consumesOf(p: any): IRConsumes[] {
   }));
 }
 
+// Safely evaluate a pure-arithmetic expression (numbers, + - * / %, parens, and
+// floor/ceil/round). Returns null if anything unresolved remains (a target ref, a
+// named variable DiceCloud couldn't resolve), so the caller keeps it symbolic.
+function safeArith(expr: string): number | null {
+  const e = expr
+    .replace(/\bfloor\b/g, 'Math.floor')
+    .replace(/\bceil\b/g, 'Math.ceil')
+    .replace(/\bround\b/g, 'Math.round');
+  if (!e.trim()) return null;
+  // Whitelist: only math after the allowed function names are removed.
+  if (!/^[\d+\-*/%(). ,]*$/.test(e.replace(/Math\.(floor|ceil|round)/g, ''))) return null;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
+    const v = (Function(`"use strict"; return (${e});`) as () => unknown)();
+    return typeof v === 'number' && Number.isFinite(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+// Split an additive expression into signed terms at the top level (parens aware),
+// handling a leading unary +/-.
+function splitTerms(s: string): { sign: number; term: string }[] {
+  const out: { sign: number; term: string }[] = [];
+  let depth = 0, cur = '', sign = 1;
+  const flush = () => { if (cur.trim() !== '') out.push({ sign, term: cur.trim() }); cur = ''; };
+  for (const c of s) {
+    if (c === '(') depth++;
+    else if (c === ')') depth--;
+    if (depth === 0 && (c === '+' || c === '-')) {
+      if (cur.trim() === '') { sign = c === '-' ? -1 : 1; continue; } // unary sign
+      flush();
+      sign = c === '-' ? -1 : 1;
+      continue;
+    }
+    cur += c;
+  }
+  flush();
+  return out;
+}
+
+// Strip a pair of parentheses that wrap the whole string.
+function unwrap(t: string): string {
+  if (t[0] !== '(' || t[t.length - 1] !== ')') return t;
+  let depth = 0;
+  for (let i = 0; i < t.length; i++) {
+    if (t[i] === '(') depth++;
+    else if (t[i] === ')') { depth--; if (depth === 0) return i === t.length - 1 ? t.slice(1, -1).trim() : t; }
+  }
+  return t;
+}
+
+/**
+ * Turn DiceCloud's partly-resolved calculation `value` into a clean rollable dice
+ * expression. DiceCloud already substitutes character variables (e.g.
+ * "2d10 + cleric.level" -> "2d10 + 10", "(slotLevel)d8 + #spellList.abilityMod"
+ * -> "(slotLevel)d8 + 4", "(floor((level+1)/6)+1)d6" -> "2d6"). What's left is
+ * `slotLevel` (only known when a spell is cast — we use the spell's base level for
+ * a base-level roll) and the arithmetic around the dice counts, which we evaluate
+ * and reformat to "NdM + K". Anything still unresolved (e.g. ~target.* refs) is
+ * left in place rather than dropped.
+ */
+export function resolveDamageFormula(value: string, slotLevel: number): string {
+  if (!value) return '';
+  const s = value.replace(/\bslot[lL]evel\b/gi, String(slotLevel || 0));
+
+  const dice: string[] = [];
+  let flat = 0;
+  const symbolic: string[] = [];
+
+  for (const { sign, term } of splitTerms(s)) {
+    const t = unwrap(term);
+    const die = t.match(/^(.*?)d(\d+)$/i);
+    if (die) {
+      const coef = die[1].trim();
+      const n = coef === '' ? 1 : safeArith(coef);
+      if (n != null) {
+        const count = Math.max(0, Math.trunc(Math.abs(n)));
+        if (count > 0) dice.push(`${sign < 0 ? '-' : ''}${count}d${die[2]}`);
+        continue;
+      }
+    }
+    const num = safeArith(t);
+    if (num != null) { flat += sign * num; continue; }
+    symbolic.push(`${sign < 0 ? '- ' : '+ '}${term}`);
+  }
+
+  let out = dice.join(' + ');
+  if (flat) out += `${out ? (flat > 0 ? ' + ' : ' - ') : (flat < 0 ? '-' : '')}${Math.abs(flat)}`;
+  for (const sym of symbolic) out += `${out ? ' ' : ''}${sym}`;
+  return out.replace(/^\+\s*/, '').trim() || s;
+}
+
 function normalizeAction(
   p: any,
   damageByParent: Record<string, any[]>,
@@ -256,9 +349,12 @@ function normalizeAction(
   const kind: IRAction['kind'] =
     p.type === 'spell' ? 'spell' : p.type === 'feature' ? 'feature' : 'action';
 
+  // Prefer DiceCloud's resolved `value` (character vars already substituted) over
+  // the raw `calculation`, then finish the resolution (slot level + arithmetic).
+  const spellLevel = p.type === 'spell' ? numOf(p.level) : 0;
   const damage = (damageByParent[p._id] ?? [])
     .map((d): IRDamage => ({
-      formula: d.amount?.calculation ?? String(d.amount?.value ?? ''),
+      formula: resolveDamageFormula(String(d.amount?.value ?? d.amount?.calculation ?? ''), spellLevel),
       type: d.damageType || undefined,
     }))
     .filter((d) => d.formula);
