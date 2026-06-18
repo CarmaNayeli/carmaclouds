@@ -353,10 +353,13 @@ function normalizeAction(
   // the raw `calculation`, then finish the resolution (slot level + arithmetic).
   const spellLevel = p.type === 'spell' ? numOf(p.level) : 0;
   const damage = (damageByParent[p._id] ?? [])
-    .map((d): IRDamage => ({
-      formula: resolveDamageFormula(String(d.amount?.value ?? d.amount?.calculation ?? ''), spellLevel),
-      type: d.damageType || undefined,
-    }))
+    .map((d): IRDamage => {
+      const raw = String(d.amount?.value ?? d.amount?.calculation ?? '');
+      const out: IRDamage = { formula: resolveDamageFormula(raw, spellLevel), type: d.damageType || undefined };
+      // Keep the slot-parameterized form so consumers can re-resolve for upcasting.
+      if (p.type === 'spell' && spellLevel > 0 && /\bslot[lL]evel\b/i.test(raw)) out.scaling = raw;
+      return out;
+    })
     .filter((d) => d.formula);
 
   const action: IRAction = {

@@ -99,6 +99,13 @@ export interface IRConsumes {
 export interface IRDamage {
   formula: string;
   type?: string;
+  /**
+   * The slot-level-parameterized form (DiceCloud's char-resolved `value` with
+   * `slotLevel` still symbolic), present only for upcastable spell damage. Pass
+   * it to resolveDamageFormula(scaling, castLevel) for the damage at a chosen
+   * slot level. `formula` is this resolved at the spell's base level.
+   */
+  scaling?: string;
 }
 
 export interface IRSpellMeta {
