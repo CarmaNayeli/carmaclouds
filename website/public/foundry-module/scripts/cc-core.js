@@ -7,6 +7,7 @@ var DND_ABILITIES = [
   "wisdom",
   "charisma"
 ];
+var DAMAGE_EXCLUDING_BRANCHES = /* @__PURE__ */ new Set(["successfulSave", "miss"]);
 function detectSystem(byVar) {
   const hasAbilities = DND_ABILITIES.every((ab) => byVar[ab]);
   const hasProfBonus = !!byVar["proficiencyBonus"];
@@ -236,12 +237,105 @@ function consumesOf(p) {
     amount: numOf(c.quantity ?? c.amount ?? 1)
   }));
 }
-function normalizeAction(p, damageByParent, attackByParent, vars) {
+function safeArith(expr) {
+  const e = expr.replace(/\bfloor\b/g, "Math.floor").replace(/\bceil\b/g, "Math.ceil").replace(/\bround\b/g, "Math.round");
+  if (!e.trim())
+    return null;
+  if (!/^[\d+\-*/%(). ,]*$/.test(e.replace(/Math\.(floor|ceil|round)/g, "")))
+    return null;
+  try {
+    const v = Function(`"use strict"; return (${e});`)();
+    return typeof v === "number" && Number.isFinite(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+function splitTerms(s) {
+  const out = [];
+  let depth = 0, cur = "", sign = 1;
+  const flush = () => {
+    if (cur.trim() !== "")
+      out.push({ sign, term: cur.trim() });
+    cur = "";
+  };
+  for (const c of s) {
+    if (c === "(")
+      depth++;
+    else if (c === ")")
+      depth--;
+    if (depth === 0 && (c === "+" || c === "-")) {
+      if (cur.trim() === "") {
+        sign = c === "-" ? -1 : 1;
+        continue;
+      }
+      flush();
+      sign = c === "-" ? -1 : 1;
+      continue;
+    }
+    cur += c;
+  }
+  flush();
+  return out;
+}
+function unwrap(t) {
+  if (t[0] !== "(" || t[t.length - 1] !== ")")
+    return t;
+  let depth = 0;
+  for (let i = 0; i < t.length; i++) {
+    if (t[i] === "(")
+      depth++;
+    else if (t[i] === ")") {
+      depth--;
+      if (depth === 0)
+        return i === t.length - 1 ? t.slice(1, -1).trim() : t;
+    }
+  }
+  return t;
+}
+function resolveDamageFormula(value, slotLevel) {
+  if (!value)
+    return "";
+  const s = value.replace(/\bslot[lL]evel\b/gi, String(slotLevel || 0));
+  const dice = [];
+  let flat = 0;
+  const symbolic = [];
+  for (const { sign, term } of splitTerms(s)) {
+    const t = unwrap(term);
+    const die = t.match(/^(.*?)d(\d+)$/i);
+    if (die) {
+      const coef = die[1].trim();
+      const n = coef === "" ? 1 : safeArith(coef);
+      if (n != null) {
+        const count = Math.max(0, Math.trunc(Math.abs(n)));
+        if (count > 0)
+          dice.push(`${sign < 0 ? "-" : ""}${count}d${die[2]}`);
+        continue;
+      }
+    }
+    const num = safeArith(t);
+    if (num != null) {
+      flat += sign * num;
+      continue;
+    }
+    symbolic.push(`${sign < 0 ? "- " : "+ "}${term}`);
+  }
+  let out = dice.join(" + ");
+  if (flat)
+    out += `${out ? flat > 0 ? " + " : " - " : flat < 0 ? "-" : ""}${Math.abs(flat)}`;
+  for (const sym of symbolic)
+    out += `${out ? " " : ""}${sym}`;
+  return out.replace(/^\+\s*/, "").trim() || s;
+}
+function normalizeAction(p, damageByOwner, attackByParent, vars) {
   const kind = p.type === "spell" ? "spell" : p.type === "feature" ? "feature" : "action";
-  const damage = (damageByParent[p._id] ?? []).map((d) => ({
-    formula: d.amount?.calculation ?? String(d.amount?.value ?? ""),
-    type: d.damageType || void 0
-  })).filter((d) => d.formula);
+  const spellLevel = p.type === "spell" ? numOf(p.level) : 0;
+  const damage = (damageByOwner[p._id] ?? []).map((d) => {
+    const raw = String(d.amount?.value ?? d.amount?.calculation ?? "");
+    const out = { formula: resolveDamageFormula(raw, spellLevel), type: d.damageType || void 0 };
+    if (p.type === "spell" && spellLevel > 0 && /\bslot[lL]evel\b/i.test(raw))
+      out.scaling = raw;
+    return out;
+  }).filter((d) => d.formula);
   const action = {
     id: p._id,
     name: p.name ?? "",
@@ -295,21 +389,43 @@ function normalize(raw) {
   const props = allProps.filter((p) => !isRemoved(p));
   const attributes = props.filter((p) => p.type === "attribute").map(normalizeAttribute);
   const skills = props.filter((p) => p.type === "skill").map(normalizeSkill);
-  const damageByParent = {};
   const attackByParent = {};
   for (const p of props) {
     const pid = p.parent?.id;
-    if (!pid)
-      continue;
-    if (p.type === "damage")
-      (damageByParent[pid] ?? (damageByParent[pid] = [])).push(p);
-    else if (p.type === "attack")
+    if (pid && p.type === "attack")
       (attackByParent[pid] ?? (attackByParent[pid] = [])).push(p);
   }
+  const propById = {};
+  for (const p of props)
+    propById[p._id] = p;
+  const isDamageOwner = (p) => !!p && (p.actionType === "attack" || p.type === "action" || p.type === "spell" || p.type === "feature" || p.type === "item");
+  const damageByOwner = {};
+  for (const p of props) {
+    if (p.type !== "damage")
+      continue;
+    const anc = p.ancestors ?? [];
+    let excluded = false;
+    let ownerId;
+    for (let i = anc.length - 1; i >= 0; i--) {
+      const node = propById[anc[i].id];
+      if (!node)
+        continue;
+      if (node.type === "branch" && DAMAGE_EXCLUDING_BRANCHES.has(node.branchType))
+        excluded = true;
+      if (isDamageOwner(node)) {
+        ownerId = node._id;
+        break;
+      }
+    }
+    if (!ownerId && p.parent?.id)
+      ownerId = p.parent.id;
+    if (ownerId && !excluded)
+      (damageByOwner[ownerId] ?? (damageByOwner[ownerId] = [])).push(p);
+  }
   const vars = buildVars(raw);
-  const actions = props.filter(isActionLike).map((p) => normalizeAction(p, damageByParent, attackByParent, vars));
+  const actions = props.filter(isActionLike).map((p) => normalizeAction(p, damageByOwner, attackByParent, vars));
   const haveAction = new Set(actions.filter((a) => a.active).map((a) => a.name.toLowerCase()));
-  const weaponActions = props.filter((p) => p.type === "item" && p.equipped && ((attackByParent[p._id]?.length ?? 0) > 0 || (damageByParent[p._id]?.length ?? 0) > 0)).filter((p) => !haveAction.has((p.name ?? "").toLowerCase())).map((p) => normalizeAction({ ...p, type: "action" }, damageByParent, attackByParent, vars));
+  const weaponActions = props.filter((p) => p.type === "item" && p.equipped && ((attackByParent[p._id]?.length ?? 0) > 0 || (damageByOwner[p._id]?.length ?? 0) > 0)).filter((p) => !haveAction.has((p.name ?? "").toLowerCase())).map((p) => normalizeAction({ ...p, type: "action" }, damageByOwner, attackByParent, vars));
   actions.push(...weaponActions);
   const inventory = props.filter((p) => p.type === "item").map(normalizeItem);
   const conditions = props.filter((p) => p.type === "buff" || p.type === "toggle").map((p) => ({
@@ -748,7 +864,8 @@ function spellsSection(ir, opts) {
   const groups = [];
   for (const lvl of [...byLevel.keys()].sort((a, b) => a - b)) {
     const label = lvl === 0 ? "Cantrips" : `Level ${lvl}`;
-    groups.push(h("div", { class: "cc-spell-group" }, h("div", { class: "cc-spell-group-label", text: label }), h("div", { class: "cc-action-list" }, ...byLevel.get(lvl).map((s) => actionEl(s, opts)))));
+    const inLevel = byLevel.get(lvl).slice().sort((a, b) => a.name.localeCompare(b.name));
+    groups.push(h("div", { class: "cc-spell-group" }, h("div", { class: "cc-spell-group-label", text: label }), h("div", { class: "cc-action-list" }, ...inLevel.map((s) => actionEl(s, opts)))));
   }
   const wrap = h("div", { class: "cc-spell-groups" }, ...groups);
   const controls = filterControls(wrap, "Search spells...");
@@ -782,7 +899,7 @@ function inventorySection(ir) {
 function renderCharacterSheet(ir, opts = {}) {
   const classLine = (ir.classes || []).map((c) => c.level ? `${c.name} ${c.level}` : c.name).join(" / ");
   const header = h("div", { class: "cc-header" }, ir.portrait ? h("img", { class: "cc-portrait", src: ir.portrait, alt: ir.name }) : null, h("div", { class: "cc-title" }, h("div", { class: "cc-name", text: ir.name || "Unnamed" }), classLine ? h("div", { class: "cc-classes", text: classLine }) : null, h("span", { class: "cc-system", text: ir.systemHint })));
-  return h("div", { class: "cc-sheet", dataset: { system: ir.systemHint } }, header, combatStats(ir), attributesSection(ir), conditionsSection(ir), abilityGrid(ir, opts), skillsSection(ir, opts), resourcesSection(ir), actionsSection(ir, opts), spellsSection(ir, opts), inventorySection(ir));
+  return h("div", { class: "cc-sheet", dataset: { system: ir.systemHint } }, header, combatStats(ir), abilityGrid(ir, opts), skillsSection(ir, opts), conditionsSection(ir), resourcesSection(ir), attributesSection(ir), actionsSection(ir, opts), spellsSection(ir, opts), inventorySection(ir));
 }
 
 // ../core/dist/render/mount.js
