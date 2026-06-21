@@ -23,6 +23,11 @@ const DND_ABILITIES = [
   'strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma',
 ];
 
+// Branch types whose damage is NOT dealt on a normal use of the action: a
+// successful save (target takes half/none) and a miss. Damage gated behind these
+// is skipped so an action surfaces its on-use damage, not the saved-for-half copy.
+const DAMAGE_EXCLUDING_BRANCHES = new Set(['successfulSave', 'miss']);
+
 /**
  * Best-effort system hint (never load-bearing). PF2e also uses the six abilities,
  * so we additionally require D&D-5e-specific signals: a single proficiencyBonus
@@ -342,7 +347,7 @@ export function resolveDamageFormula(value: string, slotLevel: number): string {
 
 function normalizeAction(
   p: any,
-  damageByParent: Record<string, any[]>,
+  damageByOwner: Record<string, any[]>,
   attackByParent: Record<string, any[]>,
   vars: Record<string, number>,
 ): IRAction {
@@ -352,7 +357,7 @@ function normalizeAction(
   // Prefer DiceCloud's resolved `value` (character vars already substituted) over
   // the raw `calculation`, then finish the resolution (slot level + arithmetic).
   const spellLevel = p.type === 'spell' ? numOf(p.level) : 0;
-  const damage = (damageByParent[p._id] ?? [])
+  const damage = (damageByOwner[p._id] ?? [])
     .map((d): IRDamage => {
       const raw = String(d.amount?.value ?? d.amount?.calculation ?? '');
       const out: IRDamage = { formula: resolveDamageFormula(raw, spellLevel), type: d.damageType || undefined };
@@ -432,19 +437,41 @@ export function normalize(raw: RawDiceCloud): IRCharacter {
     .filter((p) => p.type === 'skill')
     .map(normalizeSkill);
 
-  // Damage + attack are stored as child properties pointing at their parent
-  // action/spell/item (parent.id).
-  const damageByParent: Record<string, any[]> = {};
+  // Attack-roll props sit directly under their owning action/item (parent.id).
   const attackByParent: Record<string, any[]> = {};
   for (const p of props) {
     const pid = p.parent?.id;
-    if (!pid) continue;
-    if (p.type === 'damage') (damageByParent[pid] ??= []).push(p);
-    else if (p.type === 'attack') (attackByParent[pid] ??= []).push(p);
+    if (pid && p.type === 'attack') (attackByParent[pid] ??= []).push(p);
+  }
+
+  // Damage props, however, are frequently nested under a `branch` (hit / failedSave
+  // / successfulSave) rather than being a direct child — so a direct-parent lookup
+  // misses most weapon and save-spell damage. Walk each damage prop up to its
+  // nearest owning action/spell/feature/item and attach it there, skipping damage
+  // gated behind a successful-save or miss branch (the "no/half damage" copy).
+  const propById: Record<string, any> = {};
+  for (const p of props) propById[p._id] = p;
+  const isDamageOwner = (p: any): boolean =>
+    !!p && (p.actionType === 'attack' || p.type === 'action' || p.type === 'spell' ||
+            p.type === 'feature' || p.type === 'item');
+  const damageByOwner: Record<string, any[]> = {};
+  for (const p of props) {
+    if (p.type !== 'damage') continue;
+    const anc = p.ancestors ?? [];
+    let excluded = false;
+    let ownerId: string | undefined;
+    for (let i = anc.length - 1; i >= 0; i--) {  // nearest-first up the chain
+      const node = propById[anc[i].id];
+      if (!node) continue;
+      if (node.type === 'branch' && DAMAGE_EXCLUDING_BRANCHES.has(node.branchType)) excluded = true;
+      if (isDamageOwner(node)) { ownerId = node._id; break; }
+    }
+    if (!ownerId && p.parent?.id) ownerId = p.parent.id;  // fall back to direct parent
+    if (ownerId && !excluded) (damageByOwner[ownerId] ??= []).push(p);
   }
 
   const vars = buildVars(raw);
-  const actions = props.filter(isActionLike).map((p) => normalizeAction(p, damageByParent, attackByParent, vars));
+  const actions = props.filter(isActionLike).map((p) => normalizeAction(p, damageByOwner, attackByParent, vars));
 
   // Equipped weapons: DiceCloud models a weapon's attack/damage as child
   // properties of the item, so they don't appear as actions on their own. Surface
@@ -453,9 +480,9 @@ export function normalize(raw: RawDiceCloud): IRCharacter {
   const haveAction = new Set(actions.filter((a) => a.active).map((a) => a.name.toLowerCase()));
   const weaponActions = props
     .filter((p) => p.type === 'item' && p.equipped &&
-      ((attackByParent[p._id]?.length ?? 0) > 0 || (damageByParent[p._id]?.length ?? 0) > 0))
+      ((attackByParent[p._id]?.length ?? 0) > 0 || (damageByOwner[p._id]?.length ?? 0) > 0))
     .filter((p) => !haveAction.has((p.name ?? '').toLowerCase()))
-    .map((p) => normalizeAction({ ...p, type: 'action' }, damageByParent, attackByParent, vars));
+    .map((p) => normalizeAction({ ...p, type: 'action' }, damageByOwner, attackByParent, vars));
   actions.push(...weaponActions);
 
   const inventory = props
