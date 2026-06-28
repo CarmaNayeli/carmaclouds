@@ -14079,10 +14079,9 @@ ${d}`;
   });
 
   // ../core/dist/ir/sync.js
-  async function upsertCharacterIR(raw, target) {
-    const ir = normalize(raw);
+  async function upsertIR(ir, target) {
     if (!ir.id)
-      throw new Error("upsertCharacterIR: normalized IR has no character id");
+      throw new Error("upsertIR: IR has no character id");
     const row = toIRRow(ir);
     if (target.ownerId)
       row.owner_id = target.ownerId;
@@ -14100,6 +14099,9 @@ ${d}`;
       throw new Error(`clouds_character_ir upsert failed: ${res.status} ${await res.text()}`);
     }
     return ir;
+  }
+  async function upsertCharacterIR(raw, target) {
+    return upsertIR(normalize(raw), target);
   }
   var init_sync = __esm({
     "../core/dist/ir/sync.js"() {

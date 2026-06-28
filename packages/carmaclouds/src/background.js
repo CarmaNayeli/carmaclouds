@@ -4,7 +4,7 @@
  */
 
 import { parseForFoundCloud, parseForOwlCloud } from './content/dicecloud-extraction.js';
-import { upsertCharacterIR } from '@carmaclouds/core/ir';
+import { upsertCharacterIR, upsertCharacterIRFromDndBeyond } from '@carmaclouds/core/ir';
 import DiceCloudSync from './lib/dicecloud-sync.js';
 import MeteorDDPClient from './lib/meteor-ddp-client.js';
 import { createClient } from '@supabase/supabase-js';
@@ -297,6 +297,18 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
         })
         .catch(error => {
           console.error('❌ Sync failed:', error);
+          sendResponse({ success: false, error: error.message });
+        });
+      return true; // Keep channel open for async response
+    case 'SYNC_DNDBEYOND_TO_CARMACLOUDS':
+      console.log('🔄 Starting SYNC_DNDBEYOND_TO_CARMACLOUDS handler...');
+      handleSyncDndBeyond(message.characterId)
+        .then(result => {
+          console.log('✅ D&D Beyond sync completed:', result);
+          sendResponse(result);
+        })
+        .catch(error => {
+          console.error('❌ D&D Beyond sync failed:', error);
           sendResponse({ success: false, error: error.message });
         });
       return true; // Keep channel open for async response
@@ -671,6 +683,36 @@ async function handleSyncRequest(data) {
 }
 
 // Handle sync to CarmaClouds from DiceCloud
+// Sync a public D&D Beyond character: fetch its character-service JSON, normalize
+// it to the system-agnostic IR, and upsert into clouds_character_ir (the same
+// central table the DiceCloud sync writes to). The character must be Public on
+// D&D Beyond. Mirrors the IR write in handleSyncToCarmaClouds; no legacy
+// clouds_characters row (that schema is DiceCloud-shaped).
+async function handleSyncDndBeyond(characterId) {
+  const id = String(characterId || '').match(/\d{1,20}/)?.[0];
+  if (!id) throw new Error('No D&D Beyond character id');
+
+  const res = await fetch(
+    `https://character-service.dndbeyond.com/character/v5/character/${id}`,
+    { headers: { Accept: 'application/json' } },
+  );
+  if (res.status === 404) throw new Error('Character not found');
+  if (!res.ok) throw new Error(`Could not reach D&D Beyond (HTTP ${res.status})`);
+  const json = await res.json();
+  if (json && json.success === false) throw new Error('That character is private on D&D Beyond');
+  const raw = json?.data ?? json;
+
+  const { token: sbToken, userId: sbUserId } = await getSupabaseAuth();
+  const ir = await upsertCharacterIRFromDndBeyond(raw, {
+    url: SUPABASE_URL,
+    anonKey: SUPABASE_ANON_KEY,
+    authToken: sbToken || undefined,
+    ownerId: sbUserId || undefined,
+  });
+  console.log(`✅ D&D Beyond IR synced to clouds_character_ir (${ir.name})`);
+  return { success: true, characterName: ir.name, characterId: id };
+}
+
 async function handleSyncToCarmaClouds(characterData) {
   try {
     console.log('💾 Step 1: Starting sync for character:', characterData.name);

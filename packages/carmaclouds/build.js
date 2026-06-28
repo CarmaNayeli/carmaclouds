@@ -34,6 +34,7 @@ await buildExtension({
     'src/content/character-sheet-overlay': './src/content/character-sheet-overlay.js',
     'src/content/owlbear': './src/content/owlbear.js',
     'src/content/coyotecandles': './src/content/coyotecandles.js',
+    'src/content/dndbeyond': './src/content/dndbeyond.js',
     // Shared modules (for dynamic imports)
     'src/content/dicecloud-extraction': './src/content/dicecloud-extraction.js',
     // Adapters (lazy loaded, but need to be bundled)
@@ -96,6 +97,7 @@ await buildExtension({
     'src/content/character-sheet-overlay': './src/content/character-sheet-overlay.js',
     'src/content/owlbear': './src/content/owlbear.js',
     'src/content/coyotecandles': './src/content/coyotecandles.js',
+    'src/content/dndbeyond': './src/content/dndbeyond.js',
     // Shared modules (for dynamic imports)
     'src/content/dicecloud-extraction': './src/content/dicecloud-extraction.js',
     // Adapters (lazy loaded, but need to be bundled)

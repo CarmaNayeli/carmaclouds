@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
   "name": "CarmaClouds: DiceCloud + VTT Integration",
-  "version": "2.6.1",
-  "description": "Sync DiceCloud V2 characters to Roll20, Owlbear Rodeo, and Foundry VTT with cloud storage",
+  "version": "2.8.0",
+  "description": "Sync DiceCloud V2 and D&D Beyond characters to Roll20, Owlbear Rodeo, and Foundry VTT with cloud storage",
   "browser_specific_settings": {
     "gecko": {
       "id": "carmaclouds@carmabella.com",
@@ -21,7 +21,10 @@
     "https://*.owlbear.rodeo/*",
     "https://owlbear.rodeo/*",
     "https://coyotesandcandles.com/*",
-    "https://*.coyotesandcandles.com/*"
+    "https://*.coyotesandcandles.com/*",
+    "https://www.dndbeyond.com/*",
+    "https://*.dndbeyond.com/*",
+    "https://character-service.dndbeyond.com/*"
   ],
   "optional_permissions": [
     "webNavigation"
@@ -70,6 +73,16 @@
       ],
       "js": [
         "src/content/coyotecandles.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://www.dndbeyond.com/*",
+        "https://*.dndbeyond.com/*"
+      ],
+      "js": [
+        "src/content/dndbeyond.js"
       ],
       "run_at": "document_idle"
     }
