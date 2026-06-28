@@ -1,6 +1,6 @@
 {
   "name": "@carmaclouds/carmaclouds",
-  "version": "2.8.1",
+  "version": "2.8.2",
   "description": "CarmaClouds: Unified DiceCloud integration for Roll20, Owlbear Rodeo, and Foundry VTT",
   "type": "module",
   "scripts": {

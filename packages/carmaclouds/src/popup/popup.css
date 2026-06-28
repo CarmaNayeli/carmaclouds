@@ -106,26 +106,29 @@ body {
   display: flex;
   background: #2a2a2a;
   border-bottom: 2px solid #333;
-  overflow-x: auto;        /* horizontal-scroll fallback when tabs don't fit */
-  scrollbar-width: thin;
+  overflow: hidden;        /* five tabs are sized to fit; no horizontal scroll */
 }
 
 .tab-button {
   flex: 1 1 0;
-  min-width: 0;            /* allow tabs to shrink so all four fit */
-  padding: 10px 6px;
+  min-width: 0;            /* allow tabs to shrink so all five fit */
+  padding: 8px 2px;
   background: transparent;
   border: none;
   color: #888;
-  font-size: 12.5px;
+  font-size: 10.5px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
+  /* Stack the icon over the label so five brand names fit a 400px popup. */
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 3px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tab-button:hover {
@@ -144,8 +147,8 @@ body {
 }
 
 .tab-icon-img {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   object-fit: contain;
   flex-shrink: 0;
 }
