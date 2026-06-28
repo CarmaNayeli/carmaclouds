@@ -11528,15 +11528,15 @@ ${suffix}`;
       fetchWithAuth = (supabaseKey, getAccessToken, customFetch) => {
         const fetch$1 = resolveFetch4(customFetch);
         const HeadersConstructor = resolveHeadersConstructor();
-        return async (input, init6) => {
+        return async (input, init7) => {
           var _await$getAccessToken;
           const accessToken = (_await$getAccessToken = await getAccessToken()) !== null && _await$getAccessToken !== void 0 ? _await$getAccessToken : supabaseKey;
-          let headers = new HeadersConstructor(init6 === null || init6 === void 0 ? void 0 : init6.headers);
+          let headers = new HeadersConstructor(init7 === null || init7 === void 0 ? void 0 : init7.headers);
           if (!headers.has("apikey"))
             headers.set("apikey", supabaseKey);
           if (!headers.has("Authorization"))
             headers.set("Authorization", `Bearer ${accessToken}`);
-          return fetch$1(input, _objectSpread22(_objectSpread22({}, init6), {}, { headers }));
+          return fetch$1(input, _objectSpread22(_objectSpread22({}, init7), {}, { headers }));
         };
       };
       SupabaseAuthClient = class extends AuthClient_default {
@@ -13588,6 +13588,75 @@ ${suffix}`;
     }
   });
 
+  // src/popup/adapters/dndbeyond/adapter.js
+  var adapter_exports2 = {};
+  __export(adapter_exports2, {
+    init: () => init2
+  });
+  function parseCharacterId(input) {
+    const s = (input || "").trim();
+    if (/^\d{1,20}$/.test(s))
+      return s;
+    const m = s.match(/dndbeyond\.com\/(?:profile\/[^/]+\/)?characters\/(\d{1,20})/i);
+    return m ? m[1] : null;
+  }
+  async function init2(contentEl) {
+    contentEl.innerHTML = `
+    <div style="padding: 4px 2px;">
+      <h3 style="color: #e0e0e0; margin: 0 0 8px;">D&amp;D Beyond \u2192 Cloud</h3>
+      <p style="color: #b0b0b0; margin: 0 0 14px; font-size: 13px; line-height: 1.4;">
+        Paste a character link (the character must be set to <b>Public</b> on D&amp;D Beyond),
+        then sync it so it's available in Roll20, Owlbear, Foundry, and Coyotes &amp; Candles.
+      </p>
+      <input id="ddb-input" type="text" placeholder="https://www.dndbeyond.com/characters/1234567"
+        style="width: 100%; box-sizing: border-box; padding: 10px; font-size: 13px; border-radius: 8px;
+               border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: #e0e0e0; margin-bottom: 10px;" />
+      <button id="ddb-sync-btn" class="btn btn-primary"
+        style="width: 100%; padding: 12px; font-size: 14px;">Sync to CarmaClouds</button>
+      <div id="ddb-status" style="color: #b0b0b0; font-size: 13px; text-align: center; margin-top: 12px; min-height: 18px;"></div>
+    </div>
+  `;
+    const input = contentEl.querySelector("#ddb-input");
+    const btn = contentEl.querySelector("#ddb-sync-btn");
+    const status = contentEl.querySelector("#ddb-status");
+    const setStatus = (msg, color) => {
+      status.textContent = msg;
+      status.style.color = color || "#b0b0b0";
+    };
+    const sync = async () => {
+      const id = parseCharacterId(input.value);
+      if (!id) {
+        setStatus("Paste a D&D Beyond character link or its numeric id.", "#f0a35e");
+        return;
+      }
+      btn.disabled = true;
+      setStatus("Syncing\u2026");
+      try {
+        const res = await browserAPI2.runtime.sendMessage({ type: "SYNC_DNDBEYOND_TO_CARMACLOUDS", characterId: id });
+        if (res && res.success) {
+          setStatus(`\u2713 Synced ${res.characterName || "character"}.`, "#3ddc84");
+        } else {
+          setStatus(`\u2717 ${res && res.error || "Sync failed"}`, "#ff6b6b");
+        }
+      } catch (err) {
+        setStatus(`\u2717 ${err.message || "Extension error"}`, "#ff6b6b");
+      } finally {
+        btn.disabled = false;
+      }
+    };
+    btn.addEventListener("click", sync);
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter")
+        sync();
+    });
+  }
+  var browserAPI2;
+  var init_adapter2 = __esm({
+    "src/popup/adapters/dndbeyond/adapter.js"() {
+      browserAPI2 = typeof browser !== "undefined" ? browser : chrome;
+    }
+  });
+
   // ../core/dist/ir/types.js
   var init_types3 = __esm({
     "../core/dist/ir/types.js"() {
@@ -14128,7 +14197,7 @@ ${d}`;
   }
   async function loadCharacters() {
     try {
-      const profilesResponse = await browserAPI2.runtime.sendMessage({ action: "getAllCharacterProfiles" });
+      const profilesResponse = await browserAPI3.runtime.sendMessage({ action: "getAllCharacterProfiles" });
       const profiles = profilesResponse.success ? profilesResponse.profiles : {};
       characters = Object.values(profiles).filter(
         (char) => char && char.id && char.name
@@ -14244,7 +14313,7 @@ ${d}`;
     if (sessionError || !session) {
       throw new Error("Not authenticated. Please log in to sync characters.");
     }
-    const authResult = await browserAPI2.storage.local.get(["diceCloudUserId"]);
+    const authResult = await browserAPI3.storage.local.get(["diceCloudUserId"]);
     const dicecloudUserId = authResult.diceCloudUserId || null;
     const parsedData = parseForFoundCloud(char.raw, char.id);
     const owlcloudData = parseForOwlCloud(char.raw, char.id);
@@ -14319,29 +14388,29 @@ ${d}`;
     div.textContent = str;
     return div.innerHTML;
   }
-  var browserAPI2, supabase, characters;
+  var browserAPI3, supabase, characters;
   var init_foundcloud_popup = __esm({
     "src/popup/adapters/foundcloud/foundcloud-popup.js"() {
       init_dist4();
       init_config();
       init_ir();
       init_dicecloud_extraction();
-      browserAPI2 = typeof browser !== "undefined" && browser.runtime ? browser : chrome;
+      browserAPI3 = typeof browser !== "undefined" && browser.runtime ? browser : chrome;
       supabase = typeof window !== "undefined" && window.supabaseClient ? window.supabaseClient : createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       characters = [];
     }
   });
 
   // src/popup/adapters/foundcloud/adapter.js
-  var adapter_exports2 = {};
-  __export(adapter_exports2, {
-    init: () => init2
+  var adapter_exports3 = {};
+  __export(adapter_exports3, {
+    init: () => init3
   });
-  async function init2(containerEl) {
+  async function init3(containerEl) {
     console.log("Initializing FoundCloud adapter...");
     try {
       containerEl.innerHTML = '<div class="loading">Loading FoundCloud...</div>';
-      const htmlPath = browserAPI3.runtime.getURL("src/popup/adapters/foundcloud/popup.html");
+      const htmlPath = browserAPI4.runtime.getURL("src/popup/adapters/foundcloud/popup.html");
       const response = await fetch(htmlPath);
       const html = await response.text();
       const parser = new DOMParser();
@@ -14352,7 +14421,7 @@ ${d}`;
       wrapper.innerHTML = bodyContent.innerHTML;
       containerEl.innerHTML = "";
       containerEl.appendChild(wrapper);
-      const cssPath = browserAPI3.runtime.getURL("src/popup/adapters/foundcloud/popup.css");
+      const cssPath = browserAPI4.runtime.getURL("src/popup/adapters/foundcloud/popup.css");
       const cssResponse = await fetch(cssPath);
       let css = await cssResponse.text();
       css = css.replace(/(^|\})\s*([^{}@]+)\s*\{/gm, (match, closer, selector) => {
@@ -14376,30 +14445,30 @@ ${d}`;
     `;
     }
   }
-  var browserAPI3;
-  var init_adapter2 = __esm({
+  var browserAPI4;
+  var init_adapter3 = __esm({
     "src/popup/adapters/foundcloud/adapter.js"() {
       init_foundcloud_popup();
-      browserAPI3 = typeof browser !== "undefined" && browser.runtime ? browser : chrome;
+      browserAPI4 = typeof browser !== "undefined" && browser.runtime ? browser : chrome;
     }
   });
 
   // src/popup/adapters/owlcloud/adapter.js
-  var adapter_exports3 = {};
-  __export(adapter_exports3, {
-    init: () => init3
+  var adapter_exports4 = {};
+  __export(adapter_exports4, {
+    init: () => init4
   });
-  async function init3(containerEl) {
+  async function init4(containerEl) {
     console.log("Initializing OwlCloud adapter...");
     try {
       containerEl.innerHTML = '<div class="loading">Loading OwlCloud...</div>';
-      const result2 = await browserAPI4.storage.local.get(["carmaclouds_characters", "diceCloudUserId"]) || {};
+      const result2 = await browserAPI5.storage.local.get(["carmaclouds_characters", "diceCloudUserId"]) || {};
       const characters2 = result2.carmaclouds_characters || [];
       const diceCloudUserId = result2.diceCloudUserId;
       console.log("Found", characters2.length, "synced characters");
       console.log("DiceCloud User ID:", diceCloudUserId);
       const character = characters2.length > 0 ? characters2[0] : null;
-      const htmlPath = browserAPI4.runtime.getURL("src/popup/adapters/owlcloud/popup.html");
+      const htmlPath = browserAPI5.runtime.getURL("src/popup/adapters/owlcloud/popup.html");
       const response = await fetch(htmlPath);
       const html = await response.text();
       const parser = new DOMParser();
@@ -14410,7 +14479,7 @@ ${d}`;
       wrapper.innerHTML = mainContent ? mainContent.innerHTML : doc.body.innerHTML;
       containerEl.innerHTML = "";
       containerEl.appendChild(wrapper);
-      const cssPath = browserAPI4.runtime.getURL("src/popup/adapters/owlcloud/popup.css");
+      const cssPath = browserAPI5.runtime.getURL("src/popup/adapters/owlcloud/popup.css");
       const cssResponse = await fetch(cssPath);
       let css = await cssResponse.text();
       css = css.replace(/(^|\})\s*([^{}@]+)\s*\{/gm, (match, closer, selector) => {
@@ -14641,11 +14710,11 @@ This cannot be undone.`)) {
                 if (response2.ok) {
                   console.log("\u2705 Character pushed:", character2.name);
                   pushBtn.innerHTML = "\u2705 Pushed!";
-                  await browserAPI4.storage.local.remove(["carmaclouds_characters"]);
+                  await browserAPI5.storage.local.remove(["carmaclouds_characters"]);
                   console.log("\u{1F5D1}\uFE0F Cleared ready-to-sync character from local storage");
                   await loadPushedCharacters();
                   setTimeout(async () => {
-                    await init3(containerEl);
+                    await init4(containerEl);
                   }, 1500);
                 } else {
                   const errorText = await response2.text();
@@ -14699,20 +14768,20 @@ This cannot be undone.`)) {
           console.log("\u{1F510} OwlCloud adapter detected Supabase auth change:", event);
           if (event !== "INITIAL_SESSION") {
             console.log("\u{1F504} Reloading adapter due to auth change");
-            init3(containerEl);
+            init4(containerEl);
           }
         });
       }
-      browserAPI4.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      browserAPI5.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.action === "dataSynced") {
           console.log("\u{1F4E5} OwlCloud adapter received data sync notification:", message.characterName);
-          init3(containerEl);
+          init4(containerEl);
         }
       });
-      browserAPI4.storage.onChanged.addListener((changes, areaName) => {
+      browserAPI5.storage.onChanged.addListener((changes, areaName) => {
         if (areaName === "local" && changes.carmaclouds_characters) {
           console.log("\u{1F4E6} OwlCloud adapter detected character storage change");
-          init3(containerEl);
+          init4(containerEl);
         }
       });
     } catch (error) {
@@ -14725,24 +14794,24 @@ This cannot be undone.`)) {
     `;
     }
   }
-  var browserAPI4, authSubscription;
-  var init_adapter3 = __esm({
+  var browserAPI5, authSubscription;
+  var init_adapter4 = __esm({
     "src/popup/adapters/owlcloud/adapter.js"() {
-      browserAPI4 = typeof browser !== "undefined" && browser.runtime ? browser : chrome;
+      browserAPI5 = typeof browser !== "undefined" && browser.runtime ? browser : chrome;
       authSubscription = null;
     }
   });
 
   // src/popup/adapters/rollcloud/adapter.js
-  var adapter_exports4 = {};
-  __export(adapter_exports4, {
-    init: () => init4
+  var adapter_exports5 = {};
+  __export(adapter_exports5, {
+    init: () => init5
   });
-  async function init4(containerEl) {
+  async function init5(containerEl) {
     console.log("Initializing RollCloud adapter...");
     try {
       containerEl.innerHTML = '<div class="loading">Loading RollCloud...</div>';
-      const result2 = await browserAPI5.storage.local.get("carmaclouds_characters") || {};
+      const result2 = await browserAPI6.storage.local.get("carmaclouds_characters") || {};
       let characters2 = result2.carmaclouds_characters || [];
       console.log("Found", characters2.length, "synced characters from local storage");
       let needsUpdate = false;
@@ -14773,7 +14842,7 @@ This cannot be undone.`)) {
         return char;
       });
       if (needsUpdate) {
-        await browserAPI5.storage.local.set({ carmaclouds_characters: characters2 });
+        await browserAPI6.storage.local.set({ carmaclouds_characters: characters2 });
         console.log("\u2705 Migrated characters saved to storage");
       }
       const supabase2 = window.supabaseClient;
@@ -14855,7 +14924,7 @@ This cannot be undone.`)) {
               }
             });
             console.log("Merged characters list now has", characters2.length, "total characters");
-            await browserAPI5.storage.local.set({ carmaclouds_characters: characters2 });
+            await browserAPI6.storage.local.set({ carmaclouds_characters: characters2 });
             console.log("\u2705 Saved merged characters to local storage");
           }
         } catch (dbError) {
@@ -14878,7 +14947,7 @@ This cannot be undone.`)) {
         parsedData = parseForRollCloud(character.raw);
         console.log("Parsed data:", parsedData);
       }
-      const htmlPath = browserAPI5.runtime.getURL("src/popup/adapters/rollcloud/popup.html");
+      const htmlPath = browserAPI6.runtime.getURL("src/popup/adapters/rollcloud/popup.html");
       const response = await fetch(htmlPath);
       const html = await response.text();
       const parser = new DOMParser();
@@ -14889,7 +14958,7 @@ This cannot be undone.`)) {
       wrapper.innerHTML = mainContent ? mainContent.innerHTML : doc.body.innerHTML;
       containerEl.innerHTML = "";
       containerEl.appendChild(wrapper);
-      const cssPath = browserAPI5.runtime.getURL("src/popup/adapters/rollcloud/popup.css");
+      const cssPath = browserAPI6.runtime.getURL("src/popup/adapters/rollcloud/popup.css");
       const cssResponse = await fetch(cssPath);
       let css = await cssResponse.text();
       css = css.replace(/(^|\})\s*([^{}@]+)\s*\{/gm, (match, closer, selector) => {
@@ -14962,13 +15031,13 @@ This cannot be undone.`)) {
                     id: character.id,
                     dicecloud_character_id: character.id
                   };
-                  await browserAPI5.runtime.sendMessage({
+                  await browserAPI6.runtime.sendMessage({
                     action: "storeCharacterData",
                     data: dataToStore,
                     slotId: character.slotId || "slot-1"
                   });
                   console.log("\u2705 Local storage updated with parsed Roll20 data");
-                  browserAPI5.runtime.sendMessage({
+                  browserAPI6.runtime.sendMessage({
                     action: "dataSynced",
                     characterName: dataToStore.name || "Character"
                   }).catch(() => {
@@ -14977,11 +15046,11 @@ This cannot be undone.`)) {
                 } catch (storageError) {
                   console.warn("\u26A0\uFE0F Local storage update failed (non-fatal):", storageError);
                 }
-                const tabs = await browserAPI5.tabs.query({ url: "*://app.roll20.net/*" });
+                const tabs = await browserAPI6.tabs.query({ url: "*://app.roll20.net/*" });
                 if (tabs.length === 0) {
                   throw new Error("No Roll20 tab found. Please open Roll20 first.");
                 }
-                await browserAPI5.tabs.sendMessage(tabs[0].id, {
+                await browserAPI6.tabs.sendMessage(tabs[0].id, {
                   type: "PUSH_CHARACTER",
                   data: parsedData
                 });
@@ -15011,10 +15080,10 @@ This cannot be undone.`)) {
             statusText.textContent = `Character synced: ${character.name}`;
         }
       }
-      browserAPI5.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      browserAPI6.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.action === "dataSynced") {
           console.log("\u{1F4E5} RollCloud adapter received data sync notification:", message.characterName);
-          init4(containerEl);
+          init5(containerEl);
         }
       });
     } catch (error) {
@@ -15034,7 +15103,7 @@ This cannot be undone.`)) {
       const pushedCharactersSection = wrapper.querySelector("#pushedCharactersSection");
       const pushToRoll20Btn = wrapper.querySelector("#pushToRoll20Btn");
       const openAuthModalBtn = wrapper.querySelector("#openAuthModalBtn");
-      const result2 = await browserAPI5.storage.local.get(["diceCloudToken", "dicecloud_auth_token", "activeCharacterId"]);
+      const result2 = await browserAPI6.storage.local.get(["diceCloudToken", "dicecloud_auth_token", "activeCharacterId"]);
       const hasDiceCloudToken = !!(result2.diceCloudToken || result2.dicecloud_auth_token);
       const token = result2.diceCloudToken || result2.dicecloud_auth_token;
       console.log("RollCloud auth check:", { hasDiceCloudToken, hasActiveChar: !!result2.activeCharacterId });
@@ -15047,7 +15116,7 @@ This cannot be undone.`)) {
           pushedCharactersSection.classList.add("hidden");
         if (openAuthModalBtn) {
           openAuthModalBtn.addEventListener("click", () => {
-            browserAPI5.tabs.create({ url: "https://dicecloud.com" });
+            browserAPI6.tabs.create({ url: "https://dicecloud.com" });
           });
         }
         return;
@@ -15150,7 +15219,7 @@ This cannot be undone.`)) {
         foundcloud: null
         // Can be parsed later by FoundCloud adapter
       };
-      await browserAPI5.runtime.sendMessage({
+      await browserAPI6.runtime.sendMessage({
         action: "storeCharacterData",
         data: characterEntry,
         slotId: `slot-${allCharacters.length + 1}`
@@ -15163,7 +15232,7 @@ This cannot be undone.`)) {
       }
       pushBtn.textContent = "\u2713 Synced!";
       pushBtn.style.background = "linear-gradient(135deg, #28a745 0%, #1e7e34 100%)";
-      await browserAPI5.storage.local.remove("activeCharacterId");
+      await browserAPI6.storage.local.remove("activeCharacterId");
       const syncBox = wrapper.querySelector("#syncBox");
       if (syncBox)
         syncBox.classList.add("hidden");
@@ -15219,7 +15288,7 @@ This cannot be undone.`)) {
           e.stopPropagation();
           if (confirm(`Delete ${name}?`)) {
             const updatedChars = characters2.filter((c) => c.id !== char.id);
-            await browserAPI5.storage.local.set({ carmaclouds_characters: updatedChars });
+            await browserAPI6.storage.local.set({ carmaclouds_characters: updatedChars });
             displaySyncedCharacters(wrapper, updatedChars);
           }
         });
@@ -15227,39 +15296,42 @@ This cannot be undone.`)) {
       pushedCharactersList.appendChild(card);
     });
   }
-  var browserAPI5;
-  var init_adapter4 = __esm({
+  var browserAPI6;
+  var init_adapter5 = __esm({
     "src/popup/adapters/rollcloud/adapter.js"() {
       init_dicecloud_extraction();
-      browserAPI5 = typeof browser !== "undefined" && browser.runtime ? browser : chrome;
+      browserAPI6 = typeof browser !== "undefined" && browser.runtime ? browser : chrome;
     }
   });
 
   // import("./adapters/**/*/adapter.js") in src/popup/popup.js
   var globImport_adapters_adapter_js = __glob({
     "./adapters/coyotecloud/adapter.js": () => Promise.resolve().then(() => (init_adapter(), adapter_exports)),
-    "./adapters/foundcloud/adapter.js": () => Promise.resolve().then(() => (init_adapter2(), adapter_exports2)),
-    "./adapters/owlcloud/adapter.js": () => Promise.resolve().then(() => (init_adapter3(), adapter_exports3)),
-    "./adapters/rollcloud/adapter.js": () => Promise.resolve().then(() => (init_adapter4(), adapter_exports4))
+    "./adapters/dndbeyond/adapter.js": () => Promise.resolve().then(() => (init_adapter2(), adapter_exports2)),
+    "./adapters/foundcloud/adapter.js": () => Promise.resolve().then(() => (init_adapter3(), adapter_exports3)),
+    "./adapters/owlcloud/adapter.js": () => Promise.resolve().then(() => (init_adapter4(), adapter_exports4)),
+    "./adapters/rollcloud/adapter.js": () => Promise.resolve().then(() => (init_adapter5(), adapter_exports5))
   });
 
   // src/popup/popup.js
-  var browserAPI6 = typeof browser !== "undefined" && browser.runtime ? browser : chrome;
+  var browserAPI7 = typeof browser !== "undefined" && browser.runtime ? browser : chrome;
   var loadedAdapters = {
     rollcloud: null,
     owlcloud: null,
     foundcloud: null,
-    coyotecloud: null
+    coyotecloud: null,
+    dndbeyond: null
   };
+  var NO_LOGIN_TABS = /* @__PURE__ */ new Set(["dndbeyond"]);
   async function getSettings() {
-    const result2 = await browserAPI6.storage.local.get("carmaclouds_settings") || {};
+    const result2 = await browserAPI7.storage.local.get("carmaclouds_settings") || {};
     return result2.carmaclouds_settings || {
       lastActiveTab: "rollcloud",
-      enabledVTTs: ["rollcloud", "owlcloud", "foundcloud", "coyotecloud"]
+      enabledVTTs: ["rollcloud", "owlcloud", "foundcloud", "coyotecloud", "dndbeyond"]
     };
   }
   async function saveSettings(settings) {
-    await browserAPI6.storage.local.set({ carmaclouds_settings: settings });
+    await browserAPI7.storage.local.set({ carmaclouds_settings: settings });
   }
   function showLoginRequired(contentEl, tabName) {
     const tabNames = {
@@ -15308,7 +15380,7 @@ This cannot be undone.`)) {
     });
     const contentEl = document.getElementById(`${tabName}-content`);
     const token = await getAuthToken();
-    if (!token) {
+    if (!token && !NO_LOGIN_TABS.has(tabName)) {
       showLoginRequired(contentEl, tabName);
       loadedAdapters[tabName] = null;
     } else {
@@ -15350,7 +15422,7 @@ This cannot be undone.`)) {
     if (!confirmed)
       return;
     try {
-      await browserAPI6.storage.local.remove(["carmaclouds_characters", "characterProfiles", "activeCharacterId"]);
+      await browserAPI7.storage.local.remove(["carmaclouds_characters", "characterProfiles", "activeCharacterId"]);
       alert("\u2705 Local data cleared successfully!\n\nThe popup will now reload.");
       window.location.reload();
     } catch (error) {
@@ -15365,10 +15437,10 @@ This cannot be undone.`)) {
     if (!confirmed)
       return;
     try {
-      const tabs = await browserAPI6.tabs.query({});
+      const tabs = await browserAPI7.tabs.query({});
       for (const tab of tabs) {
         try {
-          await browserAPI6.tabs.sendMessage(tab.id, {
+          await browserAPI7.tabs.sendMessage(tab.id, {
             action: "resetUIPositions"
           });
         } catch (error) {
@@ -15393,7 +15465,7 @@ This cannot be undone.`)) {
     if (!doubleConfirm)
       return;
     try {
-      const response = await browserAPI6.runtime.sendMessage({
+      const response = await browserAPI7.runtime.sendMessage({
         action: "clearAllCloudData"
       });
       if (response && response.success) {
@@ -15416,7 +15488,7 @@ This cannot be undone.`)) {
     modal.classList.remove("active");
   }
   async function getAuthToken() {
-    const result2 = await browserAPI6.storage.local.get(["dicecloud_auth_token", "diceCloudToken"]);
+    const result2 = await browserAPI7.storage.local.get(["dicecloud_auth_token", "diceCloudToken"]);
     return result2?.dicecloud_auth_token || result2?.diceCloudToken || null;
   }
   async function saveAuthToken(token, userId = null, username = null) {
@@ -15428,13 +15500,13 @@ This cannot be undone.`)) {
     if (username) {
       storageData.username = username;
     }
-    await browserAPI6.storage.local.set(storageData);
+    await browserAPI7.storage.local.set(storageData);
     await updateAuthStatus();
     await updateAuthView();
     try {
       if (typeof SupabaseTokenManager !== "undefined") {
         const supabaseManager = new SupabaseTokenManager();
-        const result2 = await browserAPI6.storage.local.get(["username", "diceCloudUserId"]);
+        const result2 = await browserAPI7.storage.local.get(["username", "diceCloudUserId"]);
         console.log("\u{1F4E4} Syncing to database with data:", {
           hasToken: !!token,
           userId: userId || result2.diceCloudUserId || "none",
@@ -15459,7 +15531,7 @@ This cannot be undone.`)) {
     await reloadCurrentTab();
   }
   async function clearAuthToken() {
-    await browserAPI6.storage.local.remove("dicecloud_auth_token");
+    await browserAPI7.storage.local.remove("dicecloud_auth_token");
     updateAuthStatus();
     updateAuthView();
     await reloadCurrentTab();
@@ -15502,7 +15574,7 @@ This cannot be undone.`)) {
       btn.disabled = true;
       btn.textContent = "\u23F3 Checking...";
       errorDiv.classList.add("hidden");
-      const tabs = await browserAPI6.tabs.query({ url: "*://*.dicecloud.com/*" });
+      const tabs = await browserAPI7.tabs.query({ url: "*://*.dicecloud.com/*" });
       if (!tabs || tabs.length === 0) {
         errorDiv.innerHTML = '<div style="background: #0d4a30; color: #16a75a; padding: 12px; border-radius: 6px; border: 1px solid #16a75a;"><strong>Navigate to DiceCloud First</strong><br>Open <a href="https://dicecloud.com" target="_blank" style="color: #1bc76b; text-decoration: underline;">dicecloud.com</a> in a tab, log in, then click this button to connect.</div>';
         errorDiv.classList.remove("hidden");
@@ -15516,7 +15588,7 @@ This cannot be undone.`)) {
       let authData = null;
       try {
         await new Promise((resolve) => setTimeout(resolve, 100));
-        authData = await browserAPI6.tabs.sendMessage(tabs[0].id, { action: "getAuthData" });
+        authData = await browserAPI7.tabs.sendMessage(tabs[0].id, { action: "getAuthData" });
         console.log("\u2705 Auth data received from content script:", authData);
       } catch (messageError) {
         console.warn("\u26A0\uFE0F Could not get auth data from content script:", messageError);
@@ -15525,9 +15597,9 @@ This cannot be undone.`)) {
         try {
           console.log("[DIAGNOSTIC] Attempting script injection into tab:", tabs[0].id, "URL:", tabs[0].url);
           let results;
-          if (typeof chrome !== "undefined" && browserAPI6.scripting) {
+          if (typeof chrome !== "undefined" && browserAPI7.scripting) {
             console.log("[DIAGNOSTIC] Using Chrome scripting API");
-            results = await browserAPI6.scripting.executeScript({
+            results = await browserAPI7.scripting.executeScript({
               target: { tabId: tabs[0].id },
               func: () => {
                 console.log("[DIAGNOSTIC] Injected script running on page");
@@ -15618,7 +15690,7 @@ This cannot be undone.`)) {
           } else {
             throw new Error("No scripting API available");
           }
-          authData = typeof chrome !== "undefined" && browserAPI6.scripting ? results[0]?.result : results[0];
+          authData = typeof chrome !== "undefined" && browserAPI7.scripting ? results[0]?.result : results[0];
           console.log("Auth data from script injection:", authData);
         } catch (scriptError) {
           console.warn("\u274C Script injection also failed:", scriptError);
@@ -15657,7 +15729,7 @@ This cannot be undone.`)) {
         closeAuthModal();
         return;
       }
-      const cookies = await browserAPI6.cookies.getAll({ domain: ".dicecloud.com" });
+      const cookies = await browserAPI7.cookies.getAll({ domain: ".dicecloud.com" });
       console.log("Available DiceCloud cookies:", cookies.map((c) => ({ name: c.name, domain: c.domain, value: c.value ? "***" : "empty" })));
       const authCookie = cookies.find(
         (c) => c.name === "dicecloud_auth" || c.name === "meteor_login_token" || c.name === "authToken" || c.name === "loginToken" || c.name === "userId" || c.name === "token" || c.name === "x_mtok" || // Meteor token cookie used by DiceCloud
@@ -15784,7 +15856,7 @@ This cannot be undone.`)) {
         return;
       }
       const supabaseManager = new SupabaseTokenManager();
-      const result2 = await browserAPI6.storage.local.get(["diceCloudToken", "dicecloud_auth_token", "username", "tokenExpires", "diceCloudUserId", "authId"]);
+      const result2 = await browserAPI7.storage.local.get(["diceCloudToken", "dicecloud_auth_token", "username", "tokenExpires", "diceCloudUserId", "authId"]);
       console.log("\u{1F50D} Storage contents:", {
         diceCloudToken: result2.diceCloudToken ? "***found***" : "NOT FOUND",
         dicecloud_auth_token: result2.dicecloud_auth_token ? "***found***" : "NOT FOUND",
@@ -15819,7 +15891,7 @@ This cannot be undone.`)) {
         const refreshResult = await supabaseManager.refreshToken();
         if (refreshResult.success) {
           console.log("\u2705 Auth token refreshed successfully");
-          await browserAPI6.storage.local.set({
+          await browserAPI7.storage.local.set({
             diceCloudToken: refreshResult.token,
             tokenExpires: refreshResult.expires,
             diceCloudUserId: refreshResult.userId
@@ -15866,9 +15938,9 @@ This cannot be undone.`)) {
       loggedInView.classList.add("hidden");
     }
   }
-  async function init5() {
+  async function init6() {
     console.log("Initializing CarmaClouds popup...");
-    const manifest = browserAPI6.runtime.getManifest();
+    const manifest = browserAPI7.runtime.getManifest();
     const versionElement = document.querySelector(".info-value");
     if (versionElement && manifest.version) {
       versionElement.textContent = manifest.version;
@@ -16023,7 +16095,7 @@ This cannot be undone.`)) {
             throw error;
           errorDiv.classList.add("hidden");
           try {
-            await browserAPI6.runtime.sendMessage({
+            await browserAPI7.runtime.sendMessage({
               type: "CC_AUTH_SET",
               access_token: data?.session?.access_token,
               refresh_token: data?.session?.refresh_token
@@ -16083,7 +16155,7 @@ This cannot be undone.`)) {
           errorDiv.classList.add("hidden");
           if (data?.session?.access_token) {
             try {
-              await browserAPI6.runtime.sendMessage({
+              await browserAPI7.runtime.sendMessage({
                 type: "CC_AUTH_SET",
                 access_token: data.session.access_token,
                 refresh_token: data.session.refresh_token
@@ -16109,7 +16181,7 @@ This cannot be undone.`)) {
         try {
           await supabase2.auth.signOut();
           try {
-            await browserAPI6.runtime.sendMessage({ type: "CC_AUTH_SET" });
+            await browserAPI7.runtime.sendMessage({ type: "CC_AUTH_SET" });
           } catch (_) {
           }
         } catch (error) {
@@ -16134,7 +16206,7 @@ This cannot be undone.`)) {
             } catch (_) {
             }
             try {
-              await browserAPI6.runtime.sendMessage({ type: "CC_AUTH_SET" });
+              await browserAPI7.runtime.sendMessage({ type: "CC_AUTH_SET" });
             } catch (_) {
             }
             showSuccessMessage("\u2705 All your data has been deleted.");
@@ -16150,19 +16222,19 @@ This cannot be undone.`)) {
     await updateAuthStatus();
     document.getElementById("open-website").addEventListener("click", (e) => {
       e.preventDefault();
-      browserAPI6.tabs.create({ url: "https://carmaclouds.vercel.app" });
+      browserAPI7.tabs.create({ url: "https://carmaclouds.vercel.app" });
     });
     document.getElementById("open-github").addEventListener("click", (e) => {
       e.preventDefault();
-      browserAPI6.tabs.create({ url: "https://github.com/CarmaNayeli/carmaclouds" });
+      browserAPI7.tabs.create({ url: "https://github.com/CarmaNayeli/carmaclouds" });
     });
     document.getElementById("open-issues").addEventListener("click", (e) => {
       e.preventDefault();
-      browserAPI6.tabs.create({ url: "https://github.com/CarmaNayeli/carmaclouds/issues" });
+      browserAPI7.tabs.create({ url: "https://github.com/CarmaNayeli/carmaclouds/issues" });
     });
     document.getElementById("open-sponsor").addEventListener("click", (e) => {
       e.preventDefault();
-      browserAPI6.tabs.create({ url: "https://github.com/sponsors/CarmaNayeli/" });
+      browserAPI7.tabs.create({ url: "https://github.com/sponsors/CarmaNayeli/" });
     });
     const syncBtn = document.getElementById("syncToCarmaCloudsBtn");
     if (syncBtn) {
@@ -16181,14 +16253,14 @@ This cannot be undone.`)) {
       btn.innerHTML = "\u23F3 Syncing...";
       statusDiv.textContent = "Fetching character data from DiceCloud...";
       statusDiv.style.color = "#b0b0b0";
-      const response = await browserAPI6.runtime.sendMessage({ action: "getCharacterData" });
+      const response = await browserAPI7.runtime.sendMessage({ action: "getCharacterData" });
       if (!response || !response.success || !response.data) {
         throw new Error("No character data available. Please sync from DiceCloud first.");
       }
       const characterData = response.data;
       console.log("\u{1F4E6} Character data received:", characterData);
       statusDiv.textContent = "Storing character locally...";
-      const existingData = await browserAPI6.storage.local.get("carmaclouds_characters");
+      const existingData = await browserAPI7.storage.local.get("carmaclouds_characters");
       const characters2 = existingData.carmaclouds_characters || [];
       const existingIndex = characters2.findIndex((c) => c.id === characterData.id);
       if (existingIndex >= 0) {
@@ -16196,12 +16268,12 @@ This cannot be undone.`)) {
       } else {
         characters2.unshift(characterData);
       }
-      await browserAPI6.storage.local.set({ carmaclouds_characters: characters2 });
+      await browserAPI7.storage.local.set({ carmaclouds_characters: characters2 });
       console.log("\u2705 Character stored in local storage");
       statusDiv.textContent = "Syncing to database...";
       if (typeof SupabaseTokenManager !== "undefined") {
         const supabaseManager = new SupabaseTokenManager();
-        const authResult = await browserAPI6.storage.local.get(["diceCloudUserId", "username"]);
+        const authResult = await browserAPI7.storage.local.get(["diceCloudUserId", "username"]);
         const dbResult = await supabaseManager.storeCharacter({
           ...characterData,
           user_id_dicecloud: authResult.diceCloudUserId,
@@ -16238,9 +16310,9 @@ This cannot be undone.`)) {
     }
   }
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init5);
+    document.addEventListener("DOMContentLoaded", init6);
   } else {
-    init5();
+    init6();
   }
 })();
 //# sourceMappingURL=popup.js.map

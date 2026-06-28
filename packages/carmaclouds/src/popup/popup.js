@@ -11,15 +11,20 @@ const loadedAdapters = {
   rollcloud: null,
   owlcloud: null,
   foundcloud: null,
-  coyotecloud: null
+  coyotecloud: null,
+  dndbeyond: null
 };
+
+// Tabs that don't require a DiceCloud login (they sync via the extension's own
+// Supabase session). D&D Beyond pulls a public character through the background.
+const NO_LOGIN_TABS = new Set(['dndbeyond']);
 
 // Get saved settings
 async function getSettings() {
   const result = await browserAPI.storage.local.get('carmaclouds_settings') || {};
   return result.carmaclouds_settings || {
     lastActiveTab: 'rollcloud',
-    enabledVTTs: ['rollcloud', 'owlcloud', 'foundcloud', 'coyotecloud']
+    enabledVTTs: ['rollcloud', 'owlcloud', 'foundcloud', 'coyotecloud', 'dndbeyond']
   };
 }
 
@@ -86,9 +91,9 @@ async function switchTab(tabName) {
 
   const contentEl = document.getElementById(`${tabName}-content`);
 
-  // Check if user is authenticated
+  // Check if user is authenticated (D&D Beyond syncs without a DiceCloud login)
   const token = await getAuthToken();
-  if (!token) {
+  if (!token && !NO_LOGIN_TABS.has(tabName)) {
     // Show login required message
     showLoginRequired(contentEl, tabName);
     // Clear the loaded adapter so it can be reloaded after login

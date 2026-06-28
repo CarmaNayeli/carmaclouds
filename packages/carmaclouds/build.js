@@ -45,6 +45,7 @@ await buildExtension({
     'src/popup/adapters/foundcloud/adapter': './src/popup/adapters/foundcloud/adapter.js',
     'src/popup/adapters/foundcloud/foundcloud-popup': './src/popup/adapters/foundcloud/foundcloud-popup.js',
     'src/popup/adapters/coyotecloud/adapter': './src/popup/adapters/coyotecloud/adapter.js',
+    'src/popup/adapters/dndbeyond/adapter': './src/popup/adapters/dndbeyond/adapter.js',
   },
   copyFiles: [
     'manifest_firefox.json',
@@ -108,6 +109,7 @@ await buildExtension({
     'src/popup/adapters/foundcloud/adapter': './src/popup/adapters/foundcloud/adapter.js',
     'src/popup/adapters/foundcloud/foundcloud-popup': './src/popup/adapters/foundcloud/foundcloud-popup.js',
     'src/popup/adapters/coyotecloud/adapter': './src/popup/adapters/coyotecloud/adapter.js',
+    'src/popup/adapters/dndbeyond/adapter': './src/popup/adapters/dndbeyond/adapter.js',
   },
   copyFiles: [
     'manifest.json',
