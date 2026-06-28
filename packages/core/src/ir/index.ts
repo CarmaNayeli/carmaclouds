@@ -1,8 +1,10 @@
 /**
- * System-agnostic IR for DiceCloud characters. See REBUILD.md.
+ * System-agnostic IR for character sheets. DiceCloud characters via normalize();
+ * D&D Beyond characters via normalizeDndBeyond(). See REBUILD.md.
  */
 export * from './types';
 export { normalize, resolveDamageFormula } from './normalize';
+export { normalizeDndBeyond } from './dndbeyond';
 export { deriveDnd, DND_ABILITIES } from './views/dnd5e';
 export type { Dnd5eView, AbilityView, PoolView, HitDicePool } from './views/dnd5e';
 export { IR_VERSION, toIRRow } from './persistence';
