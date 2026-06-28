@@ -8,6 +8,7 @@
  * supabase-js client is in scope.
  */
 import { normalize } from './normalize';
+import { normalizeDndBeyond } from './dndbeyond';
 import { toIRRow, type IRRow } from './persistence';
 import type { IRCharacter, RawDiceCloud } from './types';
 
@@ -27,16 +28,16 @@ export interface SupabaseRestTarget {
 }
 
 /**
- * Normalize raw DiceCloud data and upsert it into clouds_character_ir.
+ * Upsert an already-normalized IR into clouds_character_ir. Source-agnostic, so
+ * DiceCloud and D&D Beyond (and any future source) share one write path.
  * Returns the IR. Throws on a real upsert error; callers should treat IR sync as
  * non-fatal (wrap in try/catch) so it never blocks the legacy sync.
  */
-export async function upsertCharacterIR(
-  raw: RawDiceCloud,
+export async function upsertIR(
+  ir: IRCharacter,
   target: SupabaseRestTarget,
 ): Promise<IRCharacter> {
-  const ir = normalize(raw);
-  if (!ir.id) throw new Error('upsertCharacterIR: normalized IR has no character id');
+  if (!ir.id) throw new Error('upsertIR: IR has no character id');
 
   const row = toIRRow(ir);
   if (target.ownerId) (row as IRRow & { owner_id?: string }).owner_id = target.ownerId;
@@ -59,4 +60,28 @@ export async function upsertCharacterIR(
     throw new Error(`clouds_character_ir upsert failed: ${res.status} ${await res.text()}`);
   }
   return ir;
+}
+
+/**
+ * Normalize raw DiceCloud data and upsert it into clouds_character_ir.
+ */
+export async function upsertCharacterIR(
+  raw: RawDiceCloud,
+  target: SupabaseRestTarget,
+): Promise<IRCharacter> {
+  return upsertIR(normalize(raw), target);
+}
+
+/**
+ * Normalize a raw D&D Beyond character (the public character-service v5 payload,
+ * the full `{ data }` envelope or a bare character) and upsert it into
+ * clouds_character_ir. Mirrors upsertCharacterIR for the DiceCloud path.
+ */
+export async function upsertCharacterIRFromDndBeyond(
+  raw: unknown,
+  target: SupabaseRestTarget,
+): Promise<IRCharacter> {
+  const ir = normalizeDndBeyond(raw);
+  if (!ir) throw new Error('upsertCharacterIRFromDndBeyond: could not read that D&D Beyond character');
+  return upsertIR(ir, target);
 }

@@ -142,6 +142,7 @@ type DbAction = {
   limitedUse?: { maxUses?: number | null; resetType?: string | null; numberUsed?: number | null } | null;
 };
 type DbCharacter = {
+  id?: number | string;
   name?: string;
   avatarUrl?: string | null;
   decorations?: { avatarUrl?: string | null };
@@ -426,7 +427,9 @@ export function normalizeDndBeyond(input: unknown): IRCharacter | null {
   }));
 
   return {
-    id: String(c.name ?? 'ddb'),
+    // Prefer the DDB character id (stable, unique) so cloud upserts key cleanly;
+    // fall back to the name only when the id is missing.
+    id: String(c.id ?? c.name ?? 'ddb'),
     name: c.name || 'Imported Character',
     portrait: c.decorations?.avatarUrl || c.avatarUrl || undefined,
     systemHint: 'dnd5e',

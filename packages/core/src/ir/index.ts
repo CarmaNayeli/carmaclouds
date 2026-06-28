@@ -9,4 +9,4 @@ export { deriveDnd, DND_ABILITIES } from './views/dnd5e';
 export type { Dnd5eView, AbilityView, PoolView, HitDicePool } from './views/dnd5e';
 export { IR_VERSION, toIRRow } from './persistence';
 export type { IRRow } from './persistence';
-export { upsertCharacterIR } from './sync';
+export { upsertIR, upsertCharacterIR, upsertCharacterIRFromDndBeyond } from './sync';
