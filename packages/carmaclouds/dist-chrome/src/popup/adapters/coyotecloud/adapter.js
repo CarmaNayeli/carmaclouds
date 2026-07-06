@@ -13170,8 +13170,8 @@ ${suffix}`;
     }
     let sessionUserId = null;
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      sessionUserId = session?.user?.id || null;
+      const { data: { user } } = await supabase.auth.getUser();
+      sessionUserId = user?.id || null;
     } catch (_) {
     }
     if (!sessionUserId) {

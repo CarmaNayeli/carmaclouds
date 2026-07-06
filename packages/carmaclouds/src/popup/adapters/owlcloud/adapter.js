@@ -269,12 +269,14 @@ export async function init(containerEl) {
               pushBtn.disabled = true;
               pushBtn.innerHTML = '⏳ Pushing...';
 
-              // Get Supabase user ID if authenticated
-              const supabase = window.supabaseClient;
+              // Derive the owner id from the SAME service-worker session whose
+              // token signs the fetch below (getSupabaseAccessToken). Reading it
+              // from the popup's own getSession() can disagree with the SW token
+              // and trip owner-only RLS (auth.uid() != supabase_user_id).
               let supabaseUserId = null;
-              if (supabase) {
-                const { data: { session } } = await supabase.auth.getSession();
-                supabaseUserId = session?.user?.id;
+              if (typeof window.getSupabaseAuthInfo === 'function') {
+                const info = await window.getSupabaseAuthInfo();
+                supabaseUserId = info?.userId || null;
               }
 
               // Prepare character data with ALL info including supabase_user_id

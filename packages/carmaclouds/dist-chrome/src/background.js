@@ -15989,6 +15989,16 @@ ${suffix}`;
         }
         session = data?.session || null;
       }
+      const expSec = session?.expires_at || 0;
+      const staleSoon = expSec > 0 && expSec - Math.floor(Date.now() / 1e3) < 60;
+      if (session && staleSoon && typeof sbAuthClient.auth.refreshSession === "function") {
+        const { data, error } = await sbAuthClient.auth.refreshSession();
+        if (error) {
+          console.warn("\u26A0\uFE0F getSupabaseAuth: token refresh failed \u2014", error.message);
+        } else if (data?.session) {
+          session = data.session;
+        }
+      }
       return { token: session?.access_token || null, userId: session?.user?.id || null };
     } catch (err) {
       console.warn("\u26A0\uFE0F getSupabaseAuth failed (using anon fallback):", err);

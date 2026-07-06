@@ -211,12 +211,16 @@ async function syncCharacterToSupabase(char) {
   if (typeof window !== 'undefined' && window.adoptSupabaseSession) {
     try { await window.adoptSupabaseSession(); } catch (_) { /* fall through */ }
   }
-  // Get current auth session
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  // Validate the identity against the server (forces a refresh). getSession()
+  // reports a user even for an EXPIRED token, which PostgREST downgrades to `anon`
+  // so owner-only RLS rejects the write; getUser() returns null unless the JWT is
+  // actually valid, so supabase_user_id below is one that WITH CHECK will accept.
+  const { data: { user }, error: sessionError } = await supabase.auth.getUser();
 
-  if (sessionError || !session) {
+  if (sessionError || !user) {
     throw new Error('Not authenticated. Please log in to sync characters.');
   }
+  const session = { user };
 
   // Get DiceCloud user ID from storage
   const authResult = await browserAPI.storage.local.get(['diceCloudUserId']);

@@ -13448,8 +13448,8 @@ ${suffix}`;
     }
     let sessionUserId = null;
     try {
-      const { data: { session } } = await supabase2.auth.getSession();
-      sessionUserId = session?.user?.id || null;
+      const { data: { user } } = await supabase2.auth.getUser();
+      sessionUserId = user?.id || null;
     } catch (_) {
     }
     if (!sessionUserId) {
@@ -14309,10 +14309,11 @@ ${d}`;
       } catch (_) {
       }
     }
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
+    const { data: { user }, error: sessionError } = await supabase.auth.getUser();
+    if (sessionError || !user) {
       throw new Error("Not authenticated. Please log in to sync characters.");
     }
+    const session = { user };
     const authResult = await browserAPI3.storage.local.get(["diceCloudUserId"]);
     const dicecloudUserId = authResult.diceCloudUserId || null;
     const parsedData = parseForFoundCloud(char.raw, char.id);
@@ -14672,11 +14673,10 @@ This cannot be undone.`)) {
               try {
                 pushBtn.disabled = true;
                 pushBtn.innerHTML = "\u23F3 Pushing...";
-                const supabase3 = window.supabaseClient;
                 let supabaseUserId2 = null;
-                if (supabase3) {
-                  const { data: { session } } = await supabase3.auth.getSession();
-                  supabaseUserId2 = session?.user?.id;
+                if (typeof window.getSupabaseAuthInfo === "function") {
+                  const info = await window.getSupabaseAuthInfo();
+                  supabaseUserId2 = info?.userId || null;
                 }
                 const characterData = {
                   dicecloud_character_id: character2.id,

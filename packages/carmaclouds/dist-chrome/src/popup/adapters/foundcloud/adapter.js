@@ -13681,10 +13681,11 @@ ${d}`;
       } catch (_) {
       }
     }
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
+    const { data: { user }, error: sessionError } = await supabase.auth.getUser();
+    if (sessionError || !user) {
       throw new Error("Not authenticated. Please log in to sync characters.");
     }
+    const session = { user };
     const authResult = await browserAPI.storage.local.get(["diceCloudUserId"]);
     const dicecloudUserId = authResult.diceCloudUserId || null;
     const parsedData = parseForFoundCloud(char.raw, char.id);

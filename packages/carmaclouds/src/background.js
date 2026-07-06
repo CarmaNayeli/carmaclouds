@@ -58,6 +58,21 @@ async function getSupabaseAuth() {
       }
       session = data?.session || null;
     }
+    // MV3 service workers get killed, so autoRefreshToken's timer often never
+    // fires — getSession() then returns an EXPIRED token. Handing that to callers
+    // makes PostgREST downgrade the request to the `anon` role, so owner-only RLS
+    // rejects the write ("new row violates row-level security policy"). Proactively
+    // refresh when the token is expired or within 60s of it.
+    const expSec = session?.expires_at || 0;
+    const staleSoon = expSec > 0 && (expSec - Math.floor(Date.now() / 1000)) < 60;
+    if (session && staleSoon && typeof sbAuthClient.auth.refreshSession === 'function') {
+      const { data, error } = await sbAuthClient.auth.refreshSession();
+      if (error) {
+        console.warn('⚠️ getSupabaseAuth: token refresh failed —', error.message);
+      } else if (data?.session) {
+        session = data.session;
+      }
+    }
     return { token: session?.access_token || null, userId: session?.user?.id || null };
   } catch (err) {
     console.warn('⚠️ getSupabaseAuth failed (using anon fallback):', err);

@@ -216,11 +216,10 @@ This cannot be undone.`)) {
               try {
                 pushBtn.disabled = true;
                 pushBtn.innerHTML = "\u23F3 Pushing...";
-                const supabase2 = window.supabaseClient;
                 let supabaseUserId2 = null;
-                if (supabase2) {
-                  const { data: { session } } = await supabase2.auth.getSession();
-                  supabaseUserId2 = session?.user?.id;
+                if (typeof window.getSupabaseAuthInfo === "function") {
+                  const info = await window.getSupabaseAuthInfo();
+                  supabaseUserId2 = info?.userId || null;
                 }
                 const characterData = {
                   dicecloud_character_id: character2.id,

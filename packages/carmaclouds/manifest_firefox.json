@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "CarmaClouds: DiceCloud + VTT Integration",
-  "version": "2.8.2",
+  "version": "2.8.3",
   "description": "Sync DiceCloud V2 and D&D Beyond characters to Roll20, Owlbear Rodeo, and Foundry VTT with cloud storage",
   "browser_specific_settings": {
     "gecko": {

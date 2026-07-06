@@ -133,10 +133,16 @@ async function syncCharacterToCloud(supabase, char, { dicecloudUserId }) {
   if (typeof window !== 'undefined' && window.adoptSupabaseSession) {
     try { await window.adoptSupabaseSession(); } catch (_) { /* fall through */ }
   }
+  // Validate against the server with getUser() rather than trusting getSession():
+  // getSession() reports a userId even when the access token is EXPIRED, which
+  // makes PostgREST downgrade the write to `anon` and owner-only RLS rejects it
+  // ("new row violates row-level security policy"). getUser() forces a refresh and
+  // returns null if the identity can't be validated — so we only write a JWT that
+  // will actually satisfy WITH CHECK (auth.uid() = supabase_user_id).
   let sessionUserId = null;
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    sessionUserId = session?.user?.id || null;
+    const { data: { user } } = await supabase.auth.getUser();
+    sessionUserId = user?.id || null;
   } catch (_) { /* handled below */ }
   if (!sessionUserId) {
     throw new Error('Could not sign in to sync. Reload the extension (and update to the latest version), then try again.');
