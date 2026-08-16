@@ -4,7 +4,9 @@
       "Bash(rm -rf carmaclouds-chrome carmaclouds-chrome.zip)",
       "Bash(cp -r ../packages/carmaclouds/dist-chrome carmaclouds-chrome)",
       "Bash(rm -rf carmaclouds-firefox carmaclouds-firefox.zip)",
-      "Bash(cp -r ../packages/carmaclouds/dist carmaclouds-firefox)"
+      "Bash(cp -r ../packages/carmaclouds/dist carmaclouds-firefox)",
+      "PowerShell(cd C:\\\\Users\\\\c_dow\\\\carmaclouds\\\\packages\\\\carmaclouds; powershell -ExecutionPolicy Bypass -File .\\\\sign-firefox.ps1)",
+      "Bash(rm -f foundcloud-foundry-module.zip)"
     ]
   }
 }

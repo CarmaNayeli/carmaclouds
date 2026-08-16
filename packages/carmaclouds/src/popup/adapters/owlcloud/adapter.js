@@ -4,6 +4,8 @@
  * Loads the full OwlCloud popup UI
  */
 
+import { resolveCurrentCharacter, getCharacterIdFromOpenTab } from '../current-character.js';
+
 // Detect browser API (Firefox uses 'browser', Chrome uses 'chrome')
 const browserAPI = (typeof browser !== 'undefined' && browser.runtime) ? browser : chrome;
 
@@ -18,15 +20,18 @@ export async function init(containerEl) {
     containerEl.innerHTML = '<div class="loading">Loading OwlCloud...</div>';
 
     // Fetch synced characters and DiceCloud user ID from storage
-    const result = await browserAPI.storage.local.get(['carmaclouds_characters', 'diceCloudUserId']) || {};
+    const result = await browserAPI.storage.local.get(['carmaclouds_characters', 'diceCloudUserId', 'activeCharacterId']) || {};
     const characters = result.carmaclouds_characters || [];
     const diceCloudUserId = result.diceCloudUserId;
 
     console.log('Found', characters.length, 'synced characters');
     console.log('DiceCloud User ID:', diceCloudUserId);
 
-    // Get the most recent character (for now - later we'll add character selection)
-    const character = characters.length > 0 ? characters[0] : null;
+    // The character the player is actually looking at — never a positional pick,
+    // which is how this tab used to get stuck on one character (see
+    // ../current-character.js).
+    const openTabCharId = await getCharacterIdFromOpenTab();
+    const character = resolveCurrentCharacter(characters, openTabCharId, result.activeCharacterId);
 
     // Fetch the OwlCloud popup HTML
     const htmlPath = browserAPI.runtime.getURL('src/popup/adapters/owlcloud/popup.html');
@@ -243,10 +248,9 @@ export async function init(containerEl) {
       if (loginPrompt) loginPrompt.classList.add('hidden');
 
       // Handle "Ready to Sync" box - only show if there are local characters
-      if (characters.length > 0 && characters[characters.length - 1]?.raw) {
-        // Use the most recently synced character (last in array)
-        const character = characters[characters.length - 1];
-
+      // (`character` is resolved at the top of init() from the open DiceCloud
+      // tab; this box used to re-pick positionally and shadow it.)
+      if (character?.raw) {
         if (syncBox) syncBox.classList.remove('hidden');
 
         // Populate sync box with current character
@@ -318,9 +322,16 @@ export async function init(containerEl) {
                 console.log('✅ Character pushed:', character.name);
                 pushBtn.innerHTML = '✅ Pushed!';
 
-                // Clear the character from local storage so a new one can be loaded
-                await browserAPI.storage.local.remove(['carmaclouds_characters']);
-                console.log('🗑️ Cleared ready-to-sync character from local storage');
+                // Clear the pushed character so a new one can be loaded. Drop
+                // only this one — `carmaclouds_characters` is shared with the
+                // RollCloud / FoundCloud / CoyoteCloud tabs, and removing the
+                // whole key wiped their characters too.
+                const { carmaclouds_characters: current = [] } =
+                  await browserAPI.storage.local.get('carmaclouds_characters');
+                await browserAPI.storage.local.set({
+                  carmaclouds_characters: current.filter((c) => c.id !== character.id),
+                });
+                console.log('🗑️ Cleared pushed character from local storage:', character.name);
 
                 // Reload pushed characters list
                 await loadPushedCharacters();

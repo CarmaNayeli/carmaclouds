@@ -16,6 +16,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@carmaclouds/core/supabase/config.js';
 import { parseForFoundCloud, parseForOwlCloud } from '../../../content/dicecloud-extraction.js';
+import { resolveCurrentCharacter, getCharacterIdFromOpenTab } from '../current-character.js';
 
 const browserAPI = (typeof browser !== 'undefined' && browser.runtime) ? browser : chrome;
 const COYOTES_URL = 'https://coyotesandcandles.com';
@@ -158,49 +159,6 @@ export async function init(containerEl) {
   }
 
   await loadSyncedList(supabase, containerEl, dicecloudUserId);
-}
-
-/**
- * Pick which stored character the "Ready to sync" card offers.
- *
- * `carmaclouds_characters` is in insertion order and updates in place, so the
- * old `chars[chars.length - 1]` was "whichever character was added last, ever" —
- * it never followed the sheet you had open, and stuck on one character forever.
- * Preference: the character open in a DiceCloud tab → the last one synced from
- * DiceCloud (`activeCharacterId`, stamped by the background sync) → newest
- * `syncedAt` → last stored.
- */
-function resolveCurrentCharacter(chars, openTabCharId, activeCharacterId) {
-  if (!chars || chars.length === 0) return null;
-  const byId = (id) => (id ? chars.find((c) => c.id === id) : null);
-  const newestSynced = chars
-    .filter((c) => c.syncedAt)
-    .sort((a, b) => new Date(b.syncedAt) - new Date(a.syncedAt))[0];
-  return byId(openTabCharId)
-    || byId(activeCharacterId)
-    || newestSynced
-    || chars[chars.length - 1];
-}
-
-/** DiceCloud character id from an open tab, preferring the focused one. */
-async function getCharacterIdFromOpenTab() {
-  try {
-    // `*://*.dicecloud.com/*` doesn't match bare `dicecloud.com`, so ask for both.
-    const results = await Promise.all([
-      browserAPI.tabs.query({ url: '*://*.dicecloud.com/*' }).catch(() => []),
-      browserAPI.tabs.query({ url: '*://dicecloud.com/*' }).catch(() => []),
-    ]);
-    const seen = new Set();
-    const tabs = results.flat().filter((t) => (seen.has(t.id) ? false : seen.add(t.id)));
-    tabs.sort((a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0));
-    for (const tab of tabs) {
-      const match = (tab.url || '').match(/\/character\/([^/?#]+)/);
-      if (match) return match[1];
-    }
-  } catch (err) {
-    console.warn('CoyoteCloud: could not read the open DiceCloud tab:', err);
-  }
-  return null;
 }
 
 /** Write the character to clouds_characters with foundcloud_parsed_data. */

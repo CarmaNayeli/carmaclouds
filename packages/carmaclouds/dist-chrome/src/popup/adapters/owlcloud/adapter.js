@@ -1,18 +1,48 @@
 (() => {
-  // src/popup/adapters/owlcloud/adapter.js
+  // src/popup/adapters/current-character.js
   var browserAPI = typeof browser !== "undefined" && browser.runtime ? browser : chrome;
+  function resolveCurrentCharacter(chars, openTabCharId, activeCharacterId) {
+    if (!chars || chars.length === 0)
+      return null;
+    const byId = (id) => id ? chars.find((c) => c.id === id) : null;
+    const newestSynced = chars.filter((c) => c.syncedAt).sort((a, b) => new Date(b.syncedAt) - new Date(a.syncedAt))[0];
+    return byId(openTabCharId) || byId(activeCharacterId) || newestSynced || chars[chars.length - 1];
+  }
+  async function getCharacterIdFromOpenTab() {
+    try {
+      const results = await Promise.all([
+        browserAPI.tabs.query({ url: "*://*.dicecloud.com/*" }).catch(() => []),
+        browserAPI.tabs.query({ url: "*://dicecloud.com/*" }).catch(() => [])
+      ]);
+      const seen = /* @__PURE__ */ new Set();
+      const tabs = results.flat().filter((t) => seen.has(t.id) ? false : seen.add(t.id));
+      tabs.sort((a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0));
+      for (const tab of tabs) {
+        const match = (tab.url || "").match(/\/character\/([^/?#]+)/);
+        if (match)
+          return match[1];
+      }
+    } catch (err) {
+      console.warn("CarmaClouds: could not read the open DiceCloud tab:", err);
+    }
+    return null;
+  }
+
+  // src/popup/adapters/owlcloud/adapter.js
+  var browserAPI2 = typeof browser !== "undefined" && browser.runtime ? browser : chrome;
   var authSubscription = null;
   async function init(containerEl) {
     console.log("Initializing OwlCloud adapter...");
     try {
       containerEl.innerHTML = '<div class="loading">Loading OwlCloud...</div>';
-      const result = await browserAPI.storage.local.get(["carmaclouds_characters", "diceCloudUserId"]) || {};
+      const result = await browserAPI2.storage.local.get(["carmaclouds_characters", "diceCloudUserId", "activeCharacterId"]) || {};
       const characters = result.carmaclouds_characters || [];
       const diceCloudUserId = result.diceCloudUserId;
       console.log("Found", characters.length, "synced characters");
       console.log("DiceCloud User ID:", diceCloudUserId);
-      const character = characters.length > 0 ? characters[0] : null;
-      const htmlPath = browserAPI.runtime.getURL("src/popup/adapters/owlcloud/popup.html");
+      const openTabCharId = await getCharacterIdFromOpenTab();
+      const character = resolveCurrentCharacter(characters, openTabCharId, result.activeCharacterId);
+      const htmlPath = browserAPI2.runtime.getURL("src/popup/adapters/owlcloud/popup.html");
       const response = await fetch(htmlPath);
       const html = await response.text();
       const parser = new DOMParser();
@@ -23,7 +53,7 @@
       wrapper.innerHTML = mainContent ? mainContent.innerHTML : doc.body.innerHTML;
       containerEl.innerHTML = "";
       containerEl.appendChild(wrapper);
-      const cssPath = browserAPI.runtime.getURL("src/popup/adapters/owlcloud/popup.css");
+      const cssPath = browserAPI2.runtime.getURL("src/popup/adapters/owlcloud/popup.css");
       const cssResponse = await fetch(cssPath);
       let css = await cssResponse.text();
       css = css.replace(/(^|\})\s*([^{}@]+)\s*\{/gm, (match, closer, selector) => {
@@ -193,8 +223,7 @@ This cannot be undone.`)) {
       } else {
         if (loginPrompt)
           loginPrompt.classList.add("hidden");
-        if (characters.length > 0 && characters[characters.length - 1]?.raw) {
-          const character2 = characters[characters.length - 1];
+        if (character?.raw) {
           if (syncBox)
             syncBox.classList.remove("hidden");
           const nameEl = wrapper.querySelector("#syncCharName");
@@ -202,13 +231,13 @@ This cannot be undone.`)) {
           const classEl = wrapper.querySelector("#syncCharClass");
           const raceEl = wrapper.querySelector("#syncCharRace");
           if (nameEl)
-            nameEl.textContent = character2.name || "Unknown";
+            nameEl.textContent = character.name || "Unknown";
           if (levelEl)
-            levelEl.textContent = `Lvl ${character2.preview?.level || "?"}`;
+            levelEl.textContent = `Lvl ${character.preview?.level || "?"}`;
           if (classEl)
-            classEl.textContent = character2.preview?.class || "Unknown";
+            classEl.textContent = character.preview?.class || "Unknown";
           if (raceEl)
-            raceEl.textContent = character2.preview?.race || "Unknown";
+            raceEl.textContent = character.preview?.race || "Unknown";
           const pushBtn = wrapper.querySelector("#pushToVttBtn");
           if (pushBtn) {
             pushBtn.addEventListener("click", async () => {
@@ -222,13 +251,13 @@ This cannot be undone.`)) {
                   supabaseUserId2 = info?.userId || null;
                 }
                 const characterData = {
-                  dicecloud_character_id: character2.id,
-                  character_name: character2.name || "Unknown",
+                  dicecloud_character_id: character.id,
+                  character_name: character.name || "Unknown",
                   user_id_dicecloud: diceCloudUserId,
-                  level: character2.preview?.level || null,
-                  class: character2.preview?.class || null,
-                  race: character2.preview?.race || null,
-                  raw_dicecloud_data: character2.raw,
+                  level: character.preview?.level || null,
+                  class: character.preview?.class || null,
+                  race: character.preview?.race || null,
+                  raw_dicecloud_data: character.raw,
                   is_active: false,
                   updated_at: (/* @__PURE__ */ new Date()).toISOString()
                 };
@@ -251,10 +280,13 @@ This cannot be undone.`)) {
                   }
                 );
                 if (response2.ok) {
-                  console.log("\u2705 Character pushed:", character2.name);
+                  console.log("\u2705 Character pushed:", character.name);
                   pushBtn.innerHTML = "\u2705 Pushed!";
-                  await browserAPI.storage.local.remove(["carmaclouds_characters"]);
-                  console.log("\u{1F5D1}\uFE0F Cleared ready-to-sync character from local storage");
+                  const { carmaclouds_characters: current = [] } = await browserAPI2.storage.local.get("carmaclouds_characters");
+                  await browserAPI2.storage.local.set({
+                    carmaclouds_characters: current.filter((c) => c.id !== character.id)
+                  });
+                  console.log("\u{1F5D1}\uFE0F Cleared pushed character from local storage:", character.name);
                   await loadPushedCharacters();
                   setTimeout(async () => {
                     await init(containerEl);
@@ -315,13 +347,13 @@ This cannot be undone.`)) {
           }
         });
       }
-      browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      browserAPI2.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.action === "dataSynced") {
           console.log("\u{1F4E5} OwlCloud adapter received data sync notification:", message.characterName);
           init(containerEl);
         }
       });
-      browserAPI.storage.onChanged.addListener((changes, areaName) => {
+      browserAPI2.storage.onChanged.addListener((changes, areaName) => {
         if (areaName === "local" && changes.carmaclouds_characters) {
           console.log("\u{1F4E6} OwlCloud adapter detected character storage change");
           init(containerEl);

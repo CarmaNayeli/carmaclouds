@@ -13061,8 +13061,37 @@ ${suffix}`;
     return varData.value !== void 0 ? varData.value : varData;
   }
 
-  // src/popup/adapters/coyotecloud/adapter.js
+  // src/popup/adapters/current-character.js
   var browserAPI = typeof browser !== "undefined" && browser.runtime ? browser : chrome;
+  function resolveCurrentCharacter(chars, openTabCharId, activeCharacterId) {
+    if (!chars || chars.length === 0)
+      return null;
+    const byId = (id) => id ? chars.find((c) => c.id === id) : null;
+    const newestSynced = chars.filter((c) => c.syncedAt).sort((a, b) => new Date(b.syncedAt) - new Date(a.syncedAt))[0];
+    return byId(openTabCharId) || byId(activeCharacterId) || newestSynced || chars[chars.length - 1];
+  }
+  async function getCharacterIdFromOpenTab() {
+    try {
+      const results = await Promise.all([
+        browserAPI.tabs.query({ url: "*://*.dicecloud.com/*" }).catch(() => []),
+        browserAPI.tabs.query({ url: "*://dicecloud.com/*" }).catch(() => [])
+      ]);
+      const seen = /* @__PURE__ */ new Set();
+      const tabs = results.flat().filter((t) => seen.has(t.id) ? false : seen.add(t.id));
+      tabs.sort((a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0));
+      for (const tab of tabs) {
+        const match = (tab.url || "").match(/\/character\/([^/?#]+)/);
+        if (match)
+          return match[1];
+      }
+    } catch (err) {
+      console.warn("CarmaClouds: could not read the open DiceCloud tab:", err);
+    }
+    return null;
+  }
+
+  // src/popup/adapters/coyotecloud/adapter.js
+  var browserAPI2 = typeof browser !== "undefined" && browser.runtime ? browser : chrome;
   var COYOTES_URL = "https://coyotesandcandles.com";
   function getSupabase() {
     return window.supabaseClient || createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -13076,7 +13105,7 @@ ${suffix}`;
       } catch (_) {
       }
     }
-    const stored = await browserAPI.storage.local.get(["carmaclouds_characters", "diceCloudUserId", "activeCharacterId"]) || {};
+    const stored = await browserAPI2.storage.local.get(["carmaclouds_characters", "diceCloudUserId", "activeCharacterId"]) || {};
     const localChars = stored.carmaclouds_characters || [];
     const dicecloudUserId = stored.diceCloudUserId || null;
     const openTabCharId = await getCharacterIdFromOpenTab();
@@ -13103,7 +13132,7 @@ ${suffix}`;
         }
       });
     }
-    $("#cc-open-site")?.addEventListener("click", () => browserAPI.tabs.create({ url: COYOTES_URL }));
+    $("#cc-open-site")?.addEventListener("click", () => browserAPI2.tabs.create({ url: COYOTES_URL }));
     const syncBox = $("#cc-sync-box");
     const syncBtn = $("#cc-sync-btn");
     function renderPending() {
@@ -13153,12 +13182,12 @@ ${suffix}`;
         }, 2e3);
       }
     });
-    browserAPI.storage.onChanged.addListener((changes, area) => {
+    browserAPI2.storage.onChanged.addListener((changes, area) => {
       if (area !== "local")
         return;
       if (!changes.carmaclouds_characters && !changes.activeCharacterId)
         return;
-      browserAPI.storage.local.get(["carmaclouds_characters", "activeCharacterId"]).then((s) => {
+      browserAPI2.storage.local.get(["carmaclouds_characters", "activeCharacterId"]).then((s) => {
         pending = resolveCurrentCharacter(s.carmaclouds_characters || [], openTabCharId, s.activeCharacterId);
         renderPending();
       });
@@ -13166,7 +13195,7 @@ ${suffix}`;
     const wbToggle = $("#cc-writeback-toggle");
     const wbStatus = $("#cc-writeback-status");
     async function refreshWbStatus() {
-      const { coyotecloudWritebackEnabled, diceCloudToken } = await browserAPI.storage.local.get(["coyotecloudWritebackEnabled", "diceCloudToken"]);
+      const { coyotecloudWritebackEnabled, diceCloudToken } = await browserAPI2.storage.local.get(["coyotecloudWritebackEnabled", "diceCloudToken"]);
       if (wbToggle)
         wbToggle.checked = !!coyotecloudWritebackEnabled;
       if (!wbStatus)
@@ -13182,41 +13211,15 @@ ${suffix}`;
       await refreshWbStatus();
       wbToggle.addEventListener("change", async () => {
         if (wbToggle.checked) {
-          await browserAPI.storage.local.set({ coyotecloudWritebackEnabled: true });
+          await browserAPI2.storage.local.set({ coyotecloudWritebackEnabled: true });
         } else {
-          await browserAPI.storage.local.set({ coyotecloudWritebackEnabled: false });
-          await browserAPI.storage.local.remove("diceCloudToken");
+          await browserAPI2.storage.local.set({ coyotecloudWritebackEnabled: false });
+          await browserAPI2.storage.local.remove("diceCloudToken");
         }
         setTimeout(refreshWbStatus, 700);
       });
     }
     await loadSyncedList(supabase, containerEl, dicecloudUserId);
-  }
-  function resolveCurrentCharacter(chars, openTabCharId, activeCharacterId) {
-    if (!chars || chars.length === 0)
-      return null;
-    const byId = (id) => id ? chars.find((c) => c.id === id) : null;
-    const newestSynced = chars.filter((c) => c.syncedAt).sort((a, b) => new Date(b.syncedAt) - new Date(a.syncedAt))[0];
-    return byId(openTabCharId) || byId(activeCharacterId) || newestSynced || chars[chars.length - 1];
-  }
-  async function getCharacterIdFromOpenTab() {
-    try {
-      const results = await Promise.all([
-        browserAPI.tabs.query({ url: "*://*.dicecloud.com/*" }).catch(() => []),
-        browserAPI.tabs.query({ url: "*://dicecloud.com/*" }).catch(() => [])
-      ]);
-      const seen = /* @__PURE__ */ new Set();
-      const tabs = results.flat().filter((t) => seen.has(t.id) ? false : seen.add(t.id));
-      tabs.sort((a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0));
-      for (const tab of tabs) {
-        const match = (tab.url || "").match(/\/character\/([^/?#]+)/);
-        if (match)
-          return match[1];
-      }
-    } catch (err) {
-      console.warn("CoyoteCloud: could not read the open DiceCloud tab:", err);
-    }
-    return null;
   }
   async function syncCharacterToCloud(supabase, char, { dicecloudUserId }) {
     if (typeof window !== "undefined" && window.adoptSupabaseSession) {
