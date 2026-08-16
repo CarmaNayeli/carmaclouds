@@ -566,8 +566,12 @@ browserAPI.runtime.onMessage.addListener((request, sender, sendResponse) => {
       localStorageKeys: Object.keys(authData.localStorage).length
     });
 
+    // Respond synchronously. Do NOT `return true` here: in Firefox that tells
+    // the runtime to wait for a *later* async sendResponse, so the popup's
+    // awaited tabs.sendMessage() promise never settles and "Connect with
+    // DiceCloud" spins forever. Returning undefined after a sync sendResponse
+    // is the correct cross-browser pattern.
     sendResponse(authData);
-    return true; // Keep channel open for async response
   } else if (request.action === 'resetUIPositions') {
     console.log('🔄 Resetting UI positions on DiceCloud');
 
@@ -582,8 +586,8 @@ browserAPI.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 
     console.log('✅ Reset DiceCloud sync button position');
+    // Synchronous response — see note above; no `return true`.
     sendResponse({ success: true, message: 'DiceCloud sync button position reset' });
-    return true;
   }
 });
 

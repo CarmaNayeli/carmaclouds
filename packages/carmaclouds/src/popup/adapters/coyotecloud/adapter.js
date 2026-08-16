@@ -38,12 +38,14 @@ export async function init(containerEl) {
     try { await window.adoptSupabaseSession(); } catch (_) { /* fall through to anon */ }
   }
 
-  const stored = await browserAPI.storage.local.get(['carmaclouds_characters', 'diceCloudUserId']) || {};
+  const stored = await browserAPI.storage.local.get(['carmaclouds_characters', 'diceCloudUserId', 'activeCharacterId']) || {};
   const localChars = stored.carmaclouds_characters || [];
   const dicecloudUserId = stored.diceCloudUserId || null;
 
-  // The most recently synced-from-DiceCloud character (ready to push to cloud).
-  const pending = localChars.length > 0 ? localChars[localChars.length - 1] : null;
+  // The character the player is actually looking at (ready to push to cloud).
+  // Mutable: a DiceCloud sync while the popup is open re-resolves it below.
+  const openTabCharId = await getCharacterIdFromOpenTab();
+  let pending = resolveCurrentCharacter(localChars, openTabCharId, stored.activeCharacterId);
 
   let sessionUserId = null;
   try {
@@ -73,30 +75,62 @@ export async function init(containerEl) {
   // ── Sync the pending character to the cloud ──
   const syncBox = $('#cc-sync-box');
   const syncBtn = $('#cc-sync-btn');
-  if (pending && pending.raw && syncBox) {
+
+  /** Paint the "Ready to sync" card from the current `pending` pick. */
+  function renderPending() {
+    if (!syncBox) return;
+    const hint = $('#cc-pending-hint');
+    if (!pending || !pending.raw) {
+      syncBox.style.display = 'none';
+      return;
+    }
     syncBox.style.display = 'block';
     $('#cc-pending-name').textContent = pending.name || 'Unknown';
     $('#cc-pending-meta').textContent = [
       pending.preview?.level ? `Lvl ${pending.preview.level}` : null,
       pending.preview?.class, pending.preview?.race,
     ].filter(Boolean).join(' · ');
-
-    syncBtn?.addEventListener('click', async () => {
-      const original = syncBtn.innerHTML;
-      syncBtn.disabled = true;
-      syncBtn.innerHTML = '⏳ Syncing…';
-      try {
-        await syncCharacterToCloud(supabase, pending, { dicecloudUserId });
-        syncBtn.innerHTML = '✅ Synced to CoyoteCloud!';
-        await loadSyncedList(supabase, containerEl, dicecloudUserId);
-      } catch (err) {
-        console.error('CoyoteCloud sync failed:', err);
-        syncBtn.innerHTML = '❌ Failed';
-        $('#cc-status').textContent = err.message || 'Sync failed.';
-        setTimeout(() => { syncBtn.innerHTML = original; syncBtn.disabled = false; }, 2000);
-      }
-    });
+    // The open sheet isn't captured yet, so we're offering a *different*
+    // character — say so instead of silently syncing the wrong one.
+    if (hint) {
+      const stale = openTabCharId && pending.id !== openTabCharId;
+      hint.style.display = stale ? 'block' : 'none';
+      hint.textContent = stale
+        ? 'The character open in DiceCloud isn\'t captured yet — hit "Sync to CarmaClouds" on the sheet first.'
+        : '';
+    }
   }
+  renderPending();
+
+  syncBtn?.addEventListener('click', async () => {
+    if (!pending || !pending.raw) return;
+    const target = pending; // freeze the pick for this click
+    const original = syncBtn.innerHTML;
+    syncBtn.disabled = true;
+    syncBtn.innerHTML = '⏳ Syncing…';
+    try {
+      await syncCharacterToCloud(supabase, target, { dicecloudUserId });
+      syncBtn.innerHTML = `✅ Synced ${target.name || 'character'}!`;
+      await loadSyncedList(supabase, containerEl, dicecloudUserId);
+      setTimeout(() => { syncBtn.innerHTML = original; syncBtn.disabled = false; }, 2500);
+    } catch (err) {
+      console.error('CoyoteCloud sync failed:', err);
+      syncBtn.innerHTML = '❌ Failed';
+      $('#cc-status').textContent = err.message || 'Sync failed.';
+      setTimeout(() => { syncBtn.innerHTML = original; syncBtn.disabled = false; }, 2000);
+    }
+  });
+
+  // A DiceCloud sync landing while the popup is open should move the card onto
+  // the character that just arrived, not leave it on the previous pick.
+  browserAPI.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local') return;
+    if (!changes.carmaclouds_characters && !changes.activeCharacterId) return;
+    browserAPI.storage.local.get(['carmaclouds_characters', 'activeCharacterId']).then((s) => {
+      pending = resolveCurrentCharacter(s.carmaclouds_characters || [], openTabCharId, s.activeCharacterId);
+      renderPending();
+    });
+  });
 
   // ── Opt-in write-back toggle (captures DiceCloud token; enables C&C → DiceCloud) ──
   const wbToggle = $('#cc-writeback-toggle');
@@ -124,6 +158,49 @@ export async function init(containerEl) {
   }
 
   await loadSyncedList(supabase, containerEl, dicecloudUserId);
+}
+
+/**
+ * Pick which stored character the "Ready to sync" card offers.
+ *
+ * `carmaclouds_characters` is in insertion order and updates in place, so the
+ * old `chars[chars.length - 1]` was "whichever character was added last, ever" —
+ * it never followed the sheet you had open, and stuck on one character forever.
+ * Preference: the character open in a DiceCloud tab → the last one synced from
+ * DiceCloud (`activeCharacterId`, stamped by the background sync) → newest
+ * `syncedAt` → last stored.
+ */
+function resolveCurrentCharacter(chars, openTabCharId, activeCharacterId) {
+  if (!chars || chars.length === 0) return null;
+  const byId = (id) => (id ? chars.find((c) => c.id === id) : null);
+  const newestSynced = chars
+    .filter((c) => c.syncedAt)
+    .sort((a, b) => new Date(b.syncedAt) - new Date(a.syncedAt))[0];
+  return byId(openTabCharId)
+    || byId(activeCharacterId)
+    || newestSynced
+    || chars[chars.length - 1];
+}
+
+/** DiceCloud character id from an open tab, preferring the focused one. */
+async function getCharacterIdFromOpenTab() {
+  try {
+    // `*://*.dicecloud.com/*` doesn't match bare `dicecloud.com`, so ask for both.
+    const results = await Promise.all([
+      browserAPI.tabs.query({ url: '*://*.dicecloud.com/*' }).catch(() => []),
+      browserAPI.tabs.query({ url: '*://dicecloud.com/*' }).catch(() => []),
+    ]);
+    const seen = new Set();
+    const tabs = results.flat().filter((t) => (seen.has(t.id) ? false : seen.add(t.id)));
+    tabs.sort((a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0));
+    for (const tab of tabs) {
+      const match = (tab.url || '').match(/\/character\/([^/?#]+)/);
+      if (match) return match[1];
+    }
+  } catch (err) {
+    console.warn('CoyoteCloud: could not read the open DiceCloud tab:', err);
+  }
+  return null;
 }
 
 /** Write the character to clouds_characters with foundcloud_parsed_data. */
@@ -236,6 +313,7 @@ function renderShell({ dicecloudUserId }) {
         <div style="font-size:12px;color:#888;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Ready to sync</div>
         <div id="cc-pending-name" style="color:#fff;font-weight:600;"></div>
         <div id="cc-pending-meta" style="color:#888;font-size:12px;margin-bottom:10px;"></div>
+        <div id="cc-pending-hint" style="display:none;color:#e8b840;font-size:12px;line-height:1.45;margin-bottom:10px;"></div>
         <button id="cc-sync-btn" class="btn btn-primary" style="width:100%;padding:10px;border:none;border-radius:6px;background:#e8b840;color:#1a1a1a;font-weight:700;cursor:pointer;">
           ☁️ Sync to CoyoteCloud
         </button>

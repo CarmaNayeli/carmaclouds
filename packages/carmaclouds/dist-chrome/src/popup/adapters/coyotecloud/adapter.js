@@ -13076,10 +13076,11 @@ ${suffix}`;
       } catch (_) {
       }
     }
-    const stored = await browserAPI.storage.local.get(["carmaclouds_characters", "diceCloudUserId"]) || {};
+    const stored = await browserAPI.storage.local.get(["carmaclouds_characters", "diceCloudUserId", "activeCharacterId"]) || {};
     const localChars = stored.carmaclouds_characters || [];
     const dicecloudUserId = stored.diceCloudUserId || null;
-    const pending = localChars.length > 0 ? localChars[localChars.length - 1] : null;
+    const openTabCharId = await getCharacterIdFromOpenTab();
+    let pending = resolveCurrentCharacter(localChars, openTabCharId, stored.activeCharacterId);
     let sessionUserId = null;
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -13105,7 +13106,14 @@ ${suffix}`;
     $("#cc-open-site")?.addEventListener("click", () => browserAPI.tabs.create({ url: COYOTES_URL }));
     const syncBox = $("#cc-sync-box");
     const syncBtn = $("#cc-sync-btn");
-    if (pending && pending.raw && syncBox) {
+    function renderPending() {
+      if (!syncBox)
+        return;
+      const hint = $("#cc-pending-hint");
+      if (!pending || !pending.raw) {
+        syncBox.style.display = "none";
+        return;
+      }
       syncBox.style.display = "block";
       $("#cc-pending-name").textContent = pending.name || "Unknown";
       $("#cc-pending-meta").textContent = [
@@ -13113,25 +13121,48 @@ ${suffix}`;
         pending.preview?.class,
         pending.preview?.race
       ].filter(Boolean).join(" \xB7 ");
-      syncBtn?.addEventListener("click", async () => {
-        const original = syncBtn.innerHTML;
-        syncBtn.disabled = true;
-        syncBtn.innerHTML = "\u23F3 Syncing\u2026";
-        try {
-          await syncCharacterToCloud(supabase, pending, { dicecloudUserId });
-          syncBtn.innerHTML = "\u2705 Synced to CoyoteCloud!";
-          await loadSyncedList(supabase, containerEl, dicecloudUserId);
-        } catch (err) {
-          console.error("CoyoteCloud sync failed:", err);
-          syncBtn.innerHTML = "\u274C Failed";
-          $("#cc-status").textContent = err.message || "Sync failed.";
-          setTimeout(() => {
-            syncBtn.innerHTML = original;
-            syncBtn.disabled = false;
-          }, 2e3);
-        }
-      });
+      if (hint) {
+        const stale = openTabCharId && pending.id !== openTabCharId;
+        hint.style.display = stale ? "block" : "none";
+        hint.textContent = stale ? `The character open in DiceCloud isn't captured yet \u2014 hit "Sync to CarmaClouds" on the sheet first.` : "";
+      }
     }
+    renderPending();
+    syncBtn?.addEventListener("click", async () => {
+      if (!pending || !pending.raw)
+        return;
+      const target = pending;
+      const original = syncBtn.innerHTML;
+      syncBtn.disabled = true;
+      syncBtn.innerHTML = "\u23F3 Syncing\u2026";
+      try {
+        await syncCharacterToCloud(supabase, target, { dicecloudUserId });
+        syncBtn.innerHTML = `\u2705 Synced ${target.name || "character"}!`;
+        await loadSyncedList(supabase, containerEl, dicecloudUserId);
+        setTimeout(() => {
+          syncBtn.innerHTML = original;
+          syncBtn.disabled = false;
+        }, 2500);
+      } catch (err) {
+        console.error("CoyoteCloud sync failed:", err);
+        syncBtn.innerHTML = "\u274C Failed";
+        $("#cc-status").textContent = err.message || "Sync failed.";
+        setTimeout(() => {
+          syncBtn.innerHTML = original;
+          syncBtn.disabled = false;
+        }, 2e3);
+      }
+    });
+    browserAPI.storage.onChanged.addListener((changes, area) => {
+      if (area !== "local")
+        return;
+      if (!changes.carmaclouds_characters && !changes.activeCharacterId)
+        return;
+      browserAPI.storage.local.get(["carmaclouds_characters", "activeCharacterId"]).then((s) => {
+        pending = resolveCurrentCharacter(s.carmaclouds_characters || [], openTabCharId, s.activeCharacterId);
+        renderPending();
+      });
+    });
     const wbToggle = $("#cc-writeback-toggle");
     const wbStatus = $("#cc-writeback-status");
     async function refreshWbStatus() {
@@ -13160,6 +13191,32 @@ ${suffix}`;
       });
     }
     await loadSyncedList(supabase, containerEl, dicecloudUserId);
+  }
+  function resolveCurrentCharacter(chars, openTabCharId, activeCharacterId) {
+    if (!chars || chars.length === 0)
+      return null;
+    const byId = (id) => id ? chars.find((c) => c.id === id) : null;
+    const newestSynced = chars.filter((c) => c.syncedAt).sort((a, b) => new Date(b.syncedAt) - new Date(a.syncedAt))[0];
+    return byId(openTabCharId) || byId(activeCharacterId) || newestSynced || chars[chars.length - 1];
+  }
+  async function getCharacterIdFromOpenTab() {
+    try {
+      const results = await Promise.all([
+        browserAPI.tabs.query({ url: "*://*.dicecloud.com/*" }).catch(() => []),
+        browserAPI.tabs.query({ url: "*://dicecloud.com/*" }).catch(() => [])
+      ]);
+      const seen = /* @__PURE__ */ new Set();
+      const tabs = results.flat().filter((t) => seen.has(t.id) ? false : seen.add(t.id));
+      tabs.sort((a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0));
+      for (const tab of tabs) {
+        const match = (tab.url || "").match(/\/character\/([^/?#]+)/);
+        if (match)
+          return match[1];
+      }
+    } catch (err) {
+      console.warn("CoyoteCloud: could not read the open DiceCloud tab:", err);
+    }
+    return null;
   }
   async function syncCharacterToCloud(supabase, char, { dicecloudUserId }) {
     if (typeof window !== "undefined" && window.adoptSupabaseSession) {
@@ -13253,6 +13310,7 @@ ${suffix}`;
         <div style="font-size:12px;color:#888;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Ready to sync</div>
         <div id="cc-pending-name" style="color:#fff;font-weight:600;"></div>
         <div id="cc-pending-meta" style="color:#888;font-size:12px;margin-bottom:10px;"></div>
+        <div id="cc-pending-hint" style="display:none;color:#e8b840;font-size:12px;line-height:1.45;margin-bottom:10px;"></div>
         <button id="cc-sync-btn" class="btn btn-primary" style="width:100%;padding:10px;border:none;border-radius:6px;background:#e8b840;color:#1a1a1a;font-weight:700;cursor:pointer;">
           \u2601\uFE0F Sync to CoyoteCloud
         </button>

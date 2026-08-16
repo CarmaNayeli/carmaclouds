@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm -rf carmaclouds-chrome carmaclouds-chrome.zip)",
+      "Bash(cp -r ../packages/carmaclouds/dist-chrome carmaclouds-chrome)",
+      "Bash(rm -rf carmaclouds-firefox carmaclouds-firefox.zip)",
+      "Bash(cp -r ../packages/carmaclouds/dist carmaclouds-firefox)"
+    ]
+  }
+}

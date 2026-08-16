@@ -393,8 +393,17 @@ async function autoConnect() {
     try {
       // Wait a moment for content script to be ready
       await new Promise(resolve => setTimeout(resolve, 100));
-      
-      authData = await browserAPI.tabs.sendMessage(tabs[0].id, { action: 'getAuthData' });
+
+      // Race the message against a timeout. Some browsers (notably Firefox when
+      // a listener mishandles the async-response contract) can leave this promise
+      // pending forever, which would hang the button on "Checking..." with no
+      // error. If it times out we reject and fall through to the injection/cookie
+      // fallback below instead of spinning indefinitely.
+      authData = await Promise.race([
+        browserAPI.tabs.sendMessage(tabs[0].id, { action: 'getAuthData' }),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('getAuthData timed out')), 3000))
+      ]);
       console.log('✅ Auth data received from content script:', authData);
     } catch (messageError) {
       console.warn('⚠️ Could not get auth data from content script:', messageError);
